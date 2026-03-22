@@ -54,6 +54,34 @@ void main() {
     expect(find.text('Valencia'), findsOneWidget);
   });
 
+  testWidgets('requires tapping the suggestion to save as official spot', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: SpotsPage())),
+    );
+
+    await tester.tap(find.byTooltip('Agregar spot'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nombre del spot'),
+      'Oliva Canal',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Oliva Canal - Platja dels Gorgs'), findsOneWidget);
+    expect(find.text('Selecciona un punto en el mapa para guardar.'), findsOneWidget);
+
+    await tester.tap(find.text('Oliva Canal - Platja dels Gorgs'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Guardar spot'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Oliva Canal - Platja dels Gorgs'), findsOneWidget);
+  });
+
   testWidgets('supports custom map point from Personalizado button', (
     tester,
   ) async {

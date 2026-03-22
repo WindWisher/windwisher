@@ -14680,3 +14680,15 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
     - verificacion ejecutada:
       - `flutter analyze lib/features/auth/presentation/pages/login_page.dart test/features/auth/presentation/pages/login_page_test.dart`,
       - `flutter test test/features/auth/presentation/pages/login_page_test.dart -r compact`.
+  - bloque nuevo `2026-03-22`:
+    - ajustes del flujo de spots guardados,
+    - duracion estimada del bloque: `20-30 min`,
+    - cambios aplicados:
+      - la pestaña `Spots` se rehidrata al cambiar la sesion de Supabase,
+      - los spots guardados del usuario vuelven a cargarse tras login/logout sin recrear la pantalla,
+      - en `Agregar spot`, un spot oficial solo cuenta como oficial si se toca su sugerencia,
+      - si no se toca la sugerencia, el alta se trata como posible spot personalizado y exige coordenadas,
+      - anadida pista visual `Spot oficial seleccionado: ...` cuando la sugerencia se ha elegido,
+    - verificacion ejecutada:
+      - `flutter analyze lib/features/spots/presentation/pages/spots_page.dart test/features/spots/presentation/pages/spots_page_test.dart`,
+      - `flutter test test/features/spots/presentation/pages/spots_page_test.dart --plain-name "requires tapping the suggestion to save as official spot" -r compact`.

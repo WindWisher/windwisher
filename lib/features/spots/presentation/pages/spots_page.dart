@@ -1,10 +1,12 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
@@ -38,6 +40,7 @@ class SpotsPageState extends State<SpotsPage> {
   _PendingCardAction _pendingCardAction = _PendingCardAction.none;
   final Set<String> _selectedSpotNames = <String>{};
   String _searchQuery = '';
+  StreamSubscription<AuthState>? _authStateSubscription;
 
   @override
   void initState() {
@@ -49,6 +52,17 @@ class SpotsPageState extends State<SpotsPage> {
             : SpotsModule.inMemory());
     _spots.addAll(_spotsModule.getSpots());
     _hydrateSpotsCatalog();
+    _subscribeToAuthChanges();
+  }
+
+  void _subscribeToAuthChanges() {
+    if (!EnvConfig.supabaseConfigured) {
+      return;
+    }
+    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange
+        .listen((_) {
+          unawaited(_hydrateSpotsCatalog());
+        });
   }
 
   Future<void> _hydrateSpotsCatalog() async {
@@ -501,6 +515,7 @@ class SpotsPageState extends State<SpotsPage> {
 
   @override
   void dispose() {
+    _authStateSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -942,6 +957,7 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
   final _nameController = TextEditingController();
   final _areaController = TextEditingController();
   List<_AvailableSpot> _suggestedSpots = const <_AvailableSpot>[];
+  _AvailableSpot? _selectedOfficialSpot;
   _CustomSpotPoint? _customPoint;
   bool _customMode = false;
   String? _backgroundImagePath;
@@ -955,10 +971,16 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
 
   void _onNameChanged() {
     final query = _nameController.text.trim().toLowerCase();
+    final selectedOfficialSpot = _selectedOfficialSpot;
+    if (selectedOfficialSpot != null &&
+        selectedOfficialSpot.name.toLowerCase() != query) {
+      _selectedOfficialSpot = null;
+    }
     if (query.isEmpty) {
       if (_suggestedSpots.isNotEmpty) {
         setState(() {
           _suggestedSpots = const <_AvailableSpot>[];
+          _error = null;
         });
       }
       return;
@@ -987,6 +1009,7 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
     );
 
     setState(() {
+      _selectedOfficialSpot = spot;
       _suggestedSpots = const <_AvailableSpot>[];
       _error = null;
       _customPoint = null;
@@ -1011,6 +1034,7 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
 
     setState(() {
       _customPoint = picked;
+      _selectedOfficialSpot = null;
       _error = null;
       if (_nameController.text.trim().isEmpty) {
         _nameController.text = 'Spot personalizado';
@@ -1041,7 +1065,8 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
   void _save() {
     final name = _nameController.text.trim();
     final area = _areaController.text.trim();
-    final normalized = name.toLowerCase();
+    final selectedOfficialSpot = _selectedOfficialSpot;
+    final normalized = (selectedOfficialSpot?.name ?? name).toLowerCase();
 
     if (name.isEmpty) {
       setState(() {
@@ -1057,7 +1082,7 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
       return;
     }
 
-    if (!_isKnownAvailableSpot(name) && _customPoint == null) {
+    if (selectedOfficialSpot == null && _customPoint == null) {
       setState(() {
         _error = 'Para un spot personalizado debes seleccionar coordenadas.';
       });
@@ -1066,42 +1091,29 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
 
     Navigator.of(context).pop(
       _SpotItem(
-        name: name,
+        name: selectedOfficialSpot?.name ?? name,
         area: area.isEmpty ? 'Sin zona definida' : area,
-        isCustom: _customPoint != null || !_isKnownAvailableSpot(name),
+        isCustom: _customPoint != null || selectedOfficialSpot == null,
         createdAt: DateTime.now(),
-        latitude: _customPoint?.latitude ?? _knownSpotByName(name)?.latitude,
-        longitude: _customPoint?.longitude ?? _knownSpotByName(name)?.longitude,
-        aemetMunicipalityCode: _knownSpotByName(name)?.aemetMunicipalityCode,
-        aemetBeachCode: _knownSpotByName(name)?.aemetBeachCode,
+        latitude: _customPoint?.latitude ?? selectedOfficialSpot?.latitude,
+        longitude: _customPoint?.longitude ?? selectedOfficialSpot?.longitude,
+        aemetMunicipalityCode: selectedOfficialSpot?.aemetMunicipalityCode,
+        aemetBeachCode: selectedOfficialSpot?.aemetBeachCode,
         aemetBeachCodes:
-            _knownSpotByName(name)?.aemetBeachCodes ?? const <String>[],
+            selectedOfficialSpot?.aemetBeachCodes ?? const <String>[],
         backgroundImagePath: _backgroundImagePath,
       ),
     );
-  }
-
-  bool _isKnownAvailableSpot(String name) {
-    final normalized = name.trim().toLowerCase();
-    return _availableSpots.any((spot) => spot.name.toLowerCase() == normalized);
-  }
-
-  _AvailableSpot? _knownSpotByName(String name) {
-    final normalized = name.trim().toLowerCase();
-    for (final spot in _availableSpots) {
-      if (spot.name.toLowerCase() == normalized) {
-        return spot;
-      }
-    }
-    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final name = _nameController.text.trim();
-    final isKnownSpot = name.isNotEmpty && _isKnownAvailableSpot(name);
-    final requiresCoordinates = name.isNotEmpty && !isKnownSpot;
+    final selectedOfficialSpot = _selectedOfficialSpot;
+    final hasSelectedOfficialSpot =
+        name.isNotEmpty && selectedOfficialSpot != null;
+    final requiresCoordinates = name.isNotEmpty && !hasSelectedOfficialSpot;
     final canSave =
         name.isNotEmpty && (!requiresCoordinates || _customPoint != null);
     final allowTextFields = !_customMode || _customPoint != null;
@@ -1129,6 +1141,13 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
               const SizedBox(height: AppSpacing.xs),
               Text(
                 'Punto del mapa seleccionado',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+            if (hasSelectedOfficialSpot) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Spot oficial seleccionado: ${selectedOfficialSpot.name}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
