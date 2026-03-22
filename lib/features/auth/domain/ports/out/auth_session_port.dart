@@ -20,4 +20,6 @@ abstract class AuthSessionPort {
   Future<void> signOut();
 
   Future<String?> sendPasswordRecoveryEmail(String email);
+
+  Future<String?> updatePassword(String password);
 }

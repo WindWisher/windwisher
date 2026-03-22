@@ -24,6 +24,7 @@ class AuthSessionNotifier extends AsyncNotifier<void> {
   late final Future<void> Function() _signInWithDev;
   late final Future<void> Function() _signOut;
   late final Future<String?> Function(String email) _sendPasswordRecoveryEmail;
+  late final Future<String?> Function(String password) _updatePassword;
 
   @override
   FutureOr<void> build() {
@@ -36,6 +37,7 @@ class AuthSessionNotifier extends AsyncNotifier<void> {
     _signInWithDev = module.signInWithDev.call;
     _signOut = module.signOut.call;
     _sendPasswordRecoveryEmail = module.sendPasswordRecoveryEmail.call;
+    _updatePassword = module.updatePassword.call;
   }
 
   Future<String?> signInWithEmail(String email) async {
@@ -94,6 +96,13 @@ class AuthSessionNotifier extends AsyncNotifier<void> {
   Future<String?> sendPasswordRecoveryEmail(String email) async {
     state = const AsyncLoading();
     final result = await _sendPasswordRecoveryEmail(email);
+    state = const AsyncData(null);
+    return result;
+  }
+
+  Future<String?> updatePassword(String password) async {
+    state = const AsyncLoading();
+    final result = await _updatePassword(password);
     state = const AsyncData(null);
     return result;
   }

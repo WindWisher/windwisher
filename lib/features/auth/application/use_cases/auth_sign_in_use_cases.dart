@@ -85,3 +85,13 @@ class SendPasswordRecoveryEmailUseCase {
     return _port.sendPasswordRecoveryEmail(email);
   }
 }
+
+class UpdatePasswordUseCase {
+  const UpdatePasswordUseCase(this._port);
+
+  final AuthSessionPort _port;
+
+  Future<String?> call(String password) {
+    return _port.updatePassword(password);
+  }
+}

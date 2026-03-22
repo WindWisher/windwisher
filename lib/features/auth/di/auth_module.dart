@@ -15,6 +15,7 @@ class AuthModule {
     required this.signInWithDev,
     required this.signOut,
     required this.sendPasswordRecoveryEmail,
+    required this.updatePassword,
     required this.getRecentAuthEmails,
     required this.addRecentAuthEmail,
     required this.removeRecentAuthEmail,
@@ -28,6 +29,7 @@ class AuthModule {
   final SignInWithDevUseCase signInWithDev;
   final SignOutUseCase signOut;
   final SendPasswordRecoveryEmailUseCase sendPasswordRecoveryEmail;
+  final UpdatePasswordUseCase updatePassword;
 
   final GetRecentAuthEmailsUseCase getRecentAuthEmails;
   final AddRecentAuthEmailUseCase addRecentAuthEmail;
@@ -46,6 +48,7 @@ class AuthModule {
       signInWithDev: SignInWithDevUseCase(authSession),
       signOut: SignOutUseCase(authSession),
       sendPasswordRecoveryEmail: SendPasswordRecoveryEmailUseCase(authSession),
+      updatePassword: UpdatePasswordUseCase(authSession),
       getRecentAuthEmails: GetRecentAuthEmailsUseCase(recentAccounts),
       addRecentAuthEmail: AddRecentAuthEmailUseCase(recentAccounts),
       removeRecentAuthEmail: RemoveRecentAuthEmailUseCase(recentAccounts),
@@ -70,6 +73,7 @@ class AuthModule {
       signInWithDev: SignInWithDevUseCase(authSession),
       signOut: SignOutUseCase(authSession),
       sendPasswordRecoveryEmail: SendPasswordRecoveryEmailUseCase(authSession),
+      updatePassword: UpdatePasswordUseCase(authSession),
       getRecentAuthEmails: GetRecentAuthEmailsUseCase(recentAccounts),
       addRecentAuthEmail: AddRecentAuthEmailUseCase(recentAccounts),
       removeRecentAuthEmail: RemoveRecentAuthEmailUseCase(recentAccounts),

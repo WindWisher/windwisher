@@ -1,14 +1,29 @@
+import 'package:flutter/foundation.dart';
 import 'package:windwisher/features/auth/domain/ports/out/auth_session_port.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseAuthSessionAdapter implements AuthSessionPort {
   SupabaseAuthSessionAdapter({
     SupabaseClient? client,
-    this.emailRedirectTo = 'windwisher://login-callback',
+    this.mobileEmailRedirectTo = 'windwisher://login-callback',
   }) : _client = client ?? Supabase.instance.client;
 
   final SupabaseClient _client;
-  final String emailRedirectTo;
+  final String mobileEmailRedirectTo;
+
+  String get _magicLinkRedirectTo {
+    if (!kIsWeb) {
+      return mobileEmailRedirectTo;
+    }
+    return '${Uri.base.origin}/login';
+  }
+
+  String get _passwordRecoveryRedirectTo {
+    if (!kIsWeb) {
+      return mobileEmailRedirectTo;
+    }
+    return '${Uri.base.origin}/reset-password';
+  }
 
   @override
   Future<String?> signInWithEmail(String email) async {
@@ -20,7 +35,7 @@ class SupabaseAuthSessionAdapter implements AuthSessionPort {
     try {
       await _client.auth.signInWithOtp(
         email: trimmedEmail,
-        emailRedirectTo: emailRedirectTo,
+        emailRedirectTo: _magicLinkRedirectTo,
       );
       return null;
     } on AuthException catch (error) {
@@ -126,13 +141,29 @@ class SupabaseAuthSessionAdapter implements AuthSessionPort {
     try {
       await _client.auth.resetPasswordForEmail(
         trimmedEmail,
-        redirectTo: emailRedirectTo,
+        redirectTo: _passwordRecoveryRedirectTo,
       );
       return null;
     } on AuthException catch (error) {
       return error.message;
     } catch (_) {
       return 'No se pudo enviar el correo de recuperacion.';
+    }
+  }
+
+  @override
+  Future<String?> updatePassword(String password) async {
+    if (password.trim().length < 6) {
+      return 'La contrasena debe tener al menos 6 caracteres';
+    }
+
+    try {
+      await _client.auth.updateUser(UserAttributes(password: password));
+      return null;
+    } on AuthException catch (error) {
+      return error.message;
+    } catch (_) {
+      return 'No se pudo actualizar la contrasena.';
     }
   }
 }

@@ -14619,3 +14619,24 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - `flutter build web`,
       - `firebase hosting:sites:list`,
       - `firebase deploy --only hosting`.
+  - bloque nuevo `2026-03-22`:
+    - continuacion del cronometro para recovery web de contrasena,
+    - duracion estimada del bloque: `20-30 min`,
+    - anadido soporte de auth para `updatePassword`,
+    - `SupabaseAuthSessionAdapter` diferencia ya redirects:
+      - magic link web -> `/login`,
+      - password recovery web -> `/reset-password`,
+      - mobile -> `windwisher://login-callback`,
+    - anadida pagina nueva:
+      - `lib/features/auth/presentation/pages/reset_password_page.dart`,
+    - anadida ruta:
+      - `/reset-password`,
+    - la pagina permite:
+      - validar sesion de recovery,
+      - introducir nueva contrasena,
+      - confirmar contrasena,
+      - actualizarla con Supabase,
+      - volver al login al terminar,
+    - strings nuevas anadidas en `AppStrings`,
+    - verificacion ejecutada:
+      - `flutter analyze` limpio sobre router + auth + reset page.

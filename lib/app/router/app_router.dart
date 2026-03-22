@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:windwisher/app/router/app_routes.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/features/auth/presentation/pages/login_page.dart';
+import 'package:windwisher/features/auth/presentation/pages/reset_password_page.dart';
 import 'package:windwisher/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:windwisher/features/profile/presentation/pages/admin_console_page.dart';
 import 'package:windwisher/features/profile/presentation/pages/donations_page.dart';
@@ -24,6 +25,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.login,
         builder: (context, state) => const LoginPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.resetPassword,
+        builder: (context, state) => const ResetPasswordPage(),
       ),
       GoRoute(
         path: AppRoutes.dashboard,

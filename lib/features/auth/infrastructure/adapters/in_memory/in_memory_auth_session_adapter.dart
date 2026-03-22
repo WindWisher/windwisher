@@ -75,4 +75,13 @@ class InMemoryAuthSessionAdapter implements AuthSessionPort {
     await Future<void>.delayed(const Duration(milliseconds: 250));
     return null;
   }
+
+  @override
+  Future<String?> updatePassword(String password) async {
+    if (password.trim().length < 6) {
+      return 'La contrasena debe tener al menos 6 caracteres';
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    return null;
+  }
 }
