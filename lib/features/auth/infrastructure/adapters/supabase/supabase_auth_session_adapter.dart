@@ -19,10 +19,10 @@ class SupabaseAuthSessionAdapter implements AuthSessionPort {
   }
 
   String get _passwordRecoveryRedirectTo {
-    if (!kIsWeb) {
-      return mobileEmailRedirectTo;
+    if (kIsWeb) {
+      return '${Uri.base.origin}/reset-password';
     }
-    return '${Uri.base.origin}/reset-password';
+    return 'https://windwisher.com/reset-password';
   }
 
   @override

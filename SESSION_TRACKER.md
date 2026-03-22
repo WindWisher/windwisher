@@ -14660,3 +14660,13 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
     - verificacion ejecutada:
       - `flutter analyze` limpio sobre archivos core tocados,
       - redeploy en Firebase Hosting completado.
+  - bloque nuevo `2026-03-22`:
+    - ajuste fino del redirect de password recovery,
+    - duracion estimada del bloque: `5-10 min`,
+    - problema detectado:
+      - si el recovery se solicitaba desde mobile, Supabase seguia generando enlace con `windwisher://login-callback`,
+    - ajuste aplicado:
+      - `sendPasswordRecoveryEmail` pasa a usar siempre `https://windwisher.com/reset-password` fuera de web,
+      - en web se mantiene `Uri.base.origin/reset-password`,
+    - verificacion ejecutada:
+      - `flutter analyze lib/features/auth/infrastructure/adapters/supabase/supabase_auth_session_adapter.dart`.
