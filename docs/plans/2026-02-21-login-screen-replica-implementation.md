@@ -2,7 +2,7 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Replicar en MeteoKite v2.0 la pantalla de login de v1.0 con apariencia y comportamiento equivalentes, dejando placeholders funcionales para auth social y DEV BYPASS.
+**Goal:** Replicar en WindWisher la pantalla de login heredada con apariencia y comportamiento equivalentes, dejando placeholders funcionales para auth social y DEV BYPASS.
 
 **Architecture:** Se implementa una vertical slice minima de `auth` en Flutter con Riverpod para estado de sesion y cuentas recientes, GoRouter para navegacion login->dashboard, y UI Material3 replicada desde v1.0. El flujo mantiene acciones asincronas con estado de carga, manejo de errores por `SnackBar`, y estructura compatible con futura Clean Architecture.
 
@@ -190,7 +190,7 @@ git commit -m "feat: add recent account state and actions"
 ```dart
 testWidgets('login page shows main actions from v1.0', (tester) async {
   await tester.pumpWidget(const ProviderScope(child: MaterialApp(home: LoginPage())));
-  expect(find.text('Bienvenido a MeteoKite'), findsOneWidget);
+  expect(find.text('Bienvenido a WindWisher'), findsOneWidget);
   expect(find.text('Continuar con email'), findsOneWidget);
   expect(find.textContaining('Google'), findsOneWidget);
   expect(find.textContaining('Apple'), findsOneWidget);
@@ -222,7 +222,7 @@ Expected: PASS.
 
 ```bash
 git add lib/features/auth/presentation/pages/login_page.dart lib/features/auth/presentation/providers test/features/auth/presentation/pages/login_page_test.dart
-git commit -m "feat: replicate MeteoKite v1 login screen in v2"
+git commit -m "feat: replicate legacy login screen in WindWisher"
 ```
 
 ### Task 5: Quality Gate + Final Wiring

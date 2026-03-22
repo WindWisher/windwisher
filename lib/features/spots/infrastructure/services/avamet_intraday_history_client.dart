@@ -171,7 +171,7 @@ class AvametIntradayHistoryClient {
       return _fetchTextOverride(url);
     }
     final request = await _httpClient.getUrl(Uri.parse(url));
-    request.headers.set(HttpHeaders.userAgentHeader, 'MeteoKite/2.0');
+    request.headers.set(HttpHeaders.userAgentHeader, 'WindWisher/1.0');
     final response = await request.close();
     final bytes = await response.fold<List<int>>(
       <int>[],

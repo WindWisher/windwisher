@@ -1,4 +1,4 @@
-# MeteoKite v3.0 - Arquitectura Hexagonal
+# WindWisher - Arquitectura Hexagonal
 
 ## Objetivo
 

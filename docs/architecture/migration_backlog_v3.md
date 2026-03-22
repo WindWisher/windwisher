@@ -1,4 +1,4 @@
-# Backlog de migracion hexagonal - MeteoKite v3.0
+# Backlog de migracion hexagonal - WindWisher
 
 ## Estado global
 

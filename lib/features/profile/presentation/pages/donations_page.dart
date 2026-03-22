@@ -25,7 +25,7 @@ class DonationsPage extends StatelessWidget {
                     Icon(Icons.favorite, size: 64, color: colorScheme.primary),
                     const SizedBox(height: AppSpacing.md),
                     Text(
-                      'Apoya MeteoKite',
+                      'Apoya WindWisher',
                       style: textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: colorScheme.onPrimaryContainer,
@@ -70,7 +70,7 @@ class DonationsPage extends StatelessWidget {
               context,
               Icons.code,
               'Software libre',
-              'MeteoKite es open source. Tu apoyo ayuda a mantener el proyecto vivo y gratuito.',
+              'WindWisher es open source. Tu apoyo ayuda a mantener el proyecto vivo y gratuito.',
             ),
             const SizedBox(height: AppSpacing.lg),
             Card(

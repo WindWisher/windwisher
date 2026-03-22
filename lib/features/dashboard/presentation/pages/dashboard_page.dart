@@ -77,7 +77,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('MeteoKite'),
+        title: const Text('WindWisher'),
         actions: [
           if (toolbarState.showSpotsMenu)
             PopupMenuButton<_SpotsToolbarAction>(

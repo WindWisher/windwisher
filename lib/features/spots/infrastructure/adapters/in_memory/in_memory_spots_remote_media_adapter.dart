@@ -20,7 +20,7 @@ class InMemorySpotsRemoteMediaAdapter implements SpotsRemoteMediaPort {
     return const [
       SpotWebcam(
         name: 'Cam principal',
-        source: 'MeteoKite Cams',
+        source: 'WindWisher Cams',
         status: 'Online',
         resolution: '720p',
       ),

@@ -14546,10 +14546,30 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - modulo,
       - adapters,
       - provider,
-    - `LoginPage` anade el boton:
+  - `LoginPage` anade el boton:
       - `He olvidado mi contrasena`,
     - el recovery se envia ya desde la app con:
       - `resetPasswordForEmail(..., redirectTo: 'windwisher://login-callback')`,
     - esto evita depender del boton `Send password recovery` del dashboard de Supabase,
     - verificacion ejecutada:
       - `flutter analyze` limpio sobre auth, login y `AppStrings`.
+  - bloque nuevo `2026-03-22`:
+    - arranque del repo independiente `WindWisher`,
+    - duracion estimada del bloque: `20-30 min`,
+    - ejecutado `flutter pub get` en la carpeta nueva,
+    - primera pasada de branding runtime:
+      - `MeteoKite` -> `WindWisher` en titulo principal,
+      - pantalla de donaciones,
+      - textos operativos de forecast,
+      - fuente por defecto de webcams,
+      - `User-Agent` de clientes AEMET y AVAMET,
+      - test base de widget,
+    - segunda pasada de higiene del repo:
+      - `README.md` reescrito como proyecto real,
+      - `.gitignore` ampliado para Flutter, artefactos locales y secretos,
+      - cabeceras y referencias principales de `docs/architecture` y planes de login renombradas a `WindWisher`,
+    - estado al cierre del bloque:
+      - los restos de `MeteoKite` quedan ya sobre todo en el historico del propio tracker,
+      - el runtime principal ya responde como `WindWisher`,
+    - verificacion ejecutada:
+      - `flutter analyze` limpio sobre archivos runtime tocados.

@@ -153,7 +153,7 @@ SpotForecastModelInfo getSpotForecastModelInfo({
           return const SpotForecastModelInfo(
             title: 'Basic',
             description:
-                'Paquete forecast de meteoblue orientado a uso general. En esta integracion MeteoKite consume viento, racha, direccion, temperatura, lluvia y, cuando llegan, variables marinas del mismo proveedor.',
+                'Paquete forecast de meteoblue orientado a uso general. En esta integracion WindWisher consume viento, racha, direccion, temperatura, lluvia y, cuando llegan, variables marinas del mismo proveedor.',
             scope: 'Forecast horario meteoblue',
             resolution: '1 hora',
             horizon: 'Hasta 7 dias',

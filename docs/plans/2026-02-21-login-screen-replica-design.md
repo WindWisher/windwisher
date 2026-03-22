@@ -1,12 +1,12 @@
-# MeteoKite v2.0 - Diseno de replica de Login (v1.0)
+# WindWisher - Diseno de replica de Login
 
 ## Objetivo
 
-Replicar en MeteoKite v2.0 la pantalla de login de MeteoKite v1.0 con el mismo layout, jerarquia visual y comportamiento funcional principal (email, cuentas recientes, Google, Apple y DEV BYPASS), manteniendo la implementacion preparada para evolucionar a la arquitectura completa del proyecto.
+Replicar en WindWisher la pantalla de login heredada con el mismo layout, jerarquia visual y comportamiento funcional principal (email, cuentas recientes, Google, Apple y DEV BYPASS), manteniendo la implementacion preparada para evolucionar a la arquitectura completa del proyecto.
 
 ## Alcance
 
-- Replicar `LoginPage` tomando como referencia `meteokite/lib/features/auth/presentation/pages/login_page.dart`.
+- Replicar `LoginPage` tomando como referencia la implementacion previa de `lib/features/auth/presentation/pages/login_page.dart`.
 - Corregir el punto de entrada actual (`lib/main.dart`) para que la app arranque y muestre la pantalla de login.
 - Introducir solo la infraestructura minima para compilar y ejecutar la pantalla (estado, providers y navegacion de placeholder).
 

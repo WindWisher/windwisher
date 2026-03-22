@@ -219,7 +219,7 @@ class AemetSpotsForecastAdapter implements SpotsForecastPort {
     final request = await _httpClient.getUrl(Uri.parse(url));
     request.headers.set(HttpHeaders.acceptHeader, 'application/json');
     request.headers.set('api_key', _apiKey);
-    request.headers.set(HttpHeaders.userAgentHeader, 'MeteoKite/2.0');
+    request.headers.set(HttpHeaders.userAgentHeader, 'WindWisher/1.0');
     final response = await request.close();
     final bytes = await response.fold<List<int>>(
       <int>[],
@@ -242,7 +242,7 @@ class AemetSpotsForecastAdapter implements SpotsForecastPort {
     }
     final request = await _httpClient.getUrl(Uri.parse(url));
     request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-    request.headers.set(HttpHeaders.userAgentHeader, 'MeteoKite/2.0');
+    request.headers.set(HttpHeaders.userAgentHeader, 'WindWisher/1.0');
     final response = await request.close();
     final bytes = await response.fold<List<int>>(
       <int>[],

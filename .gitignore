@@ -1,1 +1,19 @@
 .git_backup_tmp/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+.pub/
+.idea/
+*.iml
+
+# Local project secrets
+local.env.json
+
+# macOS / Xcode noise
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/
+macos/Pods/
+macos/Flutter/ephemeral/
