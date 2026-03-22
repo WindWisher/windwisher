@@ -20,12 +20,9 @@ class LoginPage extends ConsumerStatefulWidget {
 }
 
 class _LoginPageState extends ConsumerState<LoginPage> {
-  static const Duration _emailCooldown = Duration(seconds: 45);
-
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isSubmitting = false;
-  DateTime? _emailCooldownUntil;
   _AuthAccessMode _mode = _AuthAccessMode.password;
 
   @override
@@ -51,52 +48,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     if (error != null) {
       _showSnack(error, isError: true);
-      return;
-    }
-
-    context.go(AppRoutes.dashboard);
-  }
-
-  Future<void> _submitEmailSignIn(String email) async {
-    final strings = AppStrings.of(context);
-    final trimmedEmail = email.trim();
-    if (trimmedEmail.isEmpty) {
-      _showSnack(strings.enterEmail, isError: true);
-      return;
-    }
-
-    final cooldownRemaining = _emailCooldownRemaining;
-    if (cooldownRemaining > 0) {
-      _showSnack(strings.emailCooldown(cooldownRemaining), isError: true);
-      return;
-    }
-
-    setState(() {
-      _isSubmitting = true;
-    });
-
-    final error = await ref
-        .read(authSessionProvider.notifier)
-        .signInWithEmail(trimmedEmail);
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _isSubmitting = false;
-    });
-
-    if (error != null) {
-      _showSnack(error, isError: true);
-      return;
-    }
-
-    if (EnvConfig.supabaseConfigured &&
-        Supabase.instance.client.auth.currentSession == null) {
-      setState(() {
-        _emailCooldownUntil = DateTime.now().add(_emailCooldown);
-      });
-      _showSnack(strings.emailSent(trimmedEmail));
       return;
     }
 
@@ -229,15 +180,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     return local.substring(0, 2).toUpperCase();
   }
 
-  int get _emailCooldownRemaining {
-    final until = _emailCooldownUntil;
-    if (until == null) {
-      return 0;
-    }
-    final seconds = until.difference(DateTime.now()).inSeconds;
-    return seconds > 0 ? seconds : 0;
-  }
-
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
@@ -248,8 +190,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final recentEmailsState = ref.watch(recentAuthEmailsProvider);
     final recentAccountsActions = ref.watch(recentAuthAccountsActionsProvider);
     final isBusy = authState.isLoading || _isSubmitting;
-    final cooldownRemaining = _emailCooldownRemaining;
-    final emailActionEnabled = !isBusy && cooldownRemaining == 0;
     final showsPasswordField = true;
 
     return Scaffold(
@@ -314,8 +254,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           textTheme,
                           colorScheme,
                           isBusy: isBusy,
-                          emailActionEnabled: emailActionEnabled,
-                          cooldownRemaining: cooldownRemaining,
                           showsPasswordField: showsPasswordField,
                           recentEmailsState: recentEmailsState,
                           recentAccountsActions: recentAccountsActions,
@@ -417,8 +355,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     TextTheme textTheme,
     ColorScheme colorScheme, {
     required bool isBusy,
-    required bool emailActionEnabled,
-    required int cooldownRemaining,
     required bool showsPasswordField,
     required AsyncValue<List<String>> recentEmailsState,
     required dynamic recentAccountsActions,
@@ -503,8 +439,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           await _submitPasswordSignIn();
                         } else if (_mode == _AuthAccessMode.signUp) {
                           await _submitSignUp();
-                        } else {
-                          await _submitEmailSignIn(email);
                         }
                       },
                 icon: isBusy
@@ -556,47 +490,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
               ),
             ],
-            const SizedBox(height: AppSpacing.md),
-            if (cooldownRemaining > 0) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xs,
-                ),
-                decoration: BoxDecoration(
-                  color: colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  strings.resendAvailable(cooldownRemaining),
-                  style: textTheme.labelMedium?.copyWith(
-                    color: colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: !emailActionEnabled
-                    ? null
-                    : () async {
-                        final email = _emailController.text.trim();
-                        if (email.isNotEmpty) {
-                          await recentAccountsActions.add(email);
-                        }
-                        await _submitEmailSignIn(email);
-                      },
-                icon: const Icon(Icons.mark_email_unread_outlined),
-                label: Text(
-                  cooldownRemaining > 0
-                      ? '${strings.magicLink} ${cooldownRemaining}s'
-                      : strings.magicLink,
-                ),
-              ),
-            ),
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [

@@ -29,7 +29,8 @@ void main() {
     expect(find.text('Sign in'), findsOneWidget);
     expect(find.text('The full kiteboarding experience.'), findsOneWidget);
     expect(find.text('No tienes cuenta? Crear cuenta'), findsOneWidget);
-    expect(find.text('Entrar con magic link'), findsOneWidget);
+    expect(find.text('Entrar con magic link'), findsNothing);
+    expect(find.text('He olvidado mi contrasena'), findsOneWidget);
     expect(find.text('Entrar'), findsOneWidget);
     expect(find.text('Contrasena'), findsOneWidget);
     expect(find.text('Google no disponible'), findsOneWidget);

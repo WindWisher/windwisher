@@ -14670,3 +14670,13 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - en web se mantiene `Uri.base.origin/reset-password`,
     - verificacion ejecutada:
       - `flutter analyze lib/features/auth/infrastructure/adapters/supabase/supabase_auth_session_adapter.dart`.
+  - bloque nuevo `2026-03-22`:
+    - limpieza visual del login,
+    - duracion estimada del bloque: `10-15 min`,
+    - cambios aplicados:
+      - boton `Entrar con magic link` ocultado en login compartido para mobile y web,
+      - eliminada la logica muerta de cooldown/reenvio asociada a ese acceso,
+      - test de login actualizado para reflejar el flujo visible actual,
+    - verificacion ejecutada:
+      - `flutter analyze lib/features/auth/presentation/pages/login_page.dart test/features/auth/presentation/pages/login_page_test.dart`,
+      - `flutter test test/features/auth/presentation/pages/login_page_test.dart -r compact`.
