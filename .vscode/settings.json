@@ -1,0 +1,7 @@
+{
+  "dart.flutterSdkPath": "/usr/local/share/flutter",
+  "dart.flutterHotReloadOnSave": "always",
+  "dart.previewFlutterUiGuides": true,
+  "dart.openDevTools": "flutter",
+  "chatgpt.openOnStartup": true
+}

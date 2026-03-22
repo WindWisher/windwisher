@@ -1,0 +1,12 @@
+export 'package:windwisher/features/spots/infrastructure/services/aemet_beach_forecast_client.dart';
+export 'package:windwisher/features/spots/infrastructure/services/aemet_coastal_forecast_client.dart';
+export 'package:windwisher/features/spots/infrastructure/services/aemet_observation_client.dart';
+export 'package:windwisher/features/spots/infrastructure/services/aigua_blanca_meteo_client.dart';
+export 'package:windwisher/features/spots/infrastructure/services/avamet_daily_history_client.dart';
+export 'package:windwisher/features/spots/infrastructure/services/avamet_intraday_history_client.dart';
+export 'package:windwisher/features/spots/infrastructure/services/avamet_observation_client.dart';
+export 'package:windwisher/features/spots/infrastructure/services/inforatge_oliva_nova_client.dart';
+export 'package:windwisher/features/spots/infrastructure/services/meteoblue_current_day_client.dart';
+export 'package:windwisher/features/spots/infrastructure/services/meteostat_day_client.dart';
+export 'package:windwisher/features/spots/infrastructure/services/meteosource_current_day_client.dart';
+export 'package:windwisher/features/spots/infrastructure/services/open_meteo_wind_map_grid_client.dart';

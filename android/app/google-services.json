@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "340300919596",
+    "project_id": "windwisherapp-5ed22",
+    "storage_bucket": "windwisherapp-5ed22.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:340300919596:android:b3d5f3230e2056407fb289",
+        "android_client_info": {
+          "package_name": "com.windwisher.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4cOG3qqS2rKiP9jQhiyH9spw2nKl-qGE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

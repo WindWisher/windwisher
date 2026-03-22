@@ -1,0 +1,602 @@
+﻿
+ 
+ <!DOCTYPE HTML>
+<html lang="es">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0PY4VM0H95"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0PY4VM0H95');
+</script>
+
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#000000" />
+<meta name="Description" content="Associaci&oacute; Valenciana de Meteorologia. Reunions, jornades, excursions, bancs de dades, concursos, instal&middot;lacions d’estacions, convenis de col&middot;laboraci&oacute;">
+<meta name="Keywords" content="Oratge Temps Tiempo Alacant València Castelló País Valencià Comunitat Valenciana">
+<title>AVAMET MX Gr&agrave;fiques</title>
+<link href="estils/2017/estil.css?data=20260311a" rel="stylesheet"/>
+<link href="estils/2017/estil-menu.css?data=20251231" rel="stylesheet"/>
+
+<!-- PRIVACITAT -->
+<!--<script async type="text/javascript" src="//clickiocmp.com/t/consent_230264.js"></script>-->
+
+<!-- Llibrerires -->
+<!--<script src="https://cdn.jsdelivr.net/npm/jquery@3.4.1/dist/jquery.min.js"></script>-->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+	
+<!-- Table Sorter -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.tablesorter/2.31.3/js/jquery.tablesorter.min.js"></script>
+	
+<!-- FancyBox-->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" />
+<script src="https://cdn.jsdelivr.net/gh/fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js"></script>
+
+
+<!-- Twitter Card data -->
+<meta name="twitter:title" content="AVAMET">
+<meta name="twitter:description" content="Associaci&oacute; Valenciana de Meteorologia">
+
+<!-- Open Graph data -->
+<meta property="og:title" content="AVAMET" />
+<meta property="og:type" content="article" />
+<meta property="og:image" content="https://www.avamet.org/imatges/logoavamet-gran.png" />
+<meta property="og:description" content="Associaci&oacute; Valenciana de Meteorologia" />
+<meta property="og:site_name" content="AVAMET.org" />
+<meta property="og:url" content="https://www.avamet.org/" />
+<script type='application/ld+json'>
+{
+  "@context": "http://www.schema.org",
+  "@type": "Organization",
+  "name": "AVAMET",
+  "url": "https://www.avamet.org",
+  "sameAs" : [
+   "https://www.facebook.com/avametmeteo/",
+   "https://www.facebook.com/avametassociacio/",
+   "https://twitter.com/avamet",
+   "https://www.instagram.com/avamet_meteo/",
+   "https://www.linkedin.com/company/avamet/",
+   "https://www.youtube.com/channel/UCVAHmom1_g6EZTS2MYUx8Eg"
+   ],
+  "logo": "https://www.avamet.org/imatges/logoavamet-gran.png",
+  "description": "Associació Valenciana de Meteorologia"
+}
+</script>
+<script src="js/lazysizes/lazysizes.min.js" async></script>
+<script src="https://tags.refinery89.com/avametorg.js" async></script>
+</head>
+
+<body>
+<div id="continent" class="clearfix">
+
+<div id="capCombi" class="clearfix"> 
+		<img id="imgPC" src="imatges/2017/logo_dalt.png" alt="Logo AVAMET">
+		<img id="imgMB" src="imatges/2017/logo_peu.png" alt="Logo AVAMET">
+<script>
+function getCookie(c_name){
+	var c_value = document.cookie;
+	var c_start = c_value.indexOf(" " + c_name + "=");
+	if (c_start == -1){
+		c_start = c_value.indexOf(c_name + "=");
+	}
+	if (c_start == -1){
+		c_value = null;
+	}else{
+		c_start = c_value.indexOf("=", c_start) + 1;
+		var c_end = c_value.indexOf(";", c_start);
+		if (c_end == -1){
+			c_end = c_value.length;
+		}
+		c_value = unescape(c_value.substring(c_start,c_end));
+	}
+	return c_value;
+}
+
+function setCookie(c_name,value,exdays){
+	var exdate=new Date();
+	exdate.setDate(exdate.getDate() + exdays);
+	var c_value=escape(value) + ((exdays==null) ? "" : "; expires="+exdate.toUTCString()) + "; path=/";
+	document.cookie=c_name + "=" + c_value;
+}
+function PonerCookie(){
+	setCookie('avisocookies','1',365);
+	document.getElementById("barracookies").style.display="none";
+}
+</script>
+<div id="registre">
+    <div id="regidioma" class="clearfix">
+        <a class="verd" href="__reg_id.php?lng=es&web=www.avamet.org/mx-grafiques.php?id=c25m181e07">Español</a> |
+        <a class="verd" href="__reg_id.php?lng=va&web=www.avamet.org/mx-grafiques.php?id=c25m181e07">Valencià</a>
+    </div>
+
+    <div id="regusuari" class="clearfix">
+        Estimado visitante, por favor, ingresa&nbsp;
+        <a href="avamet_oblidat.php" class="verd">Recuperar contrase&ntilde;a</a>
+
+        <form action="__reg_in.php" class="validar" method="post" style="margin: 4px 0;" onsubmit="return comprovaCookies();">
+            <input class="fregistre" type="text" name="usuari" size="15" value="usuari" />
+            <input class="fregistre" type="password" name="pass" size="10" />
+            <input class="fregistre" type="submit" value="ingresar" />
+            <input class="fregistre" type="hidden" name="adreca" value="www.avamet.org/mx-grafiques.php?id=c25m181e07" />
+        </form>
+    </div>
+</div>
+
+<script>
+function comprovaCookies() {
+    // Intentem crear una cookie de prova
+    document.cookie = "prova_cookie=1; path=/";
+    const cookiesActives = document.cookie.indexOf("prova_cookie=") !== -1;
+
+    if (!cookiesActives) {
+        alert("Les cookies estan desactivades al teu navegador i/o no permets que es guarden dades al teu dispositiu.\n\nPer iniciar sessió a AVAMET, cal permetre-les i s'han de poder guardar dades almenys per a aquest lloc web.\n\nConsulta la configuració del navegador i activa les cookies i permet que es puguen guardar dades.");
+        return false; // Evitem que s’envie el formulari
+    }
+
+    // Esborrem la cookie de prova per netejar
+    document.cookie = "prova_cookie=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    return true; // Tot correcte, es pot enviar
+}
+</script>
+         
+</div>
+
+<nav id="menu">
+  <label for="tm" id="toggle-menu">Men&uacute; <span class="drop-icon">▾</span></label>
+  <input type="checkbox" id="tm">
+  <ul class="main-menu clearfix">
+    <li><a href="index.php">Inicio</a></li>
+    <li><a href="#">AVAMET 
+        <span class="drop-icon">▾</span>
+        <label title="Toggle Drop-down" class="drop-icon" for="sm1">▾</label>
+      </a>
+      <input type="checkbox" id="sm1">
+      <ul class="sub-menu">
+        <li><a href="avamet.php?id=s01c00t01">Objetivos y actividades</a></li>
+        <li><a href="avamet.php?id=s01c00t02">Estatutos</a></li>
+        <li><a href="avamet.php?id=s01c00t03">Junta Directiva</a></li>
+<!--        <li><a href="#">Elecciones
+            <span class="drop-icon">▾</span>
+            <label title="Toggle Drop-down" class="drop-icon" for="sm2">▾</label>
+          </a>
+          <input type="checkbox" id="sm2">
+          <ul class="sub-menu s2nivell">
+            <li><a href="eleccions-2018.php">Elecciones 2019-2022</a></li>
+            <li><a href="eleccions-2023.php">Elecciones 2023</a></li>
+          </ul>
+        </li>-->
+        <li><a href="avamet.php?id=s01c00t06">Ventajas de los socios</a></li>
+        <li><a href="avamet.php?id=s01c00t04">Hazte socio</a></li>
+        <li><a href="avamet.php?id=s01c00t05">Identidad corporativa</a></li>
+        <li><a href="avamet.php?id=s06c00t01">Contacto</a></li>
+      </ul>
+    </li>
+    <li><a href="#">Actividades
+        <span class="drop-icon">▾</span>
+        <label title="Toggle Drop-down" class="drop-icon" for="sm3">▾</label>
+      </a>
+      <input type="checkbox" id="sm3">
+      <ul class="sub-menu">
+		<li><a href="activitats.php?id=s07c00t01">Asambleas y reuniones</a></li>
+		<li><a href="activitats.php?id=s07c00t02">Encuentros</a></li>
+		<li><a href="activitats.php?id=s07c00t03">Conferencias y jornadas</a></li>
+		<li><a href="activitats.php?id=s07c00t05">Bancos de datos</a></li>
+		<li><a href="activitats.php?id=s07c00t06">Concursos</a></li>
+		<li><a href="activitats.php?id=s07c00t07">Instalaci&oacute;n de estaciones</a></li>
+		<li><a href="activitats.php?id=s07c00t08">Convenios y relaciones institucionales</a></li>
+		<li><a href="activitats.php?id=s07c00t09">Medios de comunicaci&oacute;n</a></li>
+      </ul>
+    </li>  
+    <li><a href="#">meteoXarxa
+        <span class="drop-icon">▾</span>
+        <label title="Toggle Drop-down" class="drop-icon" for="smX">▾</label>
+      </a>
+      <input type="checkbox" id="smX">
+      <ul class="sub-menu">
+        <li><a href="mxo-mxo.php">MXO A tiempo real
+            <span class="drop-icon">▾</span>
+            <label title="Toggle Drop-down" class="drop-icon" for="smO">▾</label>
+          </a>
+          <input type="checkbox" id="smO">
+          <ul class="sub-menu s2nivell">
+            <li><a href="mxo-mxo.php">MXO a tiempo real</a></li>
+            <li><a href="mxo-webcams.php">Webcams a tiempo real</a></li>
+            <li><a href="mxo-altitud.php">Temperatura/altitud</a></li>
+            <li><a href="mxo-combinat.php">Gr&aacute;ficos combinados</a></li>
+          </ul>
+        </li>
+        <li><a href="mxo-mxo-prec.php">MXO de precipitaci&oacute;n</a></li>
+		<li><a href="mx-meteoxarxa.php">MX Datos hist&oacute;ricos</a></li>
+        <li><a href="#">Mapas
+            <span class="drop-icon">▾</span>
+            <label title="Toggle Drop-down" class="drop-icon" for="smP">▾</label>
+          </a>
+          <input type="checkbox" id="smP">
+          <ul class="sub-menu s2nivell">
+            <li><a href="mx-mapes.php?tipus=mensuals">Mapas mensuales</a></li>
+            <li><a href="mx-mapes.php?tipus=estacionals">Mapas estacionales</a></li>
+            <li><a href="mx-mapes.php?tipus=anuals">Mapas anuales</a></li>
+          </ul>
+        </li>
+		<li><a href="mx-episodis.php" title="Episodis">Episodios</a></li>
+        <li><a href="#">Estad&iacute;sticas
+            <span class="drop-icon">▾</span>
+            <label title="Toggle Drop-down" class="drop-icon" for="smE">▾</label>
+          </a>
+          <input type="checkbox" id="smE">
+          <ul class="sub-menu s2nivell">
+            <li><a href="mx-precipitacio-mensual.php">Lluvia mensual</a></li>
+            <li><a href="mx-precipitacio-mensual-any-agricola.php">Lluvia mensual (a&ntilde;o agr&iacute;cola)</a></li>
+            <li><a href="mx-precipitacio-mensual-any-hidrologic.php">Lluvia mensual (a&ntilde;o hidrol&oacute;gico)</a></li>
+            <li><a href="mx-precipitacio-anual.php">Lluvia anual</a></li>
+            <li><a href="mx-temperatura-mitjana.php">Temp. media</a></li>
+            <li><a href="mx-temperatura-minima.php">Temp. m&iacute;nima</a></li>
+            <li><a href="mx-temperatura-maxima.php">Temp. m&aacute;xima</a></li>
+            <li><a href="mx-temperatura-t020.php">Noches tropicales</a></li>
+            <li><a href="mx-temperatura-t032.php">D&iacute;as de calor</a></li>
+            <li><a href="mx-temperatura-t000.php">Heladas</a></li>
+            <li><a href="mx-temperatura-t010.php">D&iacute;as de fr&iacute;o</a></li>
+          </ul>
+        </li>
+		<li><a href="mx-fotografies.php">Fotograf&iacute;as</a></li>
+		<li><a href="premsa.php">Prensa</a></li>
+		<li><a href="pastilla.php">Pastilla/widget web</a></li>
+		<li><a href="alta-estacio.php">Alta de una estaci&oacute;n</a></li>
+      </ul>
+    </li>  
+    <li><a href="#">Tiempo
+        <span class="drop-icon">▾</span>
+        <label title="Toggle Drop-down" class="drop-icon" for="sm4">▾</label>
+      </a>
+      <input type="checkbox" id="sm4">
+      <ul class="sub-menu">
+		<li><a href="temps-situacio.php">Situaci&oacute;n actual</a></li>
+		<li><a href="temps-models.php" title="Models">Modelos</a></li>
+		<li><a href="temps-avisos.php" title="Alertes i avisos">Alertas y avisos</a></li>
+      </ul>
+    </li>  
+    <li><a href="avapred_in.php">AVApred</a></li>
+    <li><a href="forum/">Foro</a></li>
+    <li><a href="tutorial.php">Tutoriales</a></li>
+  </ul>
+</nav>
+	<div id="fotoAmpla2"> 
+		<img src="fotos/cap/fons007.jpg?1773496254" alt="AVAMET paisatges">
+	</div>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+
+
+	<div id="subnav" class="clearfix">
+		<ul>
+			<li><a href="mx-fitxa.php?id=c25m181e07">Ficha t&eacute;cnica</a></li>
+			<li><a href="mx-historia.php?id=c25m181e07">INFO</a></li>
+			<li><a href="mx-mxo.php?id=c25m181e07">MXO</a></li>
+								 
+			<li><a href="mx-webcam.php?id=c25m181e07">Webcam</a></li>
+			<!--<li><a href="mx-timelapse.php?id=">Timelapse</a></li>-->
+			<li><a href="mx-dia.php?id=c25m181e07">&Uacute;ltimos datos</a></li>
+			<li><a href="mx-mes.php?id=c25m181e07&data=">Mensuales</a></li>
+			<li><a href="mx-any.php?id=c25m181e07&data=">Anuales</a></li>
+			<li><a href="mx-grafiques.php?id=c25m181e07">Gr&aacute;ficos</a></li>
+			<li><a href="mx-consultes.php?id=c25m181e07">Consultas</a></li>
+			<li><a href="mx-comparar.php?id=c25m181e07">Comparativa</a></li>
+			<li><a href="mx-clima.php?id=c25m181e07">Climatol&oacute;gicas</a></li>
+			<li><a href="mx-records.php?id=c25m181e07">R&eacute;cords</a></li>
+			<li><a href="mx-normal.php?id=c25m181e07">Clima del d&iacute;a</a></li>
+			<li><a href="mx-previsio.php?id=c25m181e07">Previsi&oacute;n</a></li>
+		</ul>
+	</div>
+
+
+<!--	<div class="anunci100 clearfix">
+        <div class="anunciSubmenu clearfix">
+        <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+        <!-- AVAMET responsive -->
+<!--        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-4845664309426719"
+             data-ad-slot="7015942182"
+             data-ad-format="auto"></ins>
+        <script>
+        (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+        </div>
+	</div>-->
+
+	
+
+	<div id="estacioTitol"> 
+		<h1>
+        	<img src="imatges/2017/clas/estrela-avmt.png" width="32" height="32"  alt=""/>
+            <!--<img src="imatges/mx-fonts/inforatge.jpg" width="64" height="32"  alt="Inforatge"/>-->        	<span class="muni">Oliva</span>  Club N&agrave;utic        </h1>
+        <h2>Generador de gr&agrave;fiques</h2>
+	</div>
+
+	<div id="interior" class="clearfix">
+		<div class="col1d4 clearfix">
+        	<form action="mx-grafiques.php?id=c25m181e07" method="post" name="f_mx_microdades" enctype="multipart/form_data">
+           	  <div class="formCamp"><div class="formCampT" style="width:30%;">Dia inicial</div>
+				  <input name="f_mx_dataini" type="date" value="">
+			  </div>
+           	  <div class="formCamp"><div class="formCampT" style="width:30%;">Dia final</div>
+				  <input name="f_mx_datafin" type="date" value="">
+			  </div>
+
+			  <div class="formCamp"><div class="formCampT" style="width:60%;font-size:120%;">Variable 1</div>
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:60%;font-size:90%;">Variable</div>
+				  <select name="f_mx_v1" value="" style="width: 90%;"> 
+					  <option value="" selected>[cap]</option>
+					  <option value="tmin" >Temperatura m&iacute;nima</option>
+					  <option value="tmit" >Temperatura mitjana</option>
+					  <option value="tmax" >Temperatura m&agrave;xima</option> 
+					  <option value="hmin" >Humitat m&iacute;nima</option>
+					  <option value="hmit" >Humitat mitjana</option>
+					  <option value="hmax" >Humitat m&agrave;xima</option> 
+					  <option value="pmin" >Pressi&oacute; m&iacute;nima</option>
+					  <option value="pmit" >Pressi&oacute; mitjana</option>
+					  <option value="pmax" >Pressi&oacute; m&agrave;xima</option> 
+					  <option value="vmit" >Velocitat del vent mitjana</option>
+					  <option value="dmit" >Direcci&oacute; del vent predominant</option> 
+					  <option value="vmax" >R&agrave;fega m&agrave;xima de vent</option> 
+					  <option value="prec" >Precipitaci&oacute;</option> 
+				  </select>
+			  </div>
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:60%;font-size:90%;">Eix</div>
+				  <select name="f_mx_e1" value="" style="width: 90%;"> 
+					  <option value="false" >Esquerra</option>
+					  <option value="true"  >Dreta</option>
+				  </select>
+			  </div>
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:60%;font-size:90%;">Tipus</div>
+				  <select name="f_mx_t1" value="" style="width: 90%;"> 
+					  <option value="tpun" >Punts</option>
+					  <option value="tlin" >L&iacute;nia</option>
+					  <option value="tlip" >L&iacute;nia amb punts</option>
+					  <option value="tbar" >Barra</option>
+				  </select>
+			  </div>
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:30%;font-size:90%;">Color</div>
+				  <input type="color" id="favcolor" name="f_mx_c1" value="">     
+			  </div>
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:30%;font-size:90%;">Regressi&oacute;</div>
+				  <select name="f_mx_r1" value="" style="width: 90%;"> 
+					  <option value="false" >No</option>
+					  <option value="true"  >S&iacute;</option>
+				  </select>
+			  </div>
+ 		      </div>	  
+				
+			  <div class="formCamp"><div class="formCampT" style="width:60%;font-size:120%;">Variable 2</div>
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:60%;font-size:90%;">Variable</div>
+				  <select name="f_mx_v2" value="" style="width: 90%;"> 
+					  <option value="" selected>[cap]</option>
+					  <option value="tmin" >Temperatura m&iacute;nima</option>
+					  <option value="tmit" >Temperatura mitjana</option>
+					  <option value="tmax" >Temperatura m&agrave;xima</option> 
+					  <option value="hmin" >Humitat m&iacute;nima</option>
+					  <option value="hmit" >Humitat mitjana</option>
+					  <option value="hmax" >Humitat m&agrave;xima</option> 
+					  <option value="pmin" >Pressi&oacute; m&iacute;nima</option>
+					  <option value="pmit" >Pressi&oacute; mitjana</option>
+					  <option value="pmax" >Pressi&oacute; m&agrave;xima</option> 
+					  <option value="vmit" >Velocitat del vent mitjana</option>
+					  <option value="dmit" >Direcci&oacute; del vent predominant</option> 
+					  <option value="vmax" >R&agrave;fega m&agrave;xima de vent</option> 
+					  <option value="prec" >Precipitaci&oacute;</option> 
+				  </select>
+			  </div>
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:60%;font-size:90%;">Eix</div>
+				  <select name="f_mx_e2" value="" style="width: 90%;"> 
+					  <option value="false" >Esquerra</option>
+					  <option value="true"  >Dreta</option>
+				  </select>
+			  </div>
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:60%;font-size:90%;">Tipus</div>
+				  <select name="f_mx_t2" value="" style="width: 90%;"> 
+					  <option value="tpun" >Punts</option>
+					  <option value="tlin" >L&iacute;nia</option>
+					  <option value="tlip" >L&iacute;nia amb punts</option>
+					  <option value="tbar" >Barra</option>
+				  </select>
+			  </div>
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:30%;font-size:90%;">Color</div>
+				  <input type="color" id="favcolor" name="f_mx_c2" value="">     
+			  </div>
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:30%;font-size:90%;">Regressi&oacute;</div>
+				  <select name="f_mx_r2" value="" style="width: 90%;"> 
+					  <option value="false" >No</option>
+					  <option value="true"  >S&iacute;</option>
+				  </select>
+			  </div>
+		      </div>	  
+				  
+			  <div class="formCamp"><div class="formCampT" style="width:60%;font-size:120%;">Variable 3</div>
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:60%;font-size:90%;">Variable</div>
+				  <select name="f_mx_v3" value="" style="width: 90%;"> 
+					  <option value="" selected>[cap]</option>
+					  <option value="tmin" >Temperatura m&iacute;nima</option>
+					  <option value="tmit" >Temperatura mitjana</option>
+					  <option value="tmax" >Temperatura m&agrave;xima</option> 
+					  <option value="hmin" >Humitat m&iacute;nima</option>
+					  <option value="hmit" >Humitat mitjana</option>
+					  <option value="hmax" >Humitat m&agrave;xima</option> 
+					  <option value="pmin" >Pressi&oacute; m&iacute;nima</option>
+					  <option value="pmit" >Pressi&oacute; mitjana</option>
+					  <option value="pmax" >Pressi&oacute; m&agrave;xima</option> 
+					  <option value="vmit" >Velocitat del vent mitjana</option>
+					  <option value="dmit" >Direcci&oacute; del vent predominant</option> 
+					  <option value="vmax" >R&agrave;fega m&agrave;xima de vent</option> 
+					  <option value="prec" >Precipitaci&oacute;</option> 
+				  </select>
+			  </div>
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:60%;font-size:90%;">Eix</div>
+				  <select name="f_mx_e3" value="" style="width: 90%;"> 
+					  <option value="false" >Esquerra</option>
+					  <option value="true"  >Dreta</option>
+				  </select>
+			  </div>
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:60%;font-size:90%;">Tipus</div>
+				  <select name="f_mx_t3" value="" style="width: 90%;"> 
+					  <option value="tpun" >Punts</option>
+					  <option value="tlin" >L&iacute;nia</option>
+					  <option value="tlip" >L&iacute;nia amb punts</option>
+					  <option value="tbar" >Barra</option>
+				  </select>
+			  </div>
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:30%;font-size:90%;">Color</div>
+				  <input type="color" id="favcolor" name="f_mx_c3" value="">     
+			  </div>
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:30%;font-size:90%;">Regressi&oacute;</div>
+				  <select name="f_mx_r3" value="" style="width: 90%;"> 
+					  <option value="false" >No</option>
+					  <option value="true"  >S&iacute;</option>
+				  </select>
+			  </div>
+		      </div>	  		  
+				  
+			  <div class="formCamp"><div class="formCampT" style="width:60%;font-size:120%;">Variable 4</div>
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:60%;font-size:90%;">Variable</div>
+				  <select name="f_mx_v4" value="" style="width: 90%;"> 
+					  <option value="" selected>[cap]</option>
+					  <option value="tmin" >Temperatura m&iacute;nima</option>
+					  <option value="tmit" >Temperatura mitjana</option>
+					  <option value="tmax" >Temperatura m&agrave;xima</option> 
+					  <option value="hmin" >Humitat m&iacute;nima</option>
+					  <option value="hmit" >Humitat mitjana</option>
+					  <option value="hmax" >Humitat m&agrave;xima</option> 
+					  <option value="pmin" >Pressi&oacute; m&iacute;nima</option>
+					  <option value="pmit" >Pressi&oacute; mitjana</option>
+					  <option value="pmax" >Pressi&oacute; m&agrave;xima</option> 
+					  <option value="vmit" >Velocitat del vent mitjana</option>
+					  <option value="dmit" >Direcci&oacute; del vent predominant</option> 
+					  <option value="vmax" >R&agrave;fega m&agrave;xima de vent</option> 
+					  <option value="prec" >Precipitaci&oacute;</option> 
+				  </select>
+			  </div>
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:60%;font-size:90%;">Eix</div>
+				  <select name="f_mx_e4" value="" style="width: 90%;"> 
+					  <option value="false" >Esquerra</option>
+					  <option value="true"  >Dreta</option>
+				  </select>
+			  </div>
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:60%;font-size:90%;">Tipus</div>
+				  <select name="f_mx_t4" value="" style="width: 90%;"> 
+					  <option value="tpun" >Punts</option>
+					  <option value="tlin" >L&iacute;nia</option>
+					  <option value="tlip" >L&iacute;nia amb punts</option>
+					  <option value="tbar" >Barra</option>
+				  </select>
+			  </div>
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:30%;font-size:90%;">Color</div>
+				  <input type="color" id="favcolor" name="f_mx_c4" value="">     
+			  </div>				  
+           	  <div class="formCamp" style="width:90% !important;"><div class="formCampTT" style="width:30%;font-size:90%;">Regressi&oacute;</div>
+				  <select name="f_mx_r4" value="" style="width: 90%;"> 
+					  <option value="false" >No</option>
+					  <option value="true"  >S&iacute;</option>
+				  </select>
+			  </div>
+		      </div>	  
+				  
+           	  <div class="formCamp"><input name="fet" type="submit"></div>
+            </form>
+        </div>
+        
+        <div class="col3d4 clearfix">
+			<div id="grafic1" class="clearfix" style="width: 98%;float: left;height: 45em;"></div>	
+		</div>
+<script src="https://code.highcharts.com/highcharts.js"></script>		
+<script src="https://code.highcharts.com/modules/exporting.js"></script>
+<script src="//rawgithub.com/phpepe/highcharts-regression/master/highcharts-regression.js"></script>
+<script>
+	
+		
+ 
+(function($) {
+
+ 	Highcharts.setOptions({
+	lang: {
+		months: ['Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny',  'Juliol', 'Agost', 'Setembre', 'Octubre', 'Novembre', 'Desembre'],
+		weekdays: ['Diumenge', 'Dilluns', 'Dimarts', 'Dimecres', 'Dijous', 'Divendres', 'Dissabte'],
+        shortMonths: ['Gen', 'Feb', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Des'],	}
+	});
+
+    $('#grafic1').highcharts({
+        chart: {zoomType: 'x',resetZoomButton: {position: {x: 0,y:-40}},spacingBottom:10,spacingTop:10,spacingLeft:10,spacingRight:10,style:{fontFamily: '"Open Sans", Helvetica, Arial, sans-serif'}},
+        title: {text: "Oliva - Club Nàutic",style:{"fontSize": "24px" }},
+        subtitle: {text: 'Font: AVAMET (AVAMET)',style:{"fontSize": "12px" }},
+        xAxis: {type: 'datetime',alternateGridColor: '#f5f5f5',tickInterval:  24 * 3600 * 1000, tickWidth: 0, gridLineWidth: 1,  labels: {align: 'center',x: 0,y: 25, autoRotation:[-90]}},
+		yAxis: [ 
+			{title: '',opposite: ,labels: {format: '{value}'}}
+			],
+		legend:{enabled: true},
+		series:[
+			{yAxis: 0,data:[],color:'',name:'',type: ''}
+			],
+    });
+
+})(jQuery);
+</script>				
+
+</div>	
+
+</div>
+
+<div id="peu" class="clearfix">
+	<div id="peuContinent">
+		<img src="imatges/2017/logo_peu.png" alt="Logo AVAMET blanc" class="logoN">
+		<div id="promosollutia" style="float:right;right:1%;font-size: 80%;padding: 1.5%;color: #ffffff;">
+			Web allotjada a <a href="https://www.sollutia.com" target="_blank" class="verd">Sollutia</a>
+		</div>
+	</div>
+</div>
+
+<div id="peu2" class="clearfix">
+	<div id="creative">
+		<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ca"><img alt="Llicència de Creative Commons" src="https://licensebuttons.net/l/by-nc-nd/4.0/88x31.png" />La web d'AVAMET (188.93.73.96) i els seus continguts estan subjectes a una llic&egrave;ncia de<br><strong>Reconeixement - No Comercial - Sense Obra Derivada</strong></a>
+	</div>
+	<div id="politica" style="float:right;right:1%;font-size: 70%;padding: 1.5%;color: #ffffff;">
+		<a class="blanc" href="politicacookies.php">Av&iacute;s legal - Pol&iacute;tica de privacitat - Pol&iacute;tica de cookies</a> - <a href="#" class="blanc" onclick="if(window.__lxG__consent__!==undefined&&window.__lxG__consent__.getState()!==null){window.__lxG__consent__.showConsent()} else {alert('This function only for users from European Economic Area (EEA)')}; return false">Canviar configuraci&oacute; privacitat</a>
+	</div>
+
+</div>
+
+
+	<div id="peuNoticies" class="clearfix">
+    	<marquee>
+        <span style="font-size: 18pt;"><strong>NOVES ESTACIONS: Benissa - el Quisi </strong>(FGV),<strong> Callosa d'en Sarri&agrave; </strong>- Algar, <strong>Pen&iacute;scola </strong>- Caixa Benicarl&oacute;, </span><span style="font-size: 18pt;"><strong>Alzira </strong>- Gran Teatre, <strong>D&eacute;nia </strong>- Club N&agrave;utic, <strong>Teresa de Cofrentes</strong>,<strong> Soneja </strong>- PNM La Dehesa, <strong>Val&egrave;ncia</strong> - En Corts,<strong> Alcoi </strong>- Urb. Sargento,<strong> Figueroles</strong>, <strong>Albaida </strong>- l'Alqueria -<strong> </strong>Campaners d'Albaida, <strong>Parcent </strong>- el Repl&agrave;,<strong> Parcent </strong>- Ajuntament,<strong> X&agrave;tiva</strong> - IES Dr. Llu&iacute;s Simarro<strong>, Castell&oacute; de la Plana - </strong>Pla del Moro, <strong>Benifato </strong>- Venta de Benifato,<strong> Alacant </strong>- Cap de l'Horta,&nbsp;<strong>X&agrave;bia</strong> - Parc Natural del Montg&oacute;, <strong>Quatretonda</strong> - Cap de Bou, <strong>Xixona</strong> - Alt del Migjorn, <strong>Sollana</strong>, <strong>Rafelbunyol</strong>, <strong>Dome&ntilde;o</strong>, <strong>Godella</strong>, <strong>Tous</strong>, <strong>Orihuela</strong> - la Matanza GIRS - <strong>Orihuela</strong> - la Murada, <strong>Benavites</strong>, <strong>Tor&iacute;s</strong>, <strong>Vallada </strong>- Ajuntament, <strong>la Granja de la Costera</strong>, <strong>Beneixida</strong>, <strong>Castalla</strong> - CEIP la Llauria, <strong>Algemes&iacute;</strong>, <strong>Corbera</strong> - Pol&iacute;gon, <strong>Potries</strong>&nbsp;<strong>Pav&iacute;as</strong></span> - - -         </marquee>
+        <div id="tanquem"><a href="#" onClick="ocultarNoticies();" class="verd"><img src="imatges/marquesina-tancar.png" width="18" height="18"  alt=""/></a></div>
+    </div>
+<script>
+function ocultarNoticies(){
+document.getElementById('peuNoticies').style.display = 'none';
+document.cookie = "marquesina=1; max-age=86400;";
+}
+</script>
+<script src="js/menu/doubletaptogo.js?data=20210101"></script>
+<script>
+	$( function()
+	{
+		$( '#nav li:has(ul)' ).doubleTapToGo();
+	});
+</script>
+
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-34835297-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-34835297-1');
+</script>
+
+</body>
+</html>
+
+
