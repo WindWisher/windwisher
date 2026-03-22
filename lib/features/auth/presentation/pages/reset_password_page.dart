@@ -20,13 +20,13 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   StreamSubscription<AuthState>? _authSubscription;
-  bool _hasRecoverySession = false;
+  _RecoverySessionState _recoveryState = _RecoverySessionState.checking;
   bool _isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
-    _refreshRecoveryState();
+    unawaited(_initializeRecoveryState());
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
       data,
     ) {
@@ -42,11 +42,65 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
     });
   }
 
+  Future<void> _initializeRecoveryState() async {
+    _refreshRecoveryState();
+    if (!_expectedRecoveryLink ||
+        Supabase.instance.client.auth.currentSession != null) {
+      return;
+    }
+
+    try {
+      await Supabase.instance.client.auth.getSessionFromUrl(Uri.base);
+    } on AuthException {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _recoveryState = _RecoverySessionState.invalid;
+      });
+      return;
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _recoveryState = _RecoverySessionState.invalid;
+      });
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+    _refreshRecoveryState();
+    Future<void>.delayed(const Duration(seconds: 3), () {
+      if (!mounted || _recoveryState == _RecoverySessionState.ready) {
+        return;
+      }
+      setState(() {
+        _recoveryState = _RecoverySessionState.invalid;
+      });
+    });
+  }
+
   void _refreshRecoveryState() {
     final hasSession = Supabase.instance.client.auth.currentSession != null;
     setState(() {
-      _hasRecoverySession = hasSession;
+      _recoveryState = hasSession
+          ? _RecoverySessionState.ready
+          : _expectedRecoveryLink
+          ? _RecoverySessionState.checking
+          : _RecoverySessionState.invalid;
     });
+  }
+
+  bool get _expectedRecoveryLink {
+    final fragment = Uri.base.fragment;
+    final query = Uri.base.query;
+    return fragment.contains('type=recovery') ||
+        fragment.contains('access_token=') ||
+        query.contains('type=recovery') ||
+        query.contains('code=');
   }
 
   @override
@@ -136,15 +190,26 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     Text(
-                      _hasRecoverySession
+                      _recoveryState == _RecoverySessionState.ready
                           ? strings.resetPasswordHelp
+                          : _recoveryState == _RecoverySessionState.checking
+                          ? strings.recoveryLinkChecking
                           : strings.invalidRecoveryLink,
                       style: textTheme.bodyMedium?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.lg),
-                    if (_hasRecoverySession) ...[
+                    if (_recoveryState == _RecoverySessionState.checking) ...[
+                      const Center(
+                        child: SizedBox(
+                          width: 26,
+                          height: 26,
+                          child: CircularProgressIndicator(strokeWidth: 2.5),
+                        ),
+                      ),
+                    ],
+                    if (_recoveryState == _RecoverySessionState.ready) ...[
                       TextField(
                         controller: _passwordController,
                         obscureText: true,
@@ -198,3 +263,5 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
     );
   }
 }
+
+enum _RecoverySessionState { checking, ready, invalid }

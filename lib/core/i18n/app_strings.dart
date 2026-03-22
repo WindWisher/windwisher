@@ -45,6 +45,7 @@ class AppStrings {
       'recoveryEmailSent': 'Te hemos enviado un enlace para restablecer la contrasena a {email}.',
       'resetPasswordTitle': 'Restablecer contrasena',
       'resetPasswordHelp': 'Introduce tu nueva contrasena para completar el acceso.',
+      'recoveryLinkChecking': 'Estamos comprobando tu enlace de recuperacion...',
       'confirmPassword': 'Confirmar contrasena',
       'saveNewPassword': 'Guardar nueva contrasena',
       'passwordsDoNotMatch': 'Las contrasenas no coinciden.',
@@ -90,6 +91,7 @@ class AppStrings {
       'recoveryEmailSent': 'We sent a password reset link to {email}.',
       'resetPasswordTitle': 'Reset password',
       'resetPasswordHelp': 'Enter your new password to complete recovery.',
+      'recoveryLinkChecking': 'We are validating your recovery link...',
       'confirmPassword': 'Confirm password',
       'saveNewPassword': 'Save new password',
       'passwordsDoNotMatch': 'Passwords do not match.',
@@ -135,6 +137,7 @@ class AppStrings {
       'recoveryEmailSent': 'Wir haben einen Link zum Zurucksetzen des Passworts an {email} gesendet.',
       'resetPasswordTitle': 'Passwort zurucksetzen',
       'resetPasswordHelp': 'Gib dein neues Passwort ein, um die Wiederherstellung abzuschliessen.',
+      'recoveryLinkChecking': 'Dein Wiederherstellungslink wird gepruft...',
       'confirmPassword': 'Passwort bestatigen',
       'saveNewPassword': 'Neues Passwort speichern',
       'passwordsDoNotMatch': 'Die Passworter stimmen nicht uberein.',
@@ -180,6 +183,7 @@ class AppStrings {
       'recoveryEmailSent': 'Nous avons envoye un lien de reinitialisation a {email}.',
       'resetPasswordTitle': 'Reinitialiser le mot de passe',
       'resetPasswordHelp': 'Saisis ton nouveau mot de passe pour terminer la recuperation.',
+      'recoveryLinkChecking': 'Nous verifions ton lien de recuperation...',
       'confirmPassword': 'Confirmer le mot de passe',
       'saveNewPassword': 'Enregistrer le nouveau mot de passe',
       'passwordsDoNotMatch': 'Les mots de passe ne correspondent pas.',
@@ -225,6 +229,7 @@ class AppStrings {
       'recoveryEmailSent': 'Abbiamo inviato un link per reimpostare la password a {email}.',
       'resetPasswordTitle': 'Reimposta password',
       'resetPasswordHelp': 'Inserisci la nuova password per completare il recupero.',
+      'recoveryLinkChecking': 'Stiamo verificando il link di recupero...',
       'confirmPassword': 'Conferma password',
       'saveNewPassword': 'Salva nuova password',
       'passwordsDoNotMatch': 'Le password non coincidono.',
@@ -270,6 +275,7 @@ class AppStrings {
       'recoveryEmailSent': '我们已向 {email} 发送密码重置链接。',
       'resetPasswordTitle': '重置密码',
       'resetPasswordHelp': '输入你的新密码以完成恢复。',
+      'recoveryLinkChecking': '我们正在验证你的恢复链接...',
       'confirmPassword': '确认密码',
       'saveNewPassword': '保存新密码',
       'passwordsDoNotMatch': '两次输入的密码不一致。',
@@ -315,6 +321,7 @@ class AppStrings {
       'recoveryEmailSent': 'لقد ارسلنا رابطا لاعادة تعيين كلمة المرور إلى {email}.',
       'resetPasswordTitle': 'اعادة تعيين كلمة المرور',
       'resetPasswordHelp': 'ادخل كلمة المرور الجديدة لاكمال الاستعادة.',
+      'recoveryLinkChecking': 'نحن نتحقق من رابط الاستعادة...',
       'confirmPassword': 'تأكيد كلمة المرور',
       'saveNewPassword': 'حفظ كلمة المرور الجديدة',
       'passwordsDoNotMatch': 'كلمتا المرور غير متطابقتين.',
@@ -367,6 +374,7 @@ class AppStrings {
   String get forgotPassword => _value('forgotPassword');
   String get resetPasswordTitle => _value('resetPasswordTitle');
   String get resetPasswordHelp => _value('resetPasswordHelp');
+  String get recoveryLinkChecking => _value('recoveryLinkChecking');
   String get confirmPassword => _value('confirmPassword');
   String get saveNewPassword => _value('saveNewPassword');
   String get passwordsDoNotMatch => _value('passwordsDoNotMatch');

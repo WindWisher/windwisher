@@ -130,7 +130,14 @@ class SpotsPageState extends State<SpotsPage> {
     }
 
     setState(() {
-      _spots.add(result);
+      _spots.removeWhere(
+        (spot) => spot.name.trim().toLowerCase() == result.name.trim().toLowerCase(),
+      );
+      _spots.insert(0, result);
+      _filter = _SpotFilter.all;
+      _sort = _SpotSort.recent;
+      _searchQuery = '';
+      _searchController.clear();
       _spotsModule.saveSpot(result);
     });
   }

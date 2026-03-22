@@ -33,14 +33,23 @@ class SupabaseSpotsCatalogAdapter implements SpotsCatalogPort {
         .eq('user_id', user.id)
         .order('created_at', ascending: false);
 
+    final remoteSpots = (rows as List<dynamic>)
+        .whereType<Map<String, dynamic>>()
+        .map(_mapRow)
+        .toList(growable: false);
+    final mergedByName = <String, SpotItem>{
+      for (final spot in remoteSpots) spot.name.trim().toLowerCase(): spot,
+    };
+    for (final spot in _spots) {
+      mergedByName.putIfAbsent(spot.name.trim().toLowerCase(), () => spot);
+    }
+
+    final mergedSpots = mergedByName.values.toList(growable: false)
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
     _spots
       ..clear()
-      ..addAll(
-        (rows as List<dynamic>)
-            .whereType<Map<String, dynamic>>()
-            .map(_mapRow)
-            .toList(growable: false),
-      );
+      ..addAll(mergedSpots);
     return getSpots();
   }
 

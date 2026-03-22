@@ -14692,3 +14692,16 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
     - verificacion ejecutada:
       - `flutter analyze lib/features/spots/presentation/pages/spots_page.dart test/features/spots/presentation/pages/spots_page_test.dart`,
       - `flutter test test/features/spots/presentation/pages/spots_page_test.dart --plain-name "requires tapping the suggestion to save as official spot" -r compact`.
+  - bloque nuevo `2026-03-22`:
+    - cierre del flujo web de `reset password` y endurecimiento final de spots,
+    - duracion estimada del bloque: `25-35 min`,
+    - cambios aplicados:
+      - `reset password` en web ahora fuerza `getSessionFromUrl(Uri.base)` cuando llega un enlace de recovery,
+      - anadido estado intermedio de validacion del enlace antes de mostrarlo como invalido,
+      - strings nuevas para el estado `recoveryLinkChecking`,
+      - en spots con Supabase, la hidratacion fusiona remoto + local para no pisar altas recientes,
+      - tras guardar un spot, la vista vuelve a `Todos`, orden `Recientes` y limpia la busqueda para hacerlo visible,
+      - anadido test que cubre guardar una sugerencia oficial seleccionada y ver su tarjeta,
+    - verificacion ejecutada:
+      - `flutter analyze lib/core/i18n/app_strings.dart lib/features/auth/presentation/pages/reset_password_page.dart lib/features/auth/infrastructure/adapters/supabase/supabase_auth_session_adapter.dart lib/features/spots/infrastructure/adapters/supabase/supabase_spots_catalog_adapter.dart lib/features/spots/presentation/pages/spots_page.dart lib/main.dart test/features/spots/presentation/pages/spots_page_test.dart`,
+      - `flutter test test/features/spots/presentation/pages/spots_page_test.dart --plain-name "saves a selected official suggestion and shows its card" -r compact`.
