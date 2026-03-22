@@ -18,6 +18,18 @@ flutter run
 
 Necesitas un `local.env.json` valido en la raiz del proyecto.
 
+## Web y Hosting
+
+La web se publica en Firebase Hosting.
+
+Para desplegar sin exponer secretos locales:
+
+```bash
+./scripts/deploy_firebase_hosting.sh
+```
+
+Ese flujo genera `build/web`, reemplaza `build/web/assets/local.env.json` por una version publica y luego despliega.
+
 ## Estructura
 
 - [`lib/`](./lib): app Flutter

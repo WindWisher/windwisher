@@ -10,6 +10,8 @@ build/
 
 # Local project secrets
 local.env.json
+firebase-debug.log
+.firebase/
 
 # macOS / Xcode noise
 ios/Pods/

@@ -14592,3 +14592,30 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
     - verificacion ejecutada:
       - `flutter analyze lib/main.dart`,
       - `flutter analyze lib/features/auth/presentation/pages/login_page.dart`.
+  - bloque nuevo `2026-03-22`:
+    - continuacion del cronometro para Firebase Hosting y dominio web,
+    - duracion estimada del bloque: `35-45 min`,
+    - configurado proyecto Firebase activo:
+      - `windwisherapp-5ed22`,
+    - anadidos archivos de hosting:
+      - `.firebaserc`,
+      - `hosting` en `firebase.json`,
+      - script `scripts/deploy_firebase_hosting.sh`,
+    - primera build web desplegada en:
+      - `https://windwisherapp-5ed22.web.app`,
+    - incidencia detectada:
+      - el primer deploy publico `assets/local.env.json` con secretos locales,
+    - mitigacion aplicada inmediatamente:
+      - regenerada `build/web/assets/local.env.json` con solo config publica,
+      - redeploy de hosting ejecutado,
+      - documentado el deploy seguro en `README.md`,
+    - dominio custom configurado en Firebase Hosting:
+      - `windwisher.com`,
+      - `www.windwisher.com`,
+      - ambos quedan `Conectado`,
+    - pendiente critico fuera de repo:
+      - rotacion de secretos expuestos en el primer deploy,
+    - verificacion ejecutada:
+      - `flutter build web`,
+      - `firebase hosting:sites:list`,
+      - `firebase deploy --only hosting`.
