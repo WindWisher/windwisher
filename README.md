@@ -1,6 +1,6 @@
 # WindWisher
 
-WindWisher es una app Flutter centrada en spots, viento en vivo, historico intradia, webcams y alertas.
+WindWisher es una app Flutter centrada en spots, viento en vivo, historico intradia, webcams, alertas, sesiones y comunidad.
 
 ## Stack
 
