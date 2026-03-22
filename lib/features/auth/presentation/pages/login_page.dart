@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:windwisher/app/router/app_routes.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
@@ -371,8 +370,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 maxHeight: 188,
                 child: Transform.scale(
                   scale: 1.12,
-                  child: SvgPicture.asset(
-                    'assets/branding/Logo.svg',
+                  child: Image.asset(
+                    'assets/branding/LogoWindWisher.png',
                     width: 168,
                     height: 168,
                     fit: BoxFit.cover,

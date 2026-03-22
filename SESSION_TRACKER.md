@@ -14573,3 +14573,22 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - el runtime principal ya responde como `WindWisher`,
     - verificacion ejecutada:
       - `flutter analyze` limpio sobre archivos runtime tocados.
+  - bloque nuevo `2026-03-22`:
+    - continuacion del cronometro para pulido de arranque en `WindWisher`,
+    - duracion estimada del bloque: `10-15 min`,
+    - detectado en Android debug arranque con multiples `Skipped frames`,
+    - ajuste aplicado en `main.dart`:
+      - se mantiene antes de `runApp` solo la inicializacion critica,
+      - `LocalNotificationsService`,
+      - `PushNotificationSubscriptionService`,
+      - y `FirebasePushMessagingService`
+        pasan a inicializarse en background tras el primer frame de la UI,
+    - ajuste aplicado en `login_page.dart`:
+      - el logo inicial deja de usar `Logo.svg`,
+      - ese `svg` contenia realmente un PNG embebido en base64,
+      - se sustituye por carga directa de `LogoWindWisher.png` para abaratar el primer render,
+    - objetivo:
+      - reducir coste en main thread al abrir la app sin cambiar el flujo funcional principal,
+    - verificacion ejecutada:
+      - `flutter analyze lib/main.dart`,
+      - `flutter analyze lib/features/auth/presentation/pages/login_page.dart`.

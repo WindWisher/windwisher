@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,11 +20,11 @@ Future<void> main() async {
   await AppStoragePaths.ensureInitialized();
   await LocalEnvStore.initialize();
   await AppLocaleController.initialize();
-  await LocalNotificationsService.instance.initialize();
   await _initializeSupabaseIfConfigured();
-  await PushNotificationSubscriptionService.instance.initialize();
-  await FirebasePushMessagingService.instance.initialize();
   runApp(const ProviderScope(child: AppBootstrap()));
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(_initializeBackgroundServices());
+  });
 }
 
 Future<void> _initializeSupabaseIfConfigured() async {
@@ -33,6 +35,12 @@ Future<void> _initializeSupabaseIfConfigured() async {
   }
 
   await Supabase.initialize(url: url, anonKey: anonKey);
+}
+
+Future<void> _initializeBackgroundServices() async {
+  await LocalNotificationsService.instance.initialize();
+  await PushNotificationSubscriptionService.instance.initialize();
+  await FirebasePushMessagingService.instance.initialize();
 }
 
 class AppBootstrap extends ConsumerWidget {
