@@ -14640,3 +14640,23 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
     - strings nuevas anadidas en `AppStrings`,
     - verificacion ejecutada:
       - `flutter analyze` limpio sobre router + auth + reset page.
+  - bloque nuevo `2026-03-22`:
+    - continuacion del cronometro para corregir pantalla blanca en web,
+    - duracion estimada del bloque: `15-20 min`,
+    - causa localizada:
+      - el arranque web entraba por capas de persistencia local con `dart:io` y `path_provider`,
+    - ajustes aplicados para web-safe startup:
+      - `AppStoragePaths`,
+      - `LocalEnvStore`,
+      - `AppLocaleController`,
+      - `PushNotificationSubscriptionService`,
+    - en web ahora:
+      - no intenta crear directorios locales,
+      - no intenta leer/escribir ficheros de locale,
+      - no intenta persistir estado push en archivo,
+      - se mantiene la carga del `local.env.json` publico servido por Hosting,
+    - deploy web ejecutado de nuevo con:
+      - `./scripts/deploy_firebase_hosting.sh`,
+    - verificacion ejecutada:
+      - `flutter analyze` limpio sobre archivos core tocados,
+      - redeploy en Firebase Hosting completado.

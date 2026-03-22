@@ -129,6 +129,9 @@ class PushNotificationSubscriptionService extends ChangeNotifier {
   }
 
   Future<void> _load() async {
+    if (kIsWeb) {
+      return;
+    }
     if (!await _file.exists()) {
       await _save();
       return;
@@ -155,6 +158,9 @@ class PushNotificationSubscriptionService extends ChangeNotifier {
   }
 
   Future<void> _save() async {
+    if (kIsWeb) {
+      return;
+    }
     final raw = const JsonEncoder.withIndent('  ').convert(<String, dynamic>{
       'enabled': _enabled,
       'remoteProviderConfigured': _remoteProviderConfigured,

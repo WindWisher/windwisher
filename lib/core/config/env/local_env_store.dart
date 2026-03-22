@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 abstract final class LocalEnvStore {
@@ -17,6 +18,11 @@ abstract final class LocalEnvStore {
       }
     } catch (_) {
       // Try filesystem fallback for local development.
+    }
+
+    if (kIsWeb) {
+      _values = const <String, dynamic>{};
+      return;
     }
 
     try {

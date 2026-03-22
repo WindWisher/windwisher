@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:windwisher/core/persistence/app_storage_paths.dart';
@@ -13,6 +14,10 @@ class AppLocaleController extends Notifier<Locale> {
   static Locale _initialLocale = const Locale('es');
 
   static Future<void> initialize() async {
+    if (kIsWeb) {
+      _initialLocale = const Locale('es');
+      return;
+    }
     final file = File(AppStoragePaths.resolve(_fileName));
     if (!file.existsSync()) {
       return;
@@ -37,6 +42,9 @@ class AppLocaleController extends Notifier<Locale> {
     }
     state = locale;
     _initialLocale = locale;
+    if (kIsWeb) {
+      return;
+    }
     final file = File(AppStoragePaths.resolve(_fileName));
     await file.writeAsString(
       jsonEncode({'languageCode': locale.languageCode}),

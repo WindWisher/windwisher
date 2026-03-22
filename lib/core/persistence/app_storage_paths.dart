@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 abstract final class AppStoragePaths {
@@ -7,6 +8,10 @@ abstract final class AppStoragePaths {
 
   static Future<void> ensureInitialized() async {
     if (_documentsPath != null) {
+      return;
+    }
+    if (kIsWeb) {
+      _documentsPath = '';
       return;
     }
     final dir = await getApplicationDocumentsDirectory();
@@ -18,6 +23,9 @@ abstract final class AppStoragePaths {
   }
 
   static String resolve(String fileName) {
+    if (kIsWeb) {
+      return fileName;
+    }
     final base = _documentsPath;
     if (base != null) {
       return '$base${Platform.pathSeparator}$fileName';
