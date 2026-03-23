@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:windwisher/features/spots/application/use_cases/spots_catalog_use_cases.dart';
 import 'package:windwisher/features/spots/application/use_cases/spots_forecast_use_cases.dart';
 import 'package:windwisher/features/spots/application/use_cases/spots_remote_media_use_cases.dart';
@@ -83,9 +84,9 @@ class SpotsModule {
     final catalogPort = EnvConfig.supabaseConfigured
         ? SupabaseSpotsCatalogAdapter()
         : InMemorySpotsCatalogAdapter();
-    final cacheStore = LocalFileSpotsForecastCacheStore(
-      fileName: forecastCacheFileName,
-    );
+    final cacheStore = kIsWeb
+        ? InMemorySpotsForecastCacheStore()
+        : LocalFileSpotsForecastCacheStore(fileName: forecastCacheFileName);
     final forecastPort = CompositeSpotsForecastAdapter(
       openMeteoAdapter: OpenMeteoSpotsForecastAdapter(),
       aemetAdapter: AemetSpotsForecastAdapter(cacheStore: cacheStore),

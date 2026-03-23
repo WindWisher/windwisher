@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_forecast_entry.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_item.dart';
 import 'package:windwisher/features/spots/domain/ports/out/spots_forecast_port.dart';
@@ -9,10 +10,10 @@ class OpenMeteoSpotsForecastAdapter implements SpotsForecastPort {
   OpenMeteoSpotsForecastAdapter({
     HttpClient? httpClient,
     Future<Map<String, dynamic>> Function(String url)? fetchJson,
-  }) : _httpClient = httpClient ?? HttpClient(),
+  }) : _httpClient = httpClient,
        _fetchJsonOverride = fetchJson;
 
-  final HttpClient _httpClient;
+  final HttpClient? _httpClient;
   final Future<Map<String, dynamic>> Function(String url)? _fetchJsonOverride;
 
   @override
@@ -138,7 +139,11 @@ class OpenMeteoSpotsForecastAdapter implements SpotsForecastPort {
     if (fetchJsonOverride != null) {
       return fetchJsonOverride(url);
     }
-    final request = await _httpClient.getUrl(Uri.parse(url));
+    if (kIsWeb) {
+      throw UnsupportedError('Open-Meteo direct HttpClient is not available on web.');
+    }
+    final httpClient = _httpClient ?? HttpClient();
+    final request = await httpClient.getUrl(Uri.parse(url));
     final response = await request.close();
     final body = await response.transform(utf8.decoder).join();
     if (response.statusCode < 200 || response.statusCode >= 300) {

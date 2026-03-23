@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/features/sessions/application/use_cases/session_devices_use_cases.dart';
 import 'package:windwisher/features/sessions/application/use_cases/session_records_use_cases.dart';
@@ -105,17 +106,21 @@ class SessionsModule {
     final hasSupabase =
         EnvConfig.supabaseUrl.trim().isNotEmpty &&
         EnvConfig.supabaseAnonKey.trim().isNotEmpty;
-    final devicesPort = LocalFileSessionDevicesAdapter(
-      fileName: devicesFileName,
-    );
-    final sessionViewPreferencesPort = LocalFileSessionViewPreferencesAdapter(
-      fileName: viewPreferencesFileName,
-    );
+    final devicesPort = kIsWeb
+        ? InMemorySessionDevicesAdapter()
+        : LocalFileSessionDevicesAdapter(fileName: devicesFileName);
+    final sessionViewPreferencesPort = kIsWeb
+        ? InMemorySessionViewPreferencesAdapter()
+        : LocalFileSessionViewPreferencesAdapter(
+            fileName: viewPreferencesFileName,
+          );
     final recordsPort = hasSupabase
         ? SupabaseSessionRecordsAdapter(
             encodeInsights: encodeInsights,
             decodeInsights: decodeInsights,
           )
+        : kIsWeb
+        ? InMemorySessionRecordsAdapter()
         : LocalFileSessionRecordsAdapter(
             encodeInsights: encodeInsights,
             decodeInsights: decodeInsights,

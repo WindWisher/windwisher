@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
@@ -19,6 +20,16 @@ class ProfileOverviewSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    ImageProvider<Object>? bannerImage;
+    ImageProvider<Object>? avatarImage;
+    if (!kIsWeb && profile.bannerLocalPath != null) {
+      bannerImage = FileImage(File(profile.bannerLocalPath!));
+    }
+    if (!kIsWeb && profile.avatarLocalPath != null) {
+      avatarImage = FileImage(File(profile.avatarLocalPath!));
+    }
+    final hasBannerImage = bannerImage != null;
+    final hasAvatarImage = avatarImage != null;
 
     return Column(
       key: const ValueKey('perfil'),
@@ -34,7 +45,7 @@ class ProfileOverviewSection extends StatelessWidget {
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(14),
-                    gradient: profile.bannerLocalPath == null
+                    gradient: !hasBannerImage
                         ? LinearGradient(
                             colors: [
                               Theme.of(context).colorScheme.primaryContainer,
@@ -44,10 +55,10 @@ class ProfileOverviewSection extends StatelessWidget {
                             end: Alignment.bottomRight,
                           )
                         : null,
-                    image: profile.bannerLocalPath == null
+                    image: !hasBannerImage
                         ? null
                         : DecorationImage(
-                            image: FileImage(File(profile.bannerLocalPath!)),
+                            image: bannerImage,
                             fit: BoxFit.cover,
                           ),
                   ),
@@ -56,10 +67,8 @@ class ProfileOverviewSection extends StatelessWidget {
                       CircleAvatar(
                         radius: 36,
                         backgroundColor: Colors.blue,
-                        backgroundImage: profile.avatarLocalPath == null
-                            ? null
-                            : FileImage(File(profile.avatarLocalPath!)),
-                        child: profile.avatarLocalPath == null
+                        backgroundImage: avatarImage,
+                        child: !hasAvatarImage
                             ? const Icon(
                                 Icons.person,
                                 size: 36,

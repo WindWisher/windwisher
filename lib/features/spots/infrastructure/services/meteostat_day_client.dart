@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/core/config/env/local_env_store.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_item.dart';
@@ -43,14 +44,14 @@ class MeteostatDayClient {
     String? rapidApiHost,
     Future<Map<String, dynamic>> Function(String url)? fetchJson,
     SupabaseForecastProxyClient? forecastProxyClient,
-  }) : _httpClient = httpClient ?? HttpClient(),
+  }) : _httpClient = httpClient,
        _rapidApiKeyOverride = rapidApiKey,
        _rapidApiHostOverride = rapidApiHost,
        _fetchJsonOverride = fetchJson,
        _forecastProxyClient =
            forecastProxyClient ?? SupabaseForecastProxyClient.maybeCreate();
 
-  final HttpClient _httpClient;
+  final HttpClient? _httpClient;
   final String? _rapidApiKeyOverride;
   final String? _rapidApiHostOverride;
   final Future<Map<String, dynamic>> Function(String url)? _fetchJsonOverride;
@@ -320,7 +321,13 @@ class MeteostatDayClient {
       return fetchJsonOverride(url);
     }
 
-    final request = await _httpClient.getUrl(Uri.parse(url));
+    if (kIsWeb) {
+      throw UnsupportedError(
+        'Meteostat direct HttpClient is not available on web.',
+      );
+    }
+    final httpClient = _httpClient ?? HttpClient();
+    final request = await httpClient.getUrl(Uri.parse(url));
     request.headers.set('x-rapidapi-host', rapidApiHost);
     request.headers.set('x-rapidapi-key', rapidApiKey);
     final response = await request.close();

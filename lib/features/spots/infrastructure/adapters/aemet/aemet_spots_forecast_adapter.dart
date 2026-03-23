@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_forecast_entry.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_item.dart';
@@ -23,7 +24,7 @@ class AemetSpotsForecastAdapter implements SpotsForecastPort {
     Future<List<Map<String, dynamic>>> Function(String url)? fetchJsonList,
     SpotsForecastCacheStore? cacheStore,
     SupabaseForecastProxyClient? forecastProxyClient,
-  }) : _httpClient = httpClient ?? HttpClient(),
+  }) : _httpClient = httpClient,
        _apiKey = apiKey ?? EnvConfig.aemetOpenDataApiKey,
        _fetchJsonOverride = fetchJson,
        _fetchJsonListOverride = fetchJsonList,
@@ -31,7 +32,7 @@ class AemetSpotsForecastAdapter implements SpotsForecastPort {
        _forecastProxyClient =
            forecastProxyClient ?? SupabaseForecastProxyClient.maybeCreate();
 
-  final HttpClient _httpClient;
+  final HttpClient? _httpClient;
   final String _apiKey;
   final Future<Map<String, dynamic>> Function(String url)? _fetchJsonOverride;
   final Future<List<Map<String, dynamic>>> Function(String url)?
@@ -216,7 +217,11 @@ class AemetSpotsForecastAdapter implements SpotsForecastPort {
     if (fetchJsonOverride != null) {
       return fetchJsonOverride(url);
     }
-    final request = await _httpClient.getUrl(Uri.parse(url));
+    if (kIsWeb) {
+      throw UnsupportedError('AEMET direct HttpClient is not available on web.');
+    }
+    final httpClient = _httpClient ?? HttpClient();
+    final request = await httpClient.getUrl(Uri.parse(url));
     request.headers.set(HttpHeaders.acceptHeader, 'application/json');
     request.headers.set('api_key', _apiKey);
     request.headers.set(HttpHeaders.userAgentHeader, 'WindWisher/1.0');
@@ -240,7 +245,11 @@ class AemetSpotsForecastAdapter implements SpotsForecastPort {
     if (fetchJsonListOverride != null) {
       return fetchJsonListOverride(url);
     }
-    final request = await _httpClient.getUrl(Uri.parse(url));
+    if (kIsWeb) {
+      throw UnsupportedError('AEMET direct HttpClient is not available on web.');
+    }
+    final httpClient = _httpClient ?? HttpClient();
+    final request = await httpClient.getUrl(Uri.parse(url));
     request.headers.set(HttpHeaders.acceptHeader, 'application/json');
     request.headers.set(HttpHeaders.userAgentHeader, 'WindWisher/1.0');
     final response = await request.close();

@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 class AvametIntradayHistoryPoint {
   const AvametIntradayHistoryPoint({
     required this.time,
@@ -16,10 +18,10 @@ class AvametIntradayHistoryClient {
   AvametIntradayHistoryClient({
     HttpClient? httpClient,
     Future<String> Function(String url)? fetchText,
-  }) : _httpClient = httpClient ?? HttpClient(),
+  }) : _httpClient = httpClient,
        _fetchTextOverride = fetchText;
 
-  final HttpClient _httpClient;
+  final HttpClient? _httpClient;
   final Future<String> Function(String url)? _fetchTextOverride;
 
   Future<List<AvametIntradayHistoryPoint>> fetchIntradayWindHistory({
@@ -170,7 +172,13 @@ class AvametIntradayHistoryClient {
     if (_fetchTextOverride != null) {
       return _fetchTextOverride(url);
     }
-    final request = await _httpClient.getUrl(Uri.parse(url));
+    if (kIsWeb) {
+      throw UnsupportedError(
+        'AVAMET intraday history direct HttpClient is not available on web.',
+      );
+    }
+    final httpClient = _httpClient ?? HttpClient();
+    final request = await httpClient.getUrl(Uri.parse(url));
     request.headers.set(HttpHeaders.userAgentHeader, 'WindWisher/1.0');
     final response = await request.close();
     final bytes = await response.fold<List<int>>(

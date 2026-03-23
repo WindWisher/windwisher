@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/features/spots/infrastructure/services/supabase_forecast_proxy_client.dart';
 
@@ -48,14 +49,14 @@ class AemetObservationClient {
     Future<Map<String, dynamic>> Function(String url)? fetchJson,
     Future<List<Map<String, dynamic>>> Function(String url)? fetchJsonList,
     SupabaseForecastProxyClient? forecastProxyClient,
-  }) : _httpClient = httpClient ?? HttpClient(),
+  }) : _httpClient = httpClient,
        _apiKey = apiKey ?? EnvConfig.aemetOpenDataApiKey,
        _fetchJsonOverride = fetchJson,
        _fetchJsonListOverride = fetchJsonList,
        _forecastProxyClient =
            forecastProxyClient ?? SupabaseForecastProxyClient.maybeCreate();
 
-  final HttpClient _httpClient;
+  final HttpClient? _httpClient;
   final String _apiKey;
   final Future<Map<String, dynamic>> Function(String url)? _fetchJsonOverride;
   final Future<List<Map<String, dynamic>>> Function(String url)?
@@ -307,7 +308,11 @@ class AemetObservationClient {
 
   Future<String> _fetchText(String url) async {
     Future<String> attemptFetch() async {
-      final request = await _httpClient.getUrl(Uri.parse(url));
+      if (kIsWeb) {
+        throw const AemetObservationException('unsupported-web-http-client');
+      }
+      final httpClient = _httpClient ?? HttpClient();
+      final request = await httpClient.getUrl(Uri.parse(url));
       request.headers.set(HttpHeaders.acceptHeader, 'application/json');
       request.headers.set(HttpHeaders.connectionHeader, 'close');
       if (url.contains('/opendata/api/')) {

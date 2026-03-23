@@ -147,7 +147,10 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
     }
 
     _showSnack(strings.passwordUpdated);
-    unawaited(Supabase.instance.client.auth.signOut());
+    await Supabase.instance.client.auth.signOut();
+    if (!mounted) {
+      return;
+    }
     context.go(AppRoutes.login);
   }
 

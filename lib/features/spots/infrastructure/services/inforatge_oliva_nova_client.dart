@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 class InforatgeOlivaNovaPoint {
   const InforatgeOlivaNovaPoint({
     required this.time,
@@ -50,7 +52,7 @@ class InforatgeOlivaNovaClient {
     Future<String> Function(String url)? fetchText,
     Future<String> Function(String url, Map<String, String> formData)?
     postForm,
-  }) : _httpClient = httpClient ?? HttpClient(),
+  }) : _httpClient = httpClient,
        _fetchTextOverride = fetchText,
        _postFormOverride = postForm;
 
@@ -58,7 +60,7 @@ class InforatgeOlivaNovaClient {
   static const String livePoliesportiuUrl = 'https://inforatge.com/meteo-oliva';
   static const String historyUrl = 'https://inforatge.com/meteo-oliva/estacio';
 
-  final HttpClient _httpClient;
+  final HttpClient? _httpClient;
   final Future<String> Function(String url)? _fetchTextOverride;
   final Future<String> Function(String url, Map<String, String> formData)?
   _postFormOverride;
@@ -413,7 +415,13 @@ class InforatgeOlivaNovaClient {
     if (_fetchTextOverride != null) {
       return _fetchTextOverride(url);
     }
-    final request = await _httpClient.getUrl(Uri.parse(url));
+    if (kIsWeb) {
+      throw UnsupportedError(
+        'Inforatge Oliva Nova direct HttpClient is not available on web.',
+      );
+    }
+    final httpClient = _httpClient ?? HttpClient();
+    final request = await httpClient.getUrl(Uri.parse(url));
     final response = await request.close();
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw HttpException('Request failed: ${response.statusCode}', uri: Uri.parse(url));
@@ -425,7 +433,13 @@ class InforatgeOlivaNovaClient {
     if (_postFormOverride != null) {
       return _postFormOverride(url, formData);
     }
-    final request = await _httpClient.postUrl(Uri.parse(url));
+    if (kIsWeb) {
+      throw UnsupportedError(
+        'Inforatge Oliva Nova direct HttpClient is not available on web.',
+      );
+    }
+    final httpClient = _httpClient ?? HttpClient();
+    final request = await httpClient.postUrl(Uri.parse(url));
     request.headers.contentType = ContentType(
       'application',
       'x-www-form-urlencoded',

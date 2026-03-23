@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 class OpenMeteoWindMapGridNode {
   const OpenMeteoWindMapGridNode({
     required this.latitude,
@@ -37,10 +39,10 @@ class OpenMeteoWindMapGridClient {
   OpenMeteoWindMapGridClient({
     HttpClient? httpClient,
     Future<dynamic> Function(String url)? fetchJson,
-  }) : _httpClient = httpClient ?? HttpClient(),
+  }) : _httpClient = httpClient,
        _fetchJsonOverride = fetchJson;
 
-  final HttpClient _httpClient;
+  final HttpClient? _httpClient;
   final Future<dynamic> Function(String url)? _fetchJsonOverride;
 
   Future<List<OpenMeteoWindMapGridSnapshot>> fetchGrid({
@@ -173,7 +175,13 @@ class OpenMeteoWindMapGridClient {
     if (override != null) {
       return override(url);
     }
-    final request = await _httpClient.getUrl(Uri.parse(url));
+    if (kIsWeb) {
+      throw UnsupportedError(
+        'Open-Meteo grid direct HttpClient is not available on web.',
+      );
+    }
+    final httpClient = _httpClient ?? HttpClient();
+    final request = await httpClient.getUrl(Uri.parse(url));
     final response = await request.close();
     final body = await response.transform(utf8.decoder).join();
     if (response.statusCode < 200 || response.statusCode >= 300) {

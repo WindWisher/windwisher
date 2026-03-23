@@ -25,6 +25,8 @@ class PushNotificationSubscriptionSyncClient {
 
   bool get canSync => _useSupabase && _client?.auth.currentUser != null;
 
+  String? get _currentUserId => _client?.auth.currentUser?.id;
+
   Future<void> upsertSubscription({
     required String deviceToken,
     required String platform,
@@ -32,24 +34,30 @@ class PushNotificationSubscriptionSyncClient {
     String? deviceLabel,
     bool enabled = true,
   }) async {
-    if (!canSync || _client == null || deviceToken.trim().isEmpty) {
+    final userId = _currentUserId;
+    if (!canSync || _client == null || userId == null || deviceToken.trim().isEmpty) {
       return;
     }
-    await _client.from('user_push_subscriptions').upsert(<String, dynamic>{
-      'device_token': deviceToken.trim(),
-      'platform': platform.trim(),
-      'provider': provider.trim(),
-      'enabled': enabled,
-      'device_label': deviceLabel?.trim(),
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-    });
+    await _client.from('user_push_subscriptions').upsert(
+      <String, dynamic>{
+        'user_id': userId,
+        'device_token': deviceToken.trim(),
+        'platform': platform.trim(),
+        'provider': provider.trim(),
+        'enabled': enabled,
+        'device_label': deviceLabel?.trim(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      },
+      onConflict: 'user_id,device_token',
+    );
   }
 
   Future<void> setSubscriptionEnabled({
     required String deviceToken,
     required bool enabled,
   }) async {
-    if (!canSync || _client == null || deviceToken.trim().isEmpty) {
+    final userId = _currentUserId;
+    if (!canSync || _client == null || userId == null || deviceToken.trim().isEmpty) {
       return;
     }
     await _client
@@ -58,16 +66,19 @@ class PushNotificationSubscriptionSyncClient {
           'enabled': enabled,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         })
+        .eq('user_id', userId)
         .eq('device_token', deviceToken.trim());
   }
 
   Future<void> deleteSubscription(String deviceToken) async {
-    if (!canSync || _client == null || deviceToken.trim().isEmpty) {
+    final userId = _currentUserId;
+    if (!canSync || _client == null || userId == null || deviceToken.trim().isEmpty) {
       return;
     }
     await _client
         .from('user_push_subscriptions')
         .delete()
+        .eq('user_id', userId)
         .eq('device_token', deviceToken.trim());
   }
 }

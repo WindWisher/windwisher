@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/features/community/application/use_cases/community_following_feed_use_cases.dart';
 import 'package:windwisher/features/community/application/use_cases/community_following_preferences_use_cases.dart';
@@ -108,16 +109,26 @@ class CommunityModule {
         ? SupabaseCommunityLeaderboardAdapter()
         : InMemoryCommunityLeaderboardAdapter();
     final seedSessions = followingFeed.getFollowingSessions();
-    final socialStore = CommunitySocialStateStore(seedSessions: seedSessions);
+    final socialStore = kIsWeb || hasSupabase
+        ? null
+        : CommunitySocialStateStore(seedSessions: seedSessions);
     final sessionReactions = hasSupabase
         ? SupabaseCommunitySessionReactionsAdapter()
-        : LocalFileCommunitySessionReactionsAdapter(socialStore);
+        : kIsWeb
+        ? InMemoryCommunitySessionReactionsAdapter(
+            initialSessions: seedSessions,
+          )
+        : LocalFileCommunitySessionReactionsAdapter(socialStore!);
     final sessionComments = hasSupabase
         ? SupabaseCommunitySessionCommentsAdapter()
-        : LocalFileCommunitySessionCommentsAdapter(socialStore);
+        : kIsWeb
+        ? InMemoryCommunitySessionCommentsAdapter()
+        : LocalFileCommunitySessionCommentsAdapter(socialStore!);
     final followingPreferences = hasSupabase
         ? SupabaseCommunityFollowingPreferencesAdapter()
-        : LocalFileCommunityFollowingPreferencesAdapter(socialStore);
+        : kIsWeb
+        ? InMemoryCommunityFollowingPreferencesAdapter()
+        : LocalFileCommunityFollowingPreferencesAdapter(socialStore!);
 
     return CommunityModule(
       getFollowingSessions: GetCommunityFollowingSessionsUseCase(followingFeed),

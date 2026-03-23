@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_item.dart';
 import 'package:windwisher/features/spots/infrastructure/services/supabase_forecast_proxy_client.dart';
@@ -123,14 +124,14 @@ class AemetBeachForecastClient {
     Future<Map<String, dynamic>> Function(String url)? fetchJson,
     Future<List<Map<String, dynamic>>> Function(String url)? fetchJsonList,
     SupabaseForecastProxyClient? forecastProxyClient,
-  }) : _httpClient = httpClient ?? HttpClient(),
+  }) : _httpClient = httpClient,
        _apiKey = apiKey ?? EnvConfig.aemetOpenDataApiKey,
        _fetchJsonOverride = fetchJson,
        _fetchJsonListOverride = fetchJsonList,
        _forecastProxyClient =
            forecastProxyClient ?? SupabaseForecastProxyClient.maybeCreate();
 
-  final HttpClient _httpClient;
+  final HttpClient? _httpClient;
   final String _apiKey;
   final Future<Map<String, dynamic>> Function(String url)? _fetchJsonOverride;
   final Future<List<Map<String, dynamic>>> Function(String url)?
@@ -325,7 +326,11 @@ class AemetBeachForecastClient {
   }
 
   Future<String> _fetchText(String url) async {
-    final request = await _httpClient.getUrl(Uri.parse(url));
+    if (kIsWeb) {
+      throw const AemetBeachForecastException('unsupported-web-http-client');
+    }
+    final httpClient = _httpClient ?? HttpClient();
+    final request = await httpClient.getUrl(Uri.parse(url));
     request.headers.set(HttpHeaders.acceptHeader, 'application/json');
     if (url.contains('/opendata/api/')) {
       request.headers.set('api_key', _apiKey);

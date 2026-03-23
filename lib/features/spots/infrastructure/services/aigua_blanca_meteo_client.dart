@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 class AiguaBlancaMeteoPoint {
   const AiguaBlancaMeteoPoint({
     required this.time,
@@ -52,14 +54,14 @@ class AiguaBlancaMeteoClient {
     HttpClient? httpClient,
     Future<Map<String, dynamic>> Function(String url, Map<String, String> headers)?
     fetchJson,
-  }) : _httpClient = httpClient ?? HttpClient(),
+  }) : _httpClient = httpClient,
        _fetchJsonOverride = fetchJson;
 
   static const String apiBaseUrl = 'https://meteo.feedket.com/api/endpoints';
   static const String latestUrl = '$apiBaseUrl/latest.php';
   static const String apiKey = 'GDFH85DF-GD75D65-SFSEF5';
 
-  final HttpClient _httpClient;
+  final HttpClient? _httpClient;
   final Future<Map<String, dynamic>> Function(
     String url,
     Map<String, String> headers,
@@ -133,7 +135,13 @@ class AiguaBlancaMeteoClient {
     if (override != null) {
       return override(url, headers);
     }
-    final request = await _httpClient.getUrl(Uri.parse(url));
+    if (kIsWeb) {
+      throw UnsupportedError(
+        'Aigua Blanca Meteo direct HttpClient is not available on web.',
+      );
+    }
+    final httpClient = _httpClient ?? HttpClient();
+    final request = await httpClient.getUrl(Uri.parse(url));
     headers.forEach(request.headers.set);
     request.headers.set(HttpHeaders.contentTypeHeader, 'application/json');
     final response = await request.close();

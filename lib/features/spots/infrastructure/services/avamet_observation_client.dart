@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 class AvametObservationSnapshot {
   const AvametObservationSnapshot({
     required this.stationId,
@@ -28,10 +30,10 @@ class AvametObservationClient {
   AvametObservationClient({
     HttpClient? httpClient,
     Future<String> Function(String url)? fetchText,
-  }) : _httpClient = httpClient ?? HttpClient(),
+  }) : _httpClient = httpClient,
        _fetchTextOverride = fetchText;
 
-  final HttpClient _httpClient;
+  final HttpClient? _httpClient;
   final Future<String> Function(String url)? _fetchTextOverride;
 
   Future<AvametObservationSnapshot?> fetchStationObservation({
@@ -186,7 +188,13 @@ class AvametObservationClient {
     if (_fetchTextOverride != null) {
       return _fetchTextOverride(url);
     }
-    final request = await _httpClient.getUrl(Uri.parse(url));
+    if (kIsWeb) {
+      throw UnsupportedError(
+        'AVAMET observation direct HttpClient is not available on web.',
+      );
+    }
+    final httpClient = _httpClient ?? HttpClient();
+    final request = await httpClient.getUrl(Uri.parse(url));
     request.headers.set(HttpHeaders.userAgentHeader, 'WindWisher/1.0');
     final response = await request.close();
     final bytes = await response.fold<List<int>>(

@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/features/profile/application/use_cases/profile_gear_use_cases.dart';
 import 'package:windwisher/features/profile/application/use_cases/profile_messages_use_cases.dart';
 import 'package:windwisher/features/profile/application/use_cases/profile_use_cases.dart';
+import 'package:windwisher/features/profile/domain/ports/out/profile_repository_port.dart';
 import 'package:windwisher/features/profile/infrastructure/adapters/in_memory/in_memory_profile_gear_repository_adapter.dart';
 import 'package:windwisher/features/profile/infrastructure/adapters/in_memory/in_memory_profile_messages_repository_adapter.dart';
 import 'package:windwisher/features/profile/infrastructure/adapters/in_memory/in_memory_profile_repository_adapter.dart';
@@ -26,8 +28,6 @@ class ProfileModule {
 
   static final InMemoryProfileRepositoryAdapter _inMemoryProfileRepository =
       InMemoryProfileRepositoryAdapter();
-  static final LocalFileProfileRepositoryAdapter _localFileProfileRepository =
-      LocalFileProfileRepositoryAdapter();
   static final InMemoryProfileMessagesRepositoryAdapter _messagesRepository =
       InMemoryProfileMessagesRepositoryAdapter();
   static final SupabaseProfileMessagesRepositoryAdapter
@@ -38,6 +38,13 @@ class ProfileModule {
       SupabaseProfileGearRepositoryAdapter();
   static final SupabaseProfileRepositoryAdapter _supabaseProfileRepository =
       SupabaseProfileRepositoryAdapter();
+
+  static ProfileRepositoryPort _localProfileRepository() {
+    if (kIsWeb) {
+      return _inMemoryProfileRepository;
+    }
+    return LocalFileProfileRepositoryAdapter();
+  }
 
   factory ProfileModule.inMemory() {
     return ProfileModule(
@@ -63,10 +70,11 @@ class ProfileModule {
   }
 
   factory ProfileModule.localFile() {
+    final localProfileRepository = _localProfileRepository();
     return ProfileModule(
       profileController: ProfileController(
-        getProfile: GetProfileUseCase(_localFileProfileRepository),
-        saveProfile: SaveProfileUseCase(_localFileProfileRepository),
+        getProfile: GetProfileUseCase(localProfileRepository),
+        saveProfile: SaveProfileUseCase(localProfileRepository),
       ),
       messagesController: ProfileMessagesController(
         getDirectThreads: GetDirectMessageThreadsUseCase(_messagesRepository),
@@ -91,7 +99,7 @@ class ProfileModule {
         EnvConfig.supabaseAnonKey.trim().isNotEmpty;
     final profileRepository = hasSupabase
         ? _supabaseProfileRepository
-        : _localFileProfileRepository;
+        : _localProfileRepository();
     final messagesRepository = hasSupabase
         ? _supabaseMessagesRepository
         : _messagesRepository;

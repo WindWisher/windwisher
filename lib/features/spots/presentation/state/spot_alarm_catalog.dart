@@ -2,20 +2,23 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/persistence/app_storage_paths.dart';
 import 'package:windwisher/features/spots/infrastructure/services/spot_alarm_sync_client.dart';
 
 class SpotAlarmCatalog extends ChangeNotifier {
   SpotAlarmCatalog._()
-    : _file = File(AppStoragePaths.resolve('spot_alarm_catalog_v1.json')),
+    : _file = kIsWeb
+          ? null
+          : File(AppStoragePaths.resolve('spot_alarm_catalog_v1.json')),
       _syncClient = SpotAlarmSyncClient.auto() {
     _load();
   }
 
   static final SpotAlarmCatalog instance = SpotAlarmCatalog._();
 
-  final File _file;
+  final File? _file;
   final SpotAlarmSyncClient _syncClient;
   bool _globalEnabled = true;
   final Map<String, bool> _spotEnabledByKey = <String, bool>{};
@@ -122,13 +125,17 @@ class SpotAlarmCatalog extends ChangeNotifier {
   }
 
   void _load() {
-    if (!_file.existsSync()) {
+    final file = _file;
+    if (file == null) {
+      return;
+    }
+    if (!file.existsSync()) {
       _save();
       return;
     }
 
     try {
-      final raw = _file.readAsStringSync();
+      final raw = file.readAsStringSync();
       final json = jsonDecode(raw) as Map<String, dynamic>;
       _globalEnabled = json['globalEnabled'] as bool? ?? true;
 
@@ -161,12 +168,16 @@ class SpotAlarmCatalog extends ChangeNotifier {
   }
 
   void _save() {
+    final file = _file;
+    if (file == null) {
+      return;
+    }
     final data = <String, dynamic>{
       'globalEnabled': _globalEnabled,
       'spotEnabledByKey': _spotEnabledByKey,
       'alarms': _alarms.map((alarm) => alarm.toJson()).toList(growable: false),
     };
-    _file.writeAsStringSync(const JsonEncoder.withIndent('  ').convert(data));
+    file.writeAsStringSync(const JsonEncoder.withIndent('  ').convert(data));
   }
 }
 

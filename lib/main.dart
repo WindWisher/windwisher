@@ -1,8 +1,8 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:windwisher/app/router/app_router.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/core/config/env/local_env_store.dart';
@@ -17,6 +17,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  usePathUrlStrategy();
   await AppStoragePaths.ensureInitialized();
   await LocalEnvStore.initialize();
   await AppLocaleController.initialize();

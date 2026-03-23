@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_forecast_entry.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_item.dart';
@@ -13,13 +14,13 @@ class MeteoblueSpotsForecastAdapter implements SpotsForecastPort {
     String? apiKey,
     Future<Map<String, dynamic>> Function(String url)? fetchJson,
     SupabaseForecastProxyClient? forecastProxyClient,
-  }) : _httpClient = httpClient ?? HttpClient(),
+  }) : _httpClient = httpClient,
        _apiKey = apiKey ?? EnvConfig.meteoblueApiKey,
        _fetchJsonOverride = fetchJson,
        _forecastProxyClient =
            forecastProxyClient ?? SupabaseForecastProxyClient.maybeCreate();
 
-  final HttpClient _httpClient;
+  final HttpClient? _httpClient;
   final String _apiKey;
   final Future<Map<String, dynamic>> Function(String url)? _fetchJsonOverride;
   final SupabaseForecastProxyClient? _forecastProxyClient;
@@ -218,7 +219,11 @@ class MeteoblueSpotsForecastAdapter implements SpotsForecastPort {
     if (fetchJsonOverride != null) {
       return fetchJsonOverride(url);
     }
-    final request = await _httpClient.getUrl(Uri.parse(url));
+    if (kIsWeb) {
+      throw UnsupportedError('Meteoblue direct HttpClient is not available on web.');
+    }
+    final httpClient = _httpClient ?? HttpClient();
+    final request = await httpClient.getUrl(Uri.parse(url));
     final response = await request.close();
     final body = await response.transform(utf8.decoder).join();
     if (response.statusCode < 200 || response.statusCode >= 300) {
