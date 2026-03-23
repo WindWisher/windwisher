@@ -2,13 +2,14 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 56h 24m`.
+- `Total historico minimo consolidado del proyecto: 63h 24m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
+  - ultima consolidacion manual anadida el `2026-03-23`: `+7h` estimadas.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
 
@@ -14705,3 +14706,32 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
     - verificacion ejecutada:
       - `flutter analyze lib/core/i18n/app_strings.dart lib/features/auth/presentation/pages/reset_password_page.dart lib/features/auth/infrastructure/adapters/supabase/supabase_auth_session_adapter.dart lib/features/spots/infrastructure/adapters/supabase/supabase_spots_catalog_adapter.dart lib/features/spots/presentation/pages/spots_page.dart lib/main.dart test/features/spots/presentation/pages/spots_page_test.dart`,
       - `flutter test test/features/spots/presentation/pages/spots_page_test.dart --plain-name "saves a selected official suggestion and shows its card" -r compact`.
+  - bloque nuevo `2026-03-23`:
+    - bloque consolidado de estabilizacion general antes de cierre de jornada,
+    - duracion estimada del bloque: `7h`,
+    - cambios funcionales y de infraestructura cerrados:
+      - login, recovery y router web/mobile estabilizados,
+      - `push subscriptions` corregidas para `upsert` multi-dispositivo con conflicto `user_id,device_token`,
+      - raiz `/`, aliases legacy y redirects de auth alineados en router,
+      - sesiones, community, profile y catalogos auxiliares convertidos a comportamiento web-safe sin persistencia local por fichero cuando corre en navegador,
+      - `SpotAlarmCatalog` y otros estados locales dejaron de tocar `dart:io` en web,
+      - adaptadores y clientes de forecast/observacion de `spots` endurecidos para no crear `HttpClient()` en constructor,
+      - tanda completa de clientes de `SpotDetailPage` blindada para que en web no revienten en arranque por `Platform._version`,
+      - varias capas con fallback a memoria o Supabase en vez de `LocalFile*` al correr en Chrome,
+    - alcance tecnico principal:
+      - `main.dart`,
+      - `app_router.dart`,
+      - `push_notification_subscription_sync_client.dart`,
+      - `reset_password_page.dart`,
+      - `sessions_module.dart`,
+      - `community_module.dart`,
+      - `profile_module.dart`,
+      - `profile_overview_section.dart`,
+      - `spot_alarm_catalog.dart`,
+      - adapters y services de `spots` para forecast/observacion,
+    - commit de cierre del bloque:
+      - `79181ee` `Stabilize auth and web compatibility flows`,
+    - estado al cerrar:
+      - commit hecho,
+      - push hecho a `origin/main`,
+      - working tree limpio.
