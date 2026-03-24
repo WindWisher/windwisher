@@ -418,6 +418,7 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
   - `lib/features/spots/presentation/pages/spots_page.dart`
   - `lib/features/dashboard/presentation/pages/dashboard_page.dart`
   - `test/features/spots/presentation/pages/spots_page_test.dart`
+
 - Verificacion ejecutada: `flutter analyze && flutter test test/features/spots/presentation/pages/spots_page_test.dart -r expanded` (ok).
 
 ### 2026-02-21 - Spots: ajuste final acciones (Editar 1, Eliminar lote)
@@ -14735,3 +14736,47 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - commit hecho,
       - push hecho a `origin/main`,
       - working tree limpio.
+  - bloque nuevo `2026-03-24`:
+    - bloque de compatibilidad web/release para `Spots`, `Forecast`, `Windguru`, `Webcam` y `Live`,
+    - duracion horaria exacta pendiente de consolidacion manual,
+    - `Spots`:
+      - corregida la no aparicion de la tarjeta de preview del spot guardado en web release,
+      - endurecida la hidratacion tras guardar para evitar estados intermedios en web publicada,
+      - evitado render de imagenes locales con `Image.file(...)` en web para no romper la lista de cards,
+      - validado el flujo completo `Agregar spot -> Guardar spot -> Mostrar card` en `windwisher.com`,
+    - `Forecast` / viento en web:
+      - ampliado `forecast-proxy` en Supabase para cubrir rutas que en web no podian depender de `dart:io`,
+      - conectado `Open-Meteo` point forecast / marine al proxy para restaurar el viento en web,
+      - reapuntadas rutas web de `AVAMET`, `Aigua Blanca`, `Open-Meteo grid` e `Inforatge` al proxy,
+      - desplegadas iteraciones del `forecast-proxy` y de Firebase Hosting para alinear local/debug/release,
+    - `Windguru`:
+      - eliminada la restriccion que lo deshabilitaba en web,
+      - anadido embed HTML especifico para web manteniendo `WebViewWidget` en movil,
+      - soportado tambien fullscreen de Windguru en web con el mismo embed,
+    - `Webcam`:
+      - creada capa de embed web dedicada (`webcam_web_embed*`),
+      - corregido el crash de Chrome/web por uso indebido de `WebViewController()` en web,
+      - reemplazado `setInnerHtml` por `iframe.srcdoc` para que el player directo del stream ejecute scripts,
+      - alineado el flujo web con movil:
+        - `Abrir webcam` lleva a la pagina intermedia,
+        - la pantalla muestra primero la card con streaming y debajo la card descriptiva,
+        - el fullscreen en web queda delegado al propio reproductor,
+        - ocultados en web los botones flotantes propios de fullscreen / salir de fullscreen,
+    - `Live`:
+      - confirmado que la rosa con brujula usa `flutter_compass`,
+      - confirmado que `flutter_compass` no da heading real en web,
+      - ocultado el boton de brujula en `windwisher.com` para no mostrar una accion no operativa,
+    - compatibilidad web estructural adicional:
+      - drenadas varias inicializaciones eager de clientes/almacenamientos que rompian Chrome por `Platform._version` o `dart:io`,
+      - diferida la creacion de `HttpClient()` y protegidas rutas web en varios clientes de `spots`,
+      - usadas alternativas web-safe o basadas en Supabase donde hacia falta durante la carga de modulos,
+    - verificacion y despliegue:
+      - multiples `flutter analyze` sobre archivos tocados en cada subbloque,
+      - multiples despliegues a Firebase Hosting (`windwisher.com` / `windwisherapp-5ed22.web.app`),
+      - despliegues iterativos de `forecast-proxy` en Supabase,
+      - validacion funcional final en:
+        - `windwisher.com`,
+        - `flutter run -d chrome`,
+        - app movil/emulador,
+    - commit de cierre del bloque:
+      - `026eb3a` `Fix web spots, forecast, Windguru, and webcam flows`.
