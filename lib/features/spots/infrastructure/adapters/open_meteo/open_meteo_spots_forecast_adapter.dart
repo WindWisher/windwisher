@@ -5,16 +5,21 @@ import 'package:flutter/foundation.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_forecast_entry.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_item.dart';
 import 'package:windwisher/features/spots/domain/ports/out/spots_forecast_port.dart';
+import 'package:windwisher/features/spots/infrastructure/services/supabase_forecast_proxy_client.dart';
 
 class OpenMeteoSpotsForecastAdapter implements SpotsForecastPort {
   OpenMeteoSpotsForecastAdapter({
     HttpClient? httpClient,
     Future<Map<String, dynamic>> Function(String url)? fetchJson,
+    SupabaseForecastProxyClient? forecastProxyClient,
   }) : _httpClient = httpClient,
-       _fetchJsonOverride = fetchJson;
+       _fetchJsonOverride = fetchJson,
+       _forecastProxyClient =
+           forecastProxyClient ?? SupabaseForecastProxyClient.maybeCreate();
 
   final HttpClient? _httpClient;
   final Future<Map<String, dynamic>> Function(String url)? _fetchJsonOverride;
+  final SupabaseForecastProxyClient? _forecastProxyClient;
 
   @override
   Future<List<SpotForecastEntry>> getForecast({
@@ -27,8 +32,8 @@ class OpenMeteoSpotsForecastAdapter implements SpotsForecastPort {
     }
 
     final location = _resolveLocation(spot: spot);
-    final weatherJson = await _fetchJson(_weatherUrl(location, model));
-    final marineJson = await _fetchJson(_marineUrl(location));
+    final weatherJson = await _fetchWeatherJson(location, model);
+    final marineJson = await _fetchMarineJson(location);
 
     final weatherHourly = weatherJson['hourly'] as Map<String, dynamic>?;
     final marineHourly = marineJson['hourly'] as Map<String, dynamic>?;
@@ -132,6 +137,34 @@ class OpenMeteoSpotsForecastAdapter implements SpotsForecastPort {
 
   String _marineUrl(({double lat, double lon}) location) {
     return 'https://marine-api.open-meteo.com/v1/marine?latitude=${location.lat}&longitude=${location.lon}&hourly=wave_height,sea_surface_temperature&forecast_days=16&timezone=auto';
+  }
+
+  Future<Map<String, dynamic>> _fetchWeatherJson(
+    ({double lat, double lon}) location,
+    String model,
+  ) {
+    final proxyClient = _forecastProxyClient;
+    if (proxyClient != null) {
+      return proxyClient.fetchOpenMeteoPointForecast(
+        latitude: location.lat,
+        longitude: location.lon,
+        model: model,
+      );
+    }
+    return _fetchJson(_weatherUrl(location, model));
+  }
+
+  Future<Map<String, dynamic>> _fetchMarineJson(
+    ({double lat, double lon}) location,
+  ) {
+    final proxyClient = _forecastProxyClient;
+    if (proxyClient != null) {
+      return proxyClient.fetchOpenMeteoPointMarine(
+        latitude: location.lat,
+        longitude: location.lon,
+      );
+    }
+    return _fetchJson(_marineUrl(location));
   }
 
   Future<Map<String, dynamic>> _fetchJson(String url) async {

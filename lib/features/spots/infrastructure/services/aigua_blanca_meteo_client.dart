@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:windwisher/features/spots/infrastructure/services/supabase_forecast_proxy_client.dart';
 
 class AiguaBlancaMeteoPoint {
   const AiguaBlancaMeteoPoint({
@@ -54,8 +55,11 @@ class AiguaBlancaMeteoClient {
     HttpClient? httpClient,
     Future<Map<String, dynamic>> Function(String url, Map<String, String> headers)?
     fetchJson,
+    SupabaseForecastProxyClient? forecastProxyClient,
   }) : _httpClient = httpClient,
-       _fetchJsonOverride = fetchJson;
+       _fetchJsonOverride = fetchJson,
+       _forecastProxyClient =
+           forecastProxyClient ?? SupabaseForecastProxyClient.maybeCreate();
 
   static const String apiBaseUrl = 'https://meteo.feedket.com/api/endpoints';
   static const String latestUrl = '$apiBaseUrl/latest.php';
@@ -67,12 +71,15 @@ class AiguaBlancaMeteoClient {
     Map<String, String> headers,
   )?
   _fetchJsonOverride;
+  final SupabaseForecastProxyClient? _forecastProxyClient;
 
   Future<AiguaBlancaMeteoFeed> fetchFeed() async {
-    final payload = await _fetchJson(
-      latestUrl,
-      const <String, String>{'X-API-KEY': apiKey},
-    );
+    final payload = _forecastProxyClient != null
+        ? await _forecastProxyClient.fetchAiguaBlancaLatest()
+        : await _fetchJson(
+            latestUrl,
+            const <String, String>{'X-API-KEY': apiKey},
+          );
     final latest =
         payload['latest'] is Map<String, dynamic>
             ? payload['latest'] as Map<String, dynamic>

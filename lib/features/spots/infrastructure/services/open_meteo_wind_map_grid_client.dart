@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:windwisher/features/spots/infrastructure/services/supabase_forecast_proxy_client.dart';
 
 class OpenMeteoWindMapGridNode {
   const OpenMeteoWindMapGridNode({
@@ -39,11 +40,15 @@ class OpenMeteoWindMapGridClient {
   OpenMeteoWindMapGridClient({
     HttpClient? httpClient,
     Future<dynamic> Function(String url)? fetchJson,
+    SupabaseForecastProxyClient? forecastProxyClient,
   }) : _httpClient = httpClient,
-       _fetchJsonOverride = fetchJson;
+       _fetchJsonOverride = fetchJson,
+       _forecastProxyClient =
+           forecastProxyClient ?? SupabaseForecastProxyClient.maybeCreate();
 
   final HttpClient? _httpClient;
   final Future<dynamic> Function(String url)? _fetchJsonOverride;
+  final SupabaseForecastProxyClient? _forecastProxyClient;
 
   Future<List<OpenMeteoWindMapGridSnapshot>> fetchGrid({
     required double centerLat,
@@ -58,8 +63,19 @@ class OpenMeteoWindMapGridClient {
         .map((point) => point.longitude.toStringAsFixed(5))
         .join(',');
 
-    final weatherJson = await _fetchJson(_weatherUrl(latitudes, longitudes, model));
-    final marineJson = await _fetchJson(_marineUrl(latitudes, longitudes));
+    final weatherJson = _forecastProxyClient != null
+        ? await _forecastProxyClient.fetchOpenMeteoWeatherGrid(
+            latitudes: latitudes,
+            longitudes: longitudes,
+            model: model,
+          )
+        : await _fetchJson(_weatherUrl(latitudes, longitudes, model));
+    final marineJson = _forecastProxyClient != null
+        ? await _forecastProxyClient.fetchOpenMeteoMarineGrid(
+            latitudes: latitudes,
+            longitudes: longitudes,
+          )
+        : await _fetchJson(_marineUrl(latitudes, longitudes));
     final weatherEntries = _normalizeMultiLocationResponse(weatherJson);
     final marineEntries = _normalizeMultiLocationResponse(marineJson);
     if (weatherEntries.isEmpty) {

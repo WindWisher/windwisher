@@ -134,6 +134,135 @@ class SupabaseForecastProxyClient {
     );
   }
 
+  Future<Map<String, dynamic>> fetchOpenMeteoPointForecast({
+    required double latitude,
+    required double longitude,
+    required String model,
+  }) {
+    return _invokeMap(
+      action: 'open-meteo-point-forecast',
+      body: <String, dynamic>{
+        'action': 'open-meteo-point-forecast',
+        'lat': latitude,
+        'lon': longitude,
+        'model': model,
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> fetchOpenMeteoPointMarine({
+    required double latitude,
+    required double longitude,
+  }) {
+    return _invokeMap(
+      action: 'open-meteo-point-marine',
+      body: <String, dynamic>{
+        'action': 'open-meteo-point-marine',
+        'lat': latitude,
+        'lon': longitude,
+      },
+    );
+  }
+
+  Future<String> fetchAvametDailyHistoryHtml({
+    required String stationId,
+  }) {
+    return _invokeText(
+      action: 'avamet-daily-history',
+      body: <String, dynamic>{
+        'action': 'avamet-daily-history',
+        'stationId': stationId,
+      },
+    );
+  }
+
+  Future<String> fetchAvametIntradayHistoryHtml({
+    required String stationId,
+  }) {
+    return _invokeText(
+      action: 'avamet-intraday-history',
+      body: <String, dynamic>{
+        'action': 'avamet-intraday-history',
+        'stationId': stationId,
+      },
+    );
+  }
+
+  Future<String> fetchAvametObservationHtml({
+    required String stationId,
+  }) {
+    return _invokeText(
+      action: 'avamet-observation',
+      body: <String, dynamic>{
+        'action': 'avamet-observation',
+        'stationId': stationId,
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> fetchAiguaBlancaLatest() {
+    return _invokeMap(
+      action: 'aigua-blanca-latest',
+      body: const <String, dynamic>{'action': 'aigua-blanca-latest'},
+    );
+  }
+
+  Future<dynamic> fetchOpenMeteoWeatherGrid({
+    required String latitudes,
+    required String longitudes,
+    required String model,
+  }) {
+    return _invokeDynamic(
+      action: 'open-meteo-weather-grid',
+      body: <String, dynamic>{
+        'action': 'open-meteo-weather-grid',
+        'latitudes': latitudes,
+        'longitudes': longitudes,
+        'model': model,
+      },
+    );
+  }
+
+  Future<dynamic> fetchOpenMeteoMarineGrid({
+    required String latitudes,
+    required String longitudes,
+  }) {
+    return _invokeDynamic(
+      action: 'open-meteo-marine-grid',
+      body: <String, dynamic>{
+        'action': 'open-meteo-marine-grid',
+        'latitudes': latitudes,
+        'longitudes': longitudes,
+      },
+    );
+  }
+
+  Future<String> fetchInforatgePage({
+    required String url,
+  }) {
+    return _invokeText(
+      action: 'inforatge-page',
+      body: <String, dynamic>{
+        'action': 'inforatge-page',
+        'url': url,
+      },
+    );
+  }
+
+  Future<String> fetchInforatgeGraph({
+    required String url,
+    required Map<String, String> formData,
+  }) {
+    return _invokeText(
+      action: 'inforatge-graph',
+      body: <String, dynamic>{
+        'action': 'inforatge-graph',
+        'url': url,
+        'formData': formData,
+      },
+    );
+  }
+
   Future<List<Map<String, dynamic>>> _invokeList({
     required String action,
     required Map<String, dynamic> body,
@@ -179,6 +308,59 @@ class SupabaseForecastProxyClient {
         throw SupabaseForecastProxyException('missing-data-map:$action');
       }
       return data;
+    } on FunctionException catch (error) {
+      throw SupabaseForecastProxyException(
+        'function-${error.status}:${error.details ?? error.reasonPhrase ?? action}',
+      );
+    } catch (error) {
+      throw SupabaseForecastProxyException('$action:$error');
+    }
+  }
+
+  Future<String> _invokeText({
+    required String action,
+    required Map<String, dynamic> body,
+  }) async {
+    try {
+      final response = await _client.functions.invoke(
+        'forecast-proxy',
+        body: body,
+      );
+      final payload = response.data;
+      if (payload is! Map<String, dynamic>) {
+        throw const SupabaseForecastProxyException('invalid-proxy-payload');
+      }
+      final data = payload['data'];
+      if (data is! String) {
+        throw SupabaseForecastProxyException('missing-data-text:$action');
+      }
+      return data;
+    } on FunctionException catch (error) {
+      throw SupabaseForecastProxyException(
+        'function-${error.status}:${error.details ?? error.reasonPhrase ?? action}',
+      );
+    } catch (error) {
+      throw SupabaseForecastProxyException('$action:$error');
+    }
+  }
+
+  Future<dynamic> _invokeDynamic({
+    required String action,
+    required Map<String, dynamic> body,
+  }) async {
+    try {
+      final response = await _client.functions.invoke(
+        'forecast-proxy',
+        body: body,
+      );
+      final payload = response.data;
+      if (payload is! Map<String, dynamic>) {
+        throw const SupabaseForecastProxyException('invalid-proxy-payload');
+      }
+      if (!payload.containsKey('data')) {
+        throw SupabaseForecastProxyException('missing-data:$action');
+      }
+      return payload['data'];
     } on FunctionException catch (error) {
       throw SupabaseForecastProxyException(
         'function-${error.status}:${error.details ?? error.reasonPhrase ?? action}',

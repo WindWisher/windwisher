@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/features/spots/presentation/widgets/windguru_web_embed.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class WindguruForecastCard extends StatelessWidget {
@@ -8,7 +9,8 @@ class WindguruForecastCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.height,
-    required this.controller,
+    this.controller,
+    this.webEmbedHtml,
     required this.isFullscreenActive,
     required this.onOpenFullscreen,
   });
@@ -16,12 +18,18 @@ class WindguruForecastCard extends StatelessWidget {
   final Widget title;
   final String subtitle;
   final double height;
-  final WebViewController controller;
+  final WebViewController? controller;
+  final String? webEmbedHtml;
   final bool isFullscreenActive;
   final VoidCallback onOpenFullscreen;
 
   @override
   Widget build(BuildContext context) {
+    final embeddedContent = webEmbedHtml != null
+        ? WindguruWebEmbed(html: webEmbedHtml!)
+        : controller != null
+        ? WebViewWidget(controller: controller!)
+        : const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -36,7 +44,7 @@ class WindguruForecastCard extends StatelessWidget {
             child: Stack(
               children: [
                 if (!isFullscreenActive)
-                  WebViewWidget(controller: controller)
+                  embeddedContent
                 else
                   ColoredBox(color: Theme.of(context).colorScheme.surface),
                 Positioned(
@@ -60,13 +68,15 @@ class WindguruForecastCard extends StatelessWidget {
 class WindguruFullscreenOverlay extends StatelessWidget {
   const WindguruFullscreenOverlay({
     super.key,
-    required this.controller,
+    this.controller,
+    this.webEmbedHtml,
     required this.isSupported,
     required this.unsupportedMessage,
     required this.onClose,
   });
 
   final WebViewController? controller;
+  final String? webEmbedHtml;
   final bool isSupported;
   final String unsupportedMessage;
   final VoidCallback onClose;
@@ -81,22 +91,24 @@ class WindguruFullscreenOverlay extends StatelessWidget {
         children: [
           Material(
             color: Theme.of(context).colorScheme.surface,
-            child: isSupported && controller != null
+            child: isSupported && (controller != null || webEmbedHtml != null)
                 ? SafeArea(
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        final webview = WebViewWidget(controller: controller!);
+                        final content = webEmbedHtml != null
+                            ? WindguruWebEmbed(html: webEmbedHtml!)
+                            : WebViewWidget(controller: controller!);
                         if (isLandscape) {
                           return SizedBox(
                             width: constraints.maxWidth,
                             height: constraints.maxHeight,
-                            child: webview,
+                            child: content,
                           );
                         }
                         return SizedBox(
                           width: constraints.maxHeight,
                           height: constraints.maxWidth,
-                          child: RotatedBox(quarterTurns: 1, child: webview),
+                          child: RotatedBox(quarterTurns: 1, child: content),
                         );
                       },
                     ),

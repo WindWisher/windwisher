@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:image_picker/image_picker.dart';
@@ -77,6 +78,14 @@ class SpotsPageState extends State<SpotsPage> {
     });
   }
 
+  Future<void> _refreshSpotsAfterSave(_SpotItem spot) async {
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    if (!mounted) {
+      return;
+    }
+    await _hydrateSpotsCatalog();
+  }
+
   List<_SpotItem> get _filteredSpots {
     final query = _searchQuery.trim().toLowerCase();
 
@@ -140,6 +149,7 @@ class SpotsPageState extends State<SpotsPage> {
       _searchController.clear();
       _spotsModule.saveSpot(result);
     });
+    unawaited(_refreshSpotsAfterSave(result));
   }
 
   int _nearbyWebcamCount(_SpotItem spot) {
@@ -192,6 +202,10 @@ class SpotsPageState extends State<SpotsPage> {
   }
 
   double _toRadians(double value) => value * (math.pi / 180);
+
+  bool _canRenderLocalImage(String? path) {
+    return !kIsWeb && path != null && path.isNotEmpty;
+  }
 
   Future<void> _showEditSpotSheet(_SpotItem spot) async {
     if (!spot.isCustom) {
@@ -268,7 +282,7 @@ class SpotsPageState extends State<SpotsPage> {
                       ),
                     ],
                   ),
-                  if (backgroundImagePath != null) ...[
+                  if (_canRenderLocalImage(backgroundImagePath)) ...[
                     const SizedBox(height: AppSpacing.xs),
                     SizedBox(
                       height: 120,
@@ -725,9 +739,9 @@ class SpotsPageState extends State<SpotsPage> {
                     ),
                   ),
                 ..._filteredSpots.map((spot) {
-                  final hasBackground =
-                      spot.backgroundImagePath != null &&
-                      spot.backgroundImagePath!.isNotEmpty;
+                  final hasBackground = _canRenderLocalImage(
+                    spot.backgroundImagePath,
+                  );
                   final nearbyWebcamCount = _nearbyWebcamCount(spot);
                   final tile = ListTile(
                     selected: _selectedSpotNames.contains(spot.name),
@@ -970,6 +984,10 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
   String? _backgroundImagePath;
   String? _error;
 
+  bool _canRenderLocalImage(String? path) {
+    return !kIsWeb && path != null && path.isNotEmpty;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1192,7 +1210,7 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
                   ),
                 ],
               ),
-              if (_backgroundImagePath != null) ...[
+              if (_canRenderLocalImage(_backgroundImagePath)) ...[
                 const SizedBox(height: AppSpacing.xs),
                 SizedBox(
                   height: 120,

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:windwisher/features/spots/infrastructure/services/supabase_forecast_proxy_client.dart';
 
 class InforatgeOlivaNovaPoint {
   const InforatgeOlivaNovaPoint({
@@ -52,9 +53,12 @@ class InforatgeOlivaNovaClient {
     Future<String> Function(String url)? fetchText,
     Future<String> Function(String url, Map<String, String> formData)?
     postForm,
+    SupabaseForecastProxyClient? forecastProxyClient,
   }) : _httpClient = httpClient,
        _fetchTextOverride = fetchText,
-       _postFormOverride = postForm;
+       _postFormOverride = postForm,
+       _forecastProxyClient =
+           forecastProxyClient ?? SupabaseForecastProxyClient.maybeCreate();
 
   static const String liveOlivaNovaUrl = 'https://inforatge.com/meteo-oliva-02';
   static const String livePoliesportiuUrl = 'https://inforatge.com/meteo-oliva';
@@ -64,6 +68,7 @@ class InforatgeOlivaNovaClient {
   final Future<String> Function(String url)? _fetchTextOverride;
   final Future<String> Function(String url, Map<String, String> formData)?
   _postFormOverride;
+  final SupabaseForecastProxyClient? _forecastProxyClient;
 
   Future<InforatgeOlivaNovaFeed> fetchFeed({
     String stationCode = '02',
@@ -415,6 +420,9 @@ class InforatgeOlivaNovaClient {
     if (_fetchTextOverride != null) {
       return _fetchTextOverride(url);
     }
+    if (_forecastProxyClient != null) {
+      return _forecastProxyClient.fetchInforatgePage(url: url);
+    }
     if (kIsWeb) {
       throw UnsupportedError(
         'Inforatge Oliva Nova direct HttpClient is not available on web.',
@@ -432,6 +440,12 @@ class InforatgeOlivaNovaClient {
   Future<String> _postForm(String url, Map<String, String> formData) async {
     if (_postFormOverride != null) {
       return _postFormOverride(url, formData);
+    }
+    if (_forecastProxyClient != null) {
+      return _forecastProxyClient.fetchInforatgeGraph(
+        url: url,
+        formData: formData,
+      );
     }
     if (kIsWeb) {
       throw UnsupportedError(

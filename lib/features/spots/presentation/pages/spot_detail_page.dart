@@ -106,6 +106,10 @@ class SpotDetailPage extends StatefulWidget {
 
 class _SpotDetailPageState extends State<SpotDetailPage>
     with WidgetsBindingObserver {
+  bool _canRenderLocalImage(String? path) {
+    return !kIsWeb && path != null && path.isNotEmpty;
+  }
+
   static const bool _isFlutterTest = bool.fromEnvironment('FLUTTER_TEST');
   static const double _windguruWidgetHeight = 520;
   static const String _degreeSymbol = '\u00B0';
@@ -1172,8 +1176,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   Widget _buildWindguruForecastSection() {
     final controller = _windguruController;
-    if (_isFlutterTest || kIsWeb || controller == null) {
-      final message = _isFlutterTest || kIsWeb
+    if (_isFlutterTest || (!kIsWeb && controller == null)) {
+      final message = _isFlutterTest
           ? 'Windguru no disponible en esta plataforma de prueba.'
           : 'No se ha podido iniciar el widget de Windguru.';
       return _buildUnavailableForecastState(message: message);
@@ -1183,6 +1187,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       subtitle: 'Widget Windguru · Oliva Canal',
       height: _windguruWidgetHeight,
       controller: controller,
+      webEmbedHtml: kIsWeb ? _windguruWidgetHtml : null,
       isFullscreenActive: _fullscreenMode == _ForecastFullscreenMode.windguru,
       onOpenFullscreen: _openWindguruFullscreen,
     );
@@ -1945,21 +1950,22 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         final compassCard = Stack(
           children: [
             _buildWindRoseWithCompassOverlay(liveData),
-            Positioned(
-              top: AppSpacing.xs,
-              left: AppSpacing.xs,
-              child: IconButton.filledTonal(
-                tooltip: _compassOverlayMode == _CompassOverlayMode.realtime
-                    ? 'Desactivar brujula'
-                    : 'Activar brujula',
-                onPressed: hasWindData ? _toggleRealtimeCompass : null,
-                icon: Icon(
-                  _compassOverlayMode == _CompassOverlayMode.realtime
-                      ? Icons.explore_off_rounded
-                      : Icons.explore_rounded,
+            if (!kIsWeb)
+              Positioned(
+                top: AppSpacing.xs,
+                left: AppSpacing.xs,
+                child: IconButton.filledTonal(
+                  tooltip: _compassOverlayMode == _CompassOverlayMode.realtime
+                      ? 'Desactivar brujula'
+                      : 'Activar brujula',
+                  onPressed: hasWindData ? _toggleRealtimeCompass : null,
+                  icon: Icon(
+                    _compassOverlayMode == _CompassOverlayMode.realtime
+                        ? Icons.explore_off_rounded
+                        : Icons.explore_rounded,
+                  ),
                 ),
               ),
-            ),
             Positioned(
               top: AppSpacing.xs,
               right: AppSpacing.xs,
@@ -3672,9 +3678,10 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   }
 
   Widget _buildExpandedWindguruOverlay() {
-    final isSupported = !_isFlutterTest && !kIsWeb;
+    final isSupported = !_isFlutterTest;
     return WindguruFullscreenOverlay(
       controller: _windguruFullscreenController,
+      webEmbedHtml: kIsWeb ? _windguruWidgetHtml : null,
       isSupported: isSupported,
       unsupportedMessage: 'Windguru no disponible en este dispositivo.',
       onClose: () {
@@ -7452,9 +7459,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                 children: [
                   Builder(
                     builder: (context) {
-                      final hasBackground =
-                          widget.backgroundImagePath != null &&
-                          widget.backgroundImagePath!.isNotEmpty;
+                      final hasBackground = _canRenderLocalImage(
+                        widget.backgroundImagePath,
+                      );
                       final header = Padding(
                         padding: const EdgeInsets.all(AppSpacing.lg),
                         child: Column(

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:windwisher/features/spots/infrastructure/services/supabase_forecast_proxy_client.dart';
 
 class AvametObservationSnapshot {
   const AvametObservationSnapshot({
@@ -30,18 +31,26 @@ class AvametObservationClient {
   AvametObservationClient({
     HttpClient? httpClient,
     Future<String> Function(String url)? fetchText,
+    SupabaseForecastProxyClient? forecastProxyClient,
   }) : _httpClient = httpClient,
-       _fetchTextOverride = fetchText;
+       _fetchTextOverride = fetchText,
+       _forecastProxyClient =
+           forecastProxyClient ?? SupabaseForecastProxyClient.maybeCreate();
 
   final HttpClient? _httpClient;
   final Future<String> Function(String url)? _fetchTextOverride;
+  final SupabaseForecastProxyClient? _forecastProxyClient;
 
   Future<AvametObservationSnapshot?> fetchStationObservation({
     required String stationId,
   }) async {
-    final body = await _fetchText(
-      'https://www.avamet.org/mxo_i.php?id=$stationId',
-    );
+    final body = _forecastProxyClient != null
+        ? await _forecastProxyClient.fetchAvametObservationHtml(
+            stationId: stationId,
+          )
+        : await _fetchText(
+            'https://www.avamet.org/mxo_i.php?id=$stationId',
+          );
     return _parseSnapshot(body, stationId: stationId);
   }
 

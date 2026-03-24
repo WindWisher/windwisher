@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_webcam.dart';
+import 'package:windwisher/features/spots/presentation/widgets/webcam_web_embed.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class WebcamPlayerPage extends StatefulWidget {
@@ -104,7 +106,7 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
   @override
   void initState() {
     super.initState();
-    if (_isFlutterTest) {
+    if (_isFlutterTest || kIsWeb) {
       return;
     }
     _controller = WebViewController()
@@ -164,7 +166,26 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
     bool fill = false,
     bool showFullscreenButton = true,
   }) {
-    final player = _controller == null
+    final player = kIsWeb
+        ? ((_streamManifestUrl.isNotEmpty || _pageUrl.isNotEmpty)
+              ? WebcamWebEmbed(
+                  html: _streamManifestUrl.isNotEmpty ? _streamEmbedHtml() : null,
+                  url: _streamManifestUrl.isEmpty && _pageUrl.isNotEmpty
+                      ? _pageUrl
+                      : null,
+                )
+              : Container(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Center(
+                    child: Text(
+                      'No hay una webcam publica configurada para esta entrada.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                ))
+        : _controller == null
         ? Container(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             padding: const EdgeInsets.all(AppSpacing.md),
@@ -187,7 +208,7 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
       fit: fill ? StackFit.expand : StackFit.loose,
       children: [
         Positioned.fill(child: content),
-        if (_controller != null && _loadingProgress < 100)
+        if (!kIsWeb && _controller != null && _loadingProgress < 100)
           Positioned(
             left: 0,
             right: 0,
@@ -197,7 +218,7 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
               minHeight: 3,
             ),
           ),
-        if (showFullscreenButton)
+        if (showFullscreenButton && !kIsWeb)
           Positioned(
             right: 10,
             bottom: 10,
@@ -222,28 +243,29 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
         fit: StackFit.expand,
         children: [
           _buildPlayerSurface(fill: true, showFullscreenButton: false),
-          Positioned(
-            right: AppSpacing.sm,
-            bottom: AppSpacing.sm,
-            child: SafeArea(
-              child: SizedBox(
-                width: 38,
-                height: 38,
-                child: FloatingActionButton(
-                  mini: true,
-                  heroTag: 'webcamRotateFullscreenClose',
-                  tooltip: 'Salir de fullscreen',
-                  elevation: 0,
-                  highlightElevation: 0,
-                  backgroundColor: Colors.black.withValues(alpha: 0.28),
-                  foregroundColor: Colors.white.withValues(alpha: 0.92),
-                  shape: const CircleBorder(),
-                  onPressed: _forcePortraitMode,
-                  child: const Icon(Icons.close_rounded, size: 18),
+          if (!kIsWeb)
+            Positioned(
+              top: AppSpacing.sm,
+              right: AppSpacing.sm,
+              child: SafeArea(
+                child: SizedBox(
+                  width: 38,
+                  height: 38,
+                  child: FloatingActionButton(
+                    mini: true,
+                    heroTag: 'webcamRotateFullscreenClose',
+                    tooltip: 'Salir de fullscreen',
+                    elevation: 0,
+                    highlightElevation: 0,
+                    backgroundColor: Colors.black.withValues(alpha: 0.28),
+                    foregroundColor: Colors.white.withValues(alpha: 0.92),
+                    shape: const CircleBorder(),
+                    onPressed: _forcePortraitMode,
+                    child: const Icon(Icons.close_rounded, size: 18),
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -252,7 +274,7 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
   @override
   Widget build(BuildContext context) {
     final orientation = MediaQuery.orientationOf(context);
-    if (orientation == Orientation.landscape) {
+    if (!kIsWeb && orientation == Orientation.landscape) {
       return _buildFullscreenByRotation();
     }
     final infoLines = <String>[
@@ -412,39 +434,45 @@ class _WebcamFullscreenScaffoldState extends State<_WebcamFullscreenScaffold> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    SystemChrome.setPreferredOrientations(const [
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted);
-    if (widget.streamManifestUrl.isNotEmpty) {
-      _controller!.loadHtmlString(widget.streamEmbedHtml);
-    } else if (widget.pageUrl.isNotEmpty) {
-      _controller!.loadRequest(Uri.parse(widget.pageUrl));
+    if (!kIsWeb) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+      _controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted);
+      if (widget.streamManifestUrl.isNotEmpty) {
+        _controller!.loadHtmlString(widget.streamEmbedHtml);
+      } else if (widget.pageUrl.isNotEmpty) {
+        _controller!.loadRequest(Uri.parse(widget.pageUrl));
+      }
     }
   }
 
   Future<void> _closeFullscreen() async {
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    await SystemChrome.setPreferredOrientations(const [
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    if (!kIsWeb) {
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      await SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    }
     if (!mounted) return;
     Navigator.of(context).pop();
   }
 
   @override
   void dispose() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setPreferredOrientations(const [
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    if (!kIsWeb) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    }
     super.dispose();
   }
 
@@ -452,44 +480,56 @@ class _WebcamFullscreenScaffoldState extends State<_WebcamFullscreenScaffold> {
   Widget build(BuildContext context) {
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-        SystemChrome.setPreferredOrientations(const [
-          DeviceOrientation.portraitUp,
-          DeviceOrientation.landscapeLeft,
-          DeviceOrientation.landscapeRight,
-        ]);
+        if (!kIsWeb) {
+          SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+          SystemChrome.setPreferredOrientations(const [
+            DeviceOrientation.portraitUp,
+            DeviceOrientation.landscapeLeft,
+            DeviceOrientation.landscapeRight,
+          ]);
+        }
       },
       child: Scaffold(
         backgroundColor: Colors.black,
         body: Stack(
           fit: StackFit.expand,
           children: [
-            if (_controller != null)
+            if (kIsWeb)
+              WebcamWebEmbed(
+                html: widget.streamManifestUrl.isNotEmpty
+                    ? widget.streamEmbedHtml
+                    : null,
+                url: widget.streamManifestUrl.isEmpty && widget.pageUrl.isNotEmpty
+                    ? widget.pageUrl
+                    : null,
+              )
+            else if (_controller != null)
               WebViewWidget(controller: _controller!)
             else
               const ColoredBox(color: Colors.black),
-            Positioned(
-              right: AppSpacing.sm,
-              bottom: AppSpacing.sm,
-              child: SafeArea(
-                child: SizedBox(
-                  width: 38,
-                  height: 38,
-                  child: FloatingActionButton(
-                    mini: true,
-                    heroTag: 'webcamFullscreenClose',
-                    tooltip: 'Salir de fullscreen',
-                    elevation: 0,
-                    highlightElevation: 0,
-                    backgroundColor: Colors.black.withValues(alpha: 0.28),
-                    foregroundColor: Colors.white.withValues(alpha: 0.92),
-                    shape: const CircleBorder(),
-                    onPressed: _closeFullscreen,
-                    child: const Icon(Icons.close_rounded, size: 18),
+            if (!kIsWeb)
+              Positioned(
+                top: AppSpacing.sm,
+                right: AppSpacing.sm,
+                child: SafeArea(
+                  child: SizedBox(
+                    width: 38,
+                    height: 38,
+                    child: FloatingActionButton(
+                      mini: true,
+                      heroTag: 'webcamFullscreenClose',
+                      tooltip: 'Salir de fullscreen',
+                      elevation: 0,
+                      highlightElevation: 0,
+                      backgroundColor: Colors.black.withValues(alpha: 0.28),
+                      foregroundColor: Colors.white.withValues(alpha: 0.92),
+                      shape: const CircleBorder(),
+                      onPressed: _closeFullscreen,
+                      child: const Icon(Icons.close_rounded, size: 18),
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
