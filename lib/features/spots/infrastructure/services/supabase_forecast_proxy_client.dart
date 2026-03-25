@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseForecastProxyClient {
   SupabaseForecastProxyClient({SupabaseClient? client})
     : _client = client ?? Supabase.instance.client;
+
+  static const Duration _requestTimeout = Duration(seconds: 12);
 
   final SupabaseClient _client;
 
@@ -164,9 +168,7 @@ class SupabaseForecastProxyClient {
     );
   }
 
-  Future<String> fetchAvametDailyHistoryHtml({
-    required String stationId,
-  }) {
+  Future<String> fetchAvametDailyHistoryHtml({required String stationId}) {
     return _invokeText(
       action: 'avamet-daily-history',
       body: <String, dynamic>{
@@ -176,9 +178,7 @@ class SupabaseForecastProxyClient {
     );
   }
 
-  Future<String> fetchAvametIntradayHistoryHtml({
-    required String stationId,
-  }) {
+  Future<String> fetchAvametIntradayHistoryHtml({required String stationId}) {
     return _invokeText(
       action: 'avamet-intraday-history',
       body: <String, dynamic>{
@@ -188,9 +188,7 @@ class SupabaseForecastProxyClient {
     );
   }
 
-  Future<String> fetchAvametObservationHtml({
-    required String stationId,
-  }) {
+  Future<String> fetchAvametObservationHtml({required String stationId}) {
     return _invokeText(
       action: 'avamet-observation',
       body: <String, dynamic>{
@@ -237,15 +235,10 @@ class SupabaseForecastProxyClient {
     );
   }
 
-  Future<String> fetchInforatgePage({
-    required String url,
-  }) {
+  Future<String> fetchInforatgePage({required String url}) {
     return _invokeText(
       action: 'inforatge-page',
-      body: <String, dynamic>{
-        'action': 'inforatge-page',
-        'url': url,
-      },
+      body: <String, dynamic>{'action': 'inforatge-page', 'url': url},
     );
   }
 
@@ -268,10 +261,7 @@ class SupabaseForecastProxyClient {
     required Map<String, dynamic> body,
   }) async {
     try {
-      final response = await _client.functions.invoke(
-        'forecast-proxy',
-        body: body,
-      );
+      final response = await _invoke(action: action, body: body);
       final payload = response.data;
       if (payload is! Map<String, dynamic>) {
         throw const SupabaseForecastProxyException('invalid-proxy-payload');
@@ -295,10 +285,7 @@ class SupabaseForecastProxyClient {
     required Map<String, dynamic> body,
   }) async {
     try {
-      final response = await _client.functions.invoke(
-        'forecast-proxy',
-        body: body,
-      );
+      final response = await _invoke(action: action, body: body);
       final payload = response.data;
       if (payload is! Map<String, dynamic>) {
         throw const SupabaseForecastProxyException('invalid-proxy-payload');
@@ -322,10 +309,7 @@ class SupabaseForecastProxyClient {
     required Map<String, dynamic> body,
   }) async {
     try {
-      final response = await _client.functions.invoke(
-        'forecast-proxy',
-        body: body,
-      );
+      final response = await _invoke(action: action, body: body);
       final payload = response.data;
       if (payload is! Map<String, dynamic>) {
         throw const SupabaseForecastProxyException('invalid-proxy-payload');
@@ -349,10 +333,7 @@ class SupabaseForecastProxyClient {
     required Map<String, dynamic> body,
   }) async {
     try {
-      final response = await _client.functions.invoke(
-        'forecast-proxy',
-        body: body,
-      );
+      final response = await _invoke(action: action, body: body);
       final payload = response.data;
       if (payload is! Map<String, dynamic>) {
         throw const SupabaseForecastProxyException('invalid-proxy-payload');
@@ -368,6 +349,19 @@ class SupabaseForecastProxyClient {
     } catch (error) {
       throw SupabaseForecastProxyException('$action:$error');
     }
+  }
+
+  Future<FunctionResponse> _invoke({
+    required String action,
+    required Map<String, dynamic> body,
+  }) {
+    return _client.functions
+        .invoke('forecast-proxy', body: body)
+        .timeout(
+          _requestTimeout,
+          onTimeout: () =>
+              throw SupabaseForecastProxyException('timeout:$action'),
+        );
   }
 }
 

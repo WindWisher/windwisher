@@ -280,9 +280,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     return Column(
       children: [
         Container(
-          width: 168,
-          height: 168,
-          padding: const EdgeInsets.all(10),
+          width: 220,
+          height: 220,
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: colorScheme.surface.withValues(alpha: 0.82),
@@ -304,14 +304,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             ),
             child: ClipOval(
               child: OverflowBox(
-                maxWidth: 188,
-                maxHeight: 188,
+                maxWidth: 248,
+                maxHeight: 248,
                 child: Transform.scale(
                   scale: 1.12,
                   child: Image.asset(
                     'assets/branding/LogoWindWisher.png',
-                    width: 168,
-                    height: 168,
+                    width: 220,
+                    height: 220,
                     fit: BoxFit.cover,
                   ),
                 ),

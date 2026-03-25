@@ -10,7 +10,9 @@ class PushNotificationSubscriptionSyncClient {
   }) : _client = client,
        _useSupabase = useSupabase;
 
-  factory PushNotificationSubscriptionSyncClient.auto({SupabaseClient? client}) {
+  factory PushNotificationSubscriptionSyncClient.auto({
+    SupabaseClient? client,
+  }) {
     final hasSupabase =
         EnvConfig.supabaseUrl.trim().isNotEmpty &&
         EnvConfig.supabaseAnonKey.trim().isNotEmpty;
@@ -35,21 +37,21 @@ class PushNotificationSubscriptionSyncClient {
     bool enabled = true,
   }) async {
     final userId = _currentUserId;
-    if (!canSync || _client == null || userId == null || deviceToken.trim().isEmpty) {
+    if (!canSync ||
+        _client == null ||
+        userId == null ||
+        deviceToken.trim().isEmpty) {
       return;
     }
-    await _client.from('user_push_subscriptions').upsert(
-      <String, dynamic>{
-        'user_id': userId,
-        'device_token': deviceToken.trim(),
-        'platform': platform.trim(),
-        'provider': provider.trim(),
-        'enabled': enabled,
-        'device_label': deviceLabel?.trim(),
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      },
-      onConflict: 'user_id,device_token',
-    );
+    await _client.from('user_push_subscriptions').upsert(<String, dynamic>{
+      'user_id': userId,
+      'device_token': deviceToken.trim(),
+      'platform': platform.trim(),
+      'provider': provider.trim(),
+      'enabled': enabled,
+      'device_label': deviceLabel?.trim(),
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }, onConflict: 'user_id,device_token');
   }
 
   Future<void> setSubscriptionEnabled({
@@ -57,7 +59,10 @@ class PushNotificationSubscriptionSyncClient {
     required bool enabled,
   }) async {
     final userId = _currentUserId;
-    if (!canSync || _client == null || userId == null || deviceToken.trim().isEmpty) {
+    if (!canSync ||
+        _client == null ||
+        userId == null ||
+        deviceToken.trim().isEmpty) {
       return;
     }
     await _client
@@ -72,7 +77,10 @@ class PushNotificationSubscriptionSyncClient {
 
   Future<void> deleteSubscription(String deviceToken) async {
     final userId = _currentUserId;
-    if (!canSync || _client == null || userId == null || deviceToken.trim().isEmpty) {
+    if (!canSync ||
+        _client == null ||
+        userId == null ||
+        deviceToken.trim().isEmpty) {
       return;
     }
     await _client

@@ -49,8 +49,8 @@ dependencies:
 
   cupertino_icons: ^1.0.8
   flutter_local_notifications: ^21.0.0
-  firebase_core: ^4.5.0
-  firebase_messaging: ^16.1.2
+  firebase_core: 2.24.2
+  firebase_messaging: 14.7.10
 
 dev_dependencies:
   flutter_test:
@@ -62,6 +62,43 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.6
+
+dependency_overrides:
+  webview_flutter_wkwebview: 3.6.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/branding/generated/LogoWindWisher_icon.png
+  min_sdk_android: 21
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: assets/branding/generated/LogoWindWisher_icon.png
+    background_color: "#fbf8fc"
+    theme_color: "#fbf8fc"
+  windows:
+    generate: true
+    image_path: assets/branding/generated/LogoWindWisher_icon.png
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: assets/branding/generated/LogoWindWisher_icon.png
+
+flutter_native_splash:
+  color: "#fbf8fc"
+  image: assets/branding/generated/LogoWindWisher_splash.png
+  android: true
+  ios: true
+  web: true
+  android_gravity: center
+  ios_content_mode: scaleAspectFit
+  web_image_mode: contain
+  android_12:
+    color: "#fbf8fc"
+    image: assets/branding/generated/LogoWindWisher_splash.png
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -39,23 +39,45 @@ class FirebasePushMessagingService {
       return;
     }
 
+    if (_isIosSimulator()) {
+      debugPrint(
+        'FirebasePushMessagingService: iOS simulator detected; skipping Firebase Messaging initialization.',
+      );
+      await PushNotificationSubscriptionService.instance
+          .setRemoteProviderConfigured(false);
+      return;
+    }
+
     try {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-      FirebaseMessaging.onBackgroundMessage(
-        firebaseMessagingBackgroundHandler,
-      );
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
       final messaging = FirebaseMessaging.instance;
-      await messaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+      await messaging.requestPermission(alert: true, badge: true, sound: true);
+
+      if (_isIosSimulator()) {
+        debugPrint(
+          'FirebasePushMessagingService: iOS simulator detected; skipping FCM token registration.',
+        );
+        await PushNotificationSubscriptionService.instance
+            .setRemoteProviderConfigured(false);
+        return;
+      }
 
       await PushNotificationSubscriptionService.instance
           .setRemoteProviderConfigured(true);
+
+      if (Platform.isIOS) {
+        final apnsToken = await _waitForApnsToken(messaging);
+        if (apnsToken == null || apnsToken.trim().isEmpty) {
+          debugPrint(
+            'FirebasePushMessagingService: APNs token not available on iOS; skipping FCM token registration.',
+          );
+          return;
+        }
+      }
 
       final token = await messaging.getToken();
       if (token != null && token.trim().isNotEmpty) {
@@ -109,5 +131,26 @@ class FirebasePushMessagingService {
       return 'iPhone';
     }
     return 'Dispositivo';
+  }
+
+  Future<String?> _waitForApnsToken(FirebaseMessaging messaging) async {
+    for (var attempt = 0; attempt < 8; attempt += 1) {
+      final token = await messaging.getAPNSToken();
+      if (token != null && token.trim().isNotEmpty) {
+        return token;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
+    return null;
+  }
+
+  bool _isIosSimulator() {
+    if (!Platform.isIOS) {
+      return false;
+    }
+    final environment = Platform.environment;
+    return environment.containsKey('SIMULATOR_DEVICE_NAME') ||
+        environment.containsKey('SIMULATOR_UDID') ||
+        environment.containsKey('SIMULATOR_MODEL_IDENTIFIER');
   }
 }

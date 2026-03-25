@@ -9,6 +9,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/core/notifications/local_notifications_service.dart';
+import 'package:windwisher/core/platform/web_compass.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
 import 'package:windwisher/features/profile/di/profile_module.dart';
@@ -106,6 +107,8 @@ class SpotDetailPage extends StatefulWidget {
 
 class _SpotDetailPageState extends State<SpotDetailPage>
     with WidgetsBindingObserver {
+  static const Duration _forecastRequestTimeout = Duration(seconds: 15);
+
   bool _canRenderLocalImage(String? path) {
     return !kIsWeb && path != null && path.isNotEmpty;
   }
@@ -411,10 +414,12 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     final requestedProvider = _forecastProvider;
     final requestedModel = _forecastModel;
     try {
-      final entries = await _spotsModule.getSpotForecast(
-        spot: widget.spot,
-        provider: requestedProvider,
-        model: requestedModel,
+      final entries = await _runForecastRequest(
+        () => _spotsModule.getSpotForecast(
+          spot: widget.spot,
+          provider: requestedProvider,
+          model: requestedModel,
+        ),
       );
       if (entries.isEmpty) {
         final fallbackMessage =
@@ -459,10 +464,12 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     final requestedProvider = _historyForecastProvider;
     final requestedModel = _historyForecastModel;
     try {
-      final entries = await _spotsModule.getSpotForecast(
-        spot: widget.spot,
-        provider: requestedProvider,
-        model: requestedModel,
+      final entries = await _runForecastRequest(
+        () => _spotsModule.getSpotForecast(
+          spot: widget.spot,
+          provider: requestedProvider,
+          model: requestedModel,
+        ),
       );
       final result = entries.isEmpty
           ? _ForecastLoadResult(
@@ -653,8 +660,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   Future<_MeteoblueCurrentDayLoadResult> _loadMeteoblueCurrentDay() async {
     try {
-      final snapshot = await _meteoblueCurrentDayClient.fetchSnapshot(
-        spot: widget.spot,
+      final snapshot = await _runForecastRequest(
+        () => _meteoblueCurrentDayClient.fetchSnapshot(spot: widget.spot),
       );
       return _MeteoblueCurrentDayLoadResult(
         snapshot: snapshot,
@@ -682,8 +689,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   Future<_MeteosourceCurrentDayLoadResult> _loadMeteosourceCurrentDay() async {
     try {
-      final snapshot = await _meteosourceCurrentDayClient.fetchSnapshot(
-        spot: widget.spot,
+      final snapshot = await _runForecastRequest(
+        () => _meteosourceCurrentDayClient.fetchSnapshot(spot: widget.spot),
       );
       return _MeteosourceCurrentDayLoadResult(
         snapshot: snapshot,
@@ -711,8 +718,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   Future<_MeteostatDayLoadResult> _loadMeteostatDay() async {
     try {
-      final snapshot = await _meteostatDayClient.fetchSnapshot(
-        spot: widget.spot,
+      final snapshot = await _runForecastRequest(
+        () => _meteostatDayClient.fetchSnapshot(spot: widget.spot),
       );
       return _MeteostatDayLoadResult(
         snapshot: snapshot,
@@ -732,6 +739,10 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   Future<_MeteostatDayLoadResult> _ensureMeteostatDayFuture() {
     return _meteostatDayFuture ??= _loadMeteostatDay();
+  }
+
+  Future<T> _runForecastRequest<T>(Future<T> Function() action) {
+    return action().timeout(_forecastRequestTimeout);
   }
 
   bool get _isFullscreenActive =>
@@ -876,9 +887,11 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         model: _forecastModel,
         spot: widget.spot,
       );
-      final data = await _aemetBeachForecastClient.fetchForecasts(
-        spot: widget.spot,
-        beachCodes: selectedBeachCode == null ? null : [selectedBeachCode],
+      final data = await _runForecastRequest(
+        () => _aemetBeachForecastClient.fetchForecasts(
+          spot: widget.spot,
+          beachCodes: selectedBeachCode == null ? null : [selectedBeachCode],
+        ),
       );
       return _AemetBeachForecastLoadResult(
         data: data,
@@ -908,8 +921,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   Future<_AemetCoastalForecastLoadResult> _loadAemetCoastalForecast() async {
     try {
-      final data = await _aemetCoastalForecastClient.fetchForecast(
-        spot: widget.spot,
+      final data = await _runForecastRequest(
+        () => _aemetCoastalForecastClient.fetchForecast(spot: widget.spot),
       );
       return _AemetCoastalForecastLoadResult(
         data: data,
@@ -1843,13 +1856,29 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     });
   }
 
-  void _toggleRealtimeCompass() {
-    setState(() {
-      if (_compassOverlayMode == _CompassOverlayMode.realtime) {
+  Future<void> _toggleRealtimeCompass() async {
+    if (_compassOverlayMode == _CompassOverlayMode.realtime) {
+      if (!mounted) return;
+      setState(() {
         _compassOverlayMode = _CompassOverlayMode.off;
-      } else {
-        _compassOverlayMode = _CompassOverlayMode.realtime;
+      });
+      return;
+    }
+    if (kIsWeb) {
+      final granted = await ensureWebCompassPermission();
+      if (!mounted) return;
+      if (!granted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Brujula no disponible. Revisa permisos/sensor.'),
+          ),
+        );
+        return;
       }
+    }
+    if (!mounted) return;
+    setState(() {
+      _compassOverlayMode = _CompassOverlayMode.realtime;
     });
   }
 
@@ -1950,22 +1979,21 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         final compassCard = Stack(
           children: [
             _buildWindRoseWithCompassOverlay(liveData),
-            if (!kIsWeb)
-              Positioned(
-                top: AppSpacing.xs,
-                left: AppSpacing.xs,
-                child: IconButton.filledTonal(
-                  tooltip: _compassOverlayMode == _CompassOverlayMode.realtime
-                      ? 'Desactivar brujula'
-                      : 'Activar brujula',
-                  onPressed: hasWindData ? _toggleRealtimeCompass : null,
-                  icon: Icon(
-                    _compassOverlayMode == _CompassOverlayMode.realtime
-                        ? Icons.explore_off_rounded
-                        : Icons.explore_rounded,
-                  ),
+            Positioned(
+              top: AppSpacing.xs,
+              left: AppSpacing.xs,
+              child: IconButton.filledTonal(
+                tooltip: _compassOverlayMode == _CompassOverlayMode.realtime
+                    ? 'Desactivar brujula'
+                    : 'Activar brujula',
+                onPressed: hasWindData ? _toggleRealtimeCompass : null,
+                icon: Icon(
+                  _compassOverlayMode == _CompassOverlayMode.realtime
+                      ? Icons.explore_off_rounded
+                      : Icons.explore_rounded,
                 ),
               ),
+            ),
             Positioned(
               top: AppSpacing.xs,
               right: AppSpacing.xs,
@@ -4154,6 +4182,18 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       case _CompassOverlayMode.off:
         return _buildWindRose(data);
       case _CompassOverlayMode.realtime:
+        if (kIsWeb) {
+          return StreamBuilder<double?>(
+            stream: webCompassHeadingStream,
+            builder: (context, snapshot) {
+              final heading = snapshot.data;
+              if (heading == null) {
+                return _buildWindRose(data, headingAvailable: false);
+              }
+              return _buildWindRose(data, compassHeadingDeg: heading);
+            },
+          );
+        }
         return StreamBuilder<CompassEvent>(
           stream: FlutterCompass.events,
           builder: (context, snapshot) {
