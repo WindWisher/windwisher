@@ -4,6 +4,7 @@
 // BSD-style license that can be found in the LICENSE file.
 
 @TestOn('chrome')
+library firebase_messaging_web_test;
 
 import 'package:firebase_messaging_platform_interface/firebase_messaging_platform_interface.dart';
 import 'package:firebase_messaging_web/src/utils.dart';

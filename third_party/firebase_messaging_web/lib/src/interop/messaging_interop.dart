@@ -56,7 +56,7 @@ extension ObserverJsImplX on Observer {
 @staticInterop
 @anonymous
 class GetTokenOptions {
-  // TODO - I imagine we won't be implementing serviceWorkerRegistration type as it extends EventTarget class
+  // `serviceWorkerRegistration` is intentionally omitted in this local patch.
   // external String get serviceWorkerRegistration
   external factory GetTokenOptions({
     JSString? vapidKey,

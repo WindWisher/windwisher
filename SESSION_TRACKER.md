@@ -14822,6 +14822,7 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - publicados varios rebuilds y despliegues en `windwisher.com` para alinear launcher, favicon y splash,
       - resuelta la regresion de `flutter build web` causada por `firebase_messaging_web 3.5.18` con `Dart 3.10`,
       - build final publicada en Hosting tras `flutter build web --no-wasm-dry-run`,
+      - limpiados warnings/lints residuales en la copia local de `firebase_messaging_web` para no dejar diagnosticos amarillos en el workspace,
     - verificacion ejecutada:
       - multiples `flutter analyze` sobre los archivos tocados,
       - `flutter pub get` tras anadir `url_launcher` y `video_player`,

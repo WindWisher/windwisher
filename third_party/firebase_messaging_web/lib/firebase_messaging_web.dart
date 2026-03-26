@@ -163,7 +163,7 @@ class FirebaseMessagingWeb extends FirebaseMessagingPlatform {
     required bool badge,
     required bool sound,
   }) async {
-    // TODO(rrousselGit) dead code? Should this throw an UnimplementedError?
+    // No-op on web; this setting only applies to Apple foreground notifications.
     return;
   }
 

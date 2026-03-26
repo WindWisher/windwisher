@@ -34,8 +34,7 @@ class Messaging extends JsObjectWrapper<messaging_interop.MessagingJsImpl> {
   static Future<bool> isSupported() =>
       messaging_interop.isSupported().toDart.then((value) => value.toDart);
 
-  Messaging._fromJsObject(messaging_interop.MessagingJsImpl jsObject)
-      : super.fromJsObject(jsObject);
+  Messaging._fromJsObject(super.jsObject) : super.fromJsObject();
 
   /// To forcibly stop a registration token from being used, delete it by calling this method.
   /// Calling this method will stop the periodic data transmission to the FCM backend.
@@ -78,31 +77,31 @@ class Messaging extends JsObjectWrapper<messaging_interop.MessagingJsImpl> {
 
   Stream<MessagePayload> _createOnMessageStream(
       StreamController<MessagePayload>? controller) {
-    StreamController<MessagePayload>? _controller = controller;
-    if (_controller == null) {
-      _controller = StreamController.broadcast(sync: true);
-      final nextWrapper = (JSAny payload) {
-        _controller!.add(MessagePayload._fromJsObject(
+    var messageController = controller;
+    if (messageController == null) {
+      messageController = StreamController<MessagePayload>.broadcast(sync: true);
+
+      void nextWrapper(JSAny payload) {
+        messageController!.add(MessagePayload._fromJsObject(
             payload as messaging_interop.MessagePayloadJsImpl));
-      };
-      final errorWrapper = (JSError e) {
-        _controller!.addError(e);
-      };
+      }
+
+      void errorWrapper(JSError error) {
+        messageController!.addError(error);
+      }
 
       messaging_interop.onMessage(
           jsObject,
           messaging_interop.Observer(
               next: nextWrapper.toJS, error: errorWrapper.toJS));
     }
-    return _controller.stream;
+    return messageController.stream;
   }
 }
 
 class NotificationPayload
     extends JsObjectWrapper<messaging_interop.NotificationPayloadJsImpl> {
-  NotificationPayload._fromJsObject(
-      messaging_interop.NotificationPayloadJsImpl jsObject)
-      : super.fromJsObject(jsObject);
+  NotificationPayload._fromJsObject(super.jsObject) : super.fromJsObject();
 
   String? get title => jsObject.title?.toDart;
   String? get body => jsObject.body?.toDart;
@@ -111,8 +110,7 @@ class NotificationPayload
 
 class MessagePayload
     extends JsObjectWrapper<messaging_interop.MessagePayloadJsImpl> {
-  MessagePayload._fromJsObject(messaging_interop.MessagePayloadJsImpl jsObject)
-      : super.fromJsObject(jsObject);
+  MessagePayload._fromJsObject(super.jsObject) : super.fromJsObject();
 
   String get messageId => jsObject.messageId.toDart;
   String? get collapseKey => jsObject.collapseKey?.toDart;
@@ -129,8 +127,7 @@ class MessagePayload
 }
 
 class FcmOptions extends JsObjectWrapper<messaging_interop.FcmOptionsJsImpl> {
-  FcmOptions._fromJsObject(messaging_interop.FcmOptionsJsImpl jsObject)
-      : super.fromJsObject(jsObject);
+  FcmOptions._fromJsObject(super.jsObject) : super.fromJsObject();
 
   String? get analyticsLabel => jsObject.analyticsLabel?.toDart;
   String? get link => jsObject.link?.toDart;
