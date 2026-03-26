@@ -14780,3 +14780,50 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
         - app movil/emulador,
     - commit de cierre del bloque:
       - `026eb3a` `Fix web spots, forecast, Windguru, and webcam flows`.
+  - bloque nuevo `2026-03-26`:
+    - bloque de conversion de `Social` a `Chat` realtime en `spots`, mas compatibilidad de iPhone simulator y ajuste de branding/web,
+    - duracion estimada del bloque: `8h`,
+    - `Chat` del spot:
+      - renombrada la seccion `Social` a `Chat`,
+      - feed rehecho como timeline de chat en vez de foro anidado,
+      - replies pasados a estilo `WhatsApp/Telegram` con cita corta del mensaje respondido,
+      - accion de responder movida a gesto de swipe a la izquierda con feedback haptico,
+      - composer inferior unificado para mensaje nuevo, respuesta y edicion,
+      - tarjeta de mensajes con scroll interno y foco en el ultimo mensaje al entrar en `Chat`,
+      - composer reposicionado para verse completo al abrir `Chat`,
+      - miniavatares anadidos en la timeline con fallback a iniciales,
+      - boton de adjuntar redisenado:
+        - icono `+`,
+        - solo dos opciones (`Tomar foto o video` / `Adjuntar foto o video desde la galeria`),
+        - restauracion del viewport al volver de galeria/camara,
+      - adjuntos renderizados y visibles dentro de la app:
+        - imagen con visor fullscreen,
+        - video con visor interno fullscreen y controles (`play/pause`, progreso y tiempos),
+      - eliminado el boton manual de recarga del chat y varios textos auxiliares de cabecera/composer,
+      - envio optimista para que mensajes y respuestas aparezcan al instante antes del refresh realtime,
+    - realtime / Supabase:
+      - creada tabla `spot_social_attachments` con bucket `spot-social-media` y politicas RLS/storage,
+      - activado realtime para el chat del spot,
+      - suscripciones de feed, presence y typing limitadas a cuando el usuario esta realmente dentro de la pestana `Chat`,
+      - anadidos indicadores de presencia (`personas dentro del chat`) y `escribiendo...`,
+      - migraciones nuevas:
+        - `20260325103000_spot_social_attachments.sql`,
+        - `20260326091500_enable_realtime_for_spot_chat.sql`,
+      - migraciones aplicadas al proyecto Supabase remoto `tefbkhwaxlsfxvnleutb`,
+    - iPhone simulator / iOS:
+      - rebajadas dependencias Firebase para compatibilidad con `Xcode 14.2`,
+      - `Podfile` y proyecto iOS alineados a `iOS 15.0`,
+      - desactivada temporalmente la inicializacion de `Firebase Messaging` solo en `iOS simulator` para evitar el error `Messaging#getToken`,
+      - con ese ajuste el `Forecast` vuelve a cargar en el simulador,
+      - para no romper la build web tras ese downgrade, vendorizada una copia local de `firebase_messaging_web` con interop moderna y constraints relajadas para este proyecto,
+    - branding / web:
+      - rehechos iconos y splash de app con branding propio,
+      - afinada la experiencia de splash entre PWA instalada y splash HTML/web,
+      - publicados varios rebuilds y despliegues en `windwisher.com` para alinear launcher, favicon y splash,
+      - resuelta la regresion de `flutter build web` causada por `firebase_messaging_web 3.5.18` con `Dart 3.10`,
+      - build final publicada en Hosting tras `flutter build web --no-wasm-dry-run`,
+    - verificacion ejecutada:
+      - multiples `flutter analyze` sobre los archivos tocados,
+      - `flutter pub get` tras anadir `url_launcher` y `video_player`,
+      - `supabase db push`,
+      - pruebas funcionales en Android, Chrome, `windwisher.com` e iPhone simulator.

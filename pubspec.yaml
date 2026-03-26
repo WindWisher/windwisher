@@ -46,6 +46,8 @@ dependencies:
   webview_flutter_platform_interface: ^2.14.0
   supabase_flutter: ^2.12.0
   intl: ^0.20.2
+  url_launcher: ^6.3.2
+  video_player: ^2.10.0
 
   cupertino_icons: ^1.0.8
   flutter_local_notifications: ^21.0.0
@@ -66,6 +68,9 @@ dev_dependencies:
   flutter_native_splash: ^2.4.6
 
 dependency_overrides:
+  firebase_core_platform_interface: 6.0.2
+  firebase_messaging_web:
+    path: third_party/firebase_messaging_web
   webview_flutter_wkwebview: 3.6.1
 
 flutter_launcher_icons:

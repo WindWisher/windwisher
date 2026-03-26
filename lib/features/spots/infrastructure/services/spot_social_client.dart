@@ -1,15 +1,38 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_social_post.dart';
 
+class SpotSocialAttachmentDraft {
+  const SpotSocialAttachmentDraft({
+    required this.type,
+    required this.fileName,
+    required this.bytes,
+    this.mimeType,
+    this.thumbnailBytes,
+    this.thumbnailMimeType,
+  });
+
+  final SpotSocialAttachmentType type;
+  final String fileName;
+  final Uint8List bytes;
+  final String? mimeType;
+  final Uint8List? thumbnailBytes;
+  final String? thumbnailMimeType;
+}
+
 class SpotSocialClient {
   SpotSocialClient._({
     required SupabaseClient? client,
     required bool useSupabase,
+    required String presenceKey,
   }) : _client = client,
-       _useSupabase = useSupabase;
+       _useSupabase = useSupabase,
+       _presenceKey = presenceKey;
+
+  static const String _attachmentsBucket = 'spot-social-media';
 
   factory SpotSocialClient.auto({SupabaseClient? client}) {
     final hasSupabase =
@@ -18,11 +41,18 @@ class SpotSocialClient {
     return SpotSocialClient._(
       client: hasSupabase ? (client ?? Supabase.instance.client) : null,
       useSupabase: hasSupabase,
+      presenceKey:
+          (hasSupabase ? (client ?? Supabase.instance.client) : null)
+              ?.auth
+              .currentUser
+              ?.id ??
+          'anon-${DateTime.now().microsecondsSinceEpoch}',
     );
   }
 
   final SupabaseClient? _client;
   final bool _useSupabase;
+  final String _presenceKey;
 
   final Map<String, List<SpotSocialPost>> _memoryFeedBySpot =
       <String, List<SpotSocialPost>>{};
@@ -34,6 +64,187 @@ class SpotSocialClient {
       return true;
     }
     return _client?.auth.currentUser != null;
+  }
+
+  Stream<void> watchSpotFeed({
+    required String spotName,
+    required String spotArea,
+  }) {
+    if (!_useSupabase || _client == null) {
+      return const Stream<void>.empty();
+    }
+
+    final spotKey = _spotKey(spotName, spotArea);
+    final controller = StreamController<void>();
+    final channel = _client.channel(
+      'spot-social:$spotKey:${DateTime.now().microsecondsSinceEpoch}',
+    );
+
+    void emitRefresh() {
+      if (!controller.isClosed) {
+        controller.add(null);
+      }
+    }
+
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'spot_social_posts',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'spot_key',
+            value: spotKey,
+          ),
+          callback: (_) => emitRefresh(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'spot_social_replies',
+          callback: (_) => emitRefresh(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'spot_social_attachments',
+          callback: (_) => emitRefresh(),
+        )
+        .subscribe();
+
+    controller.onCancel = () async {
+      await _client.removeChannel(channel);
+    };
+
+    return controller.stream;
+  }
+
+  Stream<int> watchSpotPresence({
+    required String spotName,
+    required String spotArea,
+  }) {
+    if (!_useSupabase || _client == null) {
+      return Stream<int>.value(0);
+    }
+
+    final spotKey = _spotKey(spotName, spotArea);
+    final controller = StreamController<int>();
+    final channel = _client.channel(
+      'spot-social-presence:$spotKey',
+      opts: RealtimeChannelConfig(key: _presenceKey, enabled: true),
+    );
+
+    void emitPresenceCount() {
+      if (controller.isClosed) {
+        return;
+      }
+      controller.add(channel.presenceState().length);
+    }
+
+    channel
+        .onPresenceSync((_) {
+          emitPresenceCount();
+        })
+        .onPresenceJoin((_) {
+          emitPresenceCount();
+        })
+        .onPresenceLeave((_) {
+          emitPresenceCount();
+        })
+        .subscribe((status, [_]) async {
+          if (status == RealtimeSubscribeStatus.subscribed) {
+            await channel.track(<String, dynamic>{
+              'online_at': DateTime.now().toIso8601String(),
+            });
+            emitPresenceCount();
+          }
+        });
+
+    controller.onCancel = () async {
+      await channel.untrack();
+      await _client.removeChannel(channel);
+    };
+
+    return controller.stream;
+  }
+
+  Stream<Set<String>> watchSpotTyping({
+    required String spotName,
+    required String spotArea,
+  }) {
+    if (!_useSupabase || _client == null) {
+      return Stream<Set<String>>.value(const <String>{});
+    }
+
+    final spotKey = _spotKey(spotName, spotArea);
+    final controller = StreamController<Set<String>>();
+    final channel = _client.channel('spot-social-typing:$spotKey');
+    final typingUsers = <String>{};
+
+    void emitTypingUsers() {
+      if (!controller.isClosed) {
+        controller.add(Set<String>.from(typingUsers));
+      }
+    }
+
+    channel
+        .onBroadcast(
+          event: 'typing',
+          callback: (payload) {
+            final data = payload['payload'];
+            if (data is! Map) {
+              return;
+            }
+            final senderId = data['sender_id'] as String?;
+            if (senderId == null || senderId == _presenceKey) {
+              return;
+            }
+            final displayName =
+                (data['display_name'] as String?)?.trim().isNotEmpty == true
+                ? (data['display_name'] as String).trim()
+                : 'Rider';
+            final isTyping = data['is_typing'] == true;
+            if (isTyping) {
+              typingUsers.add(displayName);
+            } else {
+              typingUsers.remove(displayName);
+            }
+            emitTypingUsers();
+          },
+        )
+        .subscribe();
+
+    controller.onCancel = () async {
+      await _client.removeChannel(channel);
+    };
+
+    return controller.stream;
+  }
+
+  Future<void> sendTypingState({
+    required String spotName,
+    required String spotArea,
+    required String displayName,
+    required bool isTyping,
+  }) async {
+    if (!_useSupabase || _client == null) {
+      return;
+    }
+    final spotKey = _spotKey(spotName, spotArea);
+    final channel = _client.channel('spot-social-typing:$spotKey');
+    channel.subscribe((status, [_]) async {
+      if (status == RealtimeSubscribeStatus.subscribed) {
+        await channel.sendBroadcastMessage(
+          event: 'typing',
+          payload: <String, dynamic>{
+            'sender_id': _presenceKey,
+            'display_name': displayName,
+            'is_typing': isTyping,
+          },
+        );
+        await _client.removeChannel(channel);
+      }
+    });
   }
 
   Future<List<SpotSocialPost>> loadPosts({
@@ -63,6 +274,8 @@ class SpotSocialClient {
         .toList(growable: false);
 
     final repliesByPostId = <String, List<SpotSocialReply>>{};
+    final attachmentsByPostId = <String, List<SpotSocialAttachment>>{};
+    final attachmentsByReplyId = <String, List<SpotSocialAttachment>>{};
     if (postIds.isNotEmpty) {
       final replyRows = await _client
           .from('spot_social_replies')
@@ -72,10 +285,58 @@ class SpotSocialClient {
       final replyMaps = (replyRows as List<dynamic>)
           .whereType<Map<String, dynamic>>()
           .toList(growable: false);
+      final replyIds = replyMaps
+          .map((row) => row['id'] as String? ?? '')
+          .where((id) => id.isNotEmpty)
+          .toList(growable: false);
+      final postAttachmentRows = await _client
+          .from('spot_social_attachments')
+          .select()
+          .inFilter('post_id', postIds)
+          .order('created_at');
+      for (final row
+          in (postAttachmentRows as List<dynamic>)
+              .whereType<Map<String, dynamic>>()) {
+        final postId = row['post_id'] as String?;
+        if (postId == null || postId.isEmpty) {
+          continue;
+        }
+        final attachments = attachmentsByPostId.putIfAbsent(
+          postId,
+          () => <SpotSocialAttachment>[],
+        );
+        attachments.add(_attachmentFromRow(row));
+      }
+      if (replyIds.isNotEmpty) {
+        final replyAttachmentRows = await _client
+            .from('spot_social_attachments')
+            .select()
+            .inFilter('reply_id', replyIds)
+            .order('created_at');
+        for (final row
+            in (replyAttachmentRows as List<dynamic>)
+                .whereType<Map<String, dynamic>>()) {
+          final replyId = row['reply_id'] as String?;
+          if (replyId == null || replyId.isEmpty) {
+            continue;
+          }
+          attachmentsByReplyId
+              .putIfAbsent(replyId, () => <SpotSocialAttachment>[])
+              .add(_attachmentFromRow(row));
+        }
+      }
       for (final postId in postIds) {
         final rawReplies = replyMaps
             .where((row) => row['post_id'] == postId)
-            .map((row) => _replyFromRow(row, currentUserId: userId))
+            .map(
+              (row) => _replyFromRow(
+                row,
+                currentUserId: userId,
+                attachments:
+                    attachmentsByReplyId[row['id'] as String? ?? ''] ??
+                    const [],
+              ),
+            )
             .toList(growable: false);
         repliesByPostId[postId] = _nestReplies(rawReplies);
       }
@@ -86,6 +347,8 @@ class SpotSocialClient {
           (row) => _postFromRow(
             row,
             currentUserId: userId,
+            attachments:
+                attachmentsByPostId[row['id'] as String? ?? ''] ?? const [],
             replies: repliesByPostId[row['id'] as String? ?? ''] ?? const [],
           ),
         )
@@ -100,6 +363,7 @@ class SpotSocialClient {
     required String authorUsername,
     required String authorDisplayName,
     required String message,
+    List<SpotSocialAttachmentDraft> attachments = const [],
   }) async {
     if (!_useSupabase || _client == null) {
       final post = SpotSocialPost(
@@ -112,6 +376,19 @@ class SpotSocialClient {
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
         isMine: true,
+        attachments: attachments
+            .map(
+              (item) => SpotSocialAttachment(
+                id: DateTime.now().microsecondsSinceEpoch.toString(),
+                type: item.type,
+                url: '',
+                storagePath: item.fileName,
+                fileName: item.fileName,
+                mimeType: item.mimeType,
+                sizeBytes: item.bytes.length,
+              ),
+            )
+            .toList(growable: false),
       );
       final key = _spotKey(spotName, spotArea);
       final feed = _memoryFeedBySpot.putIfAbsent(key, () => <SpotSocialPost>[]);
@@ -136,9 +413,16 @@ class SpotSocialClient {
         })
         .select()
         .single();
+    final postId = inserted['id'] as String? ?? '';
+    final uploadedAttachments = await _uploadAttachmentsForPost(
+      postId: postId,
+      authorUserId: user.id,
+      attachments: attachments,
+    );
     return _postFromRow(
       inserted,
       currentUserId: user.id,
+      attachments: uploadedAttachments,
       replies: const <SpotSocialReply>[],
     );
   }
@@ -149,6 +433,7 @@ class SpotSocialClient {
     required String authorDisplayName,
     required String message,
     String? parentReplyId,
+    List<SpotSocialAttachmentDraft> attachments = const [],
   }) async {
     if (!_useSupabase || _client == null) {
       final reply = SpotSocialReply(
@@ -160,6 +445,19 @@ class SpotSocialClient {
         message: message,
         createdAt: DateTime.now(),
         isMine: true,
+        attachments: attachments
+            .map(
+              (item) => SpotSocialAttachment(
+                id: DateTime.now().microsecondsSinceEpoch.toString(),
+                type: item.type,
+                url: '',
+                storagePath: item.fileName,
+                fileName: item.fileName,
+                mimeType: item.mimeType,
+                sizeBytes: item.bytes.length,
+              ),
+            )
+            .toList(growable: false),
       );
       _insertLocalReply(reply);
       return reply;
@@ -181,7 +479,17 @@ class SpotSocialClient {
         })
         .select()
         .single();
-    return _replyFromRow(inserted, currentUserId: user.id);
+    final replyId = inserted['id'] as String? ?? '';
+    final uploadedAttachments = await _uploadAttachmentsForReply(
+      replyId: replyId,
+      authorUserId: user.id,
+      attachments: attachments,
+    );
+    return _replyFromRow(
+      inserted,
+      currentUserId: user.id,
+      attachments: uploadedAttachments,
+    );
   }
 
   Future<SpotSocialPost> updatePost({
@@ -220,6 +528,7 @@ class SpotSocialClient {
     return _postFromRow(
       updated,
       currentUserId: user.id,
+      attachments: const <SpotSocialAttachment>[],
       replies: const <SpotSocialReply>[],
     );
   }
@@ -242,6 +551,7 @@ class SpotSocialClient {
   SpotSocialPost _postFromRow(
     Map<String, dynamic> row, {
     required String? currentUserId,
+    required List<SpotSocialAttachment> attachments,
     required List<SpotSocialReply> replies,
   }) {
     final authorId = row['author_user_id'] as String?;
@@ -259,6 +569,7 @@ class SpotSocialClient {
           DateTime.tryParse(row['updated_at'] as String? ?? '')?.toLocal() ??
           DateTime.now(),
       isMine: currentUserId != null && currentUserId == authorId,
+      attachments: attachments,
       replies: replies,
     );
   }
@@ -266,6 +577,7 @@ class SpotSocialClient {
   SpotSocialReply _replyFromRow(
     Map<String, dynamic> row, {
     required String? currentUserId,
+    required List<SpotSocialAttachment> attachments,
   }) {
     final authorId = row['author_user_id'] as String?;
     return SpotSocialReply(
@@ -279,6 +591,23 @@ class SpotSocialClient {
           DateTime.tryParse(row['created_at'] as String? ?? '')?.toLocal() ??
           DateTime.now(),
       isMine: currentUserId != null && currentUserId == authorId,
+      attachments: attachments,
+    );
+  }
+
+  SpotSocialAttachment _attachmentFromRow(Map<String, dynamic> row) {
+    return SpotSocialAttachment(
+      id: row['id'] as String? ?? '',
+      type: _attachmentTypeFromRaw(row['attachment_type'] as String?),
+      url: row['public_url'] as String? ?? '',
+      storagePath: row['storage_path'] as String? ?? '',
+      fileName: row['file_name'] as String? ?? '',
+      mimeType: row['mime_type'] as String?,
+      sizeBytes: row['size_bytes'] as int?,
+      thumbnailUrl: row['thumbnail_url'] as String?,
+      createdAt:
+          DateTime.tryParse(row['created_at'] as String? ?? '')?.toLocal() ??
+          DateTime.now(),
     );
   }
 
@@ -360,5 +689,141 @@ class SpotSocialClient {
 
   String _spotKey(String spotName, String spotArea) {
     return '${spotName.trim().toLowerCase()}::${spotArea.trim().toLowerCase()}';
+  }
+
+  SpotSocialAttachmentType _attachmentTypeFromRaw(String? raw) {
+    return raw == 'video'
+        ? SpotSocialAttachmentType.video
+        : SpotSocialAttachmentType.image;
+  }
+
+  Future<List<SpotSocialAttachment>> _uploadAttachmentsForPost({
+    required String postId,
+    required String authorUserId,
+    required List<SpotSocialAttachmentDraft> attachments,
+  }) async {
+    if (attachments.isEmpty || !_useSupabase || _client == null) {
+      return const <SpotSocialAttachment>[];
+    }
+    final created = <SpotSocialAttachment>[];
+    for (final attachment in attachments) {
+      created.add(
+        await _uploadAttachmentRecord(
+          authorUserId: authorUserId,
+          postId: postId,
+          replyId: null,
+          attachment: attachment,
+        ),
+      );
+    }
+    return created;
+  }
+
+  Future<List<SpotSocialAttachment>> _uploadAttachmentsForReply({
+    required String replyId,
+    required String authorUserId,
+    required List<SpotSocialAttachmentDraft> attachments,
+  }) async {
+    if (attachments.isEmpty || !_useSupabase || _client == null) {
+      return const <SpotSocialAttachment>[];
+    }
+    final created = <SpotSocialAttachment>[];
+    for (final attachment in attachments) {
+      created.add(
+        await _uploadAttachmentRecord(
+          authorUserId: authorUserId,
+          postId: null,
+          replyId: replyId,
+          attachment: attachment,
+        ),
+      );
+    }
+    return created;
+  }
+
+  Future<SpotSocialAttachment> _uploadAttachmentRecord({
+    required String authorUserId,
+    required String? postId,
+    required String? replyId,
+    required SpotSocialAttachmentDraft attachment,
+  }) async {
+    final client = _client;
+    if (client == null) {
+      throw StateError('Supabase no configurado para subir adjuntos.');
+    }
+    final safeFileName = _sanitizeFileName(attachment.fileName);
+    final extension = _fileExtension(safeFileName);
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final basePath =
+        '$authorUserId/$timestamp-${attachment.type.name}${extension.isEmpty ? '' : '.$extension'}';
+    await client.storage
+        .from(_attachmentsBucket)
+        .uploadBinary(
+          basePath,
+          attachment.bytes,
+          fileOptions: FileOptions(
+            contentType:
+                attachment.mimeType ?? _defaultMimeType(attachment.type),
+            upsert: false,
+          ),
+        );
+    String? thumbnailUrl;
+    if (attachment.thumbnailBytes != null) {
+      final thumbnailPath =
+          '$authorUserId/$timestamp-${attachment.type.name}-thumb.jpg';
+      await client.storage
+          .from(_attachmentsBucket)
+          .uploadBinary(
+            thumbnailPath,
+            attachment.thumbnailBytes!,
+            fileOptions: FileOptions(
+              contentType: attachment.thumbnailMimeType ?? 'image/jpeg',
+              upsert: false,
+            ),
+          );
+      thumbnailUrl = client.storage
+          .from(_attachmentsBucket)
+          .getPublicUrl(thumbnailPath);
+    }
+    final publicUrl = client.storage
+        .from(_attachmentsBucket)
+        .getPublicUrl(basePath);
+    final inserted = await client
+        .from('spot_social_attachments')
+        .insert(<String, dynamic>{
+          'post_id': postId,
+          'reply_id': replyId,
+          'author_user_id': authorUserId,
+          'attachment_type': attachment.type.name,
+          'storage_path': basePath,
+          'public_url': publicUrl,
+          'thumbnail_url': thumbnailUrl,
+          'file_name': safeFileName,
+          'mime_type': attachment.mimeType ?? _defaultMimeType(attachment.type),
+          'size_bytes': attachment.bytes.length,
+        })
+        .select()
+        .single();
+    return _attachmentFromRow(inserted);
+  }
+
+  String _sanitizeFileName(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return 'attachment';
+    }
+    return trimmed.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+  }
+
+  String _fileExtension(String value) {
+    final dot = value.lastIndexOf('.');
+    if (dot <= 0 || dot == value.length - 1) {
+      return '';
+    }
+    return value.substring(dot + 1).toLowerCase();
+  }
+
+  String _defaultMimeType(SpotSocialAttachmentType type) {
+    return type == SpotSocialAttachmentType.video ? 'video/mp4' : 'image/jpeg';
   }
 }

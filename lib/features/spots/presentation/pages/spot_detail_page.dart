@@ -4,9 +4,13 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart' hide Path;
+import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/core/notifications/local_notifications_service.dart';
 import 'package:windwisher/core/platform/web_compass.dart';
@@ -180,6 +184,10 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   final ScrollController _historyChartScrollController = ScrollController();
   final ScrollController _historyChartFullscreenScrollController =
       ScrollController();
+  final ScrollController _socialFeedScrollController = ScrollController();
+  final GlobalKey _socialComposerKey = GlobalKey();
+  final FocusNode _socialPostFocusNode = FocusNode();
+  final FocusNode _socialReplyFocusNode = FocusNode();
   String? _historyChartFocusKey;
   String? _historyChartFullscreenFocusKey;
   WebViewController? _windguruController;
@@ -199,13 +207,27 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   final TextEditingController _socialPostController = TextEditingController();
   final TextEditingController _socialReplyController = TextEditingController();
+  final ImagePicker _socialMediaPicker = ImagePicker();
   String? _replyingPostId;
   String? _replyingReplyId;
   String? _editingPostId;
   List<SpotSocialPost> _socialFeed = const <SpotSocialPost>[];
   bool _isSocialLoading = false;
   bool _isSocialSubmitting = false;
+  bool _isPickingSocialMedia = false;
   String? _socialErrorMessage;
+  StreamSubscription<void>? _socialRealtimeSubscription;
+  StreamSubscription<int>? _socialPresenceSubscription;
+  StreamSubscription<Set<String>>? _socialTypingSubscription;
+  Timer? _socialRealtimeRefreshDebounce;
+  Timer? _socialTypingDebounce;
+  int _socialOnlineCount = 0;
+  Set<String> _socialTypingUsers = const <String>{};
+  bool _isSendingTypingState = false;
+  List<SpotSocialAttachmentDraft> _pendingSocialPostAttachments =
+      const <SpotSocialAttachmentDraft>[];
+  List<SpotSocialAttachmentDraft> _pendingSocialReplyAttachments =
+      const <SpotSocialAttachmentDraft>[];
   late final SpotSocialClient _spotSocialClient;
   late final ProfileModule _profileModule;
   late final UserProfileData _fallbackSocialProfile;
@@ -3136,11 +3158,129 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _alarmAutoRefreshTimer?.cancel();
+    _socialRealtimeRefreshDebounce?.cancel();
+    _socialTypingDebounce?.cancel();
+    unawaited(_broadcastTypingState(isTyping: false));
+    _unbindSocialRealtime();
+    _unbindSocialPresence();
+    _unbindSocialTyping();
     _historyChartScrollController.dispose();
     _historyChartFullscreenScrollController.dispose();
+    _socialFeedScrollController.dispose();
+    _socialPostFocusNode.dispose();
+    _socialReplyFocusNode.dispose();
     _socialPostController.dispose();
     _socialReplyController.dispose();
     super.dispose();
+  }
+
+  void _bindSocialRealtime() {
+    _socialRealtimeSubscription?.cancel();
+    _socialRealtimeSubscription = _spotSocialClient
+        .watchSpotFeed(spotName: widget.name, spotArea: widget.area)
+        .listen((_) {
+          if (!mounted) {
+            return;
+          }
+          _socialRealtimeRefreshDebounce?.cancel();
+          _socialRealtimeRefreshDebounce = Timer(
+            const Duration(milliseconds: 280),
+            () {
+              if (!mounted) {
+                return;
+              }
+              unawaited(_loadSocialFeed());
+            },
+          );
+        });
+  }
+
+  void _unbindSocialRealtime() {
+    _socialRealtimeRefreshDebounce?.cancel();
+    _socialRealtimeRefreshDebounce = null;
+    _socialRealtimeSubscription?.cancel();
+    _socialRealtimeSubscription = null;
+  }
+
+  void _bindSocialPresence() {
+    _socialPresenceSubscription?.cancel();
+    _socialPresenceSubscription = _spotSocialClient
+        .watchSpotPresence(spotName: widget.name, spotArea: widget.area)
+        .listen((count) {
+          if (!mounted) {
+            return;
+          }
+          setState(() {
+            _socialOnlineCount = count;
+          });
+        });
+  }
+
+  void _unbindSocialPresence() {
+    _socialPresenceSubscription?.cancel();
+    _socialPresenceSubscription = null;
+    _socialOnlineCount = 0;
+  }
+
+  void _bindSocialTyping() {
+    _socialTypingSubscription?.cancel();
+    _socialTypingSubscription = _spotSocialClient
+        .watchSpotTyping(spotName: widget.name, spotArea: widget.area)
+        .listen((typingUsers) {
+          if (!mounted) {
+            return;
+          }
+          setState(() {
+            _socialTypingUsers = typingUsers;
+          });
+        });
+  }
+
+  void _unbindSocialTyping() {
+    _socialTypingDebounce?.cancel();
+    _socialTypingDebounce = null;
+    _socialTypingSubscription?.cancel();
+    _socialTypingSubscription = null;
+    _isSendingTypingState = false;
+    _socialTypingUsers = const <String>{};
+  }
+
+  Future<void> _broadcastTypingState({required bool isTyping}) async {
+    if (_isSendingTypingState == isTyping) {
+      return;
+    }
+    _isSendingTypingState = isTyping;
+    await _spotSocialClient.sendTypingState(
+      spotName: widget.name,
+      spotArea: widget.area,
+      displayName: _socialDisplayName(),
+      isTyping: isTyping,
+    );
+  }
+
+  void _handleSocialComposerChanged(String value, {required bool forReply}) {
+    setState(() {});
+    if (_section != _SpotDetailSection.social) {
+      return;
+    }
+    final hasText = value.trim().isNotEmpty;
+    _socialTypingDebounce?.cancel();
+    if (hasText) {
+      unawaited(_broadcastTypingState(isTyping: true));
+      _socialTypingDebounce = Timer(const Duration(milliseconds: 1400), () {
+        unawaited(_broadcastTypingState(isTyping: false));
+      });
+    } else {
+      unawaited(_broadcastTypingState(isTyping: false));
+    }
+  }
+
+  void _restoreSocialChatViewport() {
+    if (!mounted || _section != _SpotDetailSection.social) {
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    _scheduleFocusSocialSection();
   }
 
   List<_ForecastRow> _rowsForProvider(String provider) {
@@ -6394,6 +6534,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       setState(() {
         _socialFeed = posts;
       });
+      _scheduleScrollSocialFeedToBottom();
     } catch (error) {
       if (!mounted) {
         return;
@@ -6407,6 +6548,104 @@ class _SpotDetailPageState extends State<SpotDetailPage>
           _isSocialLoading = false;
         });
       }
+    }
+  }
+
+  void _scheduleScrollSocialFeedToBottom({bool animated = false}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_socialFeedScrollController.hasClients) {
+        return;
+      }
+      final offset = _socialFeedScrollController.position.maxScrollExtent;
+      if (animated) {
+        _socialFeedScrollController.animateTo(
+          offset,
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeOut,
+        );
+      } else {
+        _socialFeedScrollController.jumpTo(offset);
+      }
+    });
+  }
+
+  void _scheduleEnsureSocialComposerVisible() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final currentContext = _socialComposerKey.currentContext;
+      if (currentContext == null) {
+        return;
+      }
+      Scrollable.ensureVisible(
+        currentContext,
+        alignment: 0.72,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  void _scheduleFocusSocialComposerInput({required bool forReply}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final focusNode = forReply ? _socialReplyFocusNode : _socialPostFocusNode;
+      if (!focusNode.canRequestFocus) {
+        return;
+      }
+      focusNode.requestFocus();
+    });
+  }
+
+  void _scheduleFocusSocialSection() {
+    _scheduleScrollSocialFeedToBottom(animated: true);
+    Future<void>.delayed(const Duration(milliseconds: 80), () {
+      if (!mounted || _section != _SpotDetailSection.social) {
+        return;
+      }
+      _scheduleEnsureSocialComposerVisible();
+      Future<void>.delayed(const Duration(milliseconds: 120), () {
+        if (!mounted || _section != _SpotDetailSection.social) {
+          return;
+        }
+        _scheduleScrollSocialFeedToBottom(animated: false);
+      });
+    });
+  }
+
+  void _setSection(_SpotDetailSection section) {
+    if (_section == section) {
+      if (section == _SpotDetailSection.social) {
+        if (_socialRealtimeSubscription == null) {
+          _bindSocialRealtime();
+          _bindSocialPresence();
+          _bindSocialTyping();
+          unawaited(_loadSocialFeed());
+        }
+        _scheduleFocusSocialSection();
+      }
+      return;
+    }
+    final previousSection = _section;
+    setState(() {
+      _section = section;
+    });
+    if (previousSection == _SpotDetailSection.social &&
+        section != _SpotDetailSection.social) {
+      _unbindSocialRealtime();
+      _unbindSocialPresence();
+      unawaited(_broadcastTypingState(isTyping: false));
+      _unbindSocialTyping();
+    }
+    if (section == _SpotDetailSection.social) {
+      _bindSocialRealtime();
+      _bindSocialPresence();
+      _bindSocialTyping();
+      unawaited(_loadSocialFeed());
+      _scheduleFocusSocialSection();
     }
   }
 
@@ -6443,27 +6682,406 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   bool get _canPublishSocial => _spotSocialClient.canWrite;
 
+  bool get _canSendSocialPost =>
+      !_isSocialSubmitting &&
+      (_socialPostController.text.trim().isNotEmpty ||
+          _pendingSocialPostAttachments.isNotEmpty);
+
+  bool get _canSendSocialReply =>
+      !_isSocialSubmitting &&
+      (_socialReplyController.text.trim().isNotEmpty ||
+          _pendingSocialReplyAttachments.isNotEmpty);
+
+  Future<void> _showSocialAttachmentOptions({required bool forReply}) async {
+    if (_isPickingSocialMedia || _isSocialSubmitting || !_canPublishSocial) {
+      return;
+    }
+    final selection = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.add_a_photo_rounded),
+                title: const Text('Tomar foto o video'),
+                onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.perm_media_rounded),
+                title: const Text('Adjuntar foto o video desde la galeria'),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(ImageSource.gallery),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (selection == null) {
+      _restoreSocialChatViewport();
+      return;
+    }
+    if (selection == ImageSource.gallery) {
+      await _pickSocialMediaFromGallery(forReply: forReply);
+      return;
+    }
+    final captureSelection = await _showSocialCameraCaptureTypeOptions();
+    if (captureSelection == null) {
+      _restoreSocialChatViewport();
+      return;
+    }
+    await _pickSocialAttachment(
+      forReply: forReply,
+      isVideo: captureSelection.isVideo,
+      source: captureSelection.source,
+    );
+  }
+
+  Future<_SocialAttachmentSelection?> _showSocialCameraCaptureTypeOptions() {
+    return showModalBottomSheet<_SocialAttachmentSelection>(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_camera_back_rounded),
+                title: const Text('Foto'),
+                onTap: () => Navigator.of(sheetContext).pop(
+                  const _SocialAttachmentSelection(
+                    isVideo: false,
+                    source: ImageSource.camera,
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.video_call_rounded),
+                title: const Text('Video'),
+                onTap: () => Navigator.of(sheetContext).pop(
+                  const _SocialAttachmentSelection(
+                    isVideo: true,
+                    source: ImageSource.camera,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickSocialMediaFromGallery({required bool forReply}) async {
+    if (_isPickingSocialMedia) {
+      return;
+    }
+    setState(() {
+      _isPickingSocialMedia = true;
+    });
+    try {
+      final XFile? picked = await _socialMediaPicker.pickMedia();
+      if (picked == null || !mounted) {
+        _restoreSocialChatViewport();
+        return;
+      }
+      final fileName = _socialAttachmentFileName(picked);
+      final isVideo = _isVideoFileName(fileName);
+      final bytes = await picked.readAsBytes();
+      final draft = SpotSocialAttachmentDraft(
+        type: isVideo
+            ? SpotSocialAttachmentType.video
+            : SpotSocialAttachmentType.image,
+        fileName: fileName,
+        bytes: bytes,
+        mimeType: _socialAttachmentMimeType(
+          isVideo: isVideo,
+          fileName: fileName,
+        ),
+      );
+      setState(() {
+        final current = List<SpotSocialAttachmentDraft>.from(
+          forReply
+              ? _pendingSocialReplyAttachments
+              : _pendingSocialPostAttachments,
+        )..add(draft);
+        if (forReply) {
+          _pendingSocialReplyAttachments = current;
+        } else {
+          _pendingSocialPostAttachments = current;
+        }
+      });
+    } catch (_) {
+      _showSocialSnackBar('No se pudo adjuntar el archivo seleccionado.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPickingSocialMedia = false;
+        });
+        _restoreSocialChatViewport();
+      }
+    }
+  }
+
+  Future<void> _pickSocialAttachment({
+    required bool forReply,
+    required bool isVideo,
+    required ImageSource source,
+  }) async {
+    if (_isPickingSocialMedia) {
+      return;
+    }
+    setState(() {
+      _isPickingSocialMedia = true;
+    });
+    try {
+      final XFile? picked = isVideo
+          ? await _socialMediaPicker.pickVideo(source: source)
+          : await _socialMediaPicker.pickImage(source: source);
+      if (picked == null || !mounted) {
+        _restoreSocialChatViewport();
+        return;
+      }
+      final bytes = await picked.readAsBytes();
+      final draft = SpotSocialAttachmentDraft(
+        type: isVideo
+            ? SpotSocialAttachmentType.video
+            : SpotSocialAttachmentType.image,
+        fileName: _socialAttachmentFileName(picked),
+        bytes: bytes,
+        mimeType: _socialAttachmentMimeType(
+          isVideo: isVideo,
+          fileName: picked.name,
+        ),
+      );
+      setState(() {
+        final current = List<SpotSocialAttachmentDraft>.from(
+          forReply
+              ? _pendingSocialReplyAttachments
+              : _pendingSocialPostAttachments,
+        )..add(draft);
+        if (forReply) {
+          _pendingSocialReplyAttachments = current;
+        } else {
+          _pendingSocialPostAttachments = current;
+        }
+      });
+    } catch (_) {
+      _showSocialSnackBar('No se pudo adjuntar el archivo seleccionado.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPickingSocialMedia = false;
+        });
+        _restoreSocialChatViewport();
+      }
+    }
+  }
+
+  String _socialAttachmentFileName(XFile file) {
+    final name = file.name.trim();
+    if (name.isNotEmpty) {
+      return name;
+    }
+    final path = file.path;
+    if (path.isEmpty) {
+      return 'adjunto';
+    }
+    return path.split(RegExp(r'[\\/]')).last;
+  }
+
+  String _socialAttachmentMimeType({
+    required bool isVideo,
+    required String fileName,
+  }) {
+    final lower = fileName.toLowerCase();
+    if (isVideo) {
+      if (lower.endsWith('.mov')) return 'video/quicktime';
+      if (lower.endsWith('.webm')) return 'video/webm';
+      return 'video/mp4';
+    }
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    return 'image/jpeg';
+  }
+
+  bool _isVideoFileName(String fileName) {
+    final lower = fileName.toLowerCase();
+    return lower.endsWith('.mp4') ||
+        lower.endsWith('.mov') ||
+        lower.endsWith('.webm') ||
+        lower.endsWith('.m4v') ||
+        lower.endsWith('.avi') ||
+        lower.endsWith('.mkv');
+  }
+
+  void _removePendingSocialAttachment({
+    required bool forReply,
+    required int index,
+  }) {
+    setState(() {
+      final current = List<SpotSocialAttachmentDraft>.from(
+        forReply
+            ? _pendingSocialReplyAttachments
+            : _pendingSocialPostAttachments,
+      );
+      if (index >= 0 && index < current.length) {
+        current.removeAt(index);
+      }
+      if (forReply) {
+        _pendingSocialReplyAttachments = current;
+      } else {
+        _pendingSocialPostAttachments = current;
+      }
+    });
+  }
+
+  List<SpotSocialAttachment> _optimisticSocialAttachments(
+    List<SpotSocialAttachmentDraft> drafts,
+  ) {
+    return drafts
+        .map(
+          (draft) => SpotSocialAttachment(
+            id: 'local-${DateTime.now().microsecondsSinceEpoch}-${draft.fileName}',
+            type: draft.type,
+            url: '',
+            storagePath: draft.fileName,
+            fileName: draft.fileName,
+            mimeType: draft.mimeType,
+            sizeBytes: draft.bytes.length,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  void _insertOptimisticSocialPost({
+    required String tempId,
+    required String message,
+    required List<SpotSocialAttachmentDraft> attachments,
+  }) {
+    final optimisticPost = SpotSocialPost(
+      id: tempId,
+      spotName: widget.name,
+      spotArea: widget.area,
+      authorUsername: _normalizedSocialUsername(),
+      authorDisplayName: _socialDisplayName(),
+      message: message,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      isMine: true,
+      attachments: _optimisticSocialAttachments(attachments),
+      replies: const <SpotSocialReply>[],
+    );
+    setState(() {
+      _socialFeed = <SpotSocialPost>[optimisticPost, ..._socialFeed];
+    });
+    _scheduleFocusSocialSection();
+  }
+
+  void _insertOptimisticSocialReply({
+    required String tempId,
+    required String postId,
+    required String? parentReplyId,
+    required String message,
+    required List<SpotSocialAttachmentDraft> attachments,
+  }) {
+    final optimisticReply = SpotSocialReply(
+      id: tempId,
+      postId: postId,
+      parentReplyId: parentReplyId,
+      authorUsername: _normalizedSocialUsername(),
+      authorDisplayName: _socialDisplayName(),
+      message: message,
+      createdAt: DateTime.now(),
+      isMine: true,
+      attachments: _optimisticSocialAttachments(attachments),
+      replies: const <SpotSocialReply>[],
+    );
+    setState(() {
+      _socialFeed = _socialFeed
+          .map((post) {
+            if (post.id != postId) {
+              return post;
+            }
+            final nextReplies = List<SpotSocialReply>.from(post.replies);
+            if (parentReplyId == null || parentReplyId.isEmpty) {
+              nextReplies.add(optimisticReply);
+            } else {
+              _appendOptimisticNestedReply(
+                nextReplies,
+                parentReplyId,
+                optimisticReply,
+              );
+            }
+            return post.copyWith(replies: nextReplies);
+          })
+          .toList(growable: false);
+    });
+    _scheduleFocusSocialSection();
+  }
+
+  bool _appendOptimisticNestedReply(
+    List<SpotSocialReply> replies,
+    String parentReplyId,
+    SpotSocialReply optimisticReply,
+  ) {
+    for (var index = 0; index < replies.length; index += 1) {
+      final current = replies[index];
+      if (current.id == parentReplyId) {
+        final children = List<SpotSocialReply>.from(current.replies)
+          ..add(optimisticReply);
+        replies[index] = current.copyWith(replies: children);
+        return true;
+      }
+      final children = List<SpotSocialReply>.from(current.replies);
+      if (_appendOptimisticNestedReply(
+        children,
+        parentReplyId,
+        optimisticReply,
+      )) {
+        replies[index] = current.copyWith(replies: children);
+        return true;
+      }
+    }
+    return false;
+  }
+
   Future<void> _publishSocialPost() async {
     final text = _socialPostController.text.trim();
-    if (text.isEmpty || _isSocialSubmitting) {
+    if ((text.isEmpty && _pendingSocialPostAttachments.isEmpty) ||
+        _isSocialSubmitting) {
       return;
     }
     if (!_canPublishSocial) {
-      _showSocialSnackBar('Inicia sesion para publicar en Social.');
+      _showSocialSnackBar('Inicia sesion para escribir en el chat del spot.');
       return;
     }
 
+    final optimisticAttachments = List<SpotSocialAttachmentDraft>.from(
+      _pendingSocialPostAttachments,
+    );
+    final optimisticTempId =
+        'local-post-${DateTime.now().microsecondsSinceEpoch}';
     setState(() {
       _isSocialSubmitting = true;
     });
     try {
       if (_editingPostId == null) {
+        _insertOptimisticSocialPost(
+          tempId: optimisticTempId,
+          message: text,
+          attachments: optimisticAttachments,
+        );
         await _spotSocialClient.addPost(
           spotName: widget.name,
           spotArea: widget.area,
           authorUsername: _normalizedSocialUsername(),
           authorDisplayName: _socialDisplayName(),
           message: text,
+          attachments: optimisticAttachments,
         );
       } else {
         await _spotSocialClient.updatePost(
@@ -6472,12 +7090,16 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         );
       }
       _socialPostController.clear();
+      _pendingSocialPostAttachments = const <SpotSocialAttachmentDraft>[];
       _editingPostId = null;
       _replyingPostId = null;
       _replyingReplyId = null;
       _socialReplyController.clear();
+      _pendingSocialReplyAttachments = const <SpotSocialAttachmentDraft>[];
+      await _broadcastTypingState(isTyping: false);
       await _loadSocialFeed();
     } catch (error) {
+      await _loadSocialFeed();
       _showSocialSnackBar(error.toString());
     } finally {
       if (mounted) {
@@ -6492,6 +7114,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     setState(() {
       _editingPostId = post.id;
       _socialPostController.text = post.message;
+      _pendingSocialPostAttachments = const <SpotSocialAttachmentDraft>[];
     });
   }
 
@@ -6505,11 +7128,13 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         if (_editingPostId == post.id) {
           _editingPostId = null;
           _socialPostController.clear();
+          _pendingSocialPostAttachments = const <SpotSocialAttachmentDraft>[];
         }
         if (_replyingPostId == post.id) {
           _replyingPostId = null;
           _replyingReplyId = null;
           _socialReplyController.clear();
+          _pendingSocialReplyAttachments = const <SpotSocialAttachmentDraft>[];
         }
       });
       await _loadSocialFeed();
@@ -6527,60 +7152,142 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     return count;
   }
 
+  List<_SpotChatEntry> _buildChatEntries() {
+    final entries = <_SpotChatEntry>[];
+    for (final post in _socialFeed) {
+      entries.add(
+        _SpotChatEntry.post(
+          id: post.id,
+          authorUsername: post.authorUsername,
+          authorDisplayName: post.authorDisplayName,
+          message: post.message,
+          createdAt: post.createdAt,
+          isMine: post.isMine,
+          attachments: post.attachments,
+          replyCount: _countRepliesCascade(post.replies),
+        ),
+      );
+      _appendReplyEntries(
+        target: entries,
+        postId: post.id,
+        replies: post.replies,
+        parentAuthor: post.authorDisplayName,
+        parentMessage: post.message,
+      );
+    }
+    entries.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    return entries;
+  }
+
+  void _appendReplyEntries({
+    required List<_SpotChatEntry> target,
+    required String postId,
+    required List<SpotSocialReply> replies,
+    required String parentAuthor,
+    required String parentMessage,
+  }) {
+    for (final reply in replies) {
+      target.add(
+        _SpotChatEntry.reply(
+          id: reply.id,
+          postId: postId,
+          authorUsername: reply.authorUsername,
+          authorDisplayName: reply.authorDisplayName,
+          message: reply.message,
+          createdAt: reply.createdAt,
+          isMine: reply.isMine,
+          attachments: reply.attachments,
+          replyCount: _countRepliesCascade(reply.replies),
+          parentAuthor: parentAuthor,
+          parentMessage: parentMessage,
+        ),
+      );
+      _appendReplyEntries(
+        target: target,
+        postId: postId,
+        replies: reply.replies,
+        parentAuthor: reply.authorDisplayName,
+        parentMessage: reply.message,
+      );
+    }
+  }
+
   void _openReplyComposerForPost(String postId) {
     setState(() {
-      if (_replyingPostId == postId && _replyingReplyId == null) {
-        _replyingPostId = null;
-        _replyingReplyId = null;
-        _socialReplyController.clear();
-        return;
-      }
       _replyingPostId = postId;
       _replyingReplyId = null;
       _socialReplyController.clear();
+      _pendingSocialReplyAttachments = const <SpotSocialAttachmentDraft>[];
     });
+    _scheduleEnsureSocialComposerVisible();
+    _scheduleFocusSocialComposerInput(forReply: true);
   }
 
   void _openReplyComposerForReply(String postId, String replyId) {
     setState(() {
-      if (_replyingPostId == postId && _replyingReplyId == replyId) {
-        _replyingPostId = null;
-        _replyingReplyId = null;
-        _socialReplyController.clear();
-        return;
-      }
       _replyingPostId = postId;
       _replyingReplyId = replyId;
       _socialReplyController.clear();
+      _pendingSocialReplyAttachments = const <SpotSocialAttachmentDraft>[];
     });
+    _scheduleEnsureSocialComposerVisible();
+    _scheduleFocusSocialComposerInput(forReply: true);
+  }
+
+  void _cancelReplyComposer() {
+    setState(() {
+      _replyingPostId = null;
+      _replyingReplyId = null;
+      _socialReplyController.clear();
+      _pendingSocialReplyAttachments = const <SpotSocialAttachmentDraft>[];
+    });
+    unawaited(_broadcastTypingState(isTyping: false));
   }
 
   Future<void> _publishReply() async {
     final text = _socialReplyController.text.trim();
     final postId = _replyingPostId;
-    if (text.isEmpty || postId == null || _isSocialSubmitting) {
+    if ((text.isEmpty && _pendingSocialReplyAttachments.isEmpty) ||
+        postId == null ||
+        _isSocialSubmitting) {
       return;
     }
     if (!_canPublishSocial) {
-      _showSocialSnackBar('Inicia sesion para responder en Social.');
+      _showSocialSnackBar('Inicia sesion para responder en el chat del spot.');
       return;
     }
+    final optimisticAttachments = List<SpotSocialAttachmentDraft>.from(
+      _pendingSocialReplyAttachments,
+    );
+    final optimisticTempId =
+        'local-reply-${DateTime.now().microsecondsSinceEpoch}';
     setState(() {
       _isSocialSubmitting = true;
     });
     try {
+      _insertOptimisticSocialReply(
+        tempId: optimisticTempId,
+        postId: postId,
+        parentReplyId: _replyingReplyId,
+        message: text,
+        attachments: optimisticAttachments,
+      );
       await _spotSocialClient.addReply(
         postId: postId,
         parentReplyId: _replyingReplyId,
         authorUsername: _normalizedSocialUsername(),
         authorDisplayName: _socialDisplayName(),
         message: text,
+        attachments: optimisticAttachments,
       );
       _socialReplyController.clear();
       _replyingPostId = null;
       _replyingReplyId = null;
+      _pendingSocialReplyAttachments = const <SpotSocialAttachmentDraft>[];
+      await _broadcastTypingState(isTyping: false);
       await _loadSocialFeed();
     } catch (error) {
+      await _loadSocialFeed();
       _showSocialSnackBar(error.toString());
     } finally {
       if (mounted) {
@@ -6591,41 +7298,271 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     }
   }
 
-  Widget _buildReplyComposer() {
+  Widget _buildPendingSocialAttachments({
+    required List<SpotSocialAttachmentDraft> attachments,
+    required bool forReply,
+  }) {
+    if (attachments.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: Wrap(
+        spacing: AppSpacing.xs,
+        runSpacing: AppSpacing.xs,
+        children: [
+          for (var index = 0; index < attachments.length; index += 1)
+            _PendingSocialAttachmentCard(
+              attachment: attachments[index],
+              onRemove: () => _removePendingSocialAttachment(
+                forReply: forReply,
+                index: index,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSocialAttachments(
+    List<SpotSocialAttachment> attachments, {
+    required bool compact,
+  }) {
+    if (attachments.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.xs),
+      child: Wrap(
+        spacing: AppSpacing.xs,
+        runSpacing: AppSpacing.xs,
+        children: attachments
+            .map(
+              (attachment) => _SpotSocialAttachmentCard(
+                attachment: attachment,
+                compact: compact,
+              ),
+            )
+            .toList(growable: false),
+      ),
+    );
+  }
+
+  _SpotChatEntry? _activeReplyEntry() {
+    final postId = _replyingPostId;
+    if (postId == null) {
+      return null;
+    }
+    final replyId = _replyingReplyId;
+    for (final entry in _buildChatEntries()) {
+      if (replyId != null) {
+        if (entry.id == replyId) {
+          return entry;
+        }
+      } else if (entry.id == postId && !entry.isReply) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
+  String _socialAvatarInitials(String displayName) {
+    final parts = displayName
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList(growable: false);
+    if (parts.isEmpty) {
+      return 'R';
+    }
+    if (parts.length == 1) {
+      return parts.first.substring(0, 1).toUpperCase();
+    }
+    return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
+        .toUpperCase();
+  }
+
+  Color _socialAvatarColor(String seed) {
+    final hash = seed.runes.fold<int>(0, (value, rune) => value * 31 + rune);
+    final hue = (hash % 360).toDouble();
+    return HSLColor.fromAHSL(1, hue, 0.42, 0.58).toColor();
+  }
+
+  Widget _buildSocialMiniAvatar(_SpotChatEntry entry) {
+    final localAvatarPath = entry.isMine && !kIsWeb
+        ? _currentSocialProfile.avatarLocalPath
+        : null;
+    final hasLocalAvatar =
+        localAvatarPath != null && localAvatarPath.trim().isNotEmpty;
+    return CircleAvatar(
+      radius: 14,
+      backgroundColor: _socialAvatarColor(entry.authorUsername),
+      backgroundImage: hasLocalAvatar ? FileImage(File(localAvatarPath)) : null,
+      child: hasLocalAvatar
+          ? null
+          : Text(
+              _socialAvatarInitials(entry.authorDisplayName),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+    );
+  }
+
+  Widget _buildSocialComposer(TextTheme textTheme, ColorScheme colorScheme) {
+    final isReplying = _replyingPostId != null;
+    final controller = isReplying
+        ? _socialReplyController
+        : _socialPostController;
+    final pendingAttachments = isReplying
+        ? _pendingSocialReplyAttachments
+        : _pendingSocialPostAttachments;
+    final canSend = isReplying ? _canSendSocialReply : _canSendSocialPost;
+    final replyEntry = isReplying ? _activeReplyEntry() : null;
+    final focusNode = isReplying ? _socialReplyFocusNode : _socialPostFocusNode;
+    final title = isReplying
+        ? 'Respondiendo'
+        : (_editingPostId == null ? null : 'Editando mensaje');
+    final hintText = !_canPublishSocial
+        ? (isReplying
+              ? 'Inicia sesion para responder...'
+              : 'Inicia sesion para escribir en este spot.')
+        : (isReplying
+              ? 'Escribe tu respuesta...'
+              : 'Escribe al chat del spot...');
+    final onAttach =
+        _canPublishSocial &&
+            !_isSocialSubmitting &&
+            (_editingPostId == null || isReplying)
+        ? () => _showSocialAttachmentOptions(forReply: isReplying)
+        : null;
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (title != null) Text(title, style: textTheme.titleSmall),
+        if (replyEntry != null) ...[
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+            padding: const EdgeInsets.all(AppSpacing.xs),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+              border: Border(
+                left: BorderSide(color: colorScheme.primary, width: 3),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        replyEntry.authorDisplayName,
+                        style: textTheme.labelSmall?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        replyEntry.message.isNotEmpty
+                            ? replyEntry.message
+                            : (replyEntry.attachments.isNotEmpty
+                                  ? 'Adjunto'
+                                  : ''),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Cancelar respuesta',
+                  onPressed: _cancelReplyComposer,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+          ),
+        ],
+        _buildPendingSocialAttachments(
+          attachments: pendingAttachments,
+          forReply: isReplying,
+        ),
         TextField(
-          controller: _socialReplyController,
+          controller: controller,
+          focusNode: focusNode,
           minLines: 1,
-          maxLines: 3,
+          maxLines: isReplying ? 3 : 5,
+          onChanged: (value) =>
+              _handleSocialComposerChanged(value, forReply: isReplying),
           enabled: _canPublishSocial && !_isSocialSubmitting,
           decoration: InputDecoration(
-            hintText: _canPublishSocial
-                ? 'Escribe tu respuesta...'
-                : 'Inicia sesion para responder...',
+            hintText: hintText,
             border: const OutlineInputBorder(),
+            filled: true,
+            fillColor: colorScheme.surfaceContainerLowest,
           ),
         ),
         const SizedBox(height: AppSpacing.xs),
         Row(
-          mainAxisAlignment: MainAxisAlignment.end,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  _replyingPostId = null;
-                  _replyingReplyId = null;
-                  _socialReplyController.clear();
-                });
-              },
-              child: const Text('Cancelar'),
+            IconButton.filledTonal(
+              tooltip: 'Adjuntar foto o video',
+              onPressed: onAttach,
+              icon: _isPickingSocialMedia
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.add_rounded),
             ),
-            const SizedBox(width: AppSpacing.xs),
-            FilledButton(
-              onPressed: _canPublishSocial && !_isSocialSubmitting
-                  ? _publishReply
-                  : null,
-              child: const Text('Enviar'),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isReplying)
+                  TextButton(
+                    onPressed: _cancelReplyComposer,
+                    child: const Text('Cancelar'),
+                  )
+                else if (_editingPostId != null)
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _editingPostId = null;
+                        _socialPostController.clear();
+                        _pendingSocialPostAttachments =
+                            const <SpotSocialAttachmentDraft>[];
+                      });
+                      unawaited(_broadcastTypingState(isTyping: false));
+                    },
+                    child: const Text('Cancelar'),
+                  ),
+                const SizedBox(width: AppSpacing.xs),
+                FilledButton.icon(
+                  onPressed: _canPublishSocial && canSend
+                      ? (isReplying ? _publishReply : _publishSocialPost)
+                      : null,
+                  icon: const Icon(Icons.send_rounded),
+                  label: Text(
+                    isReplying
+                        ? 'Responder'
+                        : (_editingPostId == null ? 'Enviar' : 'Guardar'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -6633,212 +7570,443 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     );
   }
 
-  Widget _buildReplyThread(
-    SpotSocialReply reply,
-    TextTheme textTheme,
-    String postId,
-    int depth,
-  ) {
-    final left = AppSpacing.sm + (depth * 14.0);
+  Widget _buildSocialSection(TextTheme textTheme) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final chatMaxHeight = math.min(
+      520.0,
+      math.max(280.0, MediaQuery.of(context).size.height * 0.46),
+    );
     return Container(
-      width: double.infinity,
-      margin: EdgeInsets.only(left: left, top: AppSpacing.xs),
-      padding: const EdgeInsets.all(AppSpacing.xs),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(10),
+        color: colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '${reply.authorDisplayName} · ${_relativeTimeLabel(reply.createdAt)}',
-            style: textTheme.labelSmall,
-          ),
-          const SizedBox(height: 2),
-          Text(reply.message, style: textTheme.bodySmall),
-          TextButton.icon(
-            onPressed: () => _openReplyComposerForReply(postId, reply.id),
-            icon: const Icon(Icons.reply_rounded, size: 18),
-            label: Text('Responder (${_countRepliesCascade(reply.replies)})'),
-          ),
-          if (_replyingPostId == postId && _replyingReplyId == reply.id)
-            _buildReplyComposer(),
-          ...reply.replies.map(
-            (nested) => _buildReplyThread(nested, textTheme, postId, depth + 1),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSocialSection(TextTheme textTheme) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.sm,
+            ),
+            child: Row(
               children: [
-                Expanded(
-                  child: Text(
-                    'Comunidad del spot',
-                    style: textTheme.titleMedium,
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    Icons.chat_bubble_rounded,
+                    color: colorScheme.onPrimaryContainer,
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Refrescar publicaciones',
-                  onPressed: _isSocialLoading ? null : _loadSocialFeed,
-                  icon: const Icon(Icons.refresh_rounded),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Chat del spot', style: textTheme.titleMedium),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${widget.name} · ${widget.area}',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      if (_socialOnlineCount > 0) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          _socialOnlineCount == 1
+                              ? '1 persona dentro del chat'
+                              : '$_socialOnlineCount personas dentro del chat',
+                          style: textTheme.labelSmall?.copyWith(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                      if (_socialTypingUsers.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          _socialTypingUsers.length == 1
+                              ? '${_socialTypingUsers.first} esta escribiendo...'
+                              : 'Varias personas estan escribiendo...',
+                          style: textTheme.labelSmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.xs),
-            Text('${widget.name} · ${widget.area}', style: textTheme.bodySmall),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              _canPublishSocial
-                  ? 'Publica con tu perfil real y responde en hilo.'
-                  : 'Lectura publica. Inicia sesion para publicar o responder.',
-              style: textTheme.bodySmall,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.sm,
+              0,
+              AppSpacing.sm,
+              AppSpacing.sm,
             ),
-            const SizedBox(height: AppSpacing.sm),
-            Card(
-              margin: EdgeInsets.zero,
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Publicar actualizacion', style: textTheme.titleSmall),
-                    const SizedBox(height: AppSpacing.xs),
-                    TextField(
-                      controller: _socialPostController,
-                      minLines: 2,
-                      maxLines: 4,
-                      enabled: _canPublishSocial && !_isSocialSubmitting,
-                      decoration: InputDecoration(
-                        hintText: _canPublishSocial
-                            ? 'Comparte estado del spot en tiempo real...'
-                            : 'Inicia sesion para publicar en este spot.',
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (_editingPostId != null)
-                            TextButton(
-                              onPressed: () {
-                                setState(() {
-                                  _editingPostId = null;
-                                  _socialPostController.clear();
-                                });
-                              },
-                              child: const Text('Cancelar edicion'),
-                            ),
-                          FilledButton.icon(
-                            onPressed: _canPublishSocial && !_isSocialSubmitting
-                                ? _publishSocialPost
-                                : null,
-                            icon: const Icon(Icons.send_rounded),
-                            label: Text(
-                              _editingPostId == null
-                                  ? 'Publicar'
-                                  : 'Guardar cambios',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: colorScheme.outlineVariant),
               ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            if (_isSocialLoading)
-              const Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: chatMaxHeight),
                 child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                  child: CircularProgressIndicator(),
-                ),
-              )
-            else if (_socialFeed.isEmpty && _socialErrorMessage == null)
-              Text(
-                'Aun no hay publicaciones en este spot.',
-                style: textTheme.bodyMedium,
-              )
-            else if (_socialFeed.isEmpty && _socialErrorMessage != null)
-              Text(_socialErrorMessage!, style: textTheme.bodyMedium)
-            else
-              ..._socialFeed.map((post) {
-                return Card(
-                  margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.sm),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  child: Builder(
+                    builder: (context) {
+                      if (_isSocialLoading) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: AppSpacing.lg,
+                          ),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      if (_socialFeed.isEmpty && _socialErrorMessage == null) {
+                        return Padding(
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          child: Text(
+                            'Aun no hay mensajes en este spot.',
+                            style: textTheme.bodyMedium,
+                          ),
+                        );
+                      }
+                      if (_socialFeed.isEmpty && _socialErrorMessage != null) {
+                        return Padding(
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          child: Text(
+                            _socialErrorMessage!,
+                            style: textTheme.bodyMedium,
+                          ),
+                        );
+                      }
+                      return Scrollbar(
+                        controller: _socialFeedScrollController,
+                        thumbVisibility: true,
+                        child: ListView(
+                          controller: _socialFeedScrollController,
+                          primary: false,
                           children: [
-                            Expanded(
-                              child: Text(
-                                '${post.authorDisplayName} · ${_relativeTimeLabel(post.createdAt)}',
-                                style: textTheme.bodySmall,
-                              ),
-                            ),
-                            if (post.isMine)
-                              PopupMenuButton<String>(
-                                onSelected: (value) async {
-                                  if (value == 'edit') {
-                                    _startEditPost(post);
-                                  }
-                                  if (value == 'delete') {
-                                    await _deletePost(post);
-                                  }
-                                },
-                                itemBuilder: (context) => const [
-                                  PopupMenuItem(
-                                    value: 'edit',
-                                    child: Text('Editar'),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'delete',
-                                    child: Text('Eliminar'),
-                                  ),
-                                ],
+                            for (final entry in _buildChatEntries())
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  bottom: AppSpacing.sm,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: entry.isMine
+                                      ? MainAxisAlignment.end
+                                      : MainAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    if (!entry.isMine) ...[
+                                      _buildSocialMiniAvatar(entry),
+                                      const SizedBox(width: AppSpacing.xs),
+                                    ],
+                                    Flexible(
+                                      child: Align(
+                                        alignment: entry.isMine
+                                            ? Alignment.centerRight
+                                            : Alignment.centerLeft,
+                                        child: ConstrainedBox(
+                                          constraints: const BoxConstraints(
+                                            maxWidth: 420,
+                                          ),
+                                          child: Builder(
+                                            builder: (context) {
+                                              final bubbleColor = entry.isMine
+                                                  ? colorScheme.primaryContainer
+                                                  : colorScheme
+                                                        .surfaceContainerHighest;
+                                              final bubbleTextColor =
+                                                  entry.isMine
+                                                  ? colorScheme
+                                                        .onPrimaryContainer
+                                                  : colorScheme.onSurface;
+                                              return _SwipeReplyMessageWrapper(
+                                                accentColor: entry.isMine
+                                                    ? colorScheme
+                                                          .onPrimaryContainer
+                                                    : colorScheme.primary,
+                                                onReplyTriggered: () =>
+                                                    entry.isReply
+                                                    ? _openReplyComposerForReply(
+                                                        entry.postId,
+                                                        entry.id,
+                                                      )
+                                                    : _openReplyComposerForPost(
+                                                        entry.id,
+                                                      ),
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets.fromLTRB(
+                                                        AppSpacing.sm,
+                                                        AppSpacing.xs,
+                                                        AppSpacing.sm,
+                                                        AppSpacing.xs,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: bubbleColor,
+                                                    borderRadius: BorderRadius.only(
+                                                      topLeft:
+                                                          const Radius.circular(
+                                                            20,
+                                                          ),
+                                                      topRight:
+                                                          const Radius.circular(
+                                                            20,
+                                                          ),
+                                                      bottomLeft:
+                                                          Radius.circular(
+                                                            entry.isMine
+                                                                ? 20
+                                                                : 6,
+                                                          ),
+                                                      bottomRight:
+                                                          Radius.circular(
+                                                            entry.isMine
+                                                                ? 6
+                                                                : 20,
+                                                          ),
+                                                    ),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Colors.black
+                                                            .withValues(
+                                                              alpha: 0.04,
+                                                            ),
+                                                        blurRadius: 10,
+                                                        offset: const Offset(
+                                                          0,
+                                                          4,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Row(
+                                                        children: [
+                                                          Expanded(
+                                                            child: Text(
+                                                              '${entry.authorDisplayName} · ${_relativeTimeLabel(entry.createdAt)}',
+                                                              style: textTheme.bodySmall?.copyWith(
+                                                                color:
+                                                                    entry.isMine
+                                                                    ? colorScheme
+                                                                          .onPrimaryContainer
+                                                                          .withValues(
+                                                                            alpha:
+                                                                                0.72,
+                                                                          )
+                                                                    : colorScheme
+                                                                          .onSurfaceVariant,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          if (!entry.isReply &&
+                                                              entry.isMine)
+                                                            PopupMenuButton<
+                                                              String
+                                                            >(
+                                                              onSelected: (value) async {
+                                                                final post = _socialFeed
+                                                                    .where(
+                                                                      (post) =>
+                                                                          post.id ==
+                                                                          entry
+                                                                              .id,
+                                                                    )
+                                                                    .first;
+                                                                if (value ==
+                                                                    'edit') {
+                                                                  _startEditPost(
+                                                                    post,
+                                                                  );
+                                                                }
+                                                                if (value ==
+                                                                    'delete') {
+                                                                  await _deletePost(
+                                                                    post,
+                                                                  );
+                                                                }
+                                                              },
+                                                              itemBuilder: (context) => const [
+                                                                PopupMenuItem(
+                                                                  value: 'edit',
+                                                                  child: Text(
+                                                                    'Editar',
+                                                                  ),
+                                                                ),
+                                                                PopupMenuItem(
+                                                                  value:
+                                                                      'delete',
+                                                                  child: Text(
+                                                                    'Eliminar',
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                        ],
+                                                      ),
+                                                      if (entry.parentMessage
+                                                              ?.trim()
+                                                              .isNotEmpty ??
+                                                          false) ...[
+                                                        const SizedBox(
+                                                          height: 4,
+                                                        ),
+                                                        Container(
+                                                          width:
+                                                              double.infinity,
+                                                          margin:
+                                                              const EdgeInsets.only(
+                                                                bottom:
+                                                                    AppSpacing
+                                                                        .xs,
+                                                              ),
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                AppSpacing.xs,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color: colorScheme
+                                                                .surfaceContainerHighest,
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  12,
+                                                                ),
+                                                            border: Border(
+                                                              left: BorderSide(
+                                                                color:
+                                                                    colorScheme
+                                                                        .primary,
+                                                                width: 3,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          child: Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .start,
+                                                            children: [
+                                                              Text(
+                                                                entry.parentAuthor ??
+                                                                    '',
+                                                                style: textTheme
+                                                                    .labelSmall
+                                                                    ?.copyWith(
+                                                                      color: colorScheme
+                                                                          .primary,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w700,
+                                                                    ),
+                                                              ),
+                                                              const SizedBox(
+                                                                height: 2,
+                                                              ),
+                                                              Text(
+                                                                entry
+                                                                    .parentMessage!,
+                                                                maxLines: 2,
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                                style: textTheme
+                                                                    .bodySmall
+                                                                    ?.copyWith(
+                                                                      color: colorScheme
+                                                                          .onSurfaceVariant,
+                                                                    ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ],
+                                                      if (entry
+                                                          .message
+                                                          .isNotEmpty) ...[
+                                                        const SizedBox(
+                                                          height: 4,
+                                                        ),
+                                                        Text(
+                                                          entry.message,
+                                                          style: textTheme
+                                                              .bodyMedium
+                                                              ?.copyWith(
+                                                                color:
+                                                                    bubbleTextColor,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                      _buildSocialAttachments(
+                                                        entry.attachments,
+                                                        compact: entry.isReply,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    if (entry.isMine) ...[
+                                      const SizedBox(width: AppSpacing.xs),
+                                      _buildSocialMiniAvatar(entry),
+                                    ],
+                                  ],
+                                ),
                               ),
                           ],
                         ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(post.message, style: textTheme.bodyMedium),
-                        const SizedBox(height: AppSpacing.xs),
-                        TextButton.icon(
-                          onPressed: () => _openReplyComposerForPost(post.id),
-                          icon: const Icon(Icons.forum_rounded),
-                          label: Text(
-                            'Responder (${_countRepliesCascade(post.replies)})',
-                          ),
-                        ),
-                        if (_replyingPostId == post.id &&
-                            _replyingReplyId == null)
-                          _buildReplyComposer(),
-                        if (post.replies.isNotEmpty)
-                          ...post.replies.map(
-                            (reply) =>
-                                _buildReplyThread(reply, textTheme, post.id, 0),
-                          ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                );
-              }),
-          ],
-        ),
+                ),
+              ),
+            ),
+          ),
+          Container(
+            key: _socialComposerKey,
+            margin: const EdgeInsets.fromLTRB(
+              AppSpacing.sm,
+              0,
+              AppSpacing.sm,
+              AppSpacing.sm,
+            ),
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: colorScheme.outlineVariant),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [_buildSocialComposer(textTheme, colorScheme)],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -7590,14 +8758,12 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                       ),
                       ButtonSegment(
                         value: _SpotDetailSection.social,
-                        label: Text('Social'),
+                        label: Text('Chat'),
                       ),
                     ],
                     selected: {_section},
                     onSelectionChanged: (value) {
-                      setState(() {
-                        _section = value.first;
-                      });
+                      _setSection(value.first);
                     },
                   ),
                   const SizedBox(height: AppSpacing.sm),
@@ -9133,6 +10299,639 @@ enum _CompassOverlayMode { off, realtime }
 
 class _NoStretchScrollBehavior extends AppScrollBehavior {
   const _NoStretchScrollBehavior();
+}
+
+class _PendingSocialAttachmentCard extends StatelessWidget {
+  const _PendingSocialAttachmentCard({
+    required this.attachment,
+    required this.onRemove,
+  });
+
+  final SpotSocialAttachmentDraft attachment;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final isImage = attachment.type == SpotSocialAttachmentType.image;
+    return Stack(
+      children: [
+        Container(
+          width: isImage ? 120 : 180,
+          padding: EdgeInsets.all(isImage ? 0 : AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
+          child: isImage
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.memory(
+                    attachment.bytes,
+                    width: 120,
+                    height: 100,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => const SizedBox(
+                      width: 120,
+                      height: 100,
+                      child: Center(child: Text('Imagen no disponible')),
+                    ),
+                  ),
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.play_circle_fill_rounded),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: Text(
+                        attachment.fileName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+        Positioned(
+          top: 4,
+          right: 4,
+          child: IconButton.filledTonal(
+            onPressed: onRemove,
+            visualDensity: VisualDensity.compact,
+            iconSize: 16,
+            icon: const Icon(Icons.close_rounded),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SpotSocialAttachmentCard extends StatelessWidget {
+  const _SpotSocialAttachmentCard({
+    required this.attachment,
+    required this.compact,
+  });
+
+  final SpotSocialAttachment attachment;
+  final bool compact;
+
+  Future<void> _openAttachment(BuildContext context) async {
+    if (attachment.type == SpotSocialAttachmentType.image &&
+        attachment.url.isNotEmpty) {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) {
+          return Dialog.fullscreen(
+            child: Stack(
+              children: [
+                Container(
+                  color: Colors.black,
+                  alignment: Alignment.center,
+                  child: InteractiveViewer(
+                    child: Image.network(
+                      attachment.url,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, _, _) => Center(
+                        child: Text(
+                          'No se pudo cargar la imagen.',
+                          style: Theme.of(
+                            dialogContext,
+                          ).textTheme.bodyMedium?.copyWith(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: AppSpacing.md,
+                  right: AppSpacing.md,
+                  child: IconButton.filled(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+      return;
+    }
+
+    if (attachment.url.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo abrir el adjunto.')),
+      );
+      return;
+    }
+
+    if (attachment.type == SpotSocialAttachmentType.video) {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) {
+          return _SpotSocialVideoViewerDialog(
+            videoUrl: attachment.url,
+            fileName: attachment.fileName,
+          );
+        },
+      );
+      return;
+    }
+
+    final uri = Uri.tryParse(attachment.url);
+    if (uri == null ||
+        !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo abrir el adjunto.')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = compact ? 132.0 : 176.0;
+    final height = compact ? 96.0 : 132.0;
+    if (attachment.type == SpotSocialAttachmentType.image &&
+        attachment.url.isNotEmpty) {
+      return InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => _openAttachment(context),
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            color: Theme.of(context).colorScheme.surface,
+          ),
+          child: Image.network(
+            attachment.url,
+            width: width,
+            height: height,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => _SpotSocialAttachmentFallback(
+              label: attachment.fileName,
+              icon: Icons.broken_image_outlined,
+              width: width,
+            ),
+          ),
+        ),
+      );
+    }
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () => _openAttachment(context),
+      child: _SpotSocialAttachmentFallback(
+        label: attachment.fileName,
+        icon: attachment.type == SpotSocialAttachmentType.video
+            ? Icons.play_circle_fill_rounded
+            : Icons.image_rounded,
+        width: width,
+      ),
+    );
+  }
+}
+
+class _SpotSocialVideoViewerDialog extends StatefulWidget {
+  const _SpotSocialVideoViewerDialog({
+    required this.videoUrl,
+    required this.fileName,
+  });
+
+  final String videoUrl;
+  final String fileName;
+
+  @override
+  State<_SpotSocialVideoViewerDialog> createState() =>
+      _SpotSocialVideoViewerDialogState();
+}
+
+class _SpotSocialVideoViewerDialogState
+    extends State<_SpotSocialVideoViewerDialog> {
+  VideoPlayerController? _controller;
+  Future<void>? _initializeFuture;
+  Object? _loadError;
+
+  String _formatVideoDuration(Duration duration) {
+    String twoDigits(int value) => value.toString().padLeft(2, '0');
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    if (duration.inHours > 0) {
+      return '${twoDigits(duration.inHours)}:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final uri = Uri.tryParse(widget.videoUrl);
+    if (uri == null) {
+      _loadError = 'URL de video no valida.';
+      return;
+    }
+    final controller = VideoPlayerController.networkUrl(uri);
+    _controller = controller;
+    _initializeFuture = controller
+        .initialize()
+        .then((_) {
+          controller.play();
+          controller.setLooping(true);
+        })
+        .catchError((error) {
+          _loadError = error;
+        });
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog.fullscreen(
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Center(
+                child: _loadError != null
+                    ? Text(
+                        'No se pudo reproducir el video.',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(color: Colors.white),
+                      )
+                    : FutureBuilder<void>(
+                        future: _initializeFuture,
+                        builder: (context, snapshot) {
+                          final controller = _controller;
+                          if (snapshot.connectionState !=
+                                  ConnectionState.done ||
+                              controller == null ||
+                              !controller.value.isInitialized) {
+                            return const CircularProgressIndicator();
+                          }
+                          return AspectRatio(
+                            aspectRatio: controller.value.aspectRatio,
+                            child: ValueListenableBuilder<VideoPlayerValue>(
+                              valueListenable: controller,
+                              builder: (context, value, _) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    if (value.isPlaying) {
+                                      controller.pause();
+                                    } else {
+                                      controller.play();
+                                    }
+                                  },
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      VideoPlayer(controller),
+                                      if (!value.isPlaying)
+                                        const Icon(
+                                          Icons.play_circle_fill_rounded,
+                                          color: Colors.white,
+                                          size: 72,
+                                        ),
+                                      Positioned(
+                                        left: AppSpacing.md,
+                                        right: AppSpacing.md,
+                                        bottom: AppSpacing.md,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(
+                                            AppSpacing.sm,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.52,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              VideoProgressIndicator(
+                                                controller,
+                                                allowScrubbing: true,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: AppSpacing.xs,
+                                                    ),
+                                                colors: VideoProgressColors(
+                                                  playedColor: Colors.white,
+                                                  bufferedColor: Colors.white24,
+                                                  backgroundColor:
+                                                      Colors.white12,
+                                                ),
+                                              ),
+                                              const SizedBox(
+                                                height: AppSpacing.xs,
+                                              ),
+                                              Row(
+                                                children: [
+                                                  IconButton(
+                                                    onPressed: () {
+                                                      if (value.isPlaying) {
+                                                        controller.pause();
+                                                      } else {
+                                                        controller.play();
+                                                      }
+                                                    },
+                                                    icon: Icon(
+                                                      value.isPlaying
+                                                          ? Icons.pause_rounded
+                                                          : Icons
+                                                                .play_arrow_rounded,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                  Expanded(
+                                                    child: Text(
+                                                      '${_formatVideoDuration(value.position)} / ${_formatVideoDuration(value.duration)}',
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .bodySmall
+                                                          ?.copyWith(
+                                                            color: Colors.white,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              Positioned(
+                top: AppSpacing.md,
+                right: AppSpacing.md,
+                child: IconButton.filled(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ),
+              Positioned(
+                left: AppSpacing.md,
+                right: AppSpacing.md,
+                bottom: AppSpacing.md,
+                child: IgnorePointer(
+                  child: Text(
+                    widget.fileName,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: Colors.white70),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SpotSocialAttachmentFallback extends StatelessWidget {
+  const _SpotSocialAttachmentFallback({
+    required this.label,
+    required this.icon,
+    required this.width,
+  });
+
+  final String label;
+  final IconData icon;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(icon),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SocialAttachmentSelection {
+  const _SocialAttachmentSelection({
+    required this.isVideo,
+    required this.source,
+  });
+
+  final bool isVideo;
+  final ImageSource source;
+}
+
+class _SpotChatEntry {
+  const _SpotChatEntry._({
+    required this.id,
+    required this.postId,
+    required this.authorUsername,
+    required this.authorDisplayName,
+    required this.message,
+    required this.createdAt,
+    required this.isMine,
+    required this.attachments,
+    required this.replyCount,
+    required this.isReply,
+    this.parentAuthor,
+    this.parentMessage,
+  });
+
+  factory _SpotChatEntry.post({
+    required String id,
+    required String authorUsername,
+    required String authorDisplayName,
+    required String message,
+    required DateTime createdAt,
+    required bool isMine,
+    required List<SpotSocialAttachment> attachments,
+    required int replyCount,
+  }) {
+    return _SpotChatEntry._(
+      id: id,
+      postId: id,
+      authorUsername: authorUsername,
+      authorDisplayName: authorDisplayName,
+      message: message,
+      createdAt: createdAt,
+      isMine: isMine,
+      attachments: attachments,
+      replyCount: replyCount,
+      isReply: false,
+    );
+  }
+
+  factory _SpotChatEntry.reply({
+    required String id,
+    required String postId,
+    required String authorUsername,
+    required String authorDisplayName,
+    required String message,
+    required DateTime createdAt,
+    required bool isMine,
+    required List<SpotSocialAttachment> attachments,
+    required int replyCount,
+    required String parentAuthor,
+    required String parentMessage,
+  }) {
+    return _SpotChatEntry._(
+      id: id,
+      postId: postId,
+      authorUsername: authorUsername,
+      authorDisplayName: authorDisplayName,
+      message: message,
+      createdAt: createdAt,
+      isMine: isMine,
+      attachments: attachments,
+      replyCount: replyCount,
+      isReply: true,
+      parentAuthor: parentAuthor,
+      parentMessage: parentMessage,
+    );
+  }
+
+  final String id;
+  final String postId;
+  final String authorUsername;
+  final String authorDisplayName;
+  final String message;
+  final DateTime createdAt;
+  final bool isMine;
+  final List<SpotSocialAttachment> attachments;
+  final int replyCount;
+  final bool isReply;
+  final String? parentAuthor;
+  final String? parentMessage;
+}
+
+class _SwipeReplyMessageWrapper extends StatefulWidget {
+  const _SwipeReplyMessageWrapper({
+    required this.child,
+    required this.onReplyTriggered,
+    required this.accentColor,
+  });
+
+  final Widget child;
+  final VoidCallback onReplyTriggered;
+  final Color accentColor;
+
+  @override
+  State<_SwipeReplyMessageWrapper> createState() =>
+      _SwipeReplyMessageWrapperState();
+}
+
+class _SwipeReplyMessageWrapperState extends State<_SwipeReplyMessageWrapper> {
+  static const double _maxReveal = 72;
+  static const double _triggerThreshold = 44;
+
+  double _dragOffset = 0;
+  bool _hasTriggered = false;
+  bool _didCrossThreshold = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final revealProgress = (-_dragOffset / _maxReveal).clamp(0.0, 1.0);
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragStart: (_) {
+        _hasTriggered = false;
+        _didCrossThreshold = false;
+      },
+      onHorizontalDragUpdate: (details) {
+        final nextOffset = (_dragOffset + details.delta.dx).clamp(
+          -_maxReveal,
+          0.0,
+        );
+        if (nextOffset == _dragOffset) {
+          return;
+        }
+        final crossedThreshold = nextOffset <= -_triggerThreshold;
+        if (crossedThreshold && !_didCrossThreshold) {
+          _didCrossThreshold = true;
+          HapticFeedback.selectionClick();
+        } else if (!crossedThreshold && _didCrossThreshold) {
+          _didCrossThreshold = false;
+        }
+        setState(() {
+          _dragOffset = nextOffset;
+        });
+      },
+      onHorizontalDragEnd: (_) {
+        if (!_hasTriggered && _dragOffset <= -_triggerThreshold) {
+          _hasTriggered = true;
+          widget.onReplyTriggered();
+        }
+        setState(() {
+          _dragOffset = 0;
+        });
+        _didCrossThreshold = false;
+      },
+      onHorizontalDragCancel: () {
+        setState(() {
+          _dragOffset = 0;
+        });
+        _didCrossThreshold = false;
+      },
+      child: Stack(
+        alignment: Alignment.centerRight,
+        children: [
+          Positioned(
+            right: AppSpacing.sm,
+            child: Opacity(
+              opacity: revealProgress,
+              child: Transform.scale(
+                scale: 0.8 + (revealProgress * 0.28),
+                child: Icon(
+                  Icons.reply_rounded,
+                  color: widget.accentColor.withValues(alpha: 0.88),
+                ),
+              ),
+            ),
+          ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeOut,
+            transform: Matrix4.translationValues(_dragOffset, 0, 0),
+            child: widget.child,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 enum _SpotDetailSection { prevision, live, webcam, social }
