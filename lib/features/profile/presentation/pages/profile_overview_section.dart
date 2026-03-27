@@ -652,6 +652,10 @@ class ProfileOverviewSection extends StatelessWidget {
                       ),
                       items: const [
                         DropdownMenuItem(
+                          value: AlarmRepeatWindow.min1,
+                          child: Text('1 min'),
+                        ),
+                        DropdownMenuItem(
                           value: AlarmRepeatWindow.min5,
                           child: Text('5 min'),
                         ),
@@ -773,6 +777,8 @@ class ProfileOverviewSection extends StatelessWidget {
 
   String _alarmRepeatWindowLabel(AlarmRepeatWindow window) {
     switch (window) {
+      case AlarmRepeatWindow.min1:
+        return '1 min';
       case AlarmRepeatWindow.min5:
         return '5 min';
       case AlarmRepeatWindow.min10:

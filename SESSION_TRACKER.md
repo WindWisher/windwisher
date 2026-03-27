@@ -2,14 +2,16 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 63h 24m`.
+- `Total historico minimo consolidado del proyecto: 75h 24m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
+  - bloque consolidado adicional en `2026-03-26`: `+8h` estimadas
+  - bloque consolidado adicional en `2026-03-27`: `+4h` estimadas
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-03-23`: `+7h` estimadas.
+  - ultima consolidacion manual anadida el `2026-03-27`: `+4h` estimadas.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
 
@@ -14828,3 +14830,58 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - `flutter pub get` tras anadir `url_launcher` y `video_player`,
       - `supabase db push`,
       - pruebas funcionales en Android, Chrome, `windwisher.com` e iPhone simulator.
+  - bloque nuevo `2026-03-27`:
+    - bloque de endurecimiento de permisos/roles y reglas de producto para spots guardados,
+    - duracion estimada del bloque: `4h`,
+    - roles y permisos:
+      - creados roles `pro` y `vip` en Supabase,
+      - creado rol `manager`,
+      - mantenido `manager` fuera de la jerarquia generica efectiva de permisos,
+      - anadidos helpers especificos:
+        - `has_manager_role()`,
+        - `is_manager_of_vip(...)`,
+        - `get_my_managed_vips()`,
+      - creada relacion `manager -> vip` con:
+        - `manager_vip_accounts`,
+        - `assign_vip_to_manager(...)`,
+        - `revoke_vip_from_manager(...)`,
+        - `get_manager_vip_directory()`,
+      - creada moderacion por spot en vez de moderacion global:
+        - `spot_moderators`,
+        - `can_moderate_spot(...)`,
+      - el chat del spot pasa a consultar esa moderacion por `spot_key`,
+    - ajustes de UI por perfil:
+      - `Ajustes` ahora muestra paneles segun roles visibles del usuario,
+      - anadidos accesos/placeholder para:
+        - `Panel moderador`,
+        - `Panel manager`,
+        - `Panel admin`,
+        - `Panel superadmin`,
+        - `Apartado VIP`,
+    - reglas de spots guardados por rol:
+      - `user`:
+        - maximo `2` spots oficiales,
+        - sin spots custom,
+        - sin edicion ni borrado,
+      - `pro`, `vip`, `moderator`, `admin`, `super_admin`:
+        - gestion completa del apartado,
+      - `manager` queda fuera de ese acceso avanzado por ahora,
+      - backend blindado con:
+        - `has_advanced_saved_spot_access()`,
+        - `can_insert_saved_spot(...)`,
+        - nuevas policies RLS sobre `user_saved_spots`,
+      - UX alineada en `SpotsPage` para reflejar esas restricciones sin errores tardios,
+    - migraciones nuevas:
+      - `20260327150000_add_pro_and_vip_roles.sql`,
+      - `20260327150100_update_role_levels_for_pro_and_vip.sql`,
+      - `20260327153000_spot_scoped_moderators.sql`,
+      - `20260327160000_add_manager_role.sql`,
+      - `20260327160100_update_role_levels_for_manager.sql`,
+      - `20260327161500_update_manager_role_level.sql`,
+      - `20260327163000_manager_vip_assignments.sql`,
+      - `20260327164500_exclude_manager_from_generic_role_hierarchy.sql`,
+      - `20260327170000_add_manager_vip_permission_helpers.sql`,
+      - `20260327173000_saved_spots_role_limits.sql`,
+    - verificacion ejecutada:
+      - multiples `flutter analyze` sobre `settings_page.dart`, `spots_page.dart`, `spot_detail_page.dart` y `spot_social_client.dart`,
+      - multiples `supabase db push` aplicados al remoto para las migraciones de roles, manager/vip, moderacion por spot y limites de spots guardados.

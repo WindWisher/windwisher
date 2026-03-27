@@ -42,6 +42,7 @@ class SpotsPageState extends State<SpotsPage> {
   final Set<String> _selectedSpotNames = <String>{};
   String _searchQuery = '';
   StreamSubscription<AuthState>? _authStateSubscription;
+  Set<String> _myRoles = const <String>{};
 
   @override
   void initState() {
@@ -53,6 +54,7 @@ class SpotsPageState extends State<SpotsPage> {
             : SpotsModule.inMemory());
     _spots.addAll(_spotsModule.getSpots());
     _hydrateSpotsCatalog();
+    unawaited(_loadMyRoles());
     _subscribeToAuthChanges();
   }
 
@@ -62,9 +64,67 @@ class SpotsPageState extends State<SpotsPage> {
     }
     _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange
         .listen((_) {
+          unawaited(_loadMyRoles());
           unawaited(_hydrateSpotsCatalog());
         });
   }
+
+  Future<void> _loadMyRoles() async {
+    if (!EnvConfig.supabaseConfigured) {
+      return;
+    }
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _myRoles = const <String>{};
+      });
+      return;
+    }
+    try {
+      final rows = await Supabase.instance.client
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _myRoles = (rows as List<dynamic>)
+            .whereType<Map<String, dynamic>>()
+            .map((row) => (row['role'] as String? ?? '').trim())
+            .where((role) => role.isNotEmpty)
+            .toSet();
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _myRoles = const <String>{};
+      });
+    }
+  }
+
+  bool get _hasAdvancedSpotAccess {
+    return _myRoles.any(
+      (role) => const <String>{
+        'pro',
+        'vip',
+        'moderator',
+        'admin',
+        'super_admin',
+      }.contains(role),
+    );
+  }
+
+  bool get _canCreateCustomSpots => _hasAdvancedSpotAccess;
+
+  bool get _canEditOrDeleteSavedSpots => _hasAdvancedSpotAccess;
+
+  int get _officialSpotCount => _spots.where((spot) => !spot.isCustom).length;
 
   Future<void> _hydrateSpotsCatalog() async {
     final spots = await _spotsModule.getSpots.load();
@@ -123,6 +183,17 @@ class SpotsPageState extends State<SpotsPage> {
   }
 
   Future<void> _showAddSpotSheet() async {
+    if (!_hasAdvancedSpotAccess && _officialSpotCount >= 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Como usuario normal solo puedes guardar 2 spots oficiales.',
+          ),
+        ),
+      );
+      return;
+    }
+
     final existingNames = _spots
         .map((spot) => spot.name.trim().toLowerCase())
         .toSet();
@@ -131,7 +202,10 @@ class SpotsPageState extends State<SpotsPage> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) => _AddSpotSheet(existingSpotNames: existingNames),
+      builder: (context) => _AddSpotSheet(
+        existingSpotNames: existingNames,
+        allowCustomMode: _canCreateCustomSpots,
+      ),
     );
 
     if (!mounted || result == null) {
@@ -208,9 +282,11 @@ class SpotsPageState extends State<SpotsPage> {
   }
 
   Future<void> _showEditSpotSheet(_SpotItem spot) async {
-    if (!spot.isCustom) {
+    if (!_canEditOrDeleteSavedSpots) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Solo puedes editar spots custom')),
+        const SnackBar(
+          content: Text('Tu plan actual no permite editar spots guardados'),
+        ),
       );
       return;
     }
@@ -355,6 +431,7 @@ class SpotsPageState extends State<SpotsPage> {
                   ],
                   TextField(
                     controller: nameController,
+                    enabled: spot.isCustom,
                     decoration: const InputDecoration(
                       labelText: 'Nombre del spot',
                     ),
@@ -362,6 +439,7 @@ class SpotsPageState extends State<SpotsPage> {
                   const SizedBox(height: AppSpacing.sm),
                   TextField(
                     controller: areaController,
+                    enabled: spot.isCustom,
                     decoration: const InputDecoration(
                       labelText: 'Zona / provincia',
                     ),
@@ -378,11 +456,13 @@ class SpotsPageState extends State<SpotsPage> {
                         }
                         Navigator.of(context).pop(
                           _SpotItem(
-                            name: nextName,
-                            area: nextArea.isEmpty
-                                ? 'Sin zona definida'
-                                : nextArea,
-                            isCustom: true,
+                            name: spot.isCustom ? nextName : spot.name,
+                            area: spot.isCustom
+                                ? (nextArea.isEmpty
+                                      ? 'Sin zona definida'
+                                      : nextArea)
+                                : spot.area,
+                            isCustom: spot.isCustom,
                             createdAt: spot.createdAt,
                             latitude: spot.latitude,
                             longitude: spot.longitude,
@@ -431,10 +511,17 @@ class SpotsPageState extends State<SpotsPage> {
   }
 
   void editSpotFromToolbar() {
-    final customSpots = _spots.where((spot) => spot.isCustom).toList();
-    if (customSpots.isEmpty) {
+    if (!_canEditOrDeleteSavedSpots) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No hay spots custom para editar')),
+        const SnackBar(
+          content: Text('Tu plan actual no permite editar spots guardados'),
+        ),
+      );
+      return;
+    }
+    if (_spots.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hay spots para editar')),
       );
       return;
     }
@@ -446,6 +533,14 @@ class SpotsPageState extends State<SpotsPage> {
   }
 
   void deleteMultipleSpotsFromToolbar() {
+    if (!_canEditOrDeleteSavedSpots) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tu plan actual no permite eliminar spots guardados'),
+        ),
+      );
+      return;
+    }
     if (_spots.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No hay spots para eliminar')),
@@ -565,6 +660,13 @@ class SpotsPageState extends State<SpotsPage> {
                         'Aqui mostraremos spots guardados y meteo activa.',
                         style: textTheme.bodyMedium,
                       ),
+                      if (!_hasAdvancedSpotAccess) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          'Plan user: maximo 2 spots oficiales. Sin spots custom y sin edicion o borrado.',
+                          style: textTheme.bodySmall,
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -965,9 +1067,13 @@ const _availableSpots = <_AvailableSpot>[
 ];
 
 class _AddSpotSheet extends StatefulWidget {
-  const _AddSpotSheet({required this.existingSpotNames});
+  const _AddSpotSheet({
+    required this.existingSpotNames,
+    required this.allowCustomMode,
+  });
 
   final Set<String> existingSpotNames;
+  final bool allowCustomMode;
 
   @override
   State<_AddSpotSheet> createState() => _AddSpotSheetState();
@@ -1109,7 +1215,17 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
 
     if (selectedOfficialSpot == null && _customPoint == null) {
       setState(() {
-        _error = 'Para un spot personalizado debes seleccionar coordenadas.';
+        _error = widget.allowCustomMode
+            ? 'Para un spot personalizado debes seleccionar coordenadas.'
+            : 'Debes seleccionar uno de los spots oficiales sugeridos.';
+      });
+      return;
+    }
+
+    if (!widget.allowCustomMode &&
+        (selectedOfficialSpot == null || _customPoint != null)) {
+      setState(() {
+        _error = 'Con el plan user solo puedes guardar spots oficiales.';
       });
       return;
     }
@@ -1157,11 +1273,17 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
           children: [
             Text('Agregar spot', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: AppSpacing.xs),
-            OutlinedButton.icon(
-              onPressed: _pickCustomPoint,
-              icon: const Icon(Icons.map_outlined),
-              label: const Text('Personalizado'),
-            ),
+            if (widget.allowCustomMode)
+              OutlinedButton.icon(
+                onPressed: _pickCustomPoint,
+                icon: const Icon(Icons.map_outlined),
+                label: const Text('Personalizado'),
+              )
+            else
+              Text(
+                'Con el plan user solo puedes guardar spots oficiales.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             if (_customPoint != null) ...[
               const SizedBox(height: AppSpacing.xs),
               Text(

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/app/router/app_routes.dart';
 import 'package:windwisher/core/i18n/app_locale_controller.dart';
 import 'package:windwisher/core/i18n/app_strings.dart';
@@ -20,11 +23,14 @@ class SettingsPage extends ConsumerStatefulWidget {
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _notificationsEnabled = true;
   bool _isSigningOut = false;
+  bool _isLoadingRoles = false;
+  Set<String> _myRoles = const <String>{};
 
   @override
   void initState() {
     super.initState();
     _notificationsEnabled = PushNotificationSubscriptionService.instance.enabled;
+    unawaited(_loadMyRoles());
   }
 
   @override
@@ -35,6 +41,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final pushService = PushNotificationSubscriptionService.instance;
     final pushStatus = pushService.currentStatus;
     final pushToken = pushService.deviceToken;
+    final hasModeratorPanel =
+        _myRoles.contains('moderator') || _myRoles.contains('super_admin');
+    final hasManagerPanel =
+        _myRoles.contains('manager') || _myRoles.contains('super_admin');
+    final hasAdminPanel =
+        _myRoles.contains('admin') || _myRoles.contains('super_admin');
+    final hasSuperAdminPanel = _myRoles.contains('super_admin');
+    final hasVipPanel =
+        _myRoles.contains('vip') || _myRoles.contains('super_admin');
 
     return Scaffold(
       appBar: AppBar(title: const Text('Ajustes')),
@@ -201,12 +216,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       '2.0.0',
                       Icons.info_outline,
                     ),
-                    _buildSettingTile(
-                      context,
-                      'Panel admin',
-                      null,
-                      Icons.admin_panel_settings_outlined,
-                    ),
                     _buildSettingTile(context, 'FAQ', null, Icons.help_outline),
                     _buildSettingTile(
                       context,
@@ -218,6 +227,88 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ),
               ),
             ),
+            if (_isLoadingRoles || _myRoles.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.md),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Paneles por perfil', style: textTheme.titleMedium),
+                      const SizedBox(height: AppSpacing.sm),
+                      if (_isLoadingRoles)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: AppSpacing.sm,
+                          ),
+                          child: LinearProgressIndicator(),
+                        )
+                      else ...[
+                        if (_myRoles.isNotEmpty)
+                          Wrap(
+                            spacing: AppSpacing.xs,
+                            runSpacing: AppSpacing.xs,
+                            children: _myRoles
+                                .map((role) => Chip(label: Text(role)))
+                                .toList(growable: false),
+                          ),
+                        if (_myRoles.isNotEmpty)
+                          const SizedBox(height: AppSpacing.sm),
+                        if (hasModeratorPanel)
+                          _buildSettingTile(
+                            context,
+                            'Panel moderador',
+                            'Moderacion de spots asignados',
+                            Icons.shield_outlined,
+                            onTap: () => _showInfoMessage(
+                              'El panel de moderacion por spot se conectara aqui.',
+                            ),
+                          ),
+                        if (hasManagerPanel)
+                          _buildSettingTile(
+                            context,
+                            'Panel manager',
+                            'Gestion de VIP, patrocinios y publicidades',
+                            Icons.storefront_outlined,
+                            onTap: () => _showInfoMessage(
+                              'El panel manager se conectara aqui mas adelante.',
+                            ),
+                          ),
+                        if (hasAdminPanel)
+                          _buildSettingTile(
+                            context,
+                            'Panel admin',
+                            hasSuperAdminPanel
+                                ? 'Acceso ampliado de administracion'
+                                : 'Herramientas administrativas',
+                            Icons.admin_panel_settings_outlined,
+                            onTap: () => context.push(AppRoutes.adminConsole),
+                          ),
+                        if (hasSuperAdminPanel)
+                          _buildSettingTile(
+                            context,
+                            'Panel superadmin',
+                            'Acceso total a roles y auditoria',
+                            Icons.workspace_premium_outlined,
+                            onTap: () => context.push(AppRoutes.adminConsole),
+                          ),
+                        if (hasVipPanel)
+                          _buildSettingTile(
+                            context,
+                            'Apartado VIP',
+                            'Patrocinios y publicidades',
+                            Icons.campaign_outlined,
+                            onTap: () => _showInfoMessage(
+                              'El apartado VIP se conectara aqui mas adelante.',
+                            ),
+                          ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: AppSpacing.md),
             Card(
               child: Padding(
@@ -263,6 +354,52 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
+  Future<void> _loadMyRoles() async {
+    final client = Supabase.instance.client;
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) {
+      return;
+    }
+    setState(() => _isLoadingRoles = true);
+    try {
+      final rows = await client
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId);
+      if (!mounted) {
+        return;
+      }
+      final roles = (rows as List<dynamic>)
+          .whereType<Map<String, dynamic>>()
+          .map((row) => (row['role'] as String? ?? '').trim())
+          .where((role) => role.isNotEmpty)
+          .toSet();
+      setState(() {
+        _myRoles = roles;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _myRoles = const <String>{};
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingRoles = false);
+      }
+    }
+  }
+
+  void _showInfoMessage(String message) {
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Widget _buildSettingTile(
     BuildContext context,
     String title,
@@ -286,8 +423,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       onTap: onTap ??
           (title == 'FAQ'
           ? () => context.push('/settings/faq')
-          : title == 'Panel admin'
-          ? () => context.push('/settings/admin')
           : title == 'Donaciones'
           ? () => context.push('/settings/donations')
           : () {}),

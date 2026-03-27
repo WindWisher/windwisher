@@ -37,6 +37,7 @@ import 'package:windwisher/features/spots/presentation/widgets/meteosource_forec
 import 'package:windwisher/features/spots/presentation/widgets/aemet_forecast_tables.dart';
 import 'package:windwisher/features/spots/presentation/widgets/windguru_forecast_card.dart';
 import 'package:windwisher/features/spots/infrastructure/services/spot_social_client.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 typedef _SpotWebcam = SpotWebcam;
@@ -125,6 +126,11 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   static const String _avametOlivaStationName = 'Club Nautico de Oliva';
   static const double _avametOlivaStationLat = 38.93208;
   static const double _avametOlivaStationLon = -0.09468;
+  static const String _avametOlivaPlayaStationId = 'c25m181e20';
+  static const String _avametOlivaPlayaStationKey = 'avamet:c25m181e20';
+  static const String _avametOlivaPlayaStationName = 'Oliva Playa';
+  static const double _avametOlivaPlayaStationLat = 38.9269;
+  static const double _avametOlivaPlayaStationLon = -0.0958;
   static const String _meteoclimaticOlivaNovaStationId = 'ESPVA4600000046780B';
   static const String _meteoclimaticOlivaNovaStationKey =
       'meteoclimatic:ESPVA4600000046780B';
@@ -186,6 +192,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       ScrollController();
   final ScrollController _socialFeedScrollController = ScrollController();
   final GlobalKey _socialComposerKey = GlobalKey();
+  final GlobalKey _lastSocialMessageKey = GlobalKey();
   final FocusNode _socialPostFocusNode = FocusNode();
   final FocusNode _socialReplyFocusNode = FocusNode();
   String? _historyChartFocusKey;
@@ -200,6 +207,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   String _alarmStation = '';
   RangeValues _alarmWindRange = const RangeValues(14, 26);
   AlarmRepeatWindow _alarmRepeatWindow = AlarmRepeatWindow.min10;
+  int _alarmMaxRepeats = 3;
   int _alarmStartHour = 8;
   int _alarmEndHour = 20;
   Set<String> _alarmDirections = <String>{'N', 'NE', 'E'};
@@ -211,11 +219,14 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   String? _replyingPostId;
   String? _replyingReplyId;
   String? _editingPostId;
+  String? _editingReplyId;
+  String? _editingReplyPostId;
   List<SpotSocialPost> _socialFeed = const <SpotSocialPost>[];
   bool _isSocialLoading = false;
   bool _isSocialSubmitting = false;
   bool _isPickingSocialMedia = false;
   String? _socialErrorMessage;
+  bool _canModerateSocialMessages = false;
   StreamSubscription<void>? _socialRealtimeSubscription;
   StreamSubscription<int>? _socialPresenceSubscription;
   StreamSubscription<Set<String>>? _socialTypingSubscription;
@@ -309,6 +320,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     _loadLiveStations();
     unawaited(_hydrateAlarmCatalog());
     _loadSocialIdentity();
+    unawaited(_loadSocialModerationPermissions());
     _loadSocialFeed();
     _syncAlarmMonitoring();
     if (!_isFlutterTest && !kIsWeb) {
@@ -1217,14 +1229,25 @@ class _SpotDetailPageState extends State<SpotDetailPage>
           : 'No se ha podido iniciar el widget de Windguru.';
       return _buildUnavailableForecastState(message: message);
     }
-    return WindguruForecastCard(
-      title: _buildForecastTableTitle(),
-      subtitle: 'Widget Windguru · Oliva Canal',
-      height: _windguruWidgetHeight,
-      controller: controller,
-      webEmbedHtml: kIsWeb ? _windguruWidgetHtml : null,
-      isFullscreenActive: _fullscreenMode == _ForecastFullscreenMode.windguru,
-      onOpenFullscreen: _openWindguruFullscreen,
+    const windguruStatus = _ForecastLoadResult(
+      rows: <_ForecastRow>[],
+      source: _ForecastDataSource.live,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildForecastDataStatusBanner(windguruStatus),
+        const SizedBox(height: AppSpacing.sm),
+        WindguruForecastCard(
+          title: _buildForecastTableTitle(),
+          subtitle: 'Widget Windguru · Oliva Canal',
+          height: _windguruWidgetHeight,
+          controller: controller,
+          webEmbedHtml: kIsWeb ? _windguruWidgetHtml : null,
+          isFullscreenActive: _fullscreenMode == _ForecastFullscreenMode.windguru,
+          onOpenFullscreen: _openWindguruFullscreen,
+        ),
+      ],
     );
   }
 
@@ -1551,8 +1574,6 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     }
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 380;
-
         final modelDropdown = DropdownButtonFormField<String>(
           initialValue:
               _modelsForProvider(_forecastProvider).contains(_forecastModel)
@@ -1620,26 +1641,12 @@ class _SpotDetailPageState extends State<SpotDetailPage>
           },
         );
 
-        final infoButton = Align(
-          alignment: Alignment.centerRight,
-          child: IconButton(
-            tooltip: 'Info del modelo',
-            onPressed: _showForecastModelInfoDialog,
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.info_outline_rounded),
-          ),
+        final infoButton = IconButton(
+          tooltip: 'Info del modelo',
+          onPressed: _showForecastModelInfoDialog,
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.info_outline_rounded),
         );
-
-        if (isNarrow) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              modelDropdown,
-              const SizedBox(height: AppSpacing.xs),
-              infoButton,
-            ],
-          );
-        }
 
         return Row(
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -2598,18 +2605,34 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   }
 
   void _syncAlarmMonitoring() {
-    final hasSavedAlarms = _savedAlarmsForCurrentSpot().isNotEmpty;
-    if (!_isAppResumed || !hasSavedAlarms) {
+    final savedAlarms = _savedAlarmsForCurrentSpot();
+    final hasSavedAlarms = savedAlarms.isNotEmpty;
+    final catalog = SpotAlarmCatalog.instance;
+    final shouldMonitor =
+        _isAppResumed &&
+        hasSavedAlarms &&
+        catalog.globalEnabled &&
+        catalog.isSpotEnabled(_currentSpotAlarmKey());
+    if (!shouldMonitor) {
       _alarmAutoRefreshTimer?.cancel();
       _alarmAutoRefreshTimer = null;
       return;
     }
-    _alarmAutoRefreshTimer ??= Timer.periodic(const Duration(minutes: 5), (_) {
+    final monitoringInterval = _alarmMonitoringInterval(savedAlarms);
+    _alarmAutoRefreshTimer?.cancel();
+    _alarmAutoRefreshTimer = Timer.periodic(monitoringInterval, (_) {
       if (!mounted || !_isAppResumed) {
         return;
       }
       unawaited(_loadLiveStations());
     });
+  }
+
+  Duration _alarmMonitoringInterval(List<SpotAlarmRecord> alarms) {
+    if (alarms.any((alarm) => alarm.repeatWindow == AlarmRepeatWindow.min1)) {
+      return const Duration(minutes: 1);
+    }
+    return const Duration(minutes: 5);
   }
 
   Future<void> _refreshSelectedStationLiveData() async {
@@ -2876,6 +2899,13 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         } catch (error) {
           technicalError ??= '$error';
         }
+        AvametObservationSnapshot? avametOlivaPlayaSnapshot;
+        try {
+          avametOlivaPlayaSnapshot = await _avametObservationClient
+              .fetchStationObservation(stationId: _avametOlivaPlayaStationId);
+        } catch (error) {
+          technicalError ??= '$error';
+        }
         List<_HistoricalWindPoint> avametHistory =
             const <_HistoricalWindPoint>[];
         try {
@@ -2901,6 +2931,42 @@ class _SpotDetailPageState extends State<SpotDetailPage>
             final dailyHistory = await _avametDailyHistoryClient
                 .fetchDailyWindHistory(stationId: _avametOlivaStationId);
             avametHistory = dailyHistory
+                .map(
+                  (point) => _HistoricalWindPoint(
+                    time: point.time,
+                    windKnots: point.windKnots,
+                  ),
+                )
+                .toList(growable: false);
+          } catch (error) {
+            technicalError ??= '$error';
+          }
+        }
+        List<_HistoricalWindPoint> avametOlivaPlayaHistory =
+            const <_HistoricalWindPoint>[];
+        try {
+          final intradayHistory = await _avametIntradayHistoryClient
+              .fetchIntradayWindHistory(stationId: _avametOlivaPlayaStationId);
+          avametOlivaPlayaHistory = intradayHistory
+              .map(
+                (point) => _HistoricalWindPoint(
+                  time: point.time,
+                  windKnots: point.windKnots,
+                  windDirectionDeg: point.windDirectionDeg,
+                  directionKind: point.windDirectionDeg == null
+                      ? null
+                      : _HistoricalDirectionKind.exact,
+                ),
+              )
+              .toList(growable: false);
+        } catch (error) {
+          technicalError ??= '$error';
+        }
+        if (avametOlivaPlayaHistory.isEmpty) {
+          try {
+            final dailyHistory = await _avametDailyHistoryClient
+                .fetchDailyWindHistory(stationId: _avametOlivaPlayaStationId);
+            avametOlivaPlayaHistory = dailyHistory
                 .map(
                   (point) => _HistoricalWindPoint(
                     time: point.time,
@@ -3082,6 +3148,46 @@ class _SpotDetailPageState extends State<SpotDetailPage>
           );
           historyByStation[stationKey] = avametHistory;
         }
+        final avametOlivaPlayaStationKey = _avametOlivaPlayaStationKey;
+        final avametOlivaPlayaHasWindData =
+            avametOlivaPlayaSnapshot?.windKnots != null ||
+            avametOlivaPlayaSnapshot?.windDirectionDeg != null ||
+            avametOlivaPlayaSnapshot?.gustKnots != null ||
+            avametOlivaPlayaHistory.isNotEmpty;
+        if (avametOlivaPlayaHasWindData &&
+            !seenKeys.contains(avametOlivaPlayaStationKey)) {
+          seenKeys.add(avametOlivaPlayaStationKey);
+          stations.add(
+            _NearbyStation(
+              name: _avametOlivaPlayaStationName,
+              distanceKm: _distanceKm(
+                latitudeA: latitude,
+                longitudeA: longitude,
+                latitudeB: _avametOlivaPlayaStationLat,
+                longitudeB: _avametOlivaPlayaStationLon,
+              ),
+              provider: 'AVAMET',
+              sourceKind: _StationSourceKind.observation,
+              stationId: _avametOlivaPlayaStationId,
+              proximityLabel: null,
+              stationKey: avametOlivaPlayaStationKey,
+              latitude: _avametOlivaPlayaStationLat,
+              longitude: _avametOlivaPlayaStationLon,
+            ),
+          );
+          liveDataByStation[avametOlivaPlayaStationKey] = _StationLiveData(
+            windKnots: avametOlivaPlayaSnapshot?.windKnots?.round(),
+            windDeg: avametOlivaPlayaSnapshot?.windDirectionDeg,
+            gustKnots: avametOlivaPlayaSnapshot?.gustKnots?.round(),
+            tempC: avametOlivaPlayaSnapshot?.tempC,
+            pressureHpa: avametOlivaPlayaSnapshot?.pressureHpa?.round(),
+            humidityPct: avametOlivaPlayaSnapshot?.humidityPct,
+            rainMm: avametOlivaPlayaSnapshot?.rainMm,
+            observedAt: avametOlivaPlayaSnapshot?.observedAt,
+          );
+          historyByStation[avametOlivaPlayaStationKey] =
+              avametOlivaPlayaHistory;
+        }
       }
       stations.sort((a, b) {
         final distanceCompare = a.distanceKm.compareTo(b.distanceKm);
@@ -3143,6 +3249,15 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     if (_isAppResumed) {
       _syncAlarmMonitoring();
       unawaited(_loadLiveStations());
+      if (_section == _SpotDetailSection.social) {
+        if (_socialRealtimeSubscription == null) {
+          _bindSocialRealtime();
+          _bindSocialPresence();
+          _bindSocialTyping();
+        }
+        unawaited(_loadSocialFeed());
+        _scheduleFocusSocialSection();
+      }
       return;
     }
     if (state == AppLifecycleState.paused ||
@@ -6012,6 +6127,10 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                     ),
                     items: const [
                       DropdownMenuItem(
+                        value: AlarmRepeatWindow.min1,
+                        child: Text('1 min'),
+                      ),
+                      DropdownMenuItem(
                         value: AlarmRepeatWindow.min5,
                         child: Text('5 min'),
                       ),
@@ -6032,6 +6151,27 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                       if (value == null) return;
                       setState(() {
                         _alarmRepeatWindow = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  DropdownButtonFormField<int>(
+                    initialValue: _alarmMaxRepeats,
+                    decoration: const InputDecoration(
+                      labelText: 'Maximo de avisos seguidos',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: List.generate(6, (index) {
+                      final value = index + 1;
+                      return DropdownMenuItem<int>(
+                        value: value,
+                        child: Text('$value aviso${value == 1 ? '' : 's'}'),
+                      );
+                    }),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _alarmMaxRepeats = value;
                       });
                     },
                   ),
@@ -6068,6 +6208,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                           endHour: _alarmEndHour,
                           directions: _alarmDirections,
                           repeatWindow: _alarmRepeatWindow,
+                          maxRepeats: _alarmMaxRepeats,
                         );
                         final duplicateExists = catalog.hasEquivalentAlarm(
                           alarm,
@@ -6252,6 +6393,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                                     _alarmStation = alarm.stationKey;
                                     _alarmWindRange = alarm.windRange;
                                     _alarmRepeatWindow = alarm.repeatWindow;
+                                    _alarmMaxRepeats = alarm.maxRepeats;
                                     _alarmStartHour = alarm.startHour;
                                     _alarmEndHour = alarm.endHour;
                                     _alarmDirections = alarm.directions;
@@ -6311,6 +6453,10 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                             icon: Icons.repeat_rounded,
                             label: _alarmRepeatWindowLabel(alarm.repeatWindow),
                           ),
+                          _AlarmMetaChip(
+                            icon: Icons.filter_3_rounded,
+                            label: '${alarm.maxRepeats} avisos',
+                          ),
                         ],
                       ),
                     ],
@@ -6336,6 +6482,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   String _alarmRepeatWindowLabel(AlarmRepeatWindow window) {
     switch (window) {
+      case AlarmRepeatWindow.min1:
+        return '1 min';
       case AlarmRepeatWindow.min5:
         return '5 min';
       case AlarmRepeatWindow.min10:
@@ -6382,6 +6530,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   Duration _alarmRepeatWindowDuration(AlarmRepeatWindow window) {
     switch (window) {
+      case AlarmRepeatWindow.min1:
+        return const Duration(minutes: 1);
       case AlarmRepeatWindow.min5:
         return const Duration(minutes: 5);
       case AlarmRepeatWindow.min10:
@@ -6516,6 +6666,42 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     }
   }
 
+  Future<void> _loadSocialModerationPermissions() async {
+    try {
+      final client = Supabase.instance.client;
+      if (client.auth.currentUser == null) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _canModerateSocialMessages = false;
+        });
+        return;
+      }
+      final spotKey = SpotSocialClient.buildSpotKey(
+        spotName: widget.name,
+        spotArea: widget.area,
+      );
+      final result = await client.rpc(
+        'can_moderate_spot',
+        params: <String, dynamic>{'target_spot_key': spotKey},
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _canModerateSocialMessages = result == true;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _canModerateSocialMessages = false;
+      });
+    }
+  }
+
   Future<void> _loadSocialFeed() async {
     if (mounted) {
       setState(() {
@@ -6534,7 +6720,6 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       setState(() {
         _socialFeed = posts;
       });
-      _scheduleScrollSocialFeedToBottom();
     } catch (error) {
       if (!mounted) {
         return;
@@ -6547,24 +6732,53 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         setState(() {
           _isSocialLoading = false;
         });
+        if (_section == _SpotDetailSection.social && _socialFeed.isNotEmpty) {
+          unawaited(_scrollSocialFeedToBottomAfterLayout());
+        }
       }
     }
   }
 
-  void _scheduleScrollSocialFeedToBottom({bool animated = false}) {
+  Future<void> _scrollSocialFeedToBottomAfterLayout({
+    bool animated = false,
+  }) async {
+    await WidgetsBinding.instance.endOfFrame;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) {
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_socialFeedScrollController.hasClients) {
+      if (!mounted) {
         return;
       }
-      final offset = _socialFeedScrollController.position.maxScrollExtent;
+      final lastMessageContext = _lastSocialMessageKey.currentContext;
+      if (lastMessageContext != null) {
+        unawaited(
+          Scrollable.ensureVisible(
+            lastMessageContext,
+            alignment: 1,
+            duration: animated
+                ? const Duration(milliseconds: 240)
+                : Duration.zero,
+            curve: Curves.easeOut,
+          ),
+        );
+        return;
+      }
+      if (!_socialFeedScrollController.hasClients) {
+        return;
+      }
+      final targetOffset = _socialFeedScrollController.position.maxScrollExtent;
       if (animated) {
-        _socialFeedScrollController.animateTo(
-          offset,
-          duration: const Duration(milliseconds: 240),
-          curve: Curves.easeOut,
+        unawaited(
+          _socialFeedScrollController.animateTo(
+            targetOffset,
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOut,
+          ),
         );
       } else {
-        _socialFeedScrollController.jumpTo(offset);
+        _socialFeedScrollController.jumpTo(targetOffset);
       }
     });
   }
@@ -6601,18 +6815,11 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   }
 
   void _scheduleFocusSocialSection() {
-    _scheduleScrollSocialFeedToBottom(animated: true);
     Future<void>.delayed(const Duration(milliseconds: 80), () {
       if (!mounted || _section != _SpotDetailSection.social) {
         return;
       }
       _scheduleEnsureSocialComposerVisible();
-      Future<void>.delayed(const Duration(milliseconds: 120), () {
-        if (!mounted || _section != _SpotDetailSection.social) {
-          return;
-        }
-        _scheduleScrollSocialFeedToBottom(animated: false);
-      });
     });
   }
 
@@ -6624,8 +6831,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
           _bindSocialPresence();
           _bindSocialTyping();
           unawaited(_loadSocialFeed());
+        } else {
+          _scheduleFocusSocialSection();
         }
-        _scheduleFocusSocialSection();
       }
       return;
     }
@@ -6645,7 +6853,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       _bindSocialPresence();
       _bindSocialTyping();
       unawaited(_loadSocialFeed());
-      _scheduleFocusSocialSection();
+      if (_socialFeed.isNotEmpty) {
+        _scheduleFocusSocialSection();
+      }
     }
   }
 
@@ -7113,9 +7323,30 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   void _startEditPost(SpotSocialPost post) {
     setState(() {
       _editingPostId = post.id;
+      _editingReplyId = null;
+      _editingReplyPostId = null;
+      _replyingPostId = null;
+      _replyingReplyId = null;
       _socialPostController.text = post.message;
       _pendingSocialPostAttachments = const <SpotSocialAttachmentDraft>[];
     });
+  }
+
+  void _startEditReply({
+    required String postId,
+    required SpotSocialReply reply,
+  }) {
+    setState(() {
+      _editingPostId = null;
+      _editingReplyId = reply.id;
+      _editingReplyPostId = postId;
+      _replyingPostId = null;
+      _replyingReplyId = null;
+      _socialReplyController.text = reply.message;
+      _pendingSocialReplyAttachments = const <SpotSocialAttachmentDraft>[];
+    });
+    _scheduleEnsureSocialComposerVisible();
+    _scheduleFocusSocialComposerInput(forReply: true);
   }
 
   Future<void> _deletePost(SpotSocialPost post) async {
@@ -7140,6 +7371,127 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       await _loadSocialFeed();
     } catch (error) {
       _showSocialSnackBar(error.toString());
+    }
+  }
+
+  Future<void> _deleteReply({
+    required String postId,
+    required SpotSocialReply reply,
+  }) async {
+    try {
+      await _spotSocialClient.deleteReply(replyId: reply.id);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        if (_editingReplyId == reply.id) {
+          _editingReplyId = null;
+          _editingReplyPostId = null;
+          _socialReplyController.clear();
+          _pendingSocialReplyAttachments = const <SpotSocialAttachmentDraft>[];
+        }
+        if (_replyingReplyId == reply.id) {
+          _replyingReplyId = null;
+          _replyingPostId = null;
+          _socialReplyController.clear();
+          _pendingSocialReplyAttachments = const <SpotSocialAttachmentDraft>[];
+        } else if (_replyingPostId == postId && _replyingReplyId == null) {
+          _replyingPostId = null;
+          _socialReplyController.clear();
+          _pendingSocialReplyAttachments = const <SpotSocialAttachmentDraft>[];
+        }
+      });
+      await _loadSocialFeed();
+    } catch (error) {
+      _showSocialSnackBar(error.toString());
+    }
+  }
+
+  SpotSocialPost? _findSocialPostById(String postId) {
+    for (final post in _socialFeed) {
+      if (post.id == postId) {
+        return post;
+      }
+    }
+    return null;
+  }
+
+  SpotSocialReply? _findSocialReplyById(String replyId) {
+    SpotSocialReply? search(List<SpotSocialReply> replies) {
+      for (final reply in replies) {
+        if (reply.id == replyId) {
+          return reply;
+        }
+        final nested = search(reply.replies);
+        if (nested != null) {
+          return nested;
+        }
+      }
+      return null;
+    }
+
+    for (final post in _socialFeed) {
+      final found = search(post.replies);
+      if (found != null) {
+        return found;
+      }
+    }
+    return null;
+  }
+
+  bool _canManageSocialEntry(_SpotChatEntry entry) {
+    return entry.isMine || _canModerateSocialMessages;
+  }
+
+  Future<void> _showSocialMessageActions(_SpotChatEntry entry) async {
+    if (!_canManageSocialEntry(entry)) {
+      return;
+    }
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit_rounded),
+                title: const Text('Editar mensaje'),
+                onTap: () => Navigator.of(sheetContext).pop('edit'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded),
+                title: const Text('Eliminar mensaje'),
+                onTap: () => Navigator.of(sheetContext).pop('delete'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (!mounted || action == null) {
+      return;
+    }
+    if (entry.isReply) {
+      final reply = _findSocialReplyById(entry.id);
+      if (reply == null) {
+        return;
+      }
+      if (action == 'edit') {
+        _startEditReply(postId: entry.postId, reply: reply);
+      } else if (action == 'delete') {
+        await _deleteReply(postId: entry.postId, reply: reply);
+      }
+      return;
+    }
+    final post = _findSocialPostById(entry.id);
+    if (post == null) {
+      return;
+    }
+    if (action == 'edit') {
+      _startEditPost(post);
+    } else if (action == 'delete') {
+      await _deletePost(post);
     }
   }
 
@@ -7214,6 +7566,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   void _openReplyComposerForPost(String postId) {
     setState(() {
+      _editingReplyId = null;
+      _editingReplyPostId = null;
       _replyingPostId = postId;
       _replyingReplyId = null;
       _socialReplyController.clear();
@@ -7225,6 +7579,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   void _openReplyComposerForReply(String postId, String replyId) {
     setState(() {
+      _editingReplyId = null;
+      _editingReplyPostId = null;
       _replyingPostId = postId;
       _replyingReplyId = replyId;
       _socialReplyController.clear();
@@ -7236,6 +7592,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   void _cancelReplyComposer() {
     setState(() {
+      _editingReplyId = null;
+      _editingReplyPostId = null;
       _replyingPostId = null;
       _replyingReplyId = null;
       _socialReplyController.clear();
@@ -7246,7 +7604,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   Future<void> _publishReply() async {
     final text = _socialReplyController.text.trim();
-    final postId = _replyingPostId;
+    final editingReplyId = _editingReplyId;
+    final postId = editingReplyId != null ? _editingReplyPostId : _replyingPostId;
     if ((text.isEmpty && _pendingSocialReplyAttachments.isEmpty) ||
         postId == null ||
         _isSocialSubmitting) {
@@ -7265,22 +7624,28 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       _isSocialSubmitting = true;
     });
     try {
-      _insertOptimisticSocialReply(
-        tempId: optimisticTempId,
-        postId: postId,
-        parentReplyId: _replyingReplyId,
-        message: text,
-        attachments: optimisticAttachments,
-      );
-      await _spotSocialClient.addReply(
-        postId: postId,
-        parentReplyId: _replyingReplyId,
-        authorUsername: _normalizedSocialUsername(),
-        authorDisplayName: _socialDisplayName(),
-        message: text,
-        attachments: optimisticAttachments,
-      );
+      if (editingReplyId == null) {
+        _insertOptimisticSocialReply(
+          tempId: optimisticTempId,
+          postId: postId,
+          parentReplyId: _replyingReplyId,
+          message: text,
+          attachments: optimisticAttachments,
+        );
+        await _spotSocialClient.addReply(
+          postId: postId,
+          parentReplyId: _replyingReplyId,
+          authorUsername: _normalizedSocialUsername(),
+          authorDisplayName: _socialDisplayName(),
+          message: text,
+          attachments: optimisticAttachments,
+        );
+      } else {
+        await _spotSocialClient.updateReply(replyId: editingReplyId, message: text);
+      }
       _socialReplyController.clear();
+      _editingReplyId = null;
+      _editingReplyPostId = null;
       _replyingPostId = null;
       _replyingReplyId = null;
       _pendingSocialReplyAttachments = const <SpotSocialAttachmentDraft>[];
@@ -7412,31 +7777,38 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   }
 
   Widget _buildSocialComposer(TextTheme textTheme, ColorScheme colorScheme) {
-    final isReplying = _replyingPostId != null;
-    final controller = isReplying
+    final isEditingReply = _editingReplyId != null;
+    final isReplying = !isEditingReply && _replyingPostId != null;
+    final usesReplyComposer = isReplying || isEditingReply;
+    final controller = usesReplyComposer
         ? _socialReplyController
         : _socialPostController;
-    final pendingAttachments = isReplying
+    final pendingAttachments = usesReplyComposer
         ? _pendingSocialReplyAttachments
         : _pendingSocialPostAttachments;
-    final canSend = isReplying ? _canSendSocialReply : _canSendSocialPost;
+    final canSend = usesReplyComposer ? _canSendSocialReply : _canSendSocialPost;
     final replyEntry = isReplying ? _activeReplyEntry() : null;
-    final focusNode = isReplying ? _socialReplyFocusNode : _socialPostFocusNode;
+    final focusNode = usesReplyComposer
+        ? _socialReplyFocusNode
+        : _socialPostFocusNode;
     final title = isReplying
         ? 'Respondiendo'
+        : isEditingReply
+        ? 'Editando respuesta'
         : (_editingPostId == null ? null : 'Editando mensaje');
     final hintText = !_canPublishSocial
-        ? (isReplying
+        ? (usesReplyComposer
               ? 'Inicia sesion para responder...'
               : 'Inicia sesion para escribir en este spot.')
-        : (isReplying
+        : (usesReplyComposer
               ? 'Escribe tu respuesta...'
               : 'Escribe al chat del spot...');
     final onAttach =
         _canPublishSocial &&
             !_isSocialSubmitting &&
-            (_editingPostId == null || isReplying)
-        ? () => _showSocialAttachmentOptions(forReply: isReplying)
+            (_editingPostId == null || isReplying) &&
+            !isEditingReply
+        ? () => _showSocialAttachmentOptions(forReply: usesReplyComposer)
         : null;
 
     return Column(
@@ -7497,15 +7869,15 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         ],
         _buildPendingSocialAttachments(
           attachments: pendingAttachments,
-          forReply: isReplying,
+          forReply: usesReplyComposer,
         ),
         TextField(
           controller: controller,
           focusNode: focusNode,
           minLines: 1,
-          maxLines: isReplying ? 3 : 5,
+          maxLines: usesReplyComposer ? 3 : 5,
           onChanged: (value) =>
-              _handleSocialComposerChanged(value, forReply: isReplying),
+              _handleSocialComposerChanged(value, forReply: usesReplyComposer),
           enabled: _canPublishSocial && !_isSocialSubmitting,
           decoration: InputDecoration(
             hintText: hintText,
@@ -7532,7 +7904,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (isReplying)
+                if (usesReplyComposer)
                   TextButton(
                     onPressed: _cancelReplyComposer,
                     child: const Text('Cancelar'),
@@ -7553,12 +7925,12 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                 const SizedBox(width: AppSpacing.xs),
                 FilledButton.icon(
                   onPressed: _canPublishSocial && canSend
-                      ? (isReplying ? _publishReply : _publishSocialPost)
+                      ? (usesReplyComposer ? _publishReply : _publishSocialPost)
                       : null,
                   icon: const Icon(Icons.send_rounded),
                   label: Text(
-                    isReplying
-                        ? 'Responder'
+                    usesReplyComposer
+                        ? (isEditingReply ? 'Guardar' : 'Responder')
                         : (_editingPostId == null ? 'Enviar' : 'Guardar'),
                   ),
                 ),
@@ -7696,6 +8068,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                           ),
                         );
                       }
+                      final chatEntries = _buildChatEntries();
                       return Scrollbar(
                         controller: _socialFeedScrollController,
                         thumbVisibility: true,
@@ -7703,12 +8076,18 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                           controller: _socialFeedScrollController,
                           primary: false,
                           children: [
-                            for (final entry in _buildChatEntries())
+                            for (var index = 0; index < chatEntries.length; index += 1)
                               Padding(
+                                key: index == chatEntries.length - 1
+                                    ? _lastSocialMessageKey
+                                    : null,
                                 padding: const EdgeInsets.only(
                                   bottom: AppSpacing.sm,
                                 ),
-                                child: Row(
+                                child: Builder(
+                                  builder: (context) {
+                                    final entry = chatEntries[index];
+                                    return Row(
                                   mainAxisAlignment: entry.isMine
                                       ? MainAxisAlignment.end
                                       : MainAxisAlignment.start,
@@ -7743,6 +8122,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                                                     ? colorScheme
                                                           .onPrimaryContainer
                                                     : colorScheme.primary,
+                                                manageColor: colorScheme.error,
                                                 onReplyTriggered: () =>
                                                     entry.isReply
                                                     ? _openReplyComposerForReply(
@@ -7752,6 +8132,12 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                                                     : _openReplyComposerForPost(
                                                         entry.id,
                                                       ),
+                                                onManageTriggered:
+                                                    _canManageSocialEntry(entry)
+                                                    ? () => _showSocialMessageActions(
+                                                        entry,
+                                                      )
+                                                    : null,
                                                 child: Container(
                                                   padding:
                                                       const EdgeInsets.fromLTRB(
@@ -7817,54 +8203,11 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                                                                             alpha:
                                                                                 0.72,
                                                                           )
-                                                                    : colorScheme
-                                                                          .onSurfaceVariant,
+                                                                : colorScheme
+                                                                      .onSurfaceVariant,
                                                               ),
                                                             ),
                                                           ),
-                                                          if (!entry.isReply &&
-                                                              entry.isMine)
-                                                            PopupMenuButton<
-                                                              String
-                                                            >(
-                                                              onSelected: (value) async {
-                                                                final post = _socialFeed
-                                                                    .where(
-                                                                      (post) =>
-                                                                          post.id ==
-                                                                          entry
-                                                                              .id,
-                                                                    )
-                                                                    .first;
-                                                                if (value ==
-                                                                    'edit') {
-                                                                  _startEditPost(
-                                                                    post,
-                                                                  );
-                                                                }
-                                                                if (value ==
-                                                                    'delete') {
-                                                                  await _deletePost(
-                                                                    post,
-                                                                  );
-                                                                }
-                                                              },
-                                                              itemBuilder: (context) => const [
-                                                                PopupMenuItem(
-                                                                  value: 'edit',
-                                                                  child: Text(
-                                                                    'Editar',
-                                                                  ),
-                                                                ),
-                                                                PopupMenuItem(
-                                                                  value:
-                                                                      'delete',
-                                                                  child: Text(
-                                                                    'Eliminar',
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            ),
                                                         ],
                                                       ),
                                                       if (entry.parentMessage
@@ -7976,6 +8319,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                                       _buildSocialMiniAvatar(entry),
                                     ],
                                   ],
+                                );
+                                  },
                                 ),
                               ),
                           ],
@@ -8099,6 +8444,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       await LocalNotificationsService.instance.showSpotAlarm(
         notificationId: LocalNotificationsService.instance
             .notificationIdForAlarm(alarm.id),
+        alarmId: alarm.id,
         title: title,
         body: body,
       );
@@ -10843,11 +11189,15 @@ class _SwipeReplyMessageWrapper extends StatefulWidget {
     required this.child,
     required this.onReplyTriggered,
     required this.accentColor,
+    required this.manageColor,
+    this.onManageTriggered,
   });
 
   final Widget child;
   final VoidCallback onReplyTriggered;
   final Color accentColor;
+  final Color manageColor;
+  final VoidCallback? onManageTriggered;
 
   @override
   State<_SwipeReplyMessageWrapper> createState() =>
@@ -10859,62 +11209,90 @@ class _SwipeReplyMessageWrapperState extends State<_SwipeReplyMessageWrapper> {
   static const double _triggerThreshold = 44;
 
   double _dragOffset = 0;
-  bool _hasTriggered = false;
-  bool _didCrossThreshold = false;
+  _SwipeMessageAction? _triggeredAction;
+  _SwipeMessageAction? _crossedThresholdAction;
 
   @override
   Widget build(BuildContext context) {
-    final revealProgress = (-_dragOffset / _maxReveal).clamp(0.0, 1.0);
+    final leftRevealProgress = (-_dragOffset / _maxReveal).clamp(0.0, 1.0);
+    final rightRevealProgress = (_dragOffset / _maxReveal).clamp(0.0, 1.0);
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onHorizontalDragStart: (_) {
-        _hasTriggered = false;
-        _didCrossThreshold = false;
+        _triggeredAction = null;
+        _crossedThresholdAction = null;
       },
       onHorizontalDragUpdate: (details) {
+        final minOffset = widget.onManageTriggered == null ? -_maxReveal : -_maxReveal;
+        final maxOffset = widget.onManageTriggered == null ? 0.0 : _maxReveal;
         final nextOffset = (_dragOffset + details.delta.dx).clamp(
-          -_maxReveal,
-          0.0,
+          minOffset,
+          maxOffset,
         );
         if (nextOffset == _dragOffset) {
           return;
         }
-        final crossedThreshold = nextOffset <= -_triggerThreshold;
-        if (crossedThreshold && !_didCrossThreshold) {
-          _didCrossThreshold = true;
+        final crossedThresholdAction = nextOffset <= -_triggerThreshold
+            ? _SwipeMessageAction.reply
+            : (nextOffset >= _triggerThreshold && widget.onManageTriggered != null)
+            ? _SwipeMessageAction.manage
+            : null;
+        if (crossedThresholdAction != null &&
+            crossedThresholdAction != _crossedThresholdAction) {
+          _crossedThresholdAction = crossedThresholdAction;
           HapticFeedback.selectionClick();
-        } else if (!crossedThreshold && _didCrossThreshold) {
-          _didCrossThreshold = false;
+        } else if (crossedThresholdAction == null &&
+            _crossedThresholdAction != null) {
+          _crossedThresholdAction = null;
         }
         setState(() {
           _dragOffset = nextOffset;
         });
       },
       onHorizontalDragEnd: (_) {
-        if (!_hasTriggered && _dragOffset <= -_triggerThreshold) {
-          _hasTriggered = true;
+        if (_triggeredAction == null && _dragOffset <= -_triggerThreshold) {
+          _triggeredAction = _SwipeMessageAction.reply;
           widget.onReplyTriggered();
+        } else if (_triggeredAction == null &&
+            _dragOffset >= _triggerThreshold &&
+            widget.onManageTriggered != null) {
+          _triggeredAction = _SwipeMessageAction.manage;
+          widget.onManageTriggered!.call();
         }
         setState(() {
           _dragOffset = 0;
         });
-        _didCrossThreshold = false;
+        _crossedThresholdAction = null;
       },
       onHorizontalDragCancel: () {
         setState(() {
           _dragOffset = 0;
         });
-        _didCrossThreshold = false;
+        _crossedThresholdAction = null;
       },
       child: Stack(
-        alignment: Alignment.centerRight,
+        alignment: Alignment.center,
         children: [
+          if (widget.onManageTriggered != null)
+            Positioned(
+              left: AppSpacing.sm,
+              child: Opacity(
+                opacity: rightRevealProgress,
+                child: Transform.scale(
+                  scale: 0.8 + (rightRevealProgress * 0.28),
+                  child: Icon(
+                    Icons.edit_note_rounded,
+                    color: widget.manageColor.withValues(alpha: 0.88),
+                  ),
+                ),
+              ),
+            ),
           Positioned(
             right: AppSpacing.sm,
             child: Opacity(
-              opacity: revealProgress,
+              opacity: leftRevealProgress,
               child: Transform.scale(
-                scale: 0.8 + (revealProgress * 0.28),
+                scale: 0.8 + (leftRevealProgress * 0.28),
                 child: Icon(
                   Icons.reply_rounded,
                   color: widget.accentColor.withValues(alpha: 0.88),
@@ -10933,6 +11311,8 @@ class _SwipeReplyMessageWrapperState extends State<_SwipeReplyMessageWrapper> {
     );
   }
 }
+
+enum _SwipeMessageAction { reply, manage }
 
 enum _SpotDetailSection { prevision, live, webcam, social }
 

@@ -69,6 +69,8 @@ dev_dependencies:
 
 dependency_overrides:
   firebase_core_platform_interface: 6.0.2
+  firebase_messaging_platform_interface:
+    path: third_party/firebase_messaging_platform_interface
   firebase_messaging_web:
     path: third_party/firebase_messaging_web
   webview_flutter_wkwebview: 3.6.1

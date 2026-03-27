@@ -124,6 +124,34 @@ class SpotAlarmCatalog extends ChangeNotifier {
     notifyListeners();
   }
 
+  void snoozeAlarm(String alarmId, {DateTime? snoozedAt}) {
+    final index = _alarms.indexWhere((alarm) => alarm.id == alarmId);
+    if (index < 0) {
+      return;
+    }
+    _alarms[index] = _alarms[index].copyWith(
+      lastTriggeredAt: snoozedAt ?? DateTime.now(),
+    );
+    _save();
+    _syncClient.saveAlarm(_alarms[index]);
+    notifyListeners();
+  }
+
+  void stopAlarmUntilConditionsReset(String alarmId) {
+    final index = _alarms.indexWhere((alarm) => alarm.id == alarmId);
+    if (index < 0) {
+      return;
+    }
+    final alarm = _alarms[index];
+    _alarms[index] = alarm.copyWith(
+      triggerCount: alarm.maxRepeats,
+      lastTriggeredAt: DateTime.now(),
+    );
+    _save();
+    _syncClient.saveAlarm(_alarms[index]);
+    notifyListeners();
+  }
+
   void _load() {
     final file = _file;
     if (file == null) {
@@ -317,4 +345,4 @@ class SpotAlarmRecord {
   }
 }
 
-enum AlarmRepeatWindow { min5, min10, min15, min30 }
+enum AlarmRepeatWindow { min1, min5, min10, min15, min30 }

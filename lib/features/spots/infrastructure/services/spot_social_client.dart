@@ -34,6 +34,13 @@ class SpotSocialClient {
 
   static const String _attachmentsBucket = 'spot-social-media';
 
+  static String buildSpotKey({
+    required String spotName,
+    required String spotArea,
+  }) {
+    return '${spotName.trim().toLowerCase()}::${spotArea.trim().toLowerCase()}';
+  }
+
   factory SpotSocialClient.auto({SupabaseClient? client}) {
     final hasSupabase =
         EnvConfig.supabaseUrl.trim().isNotEmpty &&
@@ -533,6 +540,46 @@ class SpotSocialClient {
     );
   }
 
+  Future<SpotSocialReply> updateReply({
+    required String replyId,
+    required String message,
+  }) async {
+    if (!_useSupabase || _client == null) {
+      for (final entry in _memoryFeedBySpot.entries) {
+        for (var index = 0; index < entry.value.length; index += 1) {
+          final post = entry.value[index];
+          final nextReplies = List<SpotSocialReply>.from(post.replies);
+          final updated = _updateLocalReplyMessage(
+            replies: nextReplies,
+            replyId: replyId,
+            message: message,
+          );
+          if (updated != null) {
+            entry.value[index] = post.copyWith(replies: nextReplies);
+            return updated;
+          }
+        }
+      }
+      throw StateError('No se encontro la respuesta a editar.');
+    }
+
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      throw StateError('Debes iniciar sesion para editar en Social.');
+    }
+    final updated = await _client
+        .from('spot_social_replies')
+        .update(<String, dynamic>{'message': message})
+        .eq('id', replyId)
+        .select()
+        .single();
+    return _replyFromRow(
+      updated,
+      currentUserId: user.id,
+      attachments: const <SpotSocialAttachment>[],
+    );
+  }
+
   Future<void> deletePost({required String postId}) async {
     if (!_useSupabase || _client == null) {
       for (final entry in _memoryFeedBySpot.entries) {
@@ -546,6 +593,70 @@ class SpotSocialClient {
       throw StateError('Debes iniciar sesion para eliminar en Social.');
     }
     await _client.from('spot_social_posts').delete().eq('id', postId);
+  }
+
+  Future<void> deleteReply({required String replyId}) async {
+    if (!_useSupabase || _client == null) {
+      for (final entry in _memoryFeedBySpot.entries) {
+        for (var index = 0; index < entry.value.length; index += 1) {
+          final post = entry.value[index];
+          final nextReplies = List<SpotSocialReply>.from(post.replies);
+          if (_removeLocalReply(nextReplies, replyId)) {
+            entry.value[index] = post.copyWith(replies: nextReplies);
+            return;
+          }
+        }
+      }
+      return;
+    }
+
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      throw StateError('Debes iniciar sesion para eliminar en Social.');
+    }
+    await _client.from('spot_social_replies').delete().eq('id', replyId);
+  }
+
+  SpotSocialReply? _updateLocalReplyMessage({
+    required List<SpotSocialReply> replies,
+    required String replyId,
+    required String message,
+  }) {
+    for (var index = 0; index < replies.length; index += 1) {
+      final current = replies[index];
+      if (current.id == replyId) {
+        final updated = current.copyWith(message: message);
+        replies[index] = updated;
+        return updated;
+      }
+      final nestedReplies = List<SpotSocialReply>.from(current.replies);
+      final nestedUpdated = _updateLocalReplyMessage(
+        replies: nestedReplies,
+        replyId: replyId,
+        message: message,
+      );
+      if (nestedUpdated != null) {
+        replies[index] = current.copyWith(replies: nestedReplies);
+        return nestedUpdated;
+      }
+    }
+    return null;
+  }
+
+  bool _removeLocalReply(List<SpotSocialReply> replies, String replyId) {
+    for (var index = 0; index < replies.length; index += 1) {
+      final current = replies[index];
+      if (current.id == replyId) {
+        replies.removeAt(index);
+        return true;
+      }
+      final nestedReplies = List<SpotSocialReply>.from(current.replies);
+      if (_removeLocalReply(nestedReplies, replyId)) {
+        replies[index] = current.copyWith(replies: nestedReplies);
+        return true;
+      }
+    }
+    return false;
   }
 
   SpotSocialPost _postFromRow(
@@ -688,7 +799,7 @@ class SpotSocialClient {
   }
 
   String _spotKey(String spotName, String spotArea) {
-    return '${spotName.trim().toLowerCase()}::${spotArea.trim().toLowerCase()}';
+    return buildSpotKey(spotName: spotName, spotArea: spotArea);
   }
 
   SpotSocialAttachmentType _attachmentTypeFromRaw(String? raw) {
