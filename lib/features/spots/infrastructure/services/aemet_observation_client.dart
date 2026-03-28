@@ -128,7 +128,7 @@ class AemetObservationClient {
       return null;
     }
 
-    final raw = payload.first;
+    final raw = _latestObservationRow(payload);
     final lat =
         referenceLatitude ?? _readCoordinate(raw['lat'], isLatitude: true);
     final lon =
@@ -198,6 +198,28 @@ class AemetObservationClient {
       return observedAtA.compareTo(observedAtB);
     });
     return snapshots;
+  }
+
+  Map<String, dynamic> _latestObservationRow(List<Map<String, dynamic>> payload) {
+    if (payload.length == 1) {
+      return payload.first;
+    }
+    final sorted = List<Map<String, dynamic>>.from(payload);
+    sorted.sort((a, b) {
+      final observedAtA = _parseDateTime(a['fint']);
+      final observedAtB = _parseDateTime(b['fint']);
+      if (observedAtA == null && observedAtB == null) {
+        return 0;
+      }
+      if (observedAtA == null) {
+        return -1;
+      }
+      if (observedAtB == null) {
+        return 1;
+      }
+      return observedAtA.compareTo(observedAtB);
+    });
+    return sorted.last;
   }
 
   Future<List<Map<String, dynamic>>> _fetchLatestObservations() async {

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -255,7 +256,19 @@ class ProfileOverviewSection extends StatelessWidget {
                       ),
                       Switch(
                         value: catalog.globalEnabled,
-                        onChanged: catalog.setGlobalEnabled,
+                        onChanged: (value) async {
+                          await catalog.setGlobalEnabled(value);
+                          if (!context.mounted || catalog.lastSyncError == null) {
+                            return;
+                          }
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'No se pudo sincronizar el estado global de alarmas: ${catalog.lastSyncError}',
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -395,7 +408,17 @@ class ProfileOverviewSection extends StatelessWidget {
                       if (!confirmed) {
                         return;
                       }
-                      catalog.deleteAlarm(alarm.id);
+                      final deleted = await catalog.deleteAlarm(alarm.id);
+                      if (!context.mounted || deleted || catalog.lastSyncError == null) {
+                        return;
+                      }
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'La alarma se elimino localmente, pero no se pudo sincronizar: ${catalog.lastSyncError}',
+                          ),
+                        ),
+                      );
                     },
                     icon: const Icon(Icons.delete_outline_rounded),
                   ),
@@ -447,7 +470,7 @@ class ProfileOverviewSection extends StatelessWidget {
               _ProfileAlarmMetaChip(
                 icon: Icons.schedule_rounded,
                 label:
-                    '${_formatAlarmHour(alarm.startHour)}-${_formatAlarmHour(alarm.endHour)}',
+                    '${_formatAlarmTime(alarm.startHour, alarm.startMinute)}-${_formatAlarmTime(alarm.endHour, alarm.endMinute)}',
               ),
               _ProfileAlarmMetaChip(
                 icon: Icons.navigation_rounded,
@@ -496,8 +519,10 @@ class ProfileOverviewSection extends StatelessWidget {
   ) async {
     final catalog = SpotAlarmCatalog.instance;
     RangeValues windRange = alarm.windRange;
-    int startHour = alarm.startHour;
-    int endHour = alarm.endHour;
+    int startHour = _sanitizeAlarmHour(alarm.startHour);
+    int endHour = _sanitizeAlarmHour(alarm.endHour);
+    int startMinute = _sanitizeAlarmMinute(alarm.startMinute);
+    int endMinute = _sanitizeAlarmMinute(alarm.endMinute);
     Set<String> directions = <String>{...alarm.directions};
     AlarmRepeatWindow repeatWindow = alarm.repeatWindow;
     String? errorText;
@@ -541,50 +566,62 @@ class ProfileOverviewSection extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<int>(
-                            initialValue: startHour,
-                            decoration: const InputDecoration(
-                              labelText: 'Desde',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: List.generate(24, (hour) {
-                              return DropdownMenuItem<int>(
-                                value: hour,
-                                child: Text(
-                                  '${hour.toString().padLeft(2, '0')}:00',
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              final picked = await showTimePicker(
+                                context: dialogContext,
+                                initialTime: TimeOfDay(
+                                  hour: startHour,
+                                  minute: startMinute,
                                 ),
                               );
-                            }),
-                            onChanged: (value) {
-                              if (value == null) return;
+                              if (picked == null) {
+                                return;
+                              }
                               setDialogState(() {
-                                startHour = value;
+                                startHour = picked.hour;
+                                startMinute = picked.minute;
                               });
                             },
+                            icon: const Icon(Icons.schedule_rounded),
+                            label: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('Desde'),
+                                Text(_formatAlarmTime(startHour, startMinute)),
+                              ],
+                            ),
                           ),
                         ),
                         const SizedBox(width: AppSpacing.sm),
                         Expanded(
-                          child: DropdownButtonFormField<int>(
-                            initialValue: endHour,
-                            decoration: const InputDecoration(
-                              labelText: 'Hasta',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: List.generate(24, (hour) {
-                              return DropdownMenuItem<int>(
-                                value: hour,
-                                child: Text(
-                                  '${hour.toString().padLeft(2, '0')}:00',
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              final picked = await showTimePicker(
+                                context: dialogContext,
+                                initialTime: TimeOfDay(
+                                  hour: endHour,
+                                  minute: endMinute,
                                 ),
                               );
-                            }),
-                            onChanged: (value) {
-                              if (value == null) return;
+                              if (picked == null) {
+                                return;
+                              }
                               setDialogState(() {
-                                endHour = value;
+                                endHour = picked.hour;
+                                endMinute = picked.minute;
                               });
                             },
+                            icon: const Icon(Icons.schedule_rounded),
+                            label: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('Hasta'),
+                                Text(_formatAlarmTime(endHour, endMinute)),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -608,28 +645,13 @@ class ProfileOverviewSection extends StatelessWidget {
                       },
                     ),
                     const SizedBox(height: AppSpacing.xs),
-                    Wrap(
-                      spacing: AppSpacing.xs,
-                      runSpacing: AppSpacing.xs,
-                      children: _profileAlarmDirectionOptions.map((direction) {
-                        final selected = directions.contains(direction);
-                        return FilterChip(
-                          selected: selected,
-                          label: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.navigation_rounded,
-                                size: 16,
-                                color: selected
-                                    ? colorScheme.onSecondaryContainer
-                                    : colorScheme.onSurfaceVariant,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(direction),
-                            ],
-                          ),
-                          onSelected: (value) {
+                    Column(
+                      children: [
+                        _buildProfileAlarmDirectionRow(
+                          row: _profileAlarmDirectionOptions.sublist(0, 4),
+                          directions: directions,
+                          colorScheme: colorScheme,
+                          onToggleDirection: (direction, value) {
                             setDialogState(() {
                               if (value) {
                                 directions = <String>{...directions, direction};
@@ -640,8 +662,25 @@ class ProfileOverviewSection extends StatelessWidget {
                               }
                             });
                           },
-                        );
-                      }).toList(growable: false),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        _buildProfileAlarmDirectionRow(
+                          row: _profileAlarmDirectionOptions.sublist(4, 8),
+                          directions: directions,
+                          colorScheme: colorScheme,
+                          onToggleDirection: (direction, value) {
+                            setDialogState(() {
+                              if (value) {
+                                directions = <String>{...directions, direction};
+                              } else {
+                                directions = directions
+                                    .where((entry) => entry != direction)
+                                    .toSet();
+                              }
+                            });
+                          },
+                        ),
+                      ],
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     DropdownButtonFormField<AlarmRepeatWindow>(
@@ -699,7 +738,7 @@ class ProfileOverviewSection extends StatelessWidget {
                   child: const Text('Cancelar'),
                 ),
                 FilledButton.icon(
-                  onPressed: () {
+                  onPressed: () async {
                     if (directions.isEmpty) {
                       setDialogState(() {
                         errorText =
@@ -718,6 +757,8 @@ class ProfileOverviewSection extends StatelessWidget {
                       windRange: windRange,
                       startHour: startHour,
                       endHour: endHour,
+                      startMinute: startMinute,
+                      endMinute: endMinute,
                       directions: directions,
                       repeatWindow: repeatWindow,
                       maxRepeats: alarm.maxRepeats,
@@ -729,7 +770,17 @@ class ProfileOverviewSection extends StatelessWidget {
                       });
                       return;
                     }
-                    catalog.saveAlarm(updated);
+                    final saved = await catalog.saveAlarm(updated);
+                    if (!dialogContext.mounted) {
+                      return;
+                    }
+                    if (!saved) {
+                      setDialogState(() {
+                        errorText =
+                            'Guardada localmente, pero fallo la sincronizacion remota.';
+                      });
+                      return;
+                    }
                     Navigator.of(dialogContext).pop();
                   },
                   icon: const Icon(Icons.alarm_add_rounded),
@@ -771,8 +822,82 @@ class ProfileOverviewSection extends StatelessWidget {
     return confirmed ?? false;
   }
 
-  String _formatAlarmHour(int hour) {
-    return '${hour.toString().padLeft(2, '0')}:00';
+  String _formatAlarmTime(int hour, int minute) {
+    final safeHour = _sanitizeAlarmHour(hour);
+    final safeMinute = _sanitizeAlarmMinute(minute);
+    return '${safeHour.toString().padLeft(2, '0')}:${safeMinute.toString().padLeft(2, '0')}';
+  }
+
+  Widget _buildProfileAlarmDirectionRow({
+    required List<String> row,
+    required Set<String> directions,
+    required ColorScheme colorScheme,
+    required void Function(String direction, bool value) onToggleDirection,
+  }) {
+    return Row(
+      children: row.map((direction) {
+        final selected = directions.contains(direction);
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(
+              right: direction == row.last ? 0 : AppSpacing.xs,
+            ),
+            child: FilterChip(
+              selected: selected,
+              showCheckmark: false,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+              labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+              label: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Transform.rotate(
+                    angle: _profileAlarmDirectionRotation(direction),
+                    child: Icon(
+                      Icons.navigation_rounded,
+                      size: 14,
+                      color: selected
+                          ? colorScheme.onSecondaryContainer
+                          : colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(direction, style: const TextStyle(fontSize: 12)),
+                ],
+              ),
+              onSelected: (value) => onToggleDirection(direction, value),
+            ),
+          ),
+        );
+      }).toList(growable: false),
+    );
+  }
+
+  int _sanitizeAlarmHour(int hour) => hour.clamp(0, 23);
+
+  int _sanitizeAlarmMinute(int minute) => minute.clamp(0, 59);
+
+  double _profileAlarmDirectionRotation(String direction) {
+    switch (direction) {
+      case 'N':
+        return 0;
+      case 'NE':
+        return math.pi / 4;
+      case 'E':
+        return math.pi / 2;
+      case 'SE':
+        return (3 * math.pi) / 4;
+      case 'S':
+        return math.pi;
+      case 'SW':
+        return (5 * math.pi) / 4;
+      case 'W':
+        return (3 * math.pi) / 2;
+      case 'NW':
+        return (7 * math.pi) / 4;
+    }
+    return 0;
   }
 
   String _alarmRepeatWindowLabel(AlarmRepeatWindow window) {

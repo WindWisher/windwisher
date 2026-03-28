@@ -38,8 +38,22 @@ class SpotAlarmSyncClient {
 
   final SupabaseClient? _client;
   final bool _useSupabase;
+  String? _lastError;
 
   bool get canSync => _useSupabase && _client?.auth.currentUser != null;
+  String? get lastError => _lastError;
+
+  void _ensureSyncAvailable() {
+    final client = _client;
+    if (!_useSupabase || client == null) {
+      _lastError = 'Supabase no esta configurado en esta app.';
+      throw StateError(_lastError!);
+    }
+    if (client.auth.currentUser == null) {
+      _lastError = 'No hay una sesion iniciada en Supabase para sincronizar alarmas.';
+      throw StateError(_lastError!);
+    }
+  }
 
   Future<SpotAlarmSyncSnapshot?> loadSnapshot() async {
     if (!canSync || _client == null) {
@@ -79,12 +93,12 @@ class SpotAlarmSyncClient {
     );
   }
 
-  void saveAlarm(SpotAlarmRecord alarm) {
-    if (!canSync || _client == null) {
-      return;
-    }
-    unawaited(
-      _client.from('spot_alarms').upsert(<String, dynamic>{
+  Future<void> saveAlarm(SpotAlarmRecord alarm) async {
+    _ensureSyncAvailable();
+    final client = _client!;
+    try {
+      _lastError = null;
+      await client.from('spot_alarms').upsert(<String, dynamic>{
         'id': alarm.id,
         'spot_key': alarm.spotKey,
         'spot_name': alarm.spotName,
@@ -96,29 +110,42 @@ class SpotAlarmSyncClient {
         'wind_range_end': alarm.windRange.end,
         'start_hour': alarm.startHour,
         'end_hour': alarm.endHour,
+        'start_minute': alarm.startMinute,
+        'end_minute': alarm.endMinute,
         'directions': alarm.directions.toList(growable: false),
         'repeat_window': alarm.repeatWindow.name,
         'max_repeats': alarm.maxRepeats,
         'trigger_count': alarm.triggerCount,
         'last_triggered_at': alarm.lastTriggeredAt?.toUtc().toIso8601String(),
         'updated_at': DateTime.now().toUtc().toIso8601String(),
-      }),
-    );
-  }
-
-  void deleteAlarm(String alarmId) {
-    if (!canSync || _client == null) {
-      return;
+      });
+    } catch (error) {
+      _lastError = error.toString();
+      rethrow;
     }
-    unawaited(_client.from('spot_alarms').delete().eq('id', alarmId));
   }
 
-  void saveGlobalEnabled(bool enabled) {
-    _savePreference(scopeKey: _globalScopeKey, enabled: enabled);
+  Future<void> deleteAlarm(String alarmId) async {
+    _ensureSyncAvailable();
+    final client = _client!;
+    try {
+      _lastError = null;
+      await client.from('spot_alarms').delete().eq('id', alarmId);
+    } catch (error) {
+      _lastError = error.toString();
+      rethrow;
+    }
   }
 
-  void saveSpotEnabled({required String spotKey, required bool enabled}) {
-    _savePreference(scopeKey: spotKey, enabled: enabled);
+  Future<void> saveGlobalEnabled(bool enabled) async {
+    await _savePreference(scopeKey: _globalScopeKey, enabled: enabled);
+  }
+
+  Future<void> saveSpotEnabled({
+    required String spotKey,
+    required bool enabled,
+  }) async {
+    await _savePreference(scopeKey: spotKey, enabled: enabled);
   }
 
   SpotAlarmRecord _alarmFromRow(Map<String, dynamic> row) {
@@ -137,6 +164,8 @@ class SpotAlarmSyncClient {
       ),
       startHour: (row['start_hour'] as num?)?.toInt() ?? 0,
       endHour: (row['end_hour'] as num?)?.toInt() ?? 0,
+      startMinute: (row['start_minute'] as num?)?.toInt() ?? 0,
+      endMinute: (row['end_minute'] as num?)?.toInt() ?? 0,
       directions: rawDirections
           .map((entry) => entry.toString())
           .where((entry) => entry.isNotEmpty)
@@ -153,16 +182,22 @@ class SpotAlarmSyncClient {
     );
   }
 
-  void _savePreference({required String scopeKey, required bool enabled}) {
-    if (!canSync || _client == null) {
-      return;
-    }
-    unawaited(
-      _client.from('spot_alarm_preferences').upsert(<String, dynamic>{
+  Future<void> _savePreference({
+    required String scopeKey,
+    required bool enabled,
+  }) async {
+    _ensureSyncAvailable();
+    final client = _client!;
+    try {
+      _lastError = null;
+      await client.from('spot_alarm_preferences').upsert(<String, dynamic>{
         'scope_key': scopeKey,
         'enabled': enabled,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
-      }),
-    );
+      });
+    } catch (error) {
+      _lastError = error.toString();
+      rethrow;
+    }
   }
 }

@@ -12,7 +12,6 @@ import 'package:latlong2/latlong.dart' hide Path;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
-import 'package:windwisher/core/notifications/local_notifications_service.dart';
 import 'package:windwisher/core/platform/web_compass.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
@@ -35,6 +34,7 @@ import 'package:windwisher/features/spots/presentation/widgets/meteoblue_forecas
 import 'package:windwisher/features/spots/presentation/widgets/meteostat_day_supplement_card.dart';
 import 'package:windwisher/features/spots/presentation/widgets/meteosource_forecast_supplement_card.dart';
 import 'package:windwisher/features/spots/presentation/widgets/aemet_forecast_tables.dart';
+import 'package:windwisher/features/spots/presentation/widgets/forecast_accuracy_card.dart';
 import 'package:windwisher/features/spots/presentation/widgets/windguru_forecast_card.dart';
 import 'package:windwisher/features/spots/infrastructure/services/spot_social_client.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -200,7 +200,6 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   WebViewController? _windguruController;
   WebViewController? _windguruFullscreenController;
   bool _isLiveRefreshing = false;
-  bool _hasRequestedAlarmNotificationPermission = false;
   Timer? _alarmAutoRefreshTimer;
   bool _isAppResumed = true;
 
@@ -210,6 +209,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   int _alarmMaxRepeats = 3;
   int _alarmStartHour = 8;
   int _alarmEndHour = 20;
+  int _alarmStartMinute = 0;
+  int _alarmEndMinute = 0;
   Set<String> _alarmDirections = <String>{'N', 'NE', 'E'};
   String? _editingAlarmId;
 
@@ -1972,11 +1973,22 @@ class _SpotDetailPageState extends State<SpotDetailPage>
           style: Theme.of(context).textTheme.bodySmall,
         ),
         if (observedAt != null) ...[
-          const SizedBox(height: 2),
-          Text(
-            'Actualizado: ${_formatObservedAt(observedAt)}',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: 4,
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              'Actualizado ${_formatObservedAt(observedAt)}',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -2582,7 +2594,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         }
       });
       await _refreshSelectedStationLiveData();
-      await _maybeTriggerSpotAlarms();
+      await _refreshAlarmStationsLiveData(_savedAlarmsForCurrentSpot());
       _syncAlarmMonitoring();
     } finally {
       if (mounted) {
@@ -2601,7 +2613,6 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     setState(() {
       _syncAlarmMonitoring();
     });
-    await _maybeTriggerSpotAlarms();
   }
 
   void _syncAlarmMonitoring() {
@@ -2641,79 +2652,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       return;
     }
     try {
-      _StationLiveData? refreshed;
-      if (station.provider == 'AVAMET') {
-        final snapshot = await _avametObservationClient.fetchStationObservation(
-          stationId: station.stationId!,
-        );
-        if (snapshot != null) {
-          refreshed = _StationLiveData(
-            windKnots: snapshot.windKnots?.round(),
-            windDeg: snapshot.windDirectionDeg,
-            gustKnots: snapshot.gustKnots?.round(),
-            tempC: snapshot.tempC,
-            pressureHpa: snapshot.pressureHpa?.round(),
-            humidityPct: snapshot.humidityPct,
-            rainMm: snapshot.rainMm,
-            observedAt: snapshot.observedAt,
-          );
-        }
-      } else if (station.provider == 'INFORATGE') {
-        final feed = await _inforatgeOlivaNovaClient.fetchFeed(
-          stationCode: station.stationId == _inforatgePoliesportiuStationId
-              ? '01'
-              : '02',
-          liveUrl: station.stationId == _inforatgePoliesportiuStationId
-              ? InforatgeOlivaNovaClient.livePoliesportiuUrl
-              : InforatgeOlivaNovaClient.liveOlivaNovaUrl,
-        );
-        final snapshot = feed.latestSnapshot;
-        if (snapshot != null) {
-          refreshed = _StationLiveData(
-            windKnots: snapshot.windKnots,
-            windDeg: snapshot.windDirectionDeg,
-            gustKnots: snapshot.gustKnots,
-            tempC: snapshot.tempC,
-            pressureHpa: snapshot.pressureHpa,
-            humidityPct: snapshot.humidityPct,
-            rainMm: snapshot.rainMm,
-            observedAt: snapshot.observedAt,
-          );
-        }
-      } else if (station.provider == 'AIGUABLANCA') {
-        final feed = await _aiguaBlancaMeteoClient.fetchFeed();
-        final snapshot = feed.latestSnapshot;
-        if (snapshot != null) {
-          refreshed = _StationLiveData(
-            windKnots: snapshot.windKnots,
-            windDeg: snapshot.windDirectionDeg,
-            gustKnots: snapshot.gustKnots,
-            tempC: snapshot.tempC,
-            pressureHpa: snapshot.pressureHpa,
-            humidityPct: snapshot.humidityPct,
-            rainMm: snapshot.rainMm,
-            observedAt: snapshot.observedAt,
-          );
-        }
-      } else if (station.stationId != null) {
-        final snapshot = await _aemetObservationClient.fetchStationObservation(
-          stationId: station.stationId!,
-          referenceLatitude: station.latitude,
-          referenceLongitude: station.longitude,
-        );
-        if (snapshot != null) {
-          refreshed = _StationLiveData(
-            windKnots: snapshot.windKnots?.round(),
-            windDeg: snapshot.windDirectionDeg,
-            gustKnots: snapshot.gustKnots?.round(),
-            tempC: snapshot.tempC,
-            pressureHpa: snapshot.pressureHpa?.round(),
-            humidityPct: snapshot.humidityPct,
-            rainMm: snapshot.rainMm,
-            observedAt: snapshot.observedAt,
-          );
-        }
-      }
+      final refreshed = await _fetchLiveDataForStation(station);
       if (!mounted || refreshed == null) {
         return;
       }
@@ -2739,6 +2678,140 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     } catch (_) {
       // Ignore refresh errors for now; base data still shown.
     }
+  }
+
+  Future<void> _refreshAlarmStationsLiveData(List<SpotAlarmRecord> alarms) async {
+    final stationKeys = alarms.map((alarm) => alarm.stationKey).toSet();
+    if (stationKeys.isEmpty) {
+      return;
+    }
+    final current = _liveStationsLoadResult;
+    if (current == null) {
+      return;
+    }
+    final updatedLiveData = Map<String, _StationLiveData>.from(
+      current.liveDataByStation,
+    );
+    var changed = false;
+    for (final stationKey in stationKeys) {
+      if (stationKey == _selectedStation) {
+        continue;
+      }
+      final station = _findStationByKey(stationKey);
+      if (station == null) {
+        continue;
+      }
+      try {
+        final refreshed = await _fetchLiveDataForStation(station);
+        if (refreshed == null) {
+          continue;
+        }
+        updatedLiveData[stationKey] = refreshed;
+        changed = true;
+      } catch (_) {
+        continue;
+      }
+    }
+    if (!mounted || !changed) {
+      return;
+    }
+    setState(() {
+      final currentResult = _liveStationsLoadResult;
+      if (currentResult == null) {
+        return;
+      }
+      _liveStationsLoadResult = _LiveStationsLoadResult(
+        stations: currentResult.stations,
+        liveDataByStation: updatedLiveData,
+        historicalSeriesByStation: currentResult.historicalSeriesByStation,
+        source: currentResult.source,
+        message: currentResult.message,
+        technicalError: currentResult.technicalError,
+      );
+    });
+  }
+
+  Future<_StationLiveData?> _fetchLiveDataForStation(_NearbyStation station) async {
+    if (station.provider == 'AVAMET') {
+      final snapshot = await _avametObservationClient.fetchStationObservation(
+        stationId: station.stationId!,
+      );
+      if (snapshot == null) {
+        return null;
+      }
+      return _StationLiveData(
+        windKnots: snapshot.windKnots?.toDouble(),
+        windDeg: snapshot.windDirectionDeg,
+        gustKnots: snapshot.gustKnots?.toDouble(),
+        tempC: snapshot.tempC,
+        pressureHpa: snapshot.pressureHpa?.round(),
+        humidityPct: snapshot.humidityPct,
+        rainMm: snapshot.rainMm,
+        observedAt: snapshot.observedAt,
+      );
+    }
+    if (station.provider == 'INFORATGE') {
+      final feed = await _inforatgeOlivaNovaClient.fetchFeed(
+        stationCode: station.stationId == _inforatgePoliesportiuStationId
+            ? '01'
+            : '02',
+        liveUrl: station.stationId == _inforatgePoliesportiuStationId
+            ? InforatgeOlivaNovaClient.livePoliesportiuUrl
+            : InforatgeOlivaNovaClient.liveOlivaNovaUrl,
+      );
+      final snapshot = feed.latestSnapshot;
+      if (snapshot == null) {
+        return null;
+      }
+      return _StationLiveData(
+        windKnots: snapshot.windKnots?.toDouble(),
+        windDeg: snapshot.windDirectionDeg,
+        gustKnots: snapshot.gustKnots?.toDouble(),
+        tempC: snapshot.tempC,
+        pressureHpa: snapshot.pressureHpa,
+        humidityPct: snapshot.humidityPct,
+        rainMm: snapshot.rainMm,
+        observedAt: snapshot.observedAt,
+      );
+    }
+    if (station.provider == 'AIGUABLANCA') {
+      final feed = await _aiguaBlancaMeteoClient.fetchFeed();
+      final snapshot = feed.latestSnapshot;
+      if (snapshot == null) {
+        return null;
+      }
+      return _StationLiveData(
+        windKnots: snapshot.windKnots?.toDouble(),
+        windDeg: snapshot.windDirectionDeg,
+        gustKnots: snapshot.gustKnots?.toDouble(),
+        tempC: snapshot.tempC,
+        pressureHpa: snapshot.pressureHpa,
+        humidityPct: snapshot.humidityPct,
+        rainMm: snapshot.rainMm,
+        observedAt: snapshot.observedAt,
+      );
+    }
+    if (station.stationId == null) {
+      return null;
+    }
+    final snapshot = await _aemetObservationClient.fetchStationObservation(
+      stationId: station.stationId!,
+      referenceLatitude: station.latitude,
+      referenceLongitude: station.longitude,
+    );
+    if (snapshot == null) {
+      return null;
+    }
+    return _StationLiveData(
+      windKnots: snapshot.windKnots,
+      windDeg: snapshot.windDirectionDeg,
+      gustKnots: snapshot.gustKnots,
+      tempC: snapshot.tempC,
+      pressureHpa: snapshot.pressureHpa?.round(),
+      humidityPct: snapshot.humidityPct,
+      rainMm: snapshot.rainMm,
+      observedAt: snapshot.observedAt,
+    );
   }
 
   _NearbyStation? _findPreferredLiveStation(
@@ -2821,9 +2894,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
           ),
         );
         liveDataByStation[stationKey] = _StationLiveData(
-          windKnots: snapshot.windKnots?.round(),
+          windKnots: snapshot.windKnots,
           windDeg: snapshot.windDirectionDeg,
-          gustKnots: snapshot.gustKnots?.round(),
+          gustKnots: snapshot.gustKnots,
           tempC: snapshot.tempC,
           pressureHpa: snapshot.pressureHpa?.round(),
           humidityPct: snapshot.humidityPct,
@@ -3001,9 +3074,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
           );
           final snapshot = inforatgePoliesportiuFeed.latestSnapshot;
           liveDataByStation[poliesportiuStationKey] = _StationLiveData(
-            windKnots: snapshot?.windKnots,
+            windKnots: snapshot?.windKnots?.toDouble(),
             windDeg: snapshot?.windDirectionDeg,
-            gustKnots: snapshot?.gustKnots,
+            gustKnots: snapshot?.gustKnots?.toDouble(),
             tempC: snapshot?.tempC,
             pressureHpa: snapshot?.pressureHpa,
             humidityPct: snapshot?.humidityPct,
@@ -3047,9 +3120,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
           );
           final snapshot = inforatgeFeed.latestSnapshot;
           liveDataByStation[inforatgeStationKey] = _StationLiveData(
-            windKnots: snapshot?.windKnots,
+            windKnots: snapshot?.windKnots?.toDouble(),
             windDeg: snapshot?.windDirectionDeg,
-            gustKnots: snapshot?.gustKnots,
+            gustKnots: snapshot?.gustKnots?.toDouble(),
             tempC: snapshot?.tempC,
             pressureHpa: snapshot?.pressureHpa,
             humidityPct: snapshot?.humidityPct,
@@ -3092,9 +3165,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
           );
           final snapshot = aiguaBlancaFeed.latestSnapshot;
           liveDataByStation[aiguaBlancaStationKey] = _StationLiveData(
-            windKnots: snapshot?.windKnots,
+            windKnots: snapshot?.windKnots?.toDouble(),
             windDeg: snapshot?.windDirectionDeg,
-            gustKnots: snapshot?.gustKnots,
+            gustKnots: snapshot?.gustKnots?.toDouble(),
             tempC: snapshot?.tempC,
             pressureHpa: snapshot?.pressureHpa,
             humidityPct: snapshot?.humidityPct,
@@ -3137,9 +3210,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
             ),
           );
           liveDataByStation[stationKey] = _StationLiveData(
-            windKnots: avametSnapshot?.windKnots?.round(),
+            windKnots: avametSnapshot?.windKnots,
             windDeg: avametSnapshot?.windDirectionDeg,
-            gustKnots: avametSnapshot?.gustKnots?.round(),
+            gustKnots: avametSnapshot?.gustKnots,
             tempC: avametSnapshot?.tempC,
             pressureHpa: avametSnapshot?.pressureHpa?.round(),
             humidityPct: avametSnapshot?.humidityPct,
@@ -3176,9 +3249,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
             ),
           );
           liveDataByStation[avametOlivaPlayaStationKey] = _StationLiveData(
-            windKnots: avametOlivaPlayaSnapshot?.windKnots?.round(),
+            windKnots: avametOlivaPlayaSnapshot?.windKnots,
             windDeg: avametOlivaPlayaSnapshot?.windDirectionDeg,
-            gustKnots: avametOlivaPlayaSnapshot?.gustKnots?.round(),
+            gustKnots: avametOlivaPlayaSnapshot?.gustKnots,
             tempC: avametOlivaPlayaSnapshot?.tempC,
             pressureHpa: avametOlivaPlayaSnapshot?.pressureHpa?.round(),
             humidityPct: avametOlivaPlayaSnapshot?.humidityPct,
@@ -4063,23 +4136,23 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     );
   }
 
-  String _formatWind(int? knots) {
+  String _formatWind(double? knots) {
     if (knots == null) {
       return '-';
     }
     switch (_windSpeedUnit) {
       case _WindSpeedUnit.knots:
-        return '$knots kt';
+        return '${knots.round()} kt';
       case _WindSpeedUnit.kmh:
         return '${(knots * 1.852).toStringAsFixed(1)} km/h';
       case _WindSpeedUnit.mph:
         return '${(knots * 1.15078).toStringAsFixed(1)} mph';
       case _WindSpeedUnit.beaufort:
-        return 'FUERZA ${_beaufortFromKnots(knots)}';
+        return 'FUERZA ${_beaufortFromKnots(knots.round())}';
     }
   }
 
-  String _formatWindRoseValue(int? knots) {
+  String _formatWindRoseValue(double? knots) {
     return _formatWind(knots);
   }
 
@@ -5179,53 +5252,13 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     String? diagnosticLabel,
   })
   _historySeriesWindowed() {
-    final realHistory = _selectedHistoricalWindPoints();
-    final intraday = _isIntradayHistoricalSeries(realHistory);
-    final selectedBucketOption = intraday
-        ? _selectedBucketOption(_historyRange)
-        : null;
-    final gridDuration = intraday
-        ? _gridDurationForHistorySelection(_historyRange, selectedBucketOption!)
-        : const Duration(days: 1);
-    final arrowDuration = intraday
-        ? _arrowDurationForHistorySelection(
-            _historyRange,
-            selectedBucketOption!,
-          )
-        : const Duration(days: 1);
-    final alignmentDuration =
-        intraday && arrowDuration.inMinutes < gridDuration.inMinutes
-        ? arrowDuration
-        : gridDuration;
-    final intradayBounds = intraday
-        ? _alignedIntradayWindowBounds(realHistory, alignmentDuration)
-        : null;
-    final windowed = _windowHistoricalPoints(
-      realHistory,
-      intradayBucket: intraday ? alignmentDuration : null,
-    );
-    final trimmed = intraday
-        ? _bucketHistoricalPoints(
-            windowed,
-            bucket: arrowDuration,
-            representativeWhenMultiple: false,
-          )
-        : windowed;
-    final boundedTrimmed = intraday
-        ? trimmed.length >
-                  _maxBucketCountForHistorySelection(
-                    _historyRange,
-                    arrowDuration,
-                  )
-              ? trimmed.sublist(
-                  trimmed.length -
-                      _maxBucketCountForHistorySelection(
-                        _historyRange,
-                        arrowDuration,
-                      ),
-                )
-              : trimmed
-        : trimmed;
+    final prepared = _prepareHistorySeriesWindow();
+    final intraday = prepared.intraday;
+    final selectedBucketOption = prepared.selectedBucketOption;
+    final gridDuration = prepared.gridDuration;
+    final arrowDuration = prepared.arrowDuration;
+    final intradayBounds = prepared.intradayBounds;
+    final boundedTrimmed = prepared.points;
     final points = boundedTrimmed
         .map((point) => point.windKnots)
         .toList(growable: false);
@@ -5305,6 +5338,76 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     );
   }
 
+  ({
+    List<_HistoricalWindPoint> realHistory,
+    bool intraday,
+    _HistoricalBucketOption? selectedBucketOption,
+    Duration gridDuration,
+    Duration arrowDuration,
+    ({
+      DateTime startInclusive,
+      DateTime endExclusive,
+    })? intradayBounds,
+    List<_HistoricalWindPoint> points,
+  }) _prepareHistorySeriesWindow() {
+    final realHistory = _selectedHistoricalWindPoints();
+    final intraday = _isIntradayHistoricalSeries(realHistory);
+    final selectedBucketOption = intraday
+        ? _selectedBucketOption(_historyRange)
+        : null;
+    final gridDuration = intraday
+        ? _gridDurationForHistorySelection(_historyRange, selectedBucketOption!)
+        : const Duration(days: 1);
+    final arrowDuration = intraday
+        ? _arrowDurationForHistorySelection(
+            _historyRange,
+            selectedBucketOption!,
+          )
+        : const Duration(days: 1);
+    final alignmentDuration =
+        intraday && arrowDuration.inMinutes < gridDuration.inMinutes
+        ? arrowDuration
+        : gridDuration;
+    final intradayBounds = intraday
+        ? _alignedIntradayWindowBounds(realHistory, alignmentDuration)
+        : null;
+    final windowed = _windowHistoricalPoints(
+      realHistory,
+      intradayBucket: intraday ? alignmentDuration : null,
+    );
+    final trimmed = intraday
+        ? _bucketHistoricalPoints(
+            windowed,
+            bucket: arrowDuration,
+            representativeWhenMultiple: false,
+          )
+        : windowed;
+    final boundedTrimmed = intraday
+        ? trimmed.length >
+                  _maxBucketCountForHistorySelection(
+                    _historyRange,
+                    arrowDuration,
+                  )
+              ? trimmed.sublist(
+                  trimmed.length -
+                      _maxBucketCountForHistorySelection(
+                        _historyRange,
+                        arrowDuration,
+                      ),
+                )
+              : trimmed
+        : trimmed;
+    return (
+      realHistory: realHistory,
+      intraday: intraday,
+      selectedBucketOption: selectedBucketOption,
+      gridDuration: gridDuration,
+      arrowDuration: arrowDuration,
+      intradayBounds: intradayBounds,
+      points: boundedTrimmed,
+    );
+  }
+
   bool _supportsHistoricalForecastOverlay({
     required String provider,
     required String model,
@@ -5360,6 +5463,108 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     return values;
   }
 
+  _HistoricalForecastAccuracySummary? _historicalForecastAccuracySummary({
+    required List<_HistoricalWindPoint> points,
+    required Duration bucketDuration,
+  }) {
+    if (points.isEmpty || _usesFixedAemetOlivaHistoryWindow()) {
+      return null;
+    }
+    final rows = _historicalForecastOverlayRows();
+    if (rows.isEmpty) {
+      return null;
+    }
+
+    var speedMatched = 0;
+    var speedComparable = 0;
+    var directionMatched = 0;
+    var directionComparable = 0;
+    var combinedMatched = 0;
+    var combinedComparable = 0;
+    var absoluteErrorSum = 0.0;
+
+    for (final point in points) {
+      final forecastWind = _forecastWindForTime(
+        point.time,
+        rows,
+        bucketDuration: bucketDuration,
+      );
+      final forecastDirection = _forecastDirectionForTime(
+        point.time,
+        rows,
+        bucketDuration: bucketDuration,
+      );
+
+      final hasSpeed = forecastWind != null;
+      final hasDirection =
+          forecastDirection != null && point.windDirectionDeg != null;
+
+      var speedHit = false;
+      var directionHit = false;
+
+      if (hasSpeed) {
+        final error = (forecastWind - point.windKnots).abs();
+        absoluteErrorSum += error;
+        speedComparable += 1;
+        speedHit = error <= 2.0;
+        if (speedHit) {
+          speedMatched += 1;
+        }
+      }
+
+      if (hasDirection) {
+        final error = _angularDifferenceDegrees(
+          forecastDirection,
+          point.windDirectionDeg!,
+        );
+        directionComparable += 1;
+        directionHit = error <= 30;
+        if (directionHit) {
+          directionMatched += 1;
+        }
+      }
+
+      if (hasSpeed && hasDirection) {
+        combinedComparable += 1;
+        if (speedHit && directionHit) {
+          combinedMatched += 1;
+        }
+      }
+    }
+
+    if (speedComparable == 0 && directionComparable == 0) {
+      return null;
+    }
+
+    return _HistoricalForecastAccuracySummary(
+      totalPercentage:
+          (speedComparable + directionComparable) == 0
+              ? null
+              : (((speedMatched + directionMatched) /
+                          (speedComparable + directionComparable)) *
+                      100)
+                  .round(),
+      windPercentage: speedComparable == 0
+          ? null
+          : ((speedMatched / speedComparable) * 100).round(),
+      windMatchedPoints: speedMatched,
+      windComparablePoints: speedComparable,
+      directionPercentage: directionComparable == 0
+          ? null
+          : ((directionMatched / directionComparable) * 100).round(),
+      directionMatchedPoints: directionMatched,
+      directionComparablePoints: directionComparable,
+      combinedPercentage: combinedComparable == 0
+          ? null
+          : ((combinedMatched / combinedComparable) * 100).round(),
+      combinedMatchedPoints: combinedMatched,
+      combinedComparablePoints: combinedComparable,
+      meanAbsoluteErrorKnots: speedComparable == 0
+          ? null
+          : absoluteErrorSum / speedComparable,
+    );
+  }
+
   double? _forecastWindForTime(
     DateTime target,
     List<_ForecastRow> rows, {
@@ -5410,6 +5615,37 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     return trailingDiff <= edgeTolerance
         ? rows.last.windKnots.toDouble()
         : null;
+  }
+
+  int? _forecastDirectionForTime(
+    DateTime target,
+    List<_ForecastRow> rows, {
+    required Duration bucketDuration,
+  }) {
+    if (rows.isEmpty) {
+      return null;
+    }
+    final edgeTolerance = Duration(
+      minutes: math.max(bucketDuration.inMinutes, 60),
+    );
+    _ForecastRow? nearest;
+    var nearestDiff = Duration(days: 365);
+    for (final row in rows) {
+      final diff = row.slotTime.difference(target).abs();
+      if (diff < nearestDiff) {
+        nearest = row;
+        nearestDiff = diff;
+      }
+    }
+    if (nearest == null || nearestDiff > edgeTolerance) {
+      return null;
+    }
+    return nearest.windDeg;
+  }
+
+  int _angularDifferenceDegrees(int a, int b) {
+    final diff = (a - b).abs() % 360;
+    return diff > 180 ? 360 - diff : diff;
   }
 
   Widget _buildInteractiveHistoryChart({
@@ -5586,6 +5822,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
     _ensureHistoryForecastRowsLoaded();
     final series = _historySeriesWindowed();
+    final preparedHistory = _prepareHistorySeriesWindow();
     final intraday = series.intraday;
     final diagnosticLabel = series.diagnosticLabel;
     final historyProviderLabel = _historicalSeriesDisplayLabel();
@@ -5593,6 +5830,10 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     final showsHistoricalForecastSelectors = series.forecast != null;
     final historicalCoverageLabel = _historicalCoverageLabel(
       _selectedHistoricalWindPoints(),
+    );
+    final forecastAccuracy = _historicalForecastAccuracySummary(
+      points: preparedHistory.points,
+      bucketDuration: preparedHistory.arrowDuration,
     );
     final availableRanges = _supportsThreeDayHistoryForSelectedStation()
         ? const <_HistoryRange>[_HistoryRange.h1, _HistoryRange.h3]
@@ -5737,8 +5978,18 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.sm),
             ],
+            if (forecastAccuracy != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              ForecastAccuracyCard(
+                totalPercentage: forecastAccuracy.totalPercentage,
+                windPercentage: forecastAccuracy.windPercentage,
+                directionPercentage: forecastAccuracy.directionPercentage,
+                meanAbsoluteErrorKnots:
+                    forecastAccuracy.meanAbsoluteErrorKnots,
+              ),
+            ],
+            const SizedBox(height: AppSpacing.sm),
             _HistoricalChartLegend(
               showGust: series.gust != null,
               showForecast: series.forecast != null,
@@ -5803,6 +6054,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       ),
     );
   }
+
+
 
   Widget _buildCustomAlarmsSection() {
     final catalog = SpotAlarmCatalog.instance;
@@ -5878,10 +6131,21 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                   ),
                   Switch(
                     value: spotEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        catalog.setSpotEnabled(spotKey, value);
-                      });
+                    onChanged: (value) async {
+                      await catalog.setSpotEnabled(spotKey, value);
+                      if (!mounted) {
+                        return;
+                      }
+                      setState(() {});
+                      if (catalog.lastSyncError != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'No se pudo sincronizar el estado de alarmas: ${catalog.lastSyncError}',
+                            ),
+                          ),
+                        );
+                      }
                     },
                   ),
                 ],
@@ -5963,50 +6227,40 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                   Row(
                     children: [
                       Expanded(
-                        child: DropdownButtonFormField<int>(
-                          initialValue: _alarmStartHour,
-                          decoration: const InputDecoration(
-                            labelText: 'Desde',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: List.generate(24, (hour) {
-                            return DropdownMenuItem<int>(
-                              value: hour,
-                              child: Text(
-                                '${hour.toString().padLeft(2, '0')}:00',
+                        child: OutlinedButton.icon(
+                          onPressed: () => _pickAlarmTime(isStart: true),
+                          icon: const Icon(Icons.schedule_rounded),
+                          label: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Desde'),
+                              Text(
+                                _formatAlarmTime(
+                                  _alarmStartHour,
+                                  _alarmStartMinute,
+                                ),
                               ),
-                            );
-                          }),
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setState(() {
-                              _alarmStartHour = value;
-                            });
-                          },
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
-                        child: DropdownButtonFormField<int>(
-                          initialValue: _alarmEndHour,
-                          decoration: const InputDecoration(
-                            labelText: 'Hasta',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: List.generate(24, (hour) {
-                            return DropdownMenuItem<int>(
-                              value: hour,
-                              child: Text(
-                                '${hour.toString().padLeft(2, '0')}:00',
+                        child: OutlinedButton.icon(
+                          onPressed: () => _pickAlarmTime(isStart: false),
+                          icon: const Icon(Icons.schedule_rounded),
+                          label: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Hasta'),
+                              Text(
+                                _formatAlarmTime(
+                                  _alarmEndHour,
+                                  _alarmEndMinute,
+                                ),
                               ),
-                            );
-                          }),
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setState(() {
-                              _alarmEndHour = value;
-                            });
-                          },
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -6078,45 +6332,99 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                     ],
                   ),
                   const SizedBox(height: AppSpacing.xs),
-                  Wrap(
-                    spacing: AppSpacing.xs,
-                    runSpacing: AppSpacing.xs,
-                    children: _alarmDirectionOptions
-                        .map((direction) {
-                          final selected = _alarmDirections.contains(direction);
-                          return FilterChip(
-                            label: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.navigation_rounded,
-                                  size: 16,
-                                  color: selected
-                                      ? colorScheme.onSecondaryContainer
-                                      : colorScheme.onSurfaceVariant,
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final rows = <List<String>>[
+                        _alarmDirectionOptions.sublist(0, 4),
+                        _alarmDirectionOptions.sublist(4, 8),
+                      ];
+                      return Column(
+                        children: rows
+                            .map((row) {
+                              return Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: row == rows.last ? 0 : AppSpacing.xs,
                                 ),
-                                const SizedBox(width: 4),
-                                Text(direction),
-                              ],
-                            ),
-                            selected: selected,
-                            onSelected: (value) {
-                              setState(() {
-                                if (value) {
-                                  _alarmDirections = <String>{
-                                    ..._alarmDirections,
-                                    direction,
-                                  };
-                                } else {
-                                  _alarmDirections = _alarmDirections
-                                      .where((entry) => entry != direction)
-                                      .toSet();
-                                }
-                              });
-                            },
-                          );
-                        })
-                        .toList(growable: false),
+                                child: Row(
+                                  children: row.map((direction) {
+                                    final selected = _alarmDirections.contains(
+                                      direction,
+                                    );
+                                    return Expanded(
+                                      child: Padding(
+                                        padding: EdgeInsets.only(
+                                          right: direction == row.last
+                                              ? 0
+                                              : AppSpacing.xs,
+                                        ),
+                                        child: FilterChip(
+                                          showCheckmark: false,
+                                          materialTapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          visualDensity:
+                                              VisualDensity.compact,
+                                          labelPadding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: 2,
+                                              ),
+                                          label: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Transform.rotate(
+                                                angle:
+                                                    _alarmDirectionRotation(
+                                                      direction,
+                                                    ),
+                                                child: Icon(
+                                                  Icons.navigation_rounded,
+                                                  size: 14,
+                                                  color: selected
+                                                      ? colorScheme
+                                                            .onSecondaryContainer
+                                                      : colorScheme
+                                                            .onSurfaceVariant,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                direction,
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          selected: selected,
+                                          onSelected: (value) {
+                                            setState(() {
+                                              if (value) {
+                                                _alarmDirections = <String>{
+                                                  ..._alarmDirections,
+                                                  direction,
+                                                };
+                                              } else {
+                                                _alarmDirections =
+                                                    _alarmDirections
+                                                        .where(
+                                                          (entry) =>
+                                                              entry != direction,
+                                                        )
+                                                        .toSet();
+                                              }
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(growable: false),
+                                ),
+                              );
+                            })
+                            .toList(growable: false),
+                      );
+                    },
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   DropdownButtonFormField<AlarmRepeatWindow>(
@@ -6179,7 +6487,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: () {
+                      onPressed: () async {
                         if (_alarmDirections.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -6206,6 +6514,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                           windRange: _alarmWindRange,
                           startHour: _alarmStartHour,
                           endHour: _alarmEndHour,
+                          startMinute: _alarmStartMinute,
+                          endMinute: _alarmEndMinute,
                           directions: _alarmDirections,
                           repeatWindow: _alarmRepeatWindow,
                           maxRepeats: _alarmMaxRepeats,
@@ -6224,11 +6534,23 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                           );
                           return;
                         }
+                        final saved = await catalog.saveAlarm(alarm);
+                        if (!mounted) {
+                          return;
+                        }
                         setState(() {
-                          catalog.saveAlarm(alarm);
                           _editingAlarmId = null;
                           _syncAlarmMonitoring();
                         });
+                        if (!saved) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'La alarma se guardo localmente, pero no se pudo sincronizar: ${catalog.lastSyncError ?? 'error desconocido'}',
+                              ),
+                            ),
+                          );
+                        }
                       },
                       icon: const Icon(Icons.alarm_add_rounded),
                       label: Text(
@@ -6396,6 +6718,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                                     _alarmMaxRepeats = alarm.maxRepeats;
                                     _alarmStartHour = alarm.startHour;
                                     _alarmEndHour = alarm.endHour;
+                                    _alarmStartMinute = alarm.startMinute;
+                                    _alarmEndMinute = alarm.endMinute;
                                     _alarmDirections = alarm.directions;
                                   });
                                 },
@@ -6443,7 +6767,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                           _AlarmMetaChip(
                             icon: Icons.schedule_rounded,
                             label:
-                                '${_formatAlarmHour(alarm.startHour)}-${_formatAlarmHour(alarm.endHour)}',
+                                '${_formatAlarmTime(alarm.startHour, alarm.startMinute)}-${_formatAlarmTime(alarm.endHour, alarm.endMinute)}',
                           ),
                           _AlarmMetaChip(
                             icon: Icons.navigation_rounded,
@@ -6495,22 +6819,57 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     }
   }
 
-  String _formatAlarmHour(int hour) {
-    return '${hour.toString().padLeft(2, '0')}:00';
+  String _formatAlarmTime(int hour, int minute) {
+    final safeHour = _sanitizeAlarmHour(hour);
+    final safeMinute = _sanitizeAlarmMinute(minute);
+    return '${safeHour.toString().padLeft(2, '0')}:${safeMinute.toString().padLeft(2, '0')}';
   }
 
-  bool _isHourInAlarmRange({
-    required int hour,
+  Future<void> _pickAlarmTime({required bool isStart}) async {
+    final initialTime = TimeOfDay(
+      hour: _sanitizeAlarmHour(isStart ? _alarmStartHour : _alarmEndHour),
+      minute: _sanitizeAlarmMinute(
+        isStart ? _alarmStartMinute : _alarmEndMinute,
+      ),
+    );
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+    );
+    if (!mounted || picked == null) {
+      return;
+    }
+    setState(() {
+      if (isStart) {
+        _alarmStartHour = picked.hour;
+        _alarmStartMinute = picked.minute;
+      } else {
+        _alarmEndHour = picked.hour;
+        _alarmEndMinute = picked.minute;
+      }
+    });
+  }
+
+  int _sanitizeAlarmHour(int hour) => hour.clamp(0, 23);
+
+  int _sanitizeAlarmMinute(int minute) => minute.clamp(0, 59);
+
+  bool _isTimeInAlarmRange({
+    required int totalMinutes,
     required int startHour,
     required int endHour,
+    required int startMinute,
+    required int endMinute,
   }) {
-    if (startHour == endHour) {
+    final startTotal = (startHour * 60) + startMinute;
+    final endTotal = (endHour * 60) + endMinute;
+    if (startTotal == endTotal) {
       return true;
     }
-    if (startHour < endHour) {
-      return hour >= startHour && hour < endHour;
+    if (startTotal < endTotal) {
+      return totalMinutes >= startTotal && totalMinutes < endTotal;
     }
-    return hour >= startHour || hour < endHour;
+    return totalMinutes >= startTotal || totalMinutes < endTotal;
   }
 
   String? _directionBucketLabel(int? directionDeg) {
@@ -6528,19 +6887,26 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     return 'NW';
   }
 
-  Duration _alarmRepeatWindowDuration(AlarmRepeatWindow window) {
-    switch (window) {
-      case AlarmRepeatWindow.min1:
-        return const Duration(minutes: 1);
-      case AlarmRepeatWindow.min5:
-        return const Duration(minutes: 5);
-      case AlarmRepeatWindow.min10:
-        return const Duration(minutes: 10);
-      case AlarmRepeatWindow.min15:
-        return const Duration(minutes: 15);
-      case AlarmRepeatWindow.min30:
-        return const Duration(minutes: 30);
+  double _alarmDirectionRotation(String direction) {
+    switch (direction) {
+      case 'N':
+        return 0;
+      case 'NE':
+        return math.pi / 4;
+      case 'E':
+        return math.pi / 2;
+      case 'SE':
+        return (3 * math.pi) / 4;
+      case 'S':
+        return math.pi;
+      case 'SW':
+        return (5 * math.pi) / 4;
+      case 'W':
+        return (3 * math.pi) / 2;
+      case 'NW':
+        return (7 * math.pi) / 4;
     }
+    return 0;
   }
 
   _AlarmEvaluation _evaluateAlarm(SpotAlarmRecord alarm) {
@@ -6570,10 +6936,12 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       );
     }
 
-    final timeMatches = _isHourInAlarmRange(
-      hour: observedAt.hour,
+    final timeMatches = _isTimeInAlarmRange(
+      totalMinutes: (observedAt.hour * 60) + observedAt.minute,
       startHour: alarm.startHour,
       endHour: alarm.endHour,
+      startMinute: alarm.startMinute,
+      endMinute: alarm.endMinute,
     );
     final windMatches =
         currentWind >= alarm.windRange.start &&
@@ -8387,75 +8755,6 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     return 'Ultimo aviso ${_relativeTimeLabel(lastTriggeredAt)} · ${alarm.triggerCount}/${alarm.maxRepeats}';
   }
 
-  Future<void> _maybeTriggerSpotAlarms() async {
-    if (!mounted) {
-      return;
-    }
-    final catalog = SpotAlarmCatalog.instance;
-    final savedAlarms = _savedAlarmsForCurrentSpot();
-    if (savedAlarms.isEmpty || !catalog.globalEnabled) {
-      return;
-    }
-
-    var permissionGranted = true;
-    for (final alarm in savedAlarms) {
-      final evaluation = _evaluateAlarm(alarm);
-      if (evaluation.state != _AlarmEvaluationState.active) {
-        if (alarm.triggerCount != 0 || alarm.lastTriggeredAt != null) {
-          catalog.updateTriggerState(
-            alarmId: alarm.id,
-            triggerCount: 0,
-            clearLastTriggeredAt: true,
-          );
-        }
-        continue;
-      }
-
-      if (alarm.triggerCount >= alarm.maxRepeats) {
-        continue;
-      }
-
-      final now = DateTime.now();
-      final repeatDuration = _alarmRepeatWindowDuration(alarm.repeatWindow);
-      final canRepeat =
-          alarm.lastTriggeredAt == null ||
-          now.difference(alarm.lastTriggeredAt!) >= repeatDuration;
-      if (!canRepeat) {
-        continue;
-      }
-
-      if (!_hasRequestedAlarmNotificationPermission) {
-        permissionGranted = await LocalNotificationsService.instance
-            .ensurePermissions();
-        _hasRequestedAlarmNotificationPermission = true;
-      }
-      if (!permissionGranted) {
-        return;
-      }
-
-      final liveData = _resolvedLiveDataByStation()[alarm.stationKey];
-      final currentWind = liveData?.windKnots?.toDouble();
-      final currentDirection = _directionBucketLabel(liveData?.windDeg);
-      final title = 'Alarma activa · ${alarm.stationName}';
-      final body =
-          '${widget.name}: ${currentWind == null ? '-' : _formatAlarmWindValue(currentWind)}'
-          ' · ${currentDirection ?? 'sin direccion'}';
-
-      await LocalNotificationsService.instance.showSpotAlarm(
-        notificationId: LocalNotificationsService.instance
-            .notificationIdForAlarm(alarm.id),
-        alarmId: alarm.id,
-        title: title,
-        body: body,
-      );
-      catalog.updateTriggerState(
-        alarmId: alarm.id,
-        triggerCount: alarm.triggerCount + 1,
-        lastTriggeredAt: now,
-      );
-    }
-  }
-
   Color _windColor(int knots) {
     if (knots < 10) {
       return Colors.transparent;
@@ -9333,9 +9632,9 @@ class _StationLiveData {
     required this.observedAt,
   });
 
-  final int? windKnots;
+  final double? windKnots;
   final int? windDeg;
-  final int? gustKnots;
+  final double? gustKnots;
   final double? tempC;
   final int? pressureHpa;
   final int? humidityPct;
@@ -9357,6 +9656,34 @@ class _HistoricalWindPoint {
   final double? gustKnots;
   final int? windDirectionDeg;
   final _HistoricalDirectionKind? directionKind;
+}
+
+class _HistoricalForecastAccuracySummary {
+  const _HistoricalForecastAccuracySummary({
+    required this.totalPercentage,
+    required this.windPercentage,
+    required this.windMatchedPoints,
+    required this.windComparablePoints,
+    required this.directionPercentage,
+    required this.directionMatchedPoints,
+    required this.directionComparablePoints,
+    required this.combinedPercentage,
+    required this.combinedMatchedPoints,
+    required this.combinedComparablePoints,
+    required this.meanAbsoluteErrorKnots,
+  });
+
+  final int? totalPercentage;
+  final int? windPercentage;
+  final int windMatchedPoints;
+  final int windComparablePoints;
+  final int? directionPercentage;
+  final int directionMatchedPoints;
+  final int directionComparablePoints;
+  final int? combinedPercentage;
+  final int combinedMatchedPoints;
+  final int combinedComparablePoints;
+  final double? meanAbsoluteErrorKnots;
 }
 
 enum _HistoryRange { h1, h3 }

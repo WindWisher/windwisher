@@ -31,9 +31,9 @@ class AiguaBlancaMeteoSnapshot {
   });
 
   final DateTime observedAt;
-  final int? windKnots;
+  final double? windKnots;
   final int? windDirectionDeg;
-  final int? gustKnots;
+  final double? gustKnots;
   final double? tempC;
   final int? pressureHpa;
   final int? humidityPct;
@@ -96,10 +96,38 @@ class AiguaBlancaMeteoClient {
         .map(_parsePoint)
         .whereType<AiguaBlancaMeteoPoint>()
         .toList(growable: false);
+    final sortedPoints = List<AiguaBlancaMeteoPoint>.from(points)
+      ..sort((a, b) => a.time.compareTo(b.time));
+    final latestSnapshot = latest == null ? null : _parseSnapshot(latest);
+    final historySnapshot = sortedPoints.isEmpty
+        ? null
+        : AiguaBlancaMeteoSnapshot(
+            observedAt: sortedPoints.last.time,
+            windKnots: sortedPoints.last.windKnots,
+            windDirectionDeg: sortedPoints.last.windDirectionDeg,
+            gustKnots: sortedPoints.last.gustKnots,
+            tempC: null,
+            pressureHpa: null,
+            humidityPct: null,
+            rainMm: null,
+          );
     return AiguaBlancaMeteoFeed(
-      points: points,
-      latestSnapshot: latest == null ? null : _parseSnapshot(latest),
+      points: sortedPoints,
+      latestSnapshot: _pickNewestSnapshot(latestSnapshot, historySnapshot),
     );
+  }
+
+  AiguaBlancaMeteoSnapshot? _pickNewestSnapshot(
+    AiguaBlancaMeteoSnapshot? primary,
+    AiguaBlancaMeteoSnapshot? fallback,
+  ) {
+    if (primary == null) {
+      return fallback;
+    }
+    if (fallback == null) {
+      return primary;
+    }
+    return primary.observedAt.isBefore(fallback.observedAt) ? fallback : primary;
   }
 
   AiguaBlancaMeteoPoint? _parsePoint(Map<String, dynamic> raw) {
@@ -124,9 +152,9 @@ class AiguaBlancaMeteoClient {
     }
     return AiguaBlancaMeteoSnapshot(
       observedAt: observedAt,
-      windKnots: windKnots.round(),
+      windKnots: windKnots,
       windDirectionDeg: _readInt(raw['wind_dir']),
-      gustKnots: _readDouble(raw['wind_gust_kt'])?.round(),
+      gustKnots: _readDouble(raw['wind_gust_kt']),
       tempC: _readDouble(raw['temp_c']),
       pressureHpa: _mmHgToHpa(_readDouble(raw['baromrelin']))?.round(),
       humidityPct: _readInt(raw['humidity']),

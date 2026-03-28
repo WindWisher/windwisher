@@ -28,9 +28,9 @@ class InforatgeOlivaNovaSnapshot {
   });
 
   final DateTime observedAt;
-  final int? windKnots;
+  final double? windKnots;
   final int? windDirectionDeg;
-  final int? gustKnots;
+  final double? gustKnots;
   final double? tempC;
   final int? pressureHpa;
   final int? humidityPct;
@@ -93,26 +93,41 @@ class InforatgeOlivaNovaClient {
     final points = graphHtml == null
         ? const <InforatgeOlivaNovaPoint>[]
         : _parseHistoricalPoints(graphHtml);
+    final sortedPoints = List<InforatgeOlivaNovaPoint>.from(points)
+      ..sort((a, b) => a.time.compareTo(b.time));
     final liveBody = await liveFuture;
     final liveSnapshot = liveBody == null ? null : _parseLiveSnapshot(liveBody);
-    final latestPoint = points.isEmpty ? null : points.last;
+    final latestPoint = sortedPoints.isEmpty ? null : sortedPoints.last;
+    final historySnapshot =
+        latestPoint == null
+            ? null
+            : InforatgeOlivaNovaSnapshot(
+                observedAt: latestPoint.time,
+                windKnots: latestPoint.windKnots,
+                windDirectionDeg: latestPoint.windDirectionDeg,
+                gustKnots: null,
+                tempC: null,
+                pressureHpa: null,
+                humidityPct: null,
+                rainMm: null,
+              );
     return InforatgeOlivaNovaFeed(
-      points: points,
-      latestSnapshot:
-          liveSnapshot ??
-          (latestPoint == null
-              ? null
-              : InforatgeOlivaNovaSnapshot(
-                  observedAt: latestPoint.time,
-                  windKnots: latestPoint.windKnots.round(),
-                  windDirectionDeg: latestPoint.windDirectionDeg,
-                  gustKnots: null,
-                  tempC: null,
-                  pressureHpa: null,
-                  humidityPct: null,
-                  rainMm: null,
-                )),
+      points: sortedPoints,
+      latestSnapshot: _pickNewestSnapshot(liveSnapshot, historySnapshot),
     );
+  }
+
+  InforatgeOlivaNovaSnapshot? _pickNewestSnapshot(
+    InforatgeOlivaNovaSnapshot? primary,
+    InforatgeOlivaNovaSnapshot? fallback,
+  ) {
+    if (primary == null) {
+      return fallback;
+    }
+    if (fallback == null) {
+      return primary;
+    }
+    return primary.observedAt.isBefore(fallback.observedAt) ? fallback : primary;
   }
 
   List<InforatgeOlivaNovaPoint> _parseHistoricalPoints(String body) {
@@ -212,9 +227,9 @@ class InforatgeOlivaNovaClient {
     }
     return InforatgeOlivaNovaSnapshot(
       observedAt: observedAt,
-      windKnots: (windKmH * 0.539957).round(),
+      windKnots: windKmH * 0.539957,
       windDirectionDeg: _cardinalToDegrees(windMatch.group(2)),
-      gustKnots: _kmhToKnotsInt(_readLocaleDouble(gustMatch?.group(1))),
+      gustKnots: _kmhToKnotsDouble(_readLocaleDouble(gustMatch?.group(1))),
       tempC: _readLocaleDouble(tempMatch?.group(1)),
       pressureHpa: _readLocaleDouble(pressureMatch?.group(1))?.round(),
       humidityPct: int.tryParse((humidityMatch?.group(1) ?? '').trim()),
@@ -340,11 +355,11 @@ class InforatgeOlivaNovaClient {
     return double.tryParse(normalized);
   }
 
-  int? _kmhToKnotsInt(double? value) {
+  double? _kmhToKnotsDouble(double? value) {
     if (value == null) {
       return null;
     }
-    return (value * 0.539957).round();
+    return value * 0.539957;
   }
 
   int? _cardinalToDegrees(String? value) {

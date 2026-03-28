@@ -15,11 +15,15 @@ type AlarmRow = {
   wind_range_end: number;
   start_hour: number;
   end_hour: number;
+  start_minute: number;
+  end_minute: number;
   directions: string[];
   repeat_window: string;
   max_repeats: number;
   trigger_count: number;
   last_triggered_at: string | null;
+  snoozed_until: string | null;
+  stopped_until_reset: boolean;
 };
 
 type PushSubscriptionRow = {
@@ -34,6 +38,8 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const aemetApiKey = Deno.env.get("AEMET_OPENDATA_API_KEY") ?? "";
 const runnerSecret = Deno.env.get("SPOT_ALARM_RUNNER_SECRET") ?? "";
+const firebaseServiceAccountJson =
+  Deno.env.get("FIREBASE_SERVICE_ACCOUNT_JSON") ?? "";
 
 const supabase = createClient(supabaseUrl, anonKey, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -75,17 +81,28 @@ Deno.serve(async (request) => {
   let active = 0;
   let logged = 0;
   let unsupported = 0;
+  const diagnostics: Record<string, unknown>[] = [];
 
   for (const alarm of alarmRows) {
     evaluated += 1;
     if (alarm.station_provider !== "AEMET") {
       unsupported += 1;
+      diagnostics.push({
+        alarmId: alarm.id,
+        stationProvider: alarm.station_provider,
+        status: "unsupported-provider",
+      });
       await logDelivery(alarm, "skipped", "unsupported-provider", null);
       logged += 1;
       continue;
     }
 
     if (!aemetApiKey) {
+      diagnostics.push({
+        alarmId: alarm.id,
+        stationProvider: alarm.station_provider,
+        status: "missing-aemet-api-key",
+      });
       await logDelivery(alarm, "skipped", "missing-aemet-api-key", null);
       logged += 1;
       continue;
@@ -93,19 +110,50 @@ Deno.serve(async (request) => {
 
     const observation = await fetchAemetStationObservation(alarm.station_key);
     if (!observation) {
+      diagnostics.push({
+        alarmId: alarm.id,
+        stationKey: alarm.station_key,
+        status: "missing-observation",
+      });
       await logDelivery(alarm, "skipped", "missing-observation", null);
       logged += 1;
       continue;
     }
 
     const evaluation = evaluateAlarm(alarm, observation);
+    diagnostics.push({
+      alarmId: alarm.id,
+      stationKey: alarm.station_key,
+      stationName: alarm.station_name,
+      active: evaluation.active,
+      reason: evaluation.reason,
+      observedAt: observation.observedAt?.toISOString(),
+      observedWindKnots: observation.windKnots,
+      observedDirection: observation.windDirectionBucket,
+      expectedWindStart: alarm.wind_range_start,
+      expectedWindEnd: alarm.wind_range_end,
+      expectedDirections: alarm.directions,
+      expectedStartHour: alarm.start_hour,
+      expectedStartMinute: alarm.start_minute,
+      expectedEndHour: alarm.end_hour,
+      expectedEndMinute: alarm.end_minute,
+    });
     if (!evaluation.active) {
-      if (alarm.trigger_count !== 0 || alarm.last_triggered_at != null) {
+      if (
+        alarm.trigger_count !== 0 ||
+        alarm.last_triggered_at != null ||
+        alarm.snoozed_until != null ||
+        alarm.stopped_until_reset
+      ) {
         await resetTriggerState(alarm);
       }
       continue;
     }
     active += 1;
+
+    if (alarm.stopped_until_reset) {
+      continue;
+    }
 
     const subscriptions = pushByUserId.get(alarm.user_id) ?? [];
     if (subscriptions.length == 0) {
@@ -125,19 +173,54 @@ Deno.serve(async (request) => {
       continue;
     }
 
+    if (!firebaseServiceAccountJson.trim()) {
+      await logDelivery(
+        alarm,
+        "skipped",
+        "missing-firebase-service-account-json",
+        evaluation.payload,
+      );
+      logged += 1;
+      continue;
+    }
+
+    const firebase = parseFirebaseServiceAccount(firebaseServiceAccountJson);
+    if (!firebase) {
+      await logDelivery(
+        alarm,
+        "skipped",
+        "invalid-firebase-service-account-json",
+        evaluation.payload,
+      );
+      logged += 1;
+      continue;
+    }
+
+    const delivery = await sendAlarmPushes({
+      firebase,
+      alarm,
+      title: `Alarma activa · ${alarm.station_name}`,
+      body:
+        `${alarm.spot_name}: ${formatKnots(evaluation.payload?.windKnots)} · ` +
+        `${String(evaluation.payload?.direction ?? "-")}`,
+      payload: evaluation.payload,
+      subscriptions,
+    });
+
     await logDelivery(
       alarm,
-      "ready",
-      "push-provider-not-implemented",
+      delivery.sent > 0 ? "sent" : "failed",
+      delivery.reason,
       {
         ...evaluation.payload,
-        pushSubscriptions: subscriptions.map((subscription) => ({
-          platform: subscription.platform,
-          provider: subscription.provider,
-        })),
+        sent: delivery.sent,
+        failed: delivery.failed,
       },
     );
-    await updateTriggerState(alarm, alarm.trigger_count + 1, now);
+
+    if (delivery.sent > 0) {
+      await updateTriggerState(alarm, alarm.trigger_count + 1, now);
+    }
     logged += 1;
   }
 
@@ -147,6 +230,7 @@ Deno.serve(async (request) => {
     active,
     logged,
     unsupported,
+    diagnostics,
   });
 });
 
@@ -157,6 +241,206 @@ async function loadAlarmRows(): Promise<AlarmRow[]> {
     throw error;
   }
   return (data ?? []) as AlarmRow[];
+}
+
+type FirebaseServiceAccount = {
+  project_id: string;
+  client_email: string;
+  private_key: string;
+};
+
+function parseFirebaseServiceAccount(raw: string): FirebaseServiceAccount | null {
+  try {
+    const parsed = JSON.parse(raw) as Partial<FirebaseServiceAccount>;
+    if (
+      typeof parsed.project_id !== "string" ||
+      typeof parsed.client_email !== "string" ||
+      typeof parsed.private_key !== "string" ||
+      !parsed.project_id.trim() ||
+      !parsed.client_email.trim() ||
+      !parsed.private_key.trim()
+    ) {
+      return null;
+    }
+    return {
+      project_id: parsed.project_id.trim(),
+      client_email: parsed.client_email.trim(),
+      private_key: parsed.private_key,
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+async function sendAlarmPushes({
+  firebase,
+  alarm,
+  title,
+  body,
+  payload,
+  subscriptions,
+}: {
+  firebase: FirebaseServiceAccount;
+  alarm: AlarmRow;
+  title: string;
+  body: string;
+  payload: Record<string, unknown> | null;
+  subscriptions: PushSubscriptionRow[];
+}) {
+  const accessToken = await getFirebaseAccessToken(firebase);
+  let sent = 0;
+  let failed = 0;
+  for (const subscription of subscriptions) {
+    if (subscription.provider !== "fcm") {
+      failed += 1;
+      continue;
+    }
+    const response = await fetch(
+      `https://fcm.googleapis.com/v1/projects/${firebase.project_id}/messages:send`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${accessToken}`,
+          "content-type": "application/json; charset=utf-8",
+        },
+        body: JSON.stringify({
+          message: {
+            token: subscription.device_token,
+            notification: {
+              title,
+              body,
+            },
+            data: {
+              type: "spot_alarm",
+              alarmId: alarm.id,
+              spotKey: alarm.spot_key,
+              stationKey: alarm.station_key,
+              stationProvider: alarm.station_provider,
+            },
+            android: {
+              priority: "high",
+              notification: {
+                channel_id: "spot_alarms_v2",
+                sound: "default",
+                default_sound: true,
+                default_vibrate_timings: true,
+                notification_priority: "PRIORITY_MAX",
+              },
+            },
+            apns: {
+              headers: {
+                "apns-priority": "10",
+                "apns-push-type": "alert",
+              },
+              payload: {
+                aps: {
+                  sound: "default",
+                  badge: 1,
+                },
+              },
+            },
+          },
+        }),
+      },
+    );
+    if (response.ok) {
+      sent += 1;
+    } else {
+      failed += 1;
+    }
+  }
+  return {
+    sent,
+    failed,
+    reason: sent > 0
+      ? (failed > 0 ? "partial-push-delivery" : "push-delivered")
+      : "push-send-failed",
+    payload,
+  };
+}
+
+async function getFirebaseAccessToken(
+  serviceAccount: FirebaseServiceAccount,
+) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = {
+    alg: "RS256",
+    typ: "JWT",
+  };
+  const claimSet = {
+    iss: serviceAccount.client_email,
+    scope: "https://www.googleapis.com/auth/firebase.messaging",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600,
+  };
+  const encodedHeader = base64UrlEncode(JSON.stringify(header));
+  const encodedClaimSet = base64UrlEncode(JSON.stringify(claimSet));
+  const unsignedJwt = `${encodedHeader}.${encodedClaimSet}`;
+  const signature = await signJwt(unsignedJwt, serviceAccount.private_key);
+  const assertion = `${unsignedJwt}.${signature}`;
+
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`firebase-token-request-failed:${response.status}`);
+  }
+  const data = await response.json() as { access_token?: string };
+  if (!data.access_token) {
+    throw new Error("missing-firebase-access-token");
+  }
+  return data.access_token;
+}
+
+async function signJwt(unsignedJwt: string, privateKeyPem: string) {
+  const pemContents = privateKeyPem
+    .replace("-----BEGIN PRIVATE KEY-----", "")
+    .replace("-----END PRIVATE KEY-----", "")
+    .replaceAll(/\s+/g, "");
+  const keyBytes = Uint8Array.from(atob(pemContents), (char) => char.charCodeAt(0));
+  const cryptoKey = await crypto.subtle.importKey(
+    "pkcs8",
+    keyBytes.buffer,
+    {
+      name: "RSASSA-PKCS1-v1_5",
+      hash: "SHA-256",
+    },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    cryptoKey,
+    new TextEncoder().encode(unsignedJwt),
+  );
+  return base64UrlEncodeBytes(new Uint8Array(signature));
+}
+
+function base64UrlEncode(value: string) {
+  return base64UrlEncodeBytes(new TextEncoder().encode(value));
+}
+
+function base64UrlEncodeBytes(bytes: Uint8Array) {
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+}
+
+function formatKnots(raw: unknown) {
+  if (typeof raw !== "number" || !Number.isFinite(raw)) {
+    return "-";
+  }
+  return `${raw.toFixed(1)} kt`;
 }
 
 async function loadPushSubscriptions(): Promise<PushSubscriptionRow[]> {
@@ -239,18 +523,34 @@ function evaluateAlarm(
   },
 ) {
   if (!observation.observedAt || observation.windKnots == null) {
-    return { active: false, payload: null };
+    return { active: false, payload: null, reason: "missing-wind-or-time" };
   }
-  const hour = observation.observedAt.getHours();
-  const timeMatches = isHourInRange(hour, alarm.start_hour, alarm.end_hour);
+  const totalMinutes =
+    (observation.observedAt.getHours() * 60) + observation.observedAt.getMinutes();
+  const timeMatches = isMinuteInRange(
+    totalMinutes,
+    alarm.start_hour,
+    alarm.start_minute,
+    alarm.end_hour,
+    alarm.end_minute,
+  );
   const windMatches =
     observation.windKnots >= alarm.wind_range_start &&
     observation.windKnots <= alarm.wind_range_end;
   const directionMatches =
     observation.windDirectionBucket != null &&
     alarm.directions.includes(observation.windDirectionBucket);
+  const active = timeMatches && windMatches && directionMatches;
+  const reason = active
+    ? "active"
+    : !timeMatches
+    ? "time-mismatch"
+    : !windMatches
+    ? "wind-mismatch"
+    : "direction-mismatch";
   return {
-    active: timeMatches && windMatches && directionMatches,
+    active,
+    reason,
     payload: {
       spotKey: alarm.spot_key,
       spotName: alarm.spot_name,
@@ -263,17 +563,31 @@ function evaluateAlarm(
   };
 }
 
-function isHourInRange(hour: number, startHour: number, endHour: number) {
-  if (startHour === endHour) {
+function isMinuteInRange(
+  totalMinutes: number,
+  startHour: number,
+  startMinute: number,
+  endHour: number,
+  endMinute: number,
+) {
+  const startTotal = (startHour * 60) + startMinute;
+  const endTotal = (endHour * 60) + endMinute;
+  if (startTotal === endTotal) {
     return true;
   }
-  if (startHour < endHour) {
-    return hour >= startHour && hour < endHour;
+  if (startTotal < endTotal) {
+    return totalMinutes >= startTotal && totalMinutes < endTotal;
   }
-  return hour >= startHour || hour < endHour;
+  return totalMinutes >= startTotal || totalMinutes < endTotal;
 }
 
 function canRepeat(alarm: AlarmRow, now: Date) {
+  if (alarm.snoozed_until) {
+    const snoozedUntil = parseDate(alarm.snoozed_until);
+    if (snoozedUntil && now.getTime() < snoozedUntil.getTime()) {
+      return false;
+    }
+  }
   if (!alarm.last_triggered_at) {
     return true;
   }

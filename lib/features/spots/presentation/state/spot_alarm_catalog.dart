@@ -24,9 +24,11 @@ class SpotAlarmCatalog extends ChangeNotifier {
   final Map<String, bool> _spotEnabledByKey = <String, bool>{};
   final List<SpotAlarmRecord> _alarms = <SpotAlarmRecord>[];
   bool _remoteHydrated = false;
+  String? _lastSyncError;
 
   bool get globalEnabled => _globalEnabled;
   bool get hasRemoteSync => _syncClient.canSync;
+  String? get lastSyncError => _lastSyncError;
 
   List<SpotAlarmRecord> get alarms =>
       List<SpotAlarmRecord>.unmodifiable(_alarms);
@@ -53,23 +55,33 @@ class SpotAlarmCatalog extends ChangeNotifier {
 
   bool isSpotEnabled(String spotKey) => _spotEnabledByKey[spotKey] ?? true;
 
-  void setGlobalEnabled(bool value) {
+  Future<void> setGlobalEnabled(bool value) async {
     if (_globalEnabled == value) {
       return;
     }
     _globalEnabled = value;
     _save();
-    _syncClient.saveGlobalEnabled(value);
+    try {
+      _lastSyncError = null;
+      await _syncClient.saveGlobalEnabled(value);
+    } catch (error) {
+      _lastSyncError = error.toString();
+    }
     notifyListeners();
   }
 
-  void setSpotEnabled(String spotKey, bool value) {
+  Future<void> setSpotEnabled(String spotKey, bool value) async {
     if ((_spotEnabledByKey[spotKey] ?? true) == value) {
       return;
     }
     _spotEnabledByKey[spotKey] = value;
     _save();
-    _syncClient.saveSpotEnabled(spotKey: spotKey, enabled: value);
+    try {
+      _lastSyncError = null;
+      await _syncClient.saveSpotEnabled(spotKey: spotKey, enabled: value);
+    } catch (error) {
+      _lastSyncError = error.toString();
+    }
     notifyListeners();
   }
 
@@ -85,7 +97,7 @@ class SpotAlarmCatalog extends ChangeNotifier {
     );
   }
 
-  void saveAlarm(SpotAlarmRecord alarm) {
+  Future<bool> saveAlarm(SpotAlarmRecord alarm) async {
     final index = _alarms.indexWhere((entry) => entry.id == alarm.id);
     if (index >= 0) {
       _alarms[index] = alarm;
@@ -93,15 +105,31 @@ class SpotAlarmCatalog extends ChangeNotifier {
       _alarms.add(alarm);
     }
     _save();
-    _syncClient.saveAlarm(alarm);
+    try {
+      _lastSyncError = null;
+      await _syncClient.saveAlarm(alarm);
+    } catch (error) {
+      _lastSyncError = error.toString();
+      notifyListeners();
+      return false;
+    }
     notifyListeners();
+    return true;
   }
 
-  void deleteAlarm(String alarmId) {
+  Future<bool> deleteAlarm(String alarmId) async {
     _alarms.removeWhere((alarm) => alarm.id == alarmId);
     _save();
-    _syncClient.deleteAlarm(alarmId);
+    try {
+      _lastSyncError = null;
+      await _syncClient.deleteAlarm(alarmId);
+    } catch (error) {
+      _lastSyncError = error.toString();
+      notifyListeners();
+      return false;
+    }
     notifyListeners();
+    return true;
   }
 
   void updateTriggerState({
@@ -120,7 +148,7 @@ class SpotAlarmCatalog extends ChangeNotifier {
       clearLastTriggeredAt: clearLastTriggeredAt,
     );
     _save();
-    _syncClient.saveAlarm(_alarms[index]);
+    unawaited(_syncClient.saveAlarm(_alarms[index]));
     notifyListeners();
   }
 
@@ -133,7 +161,7 @@ class SpotAlarmCatalog extends ChangeNotifier {
       lastTriggeredAt: snoozedAt ?? DateTime.now(),
     );
     _save();
-    _syncClient.saveAlarm(_alarms[index]);
+    unawaited(_syncClient.saveAlarm(_alarms[index]));
     notifyListeners();
   }
 
@@ -148,7 +176,7 @@ class SpotAlarmCatalog extends ChangeNotifier {
       lastTriggeredAt: DateTime.now(),
     );
     _save();
-    _syncClient.saveAlarm(_alarms[index]);
+    unawaited(_syncClient.saveAlarm(_alarms[index]));
     notifyListeners();
   }
 
@@ -221,6 +249,8 @@ class SpotAlarmRecord {
     required this.windRange,
     required this.startHour,
     required this.endHour,
+    this.startMinute = 0,
+    this.endMinute = 0,
     required this.directions,
     required this.repeatWindow,
     this.maxRepeats = 3,
@@ -238,6 +268,8 @@ class SpotAlarmRecord {
   final RangeValues windRange;
   final int startHour;
   final int endHour;
+  final int startMinute;
+  final int endMinute;
   final Set<String> directions;
   final AlarmRepeatWindow repeatWindow;
   final int maxRepeats;
@@ -248,6 +280,8 @@ class SpotAlarmRecord {
     RangeValues? windRange,
     int? startHour,
     int? endHour,
+    int? startMinute,
+    int? endMinute,
     Set<String>? directions,
     AlarmRepeatWindow? repeatWindow,
     int? maxRepeats,
@@ -266,6 +300,8 @@ class SpotAlarmRecord {
       windRange: windRange ?? this.windRange,
       startHour: startHour ?? this.startHour,
       endHour: endHour ?? this.endHour,
+      startMinute: startMinute ?? this.startMinute,
+      endMinute: endMinute ?? this.endMinute,
       directions: directions ?? this.directions,
       repeatWindow: repeatWindow ?? this.repeatWindow,
       maxRepeats: maxRepeats ?? this.maxRepeats,
@@ -289,6 +325,8 @@ class SpotAlarmRecord {
       'windRangeEnd': windRange.end,
       'startHour': startHour,
       'endHour': endHour,
+      'startMinute': startMinute,
+      'endMinute': endMinute,
       'directions': directions.toList(growable: false),
       'repeatWindow': repeatWindow.name,
       'maxRepeats': maxRepeats,
@@ -314,6 +352,8 @@ class SpotAlarmRecord {
       ),
       startHour: (json['startHour'] as num?)?.toInt() ?? 0,
       endHour: (json['endHour'] as num?)?.toInt() ?? 0,
+      startMinute: (json['startMinute'] as num?)?.toInt() ?? 0,
+      endMinute: (json['endMinute'] as num?)?.toInt() ?? 0,
       directions: rawDirections
           .map((value) => value.toString())
           .where((value) => value.isNotEmpty)
@@ -338,6 +378,8 @@ class SpotAlarmRecord {
         windRange.end == other.windRange.end &&
         startHour == other.startHour &&
         endHour == other.endHour &&
+        startMinute == other.startMinute &&
+        endMinute == other.endMinute &&
         repeatWindow == other.repeatWindow &&
         maxRepeats == other.maxRepeats &&
         directions.length == other.directions.length &&
