@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -7,7 +10,7 @@ class SupabaseForecastProxyClient {
   SupabaseForecastProxyClient({SupabaseClient? client})
     : _client = client ?? Supabase.instance.client;
 
-  static const Duration _requestTimeout = Duration(seconds: 12);
+  static const Duration _requestTimeout = Duration(seconds: 25);
 
   final SupabaseClient _client;
 
@@ -261,11 +264,7 @@ class SupabaseForecastProxyClient {
     required Map<String, dynamic> body,
   }) async {
     try {
-      final response = await _invoke(action: action, body: body);
-      final payload = response.data;
-      if (payload is! Map<String, dynamic>) {
-        throw const SupabaseForecastProxyException('invalid-proxy-payload');
-      }
+      final payload = await _invokePayload(action: action, body: body);
       final data = payload['data'];
       if (data is! List) {
         throw SupabaseForecastProxyException('missing-data-list:$action');
@@ -285,11 +284,7 @@ class SupabaseForecastProxyClient {
     required Map<String, dynamic> body,
   }) async {
     try {
-      final response = await _invoke(action: action, body: body);
-      final payload = response.data;
-      if (payload is! Map<String, dynamic>) {
-        throw const SupabaseForecastProxyException('invalid-proxy-payload');
-      }
+      final payload = await _invokePayload(action: action, body: body);
       final data = payload['data'];
       if (data is! Map<String, dynamic>) {
         throw SupabaseForecastProxyException('missing-data-map:$action');
@@ -309,11 +304,7 @@ class SupabaseForecastProxyClient {
     required Map<String, dynamic> body,
   }) async {
     try {
-      final response = await _invoke(action: action, body: body);
-      final payload = response.data;
-      if (payload is! Map<String, dynamic>) {
-        throw const SupabaseForecastProxyException('invalid-proxy-payload');
-      }
+      final payload = await _invokePayload(action: action, body: body);
       final data = payload['data'];
       if (data is! String) {
         throw SupabaseForecastProxyException('missing-data-text:$action');
@@ -333,11 +324,7 @@ class SupabaseForecastProxyClient {
     required Map<String, dynamic> body,
   }) async {
     try {
-      final response = await _invoke(action: action, body: body);
-      final payload = response.data;
-      if (payload is! Map<String, dynamic>) {
-        throw const SupabaseForecastProxyException('invalid-proxy-payload');
-      }
+      final payload = await _invokePayload(action: action, body: body);
       if (!payload.containsKey('data')) {
         throw SupabaseForecastProxyException('missing-data:$action');
       }
@@ -351,17 +338,106 @@ class SupabaseForecastProxyClient {
     }
   }
 
-  Future<FunctionResponse> _invoke({
+  Future<Map<String, dynamic>> _invokePayload({
     required String action,
     required Map<String, dynamic> body,
-  }) {
-    return _client.functions
-        .invoke('forecast-proxy', body: body)
-        .timeout(
-          _requestTimeout,
-          onTimeout: () =>
-              throw SupabaseForecastProxyException('timeout:$action'),
+  }) async {
+    if (kIsWeb) {
+      final response = await _invokeViaSdk(action: action, body: body);
+      final payload = response.data;
+      if (payload is! Map<String, dynamic>) {
+        throw const SupabaseForecastProxyException('invalid-proxy-payload');
+      }
+      return payload;
+    }
+    return _invokePayloadViaHttp(action: action, body: body);
+  }
+
+  Future<FunctionResponse> _invokeViaSdk({
+    required String action,
+    required Map<String, dynamic> body,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    try {
+      final response = await _client.functions
+          .invoke(
+            'forecast-proxy',
+            headers: const <String, String>{
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(
+            _requestTimeout,
+            onTimeout: () =>
+                throw SupabaseForecastProxyException('timeout:$action'),
+          );
+      stopwatch.stop();
+      debugPrint(
+        'ForecastProxy success action=$action elapsedMs=${stopwatch.elapsedMilliseconds}',
+      );
+      return response;
+    } catch (error) {
+      stopwatch.stop();
+      debugPrint(
+        'ForecastProxy failure action=$action elapsedMs=${stopwatch.elapsedMilliseconds} error=$error',
+      );
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> _invokePayloadViaHttp({
+    required String action,
+    required Map<String, dynamic> body,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    final client = HttpClient();
+    try {
+      final baseUrl = EnvConfig.supabaseUrl.trim();
+      final anonKey = EnvConfig.supabaseAnonKey.trim();
+      if (baseUrl.isEmpty || anonKey.isEmpty) {
+        throw const SupabaseForecastProxyException('missing-supabase-config');
+      }
+      final request = await client.postUrl(
+        Uri.parse('$baseUrl/functions/v1/forecast-proxy'),
+      );
+      request.headers
+        ..set(HttpHeaders.contentTypeHeader, 'application/json')
+        ..set('apikey', anonKey)
+        ..set(HttpHeaders.authorizationHeader, 'Bearer $anonKey');
+      request.write(jsonEncode(body));
+      final response = await request.close().timeout(
+        _requestTimeout,
+        onTimeout: () =>
+            throw SupabaseForecastProxyException('timeout:$action'),
+      );
+      final raw = await response.transform(utf8.decoder).join();
+      stopwatch.stop();
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        debugPrint(
+          'ForecastProxy HTTP failure action=$action elapsedMs=${stopwatch.elapsedMilliseconds} status=${response.statusCode} body=$raw',
         );
+        throw SupabaseForecastProxyException(
+          'http-${response.statusCode}:${raw.isEmpty ? action : raw}',
+        );
+      }
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        throw const SupabaseForecastProxyException('invalid-proxy-payload');
+      }
+      debugPrint(
+        'ForecastProxy HTTP success action=$action elapsedMs=${stopwatch.elapsedMilliseconds}',
+      );
+      return decoded;
+    } catch (error) {
+      stopwatch.stop();
+      debugPrint(
+        'ForecastProxy HTTP failure action=$action elapsedMs=${stopwatch.elapsedMilliseconds} error=$error',
+      );
+      rethrow;
+    } finally {
+      client.close(force: true);
+    }
   }
 }
 

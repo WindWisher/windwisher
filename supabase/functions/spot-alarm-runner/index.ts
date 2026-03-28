@@ -85,7 +85,7 @@ Deno.serve(async (request) => {
 
   for (const alarm of alarmRows) {
     evaluated += 1;
-    if (alarm.station_provider !== "AEMET") {
+    if (!supportsStationProvider(alarm.station_provider)) {
       unsupported += 1;
       diagnostics.push({
         alarmId: alarm.id,
@@ -96,8 +96,7 @@ Deno.serve(async (request) => {
       logged += 1;
       continue;
     }
-
-    if (!aemetApiKey) {
+    if (alarm.station_provider === "AEMET" && !aemetApiKey) {
       diagnostics.push({
         alarmId: alarm.id,
         stationProvider: alarm.station_provider,
@@ -108,7 +107,7 @@ Deno.serve(async (request) => {
       continue;
     }
 
-    const observation = await fetchAemetStationObservation(alarm.station_key);
+    const observation = await fetchObservationForAlarm(alarm);
     if (!observation) {
       diagnostics.push({
         alarmId: alarm.id,
@@ -290,9 +289,11 @@ async function sendAlarmPushes({
   const accessToken = await getFirebaseAccessToken(firebase);
   let sent = 0;
   let failed = 0;
+  const failureReasons: string[] = [];
   for (const subscription of subscriptions) {
     if (subscription.provider !== "fcm") {
       failed += 1;
+      failureReasons.push("unsupported-push-provider");
       continue;
     }
     const response = await fetch(
@@ -347,6 +348,10 @@ async function sendAlarmPushes({
       sent += 1;
     } else {
       failed += 1;
+      const responseText = await response.text();
+      failureReasons.push(
+        `fcm-${response.status}:${responseText.slice(0, 180)}`,
+      );
     }
   }
   return {
@@ -354,7 +359,7 @@ async function sendAlarmPushes({
     failed,
     reason: sent > 0
       ? (failed > 0 ? "partial-push-delivery" : "push-delivered")
-      : "push-send-failed",
+      : (failureReasons[0] ?? "push-send-failed"),
     payload,
   };
 }
@@ -497,6 +502,28 @@ async function updateTriggerState(
   }
 }
 
+async function fetchObservationForAlarm(alarm: AlarmRow) {
+  switch (alarm.station_provider) {
+    case "AEMET":
+      return await fetchAemetStationObservation(alarm.station_key);
+    case "AIGUABLANCA":
+      return await fetchAiguaBlancaObservation();
+    case "INFORATGE":
+      return await fetchInforatgeObservation(alarm.station_key);
+    case "AVAMET":
+      return await fetchAvametObservation(alarm.station_key);
+    default:
+      return null;
+  }
+}
+
+function supportsStationProvider(provider: string) {
+  return provider === "AEMET" ||
+    provider === "AIGUABLANCA" ||
+    provider === "INFORATGE" ||
+    provider === "AVAMET";
+}
+
 async function fetchAemetStationObservation(stationId: string) {
   const envelope = await fetchJsonObject(
     `https://opendata.aemet.es/opendata/api/observacion/convencional/datos/estacion/${encodeURIComponent(stationId)}/?api_key=${aemetApiKey}`,
@@ -514,6 +541,78 @@ async function fetchAemetStationObservation(stationId: string) {
   };
 }
 
+async function fetchAiguaBlancaObservation() {
+  const payload = await fetchJsonObject(
+    "https://meteo.feedket.com/api/endpoints/latest.php",
+    { "X-API-KEY": "GDFH85DF-GD75D65-SFSEF5" },
+  );
+  const latest = asRecord(payload.latest);
+  if (!latest) {
+    return null;
+  }
+  return {
+    observedAt: parseDateWithUtcSuffix(latest.created_at),
+    windKnots: parseNumber(latest.wind_speed_kt),
+    windDirectionBucket: directionBucket(latest.wind_dir),
+  };
+}
+
+async function fetchInforatgeObservation(stationKey: string) {
+  const stationId = extractStationId(stationKey);
+  const liveUrl = stationId === "46181e01"
+    ? "https://inforatge.com/meteo-oliva"
+    : "https://inforatge.com/meteo-oliva-02";
+  const body = await fetchText(liveUrl);
+  const updatedMatch = body.match(
+    /<h2>(\d{1,2}:\d{2}:\d{2})<br>(.*?)<\/h2>/is,
+  );
+  const windMatch = body.match(
+    /velocitat i direcci&oacute; del vent<\/div>\s*<div class="blocValor">(\d+(?:,\d+)?)<span class="vPetit">\s*([^<]+)<\/span><\/div>\s*<div class="blocUnitats">km\/h<\/div>/is,
+  );
+  if (!updatedMatch || !windMatch) {
+    return null;
+  }
+  const observedAt = parseInforatgeObservedAt(updatedMatch[1], updatedMatch[2]);
+  const windKmh = parseNumber(windMatch[1]);
+  if (!observedAt || windKmh == null) {
+    return null;
+  }
+  return {
+    observedAt,
+    windKnots: Number((windKmh * 0.539957).toFixed(2)),
+    windDirectionBucket: directionBucket(cardinalToDegrees(windMatch[2])),
+  };
+}
+
+async function fetchAvametObservation(stationKey: string) {
+  const stationId = extractStationId(stationKey);
+  const body = await fetchText(`https://www.avamet.org/mxo_i.php?id=${stationId}`);
+  const normalized = body
+    .replaceAll("&nbsp;", " ")
+    .replaceAll("&#160;", " ")
+    .replaceAll("&deg;", "°")
+    .replaceAll(/<[^>]+>/g, " ")
+    .replaceAll(/\s+/g, " ")
+    .trim();
+  const observedAtMatch = normalized.match(/(\d{2}-\d{2}-\d{4})\s+(\d{2}:\d{2})/);
+  const windMatch = normalized.match(/Vent[^0-9]*([0-9\.,]+)\s*km\/h\s*([A-Z]{1,3})/i);
+  if (!windMatch) {
+    return null;
+  }
+  const observedAt = observedAtMatch
+    ? parseDdMmYyyyHm(observedAtMatch[1], observedAtMatch[2])
+    : null;
+  const windKmh = parseNumber(windMatch[1]);
+  if (windKmh == null) {
+    return null;
+  }
+  return {
+    observedAt,
+    windKnots: Number((windKmh * 0.539957).toFixed(2)),
+    windDirectionBucket: directionBucket(cardinalToDegrees(windMatch[2])),
+  };
+}
+
 function evaluateAlarm(
   alarm: AlarmRow,
   observation: {
@@ -525,8 +624,7 @@ function evaluateAlarm(
   if (!observation.observedAt || observation.windKnots == null) {
     return { active: false, payload: null, reason: "missing-wind-or-time" };
   }
-  const totalMinutes =
-    (observation.observedAt.getHours() * 60) + observation.observedAt.getMinutes();
+  const totalMinutes = madridTotalMinutes(observation.observedAt);
   const timeMatches = isMinuteInRange(
     totalMinutes,
     alarm.start_hour,
@@ -561,6 +659,20 @@ function evaluateAlarm(
       direction: observation.windDirectionBucket,
     },
   };
+}
+
+function madridTotalMinutes(value: Date) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Madrid",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(value);
+  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? "0");
+  const minute = Number(
+    parts.find((part) => part.type === "minute")?.value ?? "0",
+  );
+  return (hour * 60) + minute;
 }
 
 function isMinuteInRange(
@@ -660,9 +772,12 @@ function parseDate(raw: unknown): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-async function fetchJsonObject(url: string): Promise<Record<string, unknown>> {
+async function fetchJsonObject(
+  url: string,
+  headers: Record<string, string> = {},
+): Promise<Record<string, unknown>> {
   const response = await fetch(url, {
-    headers: { accept: "application/json" },
+    headers: { accept: "application/json", ...headers },
   });
   if (!response.ok) {
     throw new Error(`request-failed:${response.status}`);
@@ -678,6 +793,144 @@ async function fetchJsonArray(url: string): Promise<unknown[]> {
     throw new Error(`request-failed:${response.status}`);
   }
   return await response.json() as unknown[];
+}
+
+async function fetchText(url: string): Promise<string> {
+  const response = await fetch(url, {
+    headers: {
+      accept: "text/html,application/xhtml+xml",
+      "user-agent": "WindWisher/1.0",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`request-failed:${response.status}`);
+  }
+  return await response.text();
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+function extractStationId(stationKey: string) {
+  const parts = stationKey.split(":");
+  return parts.length > 1 ? parts[parts.length - 1] : stationKey;
+}
+
+function parseDateWithUtcSuffix(raw: unknown) {
+  if (typeof raw !== "string" || !raw.trim()) {
+    return null;
+  }
+  const normalized = `${raw.trim().replace(" ", "T")}Z`;
+  return parseDate(normalized);
+}
+
+function parseDdMmYyyyHm(datePart: string, timePart: string) {
+  const [day, month, year] = datePart.split("-").map((value) => Number(value));
+  const [hour, minute] = timePart.split(":").map((value) => Number(value));
+  if (
+    !Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year) ||
+    !Number.isFinite(hour) || !Number.isFinite(minute)
+  ) {
+    return null;
+  }
+  return new Date(year, month - 1, day, hour, minute);
+}
+
+function parseInforatgeObservedAt(timeValue: string, dateValue: string) {
+  const timeMatch = timeValue.trim().match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
+  const dateMatch = dateValue.replaceAll("\n", " ").trim().match(
+    /(\d{1,2}) de ([a-zA-Z&;]+) de (\d{4})/i,
+  );
+  if (!timeMatch || !dateMatch) {
+    return null;
+  }
+  const day = Number(dateMatch[1]);
+  const month = monthFromCatalan(dateMatch[2]);
+  const year = Number(dateMatch[3]);
+  const hour = Number(timeMatch[1]);
+  const minute = Number(timeMatch[2]);
+  const second = Number(timeMatch[3]);
+  if (
+    month == null ||
+    !Number.isFinite(day) ||
+    !Number.isFinite(year) ||
+    !Number.isFinite(hour) ||
+    !Number.isFinite(minute) ||
+    !Number.isFinite(second)
+  ) {
+    return null;
+  }
+  return new Date(year, month - 1, day, hour, minute, second);
+}
+
+function monthFromCatalan(value: string) {
+  const normalized = value
+    .toLowerCase()
+    .replaceAll("&ccedil;", "c")
+    .replaceAll("ç", "c")
+    .trim();
+  switch (normalized) {
+    case "gener":
+      return 1;
+    case "febrer":
+      return 2;
+    case "marc":
+      return 3;
+    case "abril":
+      return 4;
+    case "maig":
+      return 5;
+    case "juny":
+      return 6;
+    case "juliol":
+      return 7;
+    case "agost":
+      return 8;
+    case "setembre":
+      return 9;
+    case "octubre":
+      return 10;
+    case "novembre":
+      return 11;
+    case "desembre":
+      return 12;
+    default:
+      return null;
+  }
+}
+
+function cardinalToDegrees(raw: string) {
+  const normalized = raw.trim().toUpperCase();
+  const degrees: Record<string, number> = {
+    N: 0,
+    NNE: 23,
+    NE: 45,
+    ENE: 68,
+    E: 90,
+    ESE: 113,
+    SE: 135,
+    SSE: 158,
+    S: 180,
+    SSO: 203,
+    SSW: 203,
+    SO: 225,
+    SW: 225,
+    OSO: 248,
+    WSW: 248,
+    O: 270,
+    W: 270,
+    ONO: 293,
+    WNW: 293,
+    NO: 315,
+    NW: 315,
+    NNO: 338,
+    NNW: 338,
+  };
+  return degrees[normalized] ?? null;
 }
 
 function readDatosUrl(envelope: Record<string, unknown>): string {

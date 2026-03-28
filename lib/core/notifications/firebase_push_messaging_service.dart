@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:windwisher/firebase_options.dart';
+import 'package:windwisher/core/notifications/local_notifications_service.dart';
 import 'package:windwisher/core/notifications/push_notification_subscription_service.dart';
 
 @pragma('vm:entry-point')
@@ -25,6 +26,7 @@ class FirebasePushMessagingService {
       FirebasePushMessagingService._();
 
   StreamSubscription<String>? _tokenRefreshSubscription;
+  StreamSubscription<RemoteMessage>? _foregroundMessageSubscription;
   bool _initialized = false;
 
   Future<void> initialize() async {
@@ -56,6 +58,11 @@ class FirebasePushMessagingService {
 
       final messaging = FirebaseMessaging.instance;
       await messaging.requestPermission(alert: true, badge: true, sound: true);
+      await messaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
 
       if (_isIosSimulator()) {
         debugPrint(
@@ -89,6 +96,12 @@ class FirebasePushMessagingService {
         );
       }
 
+      _foregroundMessageSubscription = FirebaseMessaging.onMessage.listen((
+        message,
+      ) async {
+        await _showForegroundAlarmNotification(message);
+      });
+
       _tokenRefreshSubscription = messaging.onTokenRefresh.listen((
         nextToken,
       ) async {
@@ -109,8 +122,37 @@ class FirebasePushMessagingService {
   }
 
   Future<void> dispose() async {
+    await _foregroundMessageSubscription?.cancel();
+    _foregroundMessageSubscription = null;
     await _tokenRefreshSubscription?.cancel();
     _tokenRefreshSubscription = null;
+  }
+
+  Future<void> _showForegroundAlarmNotification(RemoteMessage message) async {
+    final data = message.data;
+    if (data['type'] != 'spot_alarm') {
+      return;
+    }
+    final alarmId = data['alarmId']?.trim();
+    if (alarmId == null || alarmId.isEmpty) {
+      return;
+    }
+    final title =
+        message.notification?.title?.trim().isNotEmpty == true
+        ? message.notification!.title!.trim()
+        : 'Alarma de spot';
+    final body =
+        message.notification?.body?.trim().isNotEmpty == true
+        ? message.notification!.body!.trim()
+        : 'La alarma ya esta activa.';
+    await LocalNotificationsService.instance.showSpotAlarm(
+      notificationId: LocalNotificationsService.instance.notificationIdForAlarm(
+        alarmId,
+      ),
+      alarmId: alarmId,
+      title: title,
+      body: body,
+    );
   }
 
   String _platformLabel() {

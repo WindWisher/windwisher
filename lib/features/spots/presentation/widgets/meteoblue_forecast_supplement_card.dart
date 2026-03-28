@@ -528,6 +528,7 @@ Widget _compactNullableDirectionCell(BuildContext context, int? degrees) {
     return _compactValueCell(context, '-');
   }
 
+  final normalizedDegrees = ((degrees % 360) + 360) % 360;
   final textTheme = Theme.of(context).textTheme;
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
@@ -535,12 +536,12 @@ Widget _compactNullableDirectionCell(BuildContext context, int? degrees) {
       mainAxisSize: MainAxisSize.min,
       children: [
         Transform.rotate(
-          angle: degrees * 3.1415926535897932 / 180,
+          angle: ((normalizedDegrees - 45 + 180) * 3.1415926535897932) / 180,
           child: const Icon(Icons.near_me_rounded, size: 18),
         ),
         const SizedBox(height: 2),
         Text(
-          _degreesToCardinal(degrees.toDouble()),
+          _degreesToCardinal(normalizedDegrees.toDouble()),
           style: textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
       ],

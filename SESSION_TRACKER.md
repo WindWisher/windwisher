@@ -2,16 +2,17 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 75h 24m`.
+- `Total historico minimo consolidado del proyecto: 81h 24m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
   - bloque consolidado adicional en `2026-03-26`: `+8h` estimadas
   - bloque consolidado adicional en `2026-03-27`: `+4h` estimadas
+  - bloque consolidado adicional en `2026-03-28`: `+6h` estimadas
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-03-27`: `+4h` estimadas.
+  - ultima consolidacion manual anadida el `2026-03-28`: `+6h` estimadas.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
 
@@ -14885,3 +14886,52 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
     - verificacion ejecutada:
       - multiples `flutter analyze` sobre `settings_page.dart`, `spots_page.dart`, `spot_detail_page.dart` y `spot_social_client.dart`,
       - multiples `supabase db push` aplicados al remoto para las migraciones de roles, manager/vip, moderacion por spot y limites de spots guardados.
+
+  - bloque nuevo `2026-03-28`:
+    - bloque de alarmas remotas, depuracion Android/Redmi, forecast por Supabase y coherencia visual de direccion de viento,
+    - duracion estimada del bloque: `6h`,
+    - alarmas / push:
+      - preparada la base remota de alarmas con `spot_alarm_runtime`,
+      - ampliado y desplegado `spot-alarm-runner` para:
+        - ventanas horarias por minuto,
+        - `snooze`,
+        - `stop until reset`,
+        - envio push real por FCM,
+      - cargado el secret `FIREBASE_SERVICE_ACCOUNT_JSON` en Supabase,
+      - activado scheduler remoto del runner,
+      - ajustada la evaluacion horaria del runner a `Europe/Madrid`,
+      - instrumentado el flujo para distinguir:
+        - `active`,
+        - `wind-mismatch`,
+        - `time-mismatch`,
+        - `unsupported-provider`,
+      - anadido manejo de `spot_alarm` en foreground en Android para convertir push remota en notificacion local audible,
+      - limpiados tokens FCM obsoletos de `raulmldev` durante la depuracion en dispositivo real,
+    - sincronizacion y UX de alarmas:
+      - endurecida la sync de alarmas para dejar de fallar en silencio,
+      - guardado/edicion/eliminacion de alarmas ahora notifican errores reales de sync,
+      - anadido aviso `Nueva alarma creada.` al crear una alarma nueva en `Live`,
+    - forecast Android / Redmi:
+      - aislado el fallo de `Forecast` en Redmi al camino cliente `Supabase Functions invoke`,
+      - verificado que `local.env.json` si va empaquetado dentro del APK,
+      - instrumentado `supabase_forecast_proxy_client.dart` con logs de exito/fallo y tiempo,
+      - confirmado timeout del camino SDK en Android y mantenido `Forecast` pasando por la misma Edge Function de Supabase,
+      - dejada una invocacion especifica de cliente movil hacia `forecast-proxy` para evitar el bloqueo del runtime Android sin sacar el trafico fuera de Supabase,
+    - visualizacion de direccion de viento:
+      - corregida la orientacion de flechas en la tabla principal de forecast para mostrar flujo de viento como en Windguru manteniendo texto cardinal meteorologico,
+      - corregidas flechas equivalentes en:
+        - tarjeta suplementaria de Meteoblue,
+        - rosa / manecilla de viento,
+        - grafico / mapa historico de viento,
+        - `wind_map_page.dart`,
+      - corregido un giro extra de `90°` en el mapa de viento que hacia que ciertas direcciones no coincidieran con la tabla,
+    - Android / dispositivo real:
+      - detectado y configurado Redmi Note 10S por ADB,
+      - concedido `POST_NOTIFICATIONS`,
+      - instaladas varias builds release para pruebas reales,
+      - aislado el ruido `E/gralloc4(... Empty SMPTE 2094-40 data)` como log del stack grafico/MIUI sin impacto funcional directo en la app,
+    - verificacion ejecutada:
+      - multiples `flutter analyze` sobre `spot_detail_page.dart`, `wind_map_page.dart`, `meteoblue_forecast_supplement_card.dart`, `supabase_forecast_proxy_client.dart` y `firebase_push_messaging_service.dart`,
+      - despliegues de `spot-alarm-runner`,
+      - pruebas reales en Redmi conectado por USB,
+      - rebuilds y reinstalaciones Android release para validar forecast y alarmas.

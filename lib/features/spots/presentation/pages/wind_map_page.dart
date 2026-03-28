@@ -908,7 +908,7 @@ class _SpotWindMarker extends StatelessWidget {
                   Icon(icon, size: 22, color: color)
                 else
                   Transform.rotate(
-                    angle: _flowAngleRadians(sample.windDeg) - (math.pi / 4),
+                    angle: _flowAngleRadians(sample.windDeg) + (math.pi / 4),
                     child: Icon(icon, size: 24, color: color),
                   ),
                 const SizedBox(width: 6),
@@ -1096,7 +1096,7 @@ class _WindFieldBackdropPainter extends CustomPainter {
           referenceWindDeg,
           node.windDeg,
         );
-        final angle = _flowAngleRadians(blendedDeg) - (math.pi / 2);
+        final angle = _flowAngleRadians(blendedDeg);
         final direction = Offset(math.cos(angle), math.sin(angle));
         final baseLength = 10.0 + (node.windKnots * 0.55);
         final travel = baseLength * 1.4;

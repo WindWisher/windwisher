@@ -324,9 +324,6 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     unawaited(_loadSocialModerationPermissions());
     _loadSocialFeed();
     _syncAlarmMonitoring();
-    if (!_isFlutterTest && !kIsWeb) {
-      _windguruController = _createWindguruController();
-    }
   }
 
   List<String> _modelsForProvider(String provider) {
@@ -1223,7 +1220,10 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   }
 
   Widget _buildWindguruForecastSection() {
-    final controller = _windguruController;
+    final controller =
+        _isFlutterTest || kIsWeb
+        ? _windguruController
+        : (_windguruController ??= _createWindguruController());
     if (_isFlutterTest || (!kIsWeb && controller == null)) {
       final message = _isFlutterTest
           ? 'Windguru no disponible en esta plataforma de prueba.'
@@ -4691,7 +4691,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     required Color color,
   }) {
     return Transform.rotate(
-      angle: (directionDeg * math.pi) / 180,
+      angle: ((_normalizeDegrees(directionDeg) + 180) * math.pi) / 180,
       child: SizedBox(
         width: 22,
         height: 220,
@@ -6367,34 +6367,37 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                                               const EdgeInsets.symmetric(
                                                 horizontal: 2,
                                               ),
-                                          label: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Transform.rotate(
-                                                angle:
-                                                    _alarmDirectionRotation(
-                                                      direction,
-                                                    ),
-                                                child: Icon(
-                                                  Icons.navigation_rounded,
-                                                  size: 14,
-                                                  color: selected
-                                                      ? colorScheme
-                                                            .onSecondaryContainer
-                                                      : colorScheme
-                                                            .onSurfaceVariant,
+                                          label: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Transform.rotate(
+                                                  angle:
+                                                      _alarmDirectionRotation(
+                                                        direction,
+                                                      ),
+                                                  child: Icon(
+                                                    Icons.navigation_rounded,
+                                                    size: 14,
+                                                    color: selected
+                                                        ? colorScheme
+                                                              .onSecondaryContainer
+                                                        : colorScheme
+                                                              .onSurfaceVariant,
+                                                  ),
                                                 ),
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                direction,
-                                                style: const TextStyle(
-                                                  fontSize: 12,
+                                                const SizedBox(width: 3),
+                                                Text(
+                                                  direction,
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                  ),
                                                 ),
-                                              ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
                                           selected: selected,
                                           onSelected: (value) {
@@ -6488,6 +6491,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                     width: double.infinity,
                     child: FilledButton.icon(
                       onPressed: () async {
+                        final wasEditing = _editingAlarmId != null;
                         if (_alarmDirections.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -6542,6 +6546,13 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                           _editingAlarmId = null;
                           _syncAlarmMonitoring();
                         });
+                        if (!wasEditing) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Nueva alarma creada.'),
+                            ),
+                          );
+                        }
                         if (!saved) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -8903,6 +8914,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   }
 
   Widget _compactDirectionCell(int degrees, {double? minHeight}) {
+    final normalizedDegrees = _normalizeDegrees(degrees.toDouble());
     return Container(
       alignment: Alignment.center,
       constraints: minHeight == null
@@ -8917,12 +8929,12 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Transform.rotate(
-            angle: (degrees * math.pi) / 180,
+            angle: ((normalizedDegrees - 45 + 180) * math.pi) / 180,
             child: const Icon(Icons.near_me_rounded, size: 18),
           ),
           const SizedBox(height: 2),
           Text(
-            _degreesToCardinal(degrees.toDouble()),
+            _degreesToCardinal(normalizedDegrees),
             style: Theme.of(
               context,
             ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
@@ -9935,6 +9947,11 @@ class _LiveWindChartPainter extends CustomPainter {
 
   static const _yMin = 0.0;
 
+  double _normalizeDirectionDeg(double degrees) {
+    final normalized = degrees % 360;
+    return normalized < 0 ? normalized + 360 : normalized;
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     if (points.isEmpty || size.width <= 0 || size.height <= 0) return;
@@ -10261,9 +10278,11 @@ class _LiveWindChartPainter extends CustomPainter {
                 plot.height),
       );
       final markerColor = semaforoColor(windKnots);
+      final flowDirectionDeg =
+          (_normalizeDirectionDeg(directionDeg.toDouble()) + 180) % 360;
       canvas.save();
       canvas.translate(p.dx, p.dy);
-      canvas.rotate((directionDeg * math.pi) / 180);
+      canvas.rotate((flowDirectionDeg * math.pi) / 180);
       canvas.drawPath(
         arrowBase,
         Paint()
