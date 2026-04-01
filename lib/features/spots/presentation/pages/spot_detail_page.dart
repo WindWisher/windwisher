@@ -200,6 +200,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   WebViewController? _windguruController;
   WebViewController? _windguruFullscreenController;
   bool _isLiveRefreshing = false;
+  bool _isHistoricalRefreshing = false;
   Timer? _alarmAutoRefreshTimer;
   bool _isAppResumed = true;
 
@@ -562,18 +563,18 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     _loadHistoryForecastRows();
   }
 
-  Future<void> _refreshSelectedStationHistoricalData() async {
+  Future<bool> _refreshSelectedStationHistoricalData() async {
     final station = _findStationByKey(_selectedStation);
     final current = _liveStationsLoadResult;
     if (station == null || current == null) {
-      return;
+      return false;
     }
 
     try {
       List<_HistoricalWindPoint>? refreshedHistory;
       if (station.provider == 'AVAMET') {
         if (station.stationId == null) {
-          return;
+          return false;
         }
         final intradayHistory = await _avametIntradayHistoryClient
             .fetchIntradayWindHistory(stationId: station.stationId!);
@@ -662,7 +663,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       }
 
       if (!mounted || refreshedHistory == null) {
-        return;
+        return false;
       }
 
       setState(() {
@@ -679,15 +680,35 @@ class _SpotDetailPageState extends State<SpotDetailPage>
           technicalError: current.technicalError,
         );
       });
+      return true;
     } catch (_) {
-      // Ignore refresh errors for now; current chart remains visible.
+      return false;
     }
   }
 
   Future<void> _refreshHistoricalChartData() async {
-    await _refreshSelectedStationLiveData();
-    await _refreshSelectedStationHistoricalData();
-    _refreshHistoryForecastRows();
+    if (_isHistoricalRefreshing) {
+      return;
+    }
+    setState(() {
+      _isHistoricalRefreshing = true;
+    });
+    try {
+      await _refreshSelectedStationLiveData();
+      final historyUpdated = await _refreshSelectedStationHistoricalData();
+      _refreshHistoryForecastRows();
+      if (!historyUpdated && mounted) {
+        _showLiveRefreshFeedback(
+          'No se pudo actualizar el historico de ${_stationDisplayName(_selectedStation)}.',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isHistoricalRefreshing = false;
+        });
+      }
+    }
   }
 
   Future<_MeteoblueCurrentDayLoadResult> _loadMeteoblueCurrentDay() async {
@@ -1958,41 +1979,15 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   }
 
   Widget _buildLiveProviderLabel() {
-    final station =
-        _findStationByKey(_selectedStation) ?? _resolvedNearbyStations().first;
-    final metadata = <String>[station.sourceKind.label, station.provider];
-    if (station.stationId != null) {
-      metadata.add(station.stationId!);
-    }
     final observedAt = _selectedLiveData().observedAt;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          metadata.join(' · '),
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        if (observedAt != null) ...[
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm,
-              vertical: 4,
-            ),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              'Actualizado ${_formatObservedAt(observedAt)}',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ],
+    if (observedAt == null) {
+      return const SizedBox.shrink();
+    }
+    return Text(
+      'Actualizado: ${_formatObservedAt(observedAt)}',
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
     );
   }
 
@@ -2043,7 +2038,13 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                 onPressed: _isLiveRefreshing
                     ? null
                     : _refreshSelectedStationLiveData,
-                icon: const Icon(Icons.refresh_rounded),
+                icon: _isLiveRefreshing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh_rounded),
               ),
             ),
           ],
@@ -2651,9 +2652,20 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     if (station == null) {
       return;
     }
+    final ownsRefreshState = !_isLiveRefreshing;
+    if (ownsRefreshState && mounted) {
+      setState(() {
+        _isLiveRefreshing = true;
+      });
+    }
     try {
       final refreshed = await _fetchLiveDataForStation(station);
       if (!mounted || refreshed == null) {
+        if (ownsRefreshState && mounted) {
+          _showLiveRefreshFeedback(
+            'No se pudo actualizar ${_stationDisplayName(_selectedStation)}.',
+          );
+        }
         return;
       }
       final liveData = refreshed;
@@ -2676,8 +2688,24 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         );
       });
     } catch (_) {
-      // Ignore refresh errors for now; base data still shown.
+      if (ownsRefreshState && mounted) {
+        _showLiveRefreshFeedback(
+          'No se pudo actualizar ${_stationDisplayName(_selectedStation)}.',
+        );
+      }
+    } finally {
+      if (ownsRefreshState && mounted) {
+        setState(() {
+          _isLiveRefreshing = false;
+        });
+      }
     }
+  }
+
+  void _showLiveRefreshFeedback(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _refreshAlarmStationsLiveData(List<SpotAlarmRecord> alarms) async {
@@ -6027,8 +6055,18 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                       shape: const CircleBorder(),
                       child: IconButton(
                         tooltip: 'Refrescar grafica',
-                        onPressed: _refreshHistoricalChartData,
-                        icon: const Icon(Icons.refresh_rounded),
+                        onPressed: _isHistoricalRefreshing
+                            ? null
+                            : _refreshHistoricalChartData,
+                        icon: _isHistoricalRefreshing
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.refresh_rounded),
                       ),
                     ),
                   ),
@@ -7099,6 +7137,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       setState(() {
         _socialFeed = posts;
       });
+      _scheduleScrollSocialFeedToBottom();
     } catch (error) {
       if (!mounted) {
         return;
@@ -7128,20 +7167,6 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
-        return;
-      }
-      final lastMessageContext = _lastSocialMessageKey.currentContext;
-      if (lastMessageContext != null) {
-        unawaited(
-          Scrollable.ensureVisible(
-            lastMessageContext,
-            alignment: 1,
-            duration: animated
-                ? const Duration(milliseconds: 240)
-                : Duration.zero,
-            curve: Curves.easeOut,
-          ),
-        );
         return;
       }
       if (!_socialFeedScrollController.hasClients) {
@@ -7194,11 +7219,27 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   }
 
   void _scheduleFocusSocialSection() {
+    _scheduleScrollSocialFeedToBottom(animated: true);
     Future<void>.delayed(const Duration(milliseconds: 80), () {
       if (!mounted || _section != _SpotDetailSection.social) {
         return;
       }
       _scheduleEnsureSocialComposerVisible();
+      Future<void>.delayed(const Duration(milliseconds: 120), () {
+        if (!mounted || _section != _SpotDetailSection.social) {
+          return;
+        }
+        _scheduleScrollSocialFeedToBottom();
+      });
+    });
+  }
+
+  void _scheduleScrollSocialFeedToBottom({bool animated = false}) {
+    Future<void>.delayed(const Duration(milliseconds: 80), () {
+      if (!mounted || _section != _SpotDetailSection.social) {
+        return;
+      }
+      unawaited(_scrollSocialFeedToBottomAfterLayout(animated: animated));
     });
   }
 
@@ -7232,9 +7273,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       _bindSocialPresence();
       _bindSocialTyping();
       unawaited(_loadSocialFeed());
-      if (_socialFeed.isNotEmpty) {
-        _scheduleFocusSocialSection();
-      }
+      _scheduleFocusSocialSection();
     }
   }
 

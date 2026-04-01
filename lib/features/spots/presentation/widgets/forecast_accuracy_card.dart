@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/features/spots/presentation/widgets/forecast_accuracy_info_dialog.dart';
 
 class ForecastAccuracyCard extends StatelessWidget {
   const ForecastAccuracyCard({
@@ -46,16 +47,31 @@ class ForecastAccuracyCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.82),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.track_changes_rounded,
-                  color: Theme.of(context).colorScheme.primary,
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () {
+                    showDialog<void>(
+                      context: context,
+                      builder: (dialogContext) =>
+                          const ForecastAccuracyInfoDialog(),
+                    );
+                  },
+                  child: Ink(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surface.withValues(alpha: 0.82),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.track_changes_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),

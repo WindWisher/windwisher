@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -556,26 +555,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
               ),
             ),
-            if (EnvConfig.devBypassEnabled || kDebugMode) ...[
-              const SizedBox(height: AppSpacing.md),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.tonal(
-                  onPressed: isBusy
-                      ? null
-                      : () async {
-                          await ref
-                              .read(authSessionProvider.notifier)
-                              .signInDev();
-                          if (!context.mounted) {
-                            return;
-                          }
-                          context.go(AppRoutes.dashboard);
-                        },
-                  child: Text(strings.devBypass),
-                ),
-              ),
-            ],
             const SizedBox(height: AppSpacing.lg),
             recentEmailsState.when(
               data: (emails) {

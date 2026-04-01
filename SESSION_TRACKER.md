@@ -14935,3 +14935,33 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - despliegues de `spot-alarm-runner`,
       - pruebas reales en Redmi conectado por USB,
       - rebuilds y reinstalaciones Android release para validar forecast y alarmas.
+
+  - bloque nuevo `2026-04-01 / 2026-04-02`:
+    - cierre funcional del spot `Oliva Canal - Platja dels Gorgs` como referencia base para futuros spots,
+    - login / live:
+      - eliminado el boton de bypass del login en `WindWisher`,
+      - eliminada la linea `Observacion ...` en `Live`, manteniendo solo `Actualizado: ...`,
+      - ajustado `AEMET Oliva` para tomar la observacion puntual mas reciente en vez de quedarse con una entrada vieja del listado general,
+    - alarms / notifications:
+      - estabilizado el flujo remoto de alarmas con push FCM real,
+      - afinadas las notificaciones locales de alarma con `Parar`, `Posponer`, dialogo propio y frase destacada,
+      - validado el ciclo completo de push, `stop`, `snooze` y corte por `maxRepeats`,
+    - forecast / precision:
+      - restaurada la tarjeta `Precision de Modelo Forecast`,
+      - anadido dialogo informativo propio y reescrito para explicar mejor metricas, umbrales y ejemplos,
+    - live / historical refresh:
+      - mejorado el feedback del boton refresh de la rosa de los vientos,
+      - mejorado el feedback del boton refresh del historico,
+      - ambos ahora muestran spinner y `SnackBar` si falla la actualizacion,
+    - Inforatge:
+      - corregido el parser de fecha/hora del live snapshot para el formato real `d'abril / d’abril`,
+      - dejada la seleccion del snapshot de `Inforatge` priorizando el live para la tarjeta `Live`,
+      - recuperados correctamente `Oliva Nova` y `Oliva Poliesportiu` tras el cambio de estacion,
+    - social / chat:
+      - corregida la entrada a la pestana de chat para volver a mostrar el ultimo mensaje real,
+      - restaurado el patron de scroll en dos fases:
+        - bajar al fondo,
+        - asegurar compositor,
+        - rematar al fondo tras el layout final,
+    - criterio de producto:
+      - se decide congelar por ahora el alcance de `Oliva Canal` y tratar este spot como modelo a replicar en los siguientes spots del proyecto.

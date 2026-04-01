@@ -26,6 +26,8 @@ type AlarmRow = {
   stopped_until_reset: boolean;
 };
 
+const MAX_OBSERVATION_AGE_MINUTES = 80;
+
 type PushSubscriptionRow = {
   user_id: string;
   device_token: string;
@@ -150,10 +152,6 @@ Deno.serve(async (request) => {
     }
     active += 1;
 
-    if (alarm.stopped_until_reset) {
-      continue;
-    }
-
     const subscriptions = pushByUserId.get(alarm.user_id) ?? [];
     if (subscriptions.length == 0) {
       await logDelivery(alarm, "ready", "no-push-subscription", evaluation.payload);
@@ -161,14 +159,14 @@ Deno.serve(async (request) => {
       continue;
     }
 
-    if (alarm.trigger_count >= alarm.max_repeats) {
-      await logDelivery(alarm, "skipped", "max-repeats-reached", evaluation.payload);
+    if (alarm.trigger_count > 0) {
+      await logDelivery(
+        alarm,
+        "skipped",
+        "already-triggered-for-current-active-window",
+        evaluation.payload,
+      );
       logged += 1;
-      continue;
-    }
-
-    const now = new Date();
-    if (!canRepeat(alarm, now)) {
       continue;
     }
 
@@ -183,6 +181,7 @@ Deno.serve(async (request) => {
       continue;
     }
 
+    const now = new Date();
     const firebase = parseFirebaseServiceAccount(firebaseServiceAccountJson);
     if (!firebase) {
       await logDelivery(
@@ -317,6 +316,8 @@ async function sendAlarmPushes({
               spotKey: alarm.spot_key,
               stationKey: alarm.station_key,
               stationProvider: alarm.station_provider,
+              repeatWindow: alarm.repeat_window,
+              maxRepeats: String(alarm.max_repeats),
             },
             android: {
               priority: "high",
@@ -581,6 +582,7 @@ async function fetchInforatgeObservation(stationKey: string) {
     observedAt,
     windKnots: Number((windKmh * 0.539957).toFixed(2)),
     windDirectionBucket: directionBucket(cardinalToDegrees(windMatch[2])),
+    observedTotalMinutesLocal: localTotalMinutesFromDate(observedAt),
   };
 }
 
@@ -610,6 +612,7 @@ async function fetchAvametObservation(stationKey: string) {
     observedAt,
     windKnots: Number((windKmh * 0.539957).toFixed(2)),
     windDirectionBucket: directionBucket(cardinalToDegrees(windMatch[2])),
+    observedTotalMinutesLocal: localTotalMinutesFromDate(observedAt),
   };
 }
 
@@ -619,12 +622,22 @@ function evaluateAlarm(
     observedAt: Date | null;
     windKnots: number | null;
     windDirectionBucket: string | null;
+    observedTotalMinutesLocal?: number | null;
   },
 ) {
-  if (!observation.observedAt || observation.windKnots == null) {
+  if (observation.windKnots == null) {
     return { active: false, payload: null, reason: "missing-wind-or-time" };
   }
-  const totalMinutes = madridTotalMinutes(observation.observedAt);
+  const now = new Date();
+  const totalMinutes = madridTotalMinutes(now);
+  const observationAgeMinutes = observation.observedAt == null
+    ? null
+    : Math.max(
+      0,
+      Math.floor((now.getTime() - observation.observedAt.getTime()) / 60000),
+    );
+  const freshEnough = observationAgeMinutes == null ||
+    observationAgeMinutes <= MAX_OBSERVATION_AGE_MINUTES;
   const timeMatches = isMinuteInRange(
     totalMinutes,
     alarm.start_hour,
@@ -638,9 +651,11 @@ function evaluateAlarm(
   const directionMatches =
     observation.windDirectionBucket != null &&
     alarm.directions.includes(observation.windDirectionBucket);
-  const active = timeMatches && windMatches && directionMatches;
+  const active = freshEnough && timeMatches && windMatches && directionMatches;
   const reason = active
     ? "active"
+    : !freshEnough
+    ? "stale-observation"
     : !timeMatches
     ? "time-mismatch"
     : !windMatches
@@ -655,6 +670,7 @@ function evaluateAlarm(
       stationKey: alarm.station_key,
       stationName: alarm.station_name,
       observedAt: observation.observedAt.toISOString(),
+      observedAgeMinutes: observationAgeMinutes,
       windKnots: observation.windKnots,
       direction: observation.windDirectionBucket,
     },
@@ -675,6 +691,13 @@ function madridTotalMinutes(value: Date) {
   return (hour * 60) + minute;
 }
 
+function localTotalMinutesFromDate(value: Date | null) {
+  if (!value) {
+    return null;
+  }
+  return (value.getHours() * 60) + value.getMinutes();
+}
+
 function isMinuteInRange(
   totalMinutes: number,
   startHour: number,
@@ -691,38 +714,6 @@ function isMinuteInRange(
     return totalMinutes >= startTotal && totalMinutes < endTotal;
   }
   return totalMinutes >= startTotal || totalMinutes < endTotal;
-}
-
-function canRepeat(alarm: AlarmRow, now: Date) {
-  if (alarm.snoozed_until) {
-    const snoozedUntil = parseDate(alarm.snoozed_until);
-    if (snoozedUntil && now.getTime() < snoozedUntil.getTime()) {
-      return false;
-    }
-  }
-  if (!alarm.last_triggered_at) {
-    return true;
-  }
-  const lastTriggeredAt = parseDate(alarm.last_triggered_at);
-  if (!lastTriggeredAt) {
-    return true;
-  }
-  return now.getTime() - lastTriggeredAt.getTime() >= repeatWindowMs(alarm.repeat_window);
-}
-
-function repeatWindowMs(raw: string) {
-  switch (raw) {
-    case "min5":
-      return 5 * 60 * 1000;
-    case "min10":
-      return 10 * 60 * 1000;
-    case "min15":
-      return 15 * 60 * 1000;
-    case "min30":
-      return 30 * 60 * 1000;
-    default:
-      return 10 * 60 * 1000;
-  }
 }
 
 function directionBucket(raw: unknown): string | null {

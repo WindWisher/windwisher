@@ -124,10 +124,7 @@ class InforatgeOlivaNovaClient {
     if (primary == null) {
       return fallback;
     }
-    if (fallback == null) {
-      return primary;
-    }
-    return primary.observedAt.isBefore(fallback.observedAt) ? fallback : primary;
+    return primary;
   }
 
   List<InforatgeOlivaNovaPoint> _parseHistoricalPoints(String body) {
@@ -287,10 +284,15 @@ class InforatgeOlivaNovaClient {
     final timeMatch = RegExp(
       r'^(\d{1,2}):(\d{2}):(\d{2})$',
     ).firstMatch(timeValue.trim());
+    final normalizedDateValue = dateValue
+        .replaceAll('&prime;', '\'')
+        .replaceAll('′', '\'')
+        .replaceAll('\n', ' ')
+        .trim();
     final dateMatch = RegExp(
-      r'(\d{1,2}) de ([a-zA-Z&;]+) de (\d{4})',
+      r"(\d{1,2})\s+d['e]\s*([a-zA-Z&;]+)\s+de\s+(\d{4})",
       caseSensitive: false,
-    ).firstMatch(dateValue.replaceAll('\n', ' ').trim());
+    ).firstMatch(normalizedDateValue);
     if (timeMatch == null || dateMatch == null) {
       return null;
     }
@@ -314,6 +316,7 @@ class InforatgeOlivaNovaClient {
   int? _monthFromCatalan(String? value) {
     final normalized = (value ?? '')
         .toLowerCase()
+        .replaceAll('\'', '')
         .replaceAll('&ccedil;', 'c')
         .replaceAll('ç', 'c')
         .trim();

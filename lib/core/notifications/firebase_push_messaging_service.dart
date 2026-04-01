@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:windwisher/firebase_options.dart';
 import 'package:windwisher/core/notifications/local_notifications_service.dart';
 import 'package:windwisher/core/notifications/push_notification_subscription_service.dart';
+import 'package:windwisher/features/spots/presentation/state/spot_alarm_catalog.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -14,6 +15,30 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    final alarmId = message.data['alarmId']?.trim();
+    final repeatWindowRaw = message.data['repeatWindow']?.trim();
+    final maxRepeats = int.tryParse(message.data['maxRepeats'] ?? '');
+    if (message.data['type'] == 'spot_alarm' &&
+        alarmId != null &&
+        alarmId.isNotEmpty &&
+        repeatWindowRaw != null &&
+        maxRepeats != null &&
+        maxRepeats > 0) {
+      await LocalNotificationsService.instance.scheduleAlarmCycleFromRemotePush(
+        alarmId: alarmId,
+        title: message.notification?.title?.trim().isNotEmpty == true
+            ? message.notification!.title!.trim()
+            : 'Alarma de spot',
+        body: message.notification?.body?.trim().isNotEmpty == true
+            ? message.notification!.body!.trim()
+            : 'La alarma ya esta activa.',
+        repeatWindow: AlarmRepeatWindow.values.firstWhere(
+          (value) => value.name == repeatWindowRaw,
+          orElse: () => AlarmRepeatWindow.min10,
+        ),
+        maxRepeats: maxRepeats,
+      );
+    }
   } catch (_) {
     // Ignore if Firebase is not configured on this build yet.
   }
@@ -145,13 +170,17 @@ class FirebasePushMessagingService {
         message.notification?.body?.trim().isNotEmpty == true
         ? message.notification!.body!.trim()
         : 'La alarma ya esta activa.';
+    final repeatWindow = AlarmRepeatWindow.values.firstWhere(
+      (value) => value.name == (data['repeatWindow']?.trim() ?? ''),
+      orElse: () => AlarmRepeatWindow.min10,
+    );
+    final maxRepeats = int.tryParse(data['maxRepeats']?.trim() ?? '') ?? 1;
     await LocalNotificationsService.instance.showSpotAlarm(
-      notificationId: LocalNotificationsService.instance.notificationIdForAlarm(
-        alarmId,
-      ),
       alarmId: alarmId,
       title: title,
       body: body,
+      repeatWindow: repeatWindow,
+      maxRepeats: maxRepeats,
     );
   }
 
