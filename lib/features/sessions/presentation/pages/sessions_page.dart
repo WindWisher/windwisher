@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -40,11 +42,34 @@ class SessionsPageState extends State<SessionsPage> {
   static const String _phoneDeviceId = 'phone-1';
   static const String _defaultSessionSummary =
       'Track sincronizado con sensores de velocidad, GPS y eventos.';
-  static const List<String> _uploadSpotOptions = [
-    'Oliva Norte',
-    'Gandia Harbor',
-    'Cullera Beach',
+  static const Set<String> _templateDeviceIds = {'woo-1', 'watch-1'};
+  static const List<_DetectedCompatibleDevice> _supportedDetectedDevices =
+      <_DetectedCompatibleDevice>[];
+  static const _LinkedDevice _defaultPhoneDevice = _LinkedDevice(
+    id: _phoneDeviceId,
+    name: 'Telefono del usuario',
+    kind: 'Dispositivo Android',
+    status: 'Listo',
+    lastSync: 'Disponible en este dispositivo',
+  );
+  static const List<String> _deviceSensorOrder = [
+    'gps',
+    'accelerometer',
+    'gyroscope',
+    'magnetometer',
+    'orientation',
+    'heart_rate',
+    'barometer',
   ];
+  static const Map<String, String> _deviceSensorLabels = {
+    'gps': 'GPS',
+    'accelerometer': 'Acelerometro',
+    'gyroscope': 'Giroscopio',
+    'magnetometer': 'Magnetometro',
+    'orientation': 'Orientacion',
+    'heart_rate': 'Ritmo cardiaco',
+    'barometer': 'Barometro',
+  };
 
   late final SessionsModule _sessionsModule;
   late final SpotsModule _spotsModule;
@@ -60,11 +85,11 @@ class SessionsPageState extends State<SessionsPage> {
   String _sessionFilterDevice = 'Todos';
   String _sessionSort = 'Mas recientes';
   String? _lastUsedGearSetupId;
-  String _lastUsedUploadSpot = 'Oliva Norte';
+  String _lastUsedUploadSpot = '';
   final List<_RecordedSession> _sessionFeed = [];
   final List<_ImportedSessionResult> _syncedPendingSessions = [];
   String? _syncedPendingDeviceId;
-  _SessionCaptureState _captureState = _SessionCaptureState.ready;
+  final _SessionCaptureState _captureState = _SessionCaptureState.ready;
   DateTime? _recordingStartedAt;
   Timer? _recordingTicker;
   final ImagePicker _imagePicker = ImagePicker();
@@ -91,10 +116,12 @@ class SessionsPageState extends State<SessionsPage> {
     _devices.addAll(_sessionsModule.getLinkedDevices());
     _sessionFeed.addAll(_sessionsModule.getRecordedSessions());
     _selectedDeviceId = _sessionsModule.getSelectedDeviceId();
+    _pruneTemplateDevices();
     _hydrateSessionViewPreferences();
     _ensurePhoneDeviceAvailable();
     _ensureSelectedDevice();
     _sanitizeSessionViewPreferences();
+    unawaited(_hydratePhoneDeviceInfo());
     _hydrateRecordedSessions();
     _hydrateSpotsCatalog();
     _hydrateProfileGear();
@@ -135,6 +162,7 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   void _sanitizeSessionViewPreferences() {
+    final uploadSpotOptions = _availableUploadSpots();
     final hasDeviceFilter =
         _sessionFilterDevice == 'Todos' ||
         _devices.any((device) => device.name == _sessionFilterDevice);
@@ -144,8 +172,9 @@ class SessionsPageState extends State<SessionsPage> {
     if (_sessionSort != _sortMostRecent && _sessionSort != _sortOldest) {
       _sessionSort = _sortMostRecent;
     }
-    if (!_uploadSpotOptions.contains(_lastUsedUploadSpot)) {
-      _lastUsedUploadSpot = _uploadSpotOptions.first;
+    if (uploadSpotOptions.isNotEmpty &&
+        !uploadSpotOptions.contains(_lastUsedUploadSpot)) {
+      _lastUsedUploadSpot = uploadSpotOptions.first;
     }
     _saveSessionViewPreferences();
   }
@@ -307,10 +336,24 @@ class SessionsPageState extends State<SessionsPage> {
         children: [
           Icon(icon, size: 14),
           const SizedBox(width: 6),
-          Text(text, style: Theme.of(context).textTheme.bodySmall),
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  String _deviceAvailabilityLabel(_LinkedDevice device) {
+    if (device.id == _phoneDeviceId) {
+      return 'Disponible en este dispositivo';
+    }
+    return device.lastSync;
   }
 
   Future<void> _removeDevice(_LinkedDevice device) async {
@@ -374,25 +417,163 @@ class SessionsPageState extends State<SessionsPage> {
     if (exists) {
       return;
     }
-    _devices.add(
-      const _LinkedDevice(
-        id: _phoneDeviceId,
-        name: 'Telefono del usuario',
-        kind: 'Dispositivo Android',
-        status: 'Listo',
-        lastSync: 'hace 2 min',
-      ),
-    );
-    _sessionsModule.saveLinkedDevice(
-      const _LinkedDevice(
-        id: _phoneDeviceId,
-        name: 'Telefono del usuario',
-        kind: 'Dispositivo Android',
-        status: 'Listo',
-        lastSync: 'hace 2 min',
-      ),
-    );
+    _devices.add(_defaultPhoneDevice);
+    _sessionsModule.saveLinkedDevice(_defaultPhoneDevice);
     _saveSelectedDeviceId();
+  }
+
+  Future<void> _hydratePhoneDeviceInfo() async {
+    final phoneDevice = await _detectPhoneDevice();
+    if (!mounted) {
+      return;
+    }
+
+    final index = _devices.indexWhere((device) => device.id == _phoneDeviceId);
+    final current = index >= 0 ? _devices[index] : null;
+    if (current != null &&
+        current.name == phoneDevice.name &&
+        current.kind == phoneDevice.kind &&
+        current.status == phoneDevice.status &&
+        current.lastSync == phoneDevice.lastSync) {
+      return;
+    }
+
+    setState(() {
+      if (index >= 0) {
+        _devices[index] = phoneDevice;
+      } else {
+        _devices.insert(0, phoneDevice);
+      }
+    });
+    _sessionsModule.saveLinkedDevice(phoneDevice);
+    _saveSelectedDeviceId();
+  }
+
+  Future<_LinkedDevice> _detectPhoneDevice() async {
+    try {
+      final plugin = DeviceInfoPlugin();
+      if (kIsWeb) {
+        final info = await plugin.webBrowserInfo;
+        final browserName = info.browserName.name;
+        return _LinkedDevice(
+          id: _phoneDeviceId,
+          name: 'Este navegador',
+          kind: 'Web · $browserName',
+          status: 'Listo',
+          lastSync: 'Disponible en este dispositivo',
+        );
+      }
+
+      if (Platform.isAndroid) {
+        final info = await plugin.androidInfo;
+        final brand = info.brand.trim();
+        final model = info.model.trim();
+        final manufacturer = info.manufacturer.trim();
+        final resolvedBrand = brand.isNotEmpty ? brand : manufacturer;
+        final label = [resolvedBrand, model]
+            .where((value) => value.isNotEmpty)
+            .join(' ');
+        return _LinkedDevice(
+          id: _phoneDeviceId,
+          name: label.isEmpty ? _defaultPhoneDevice.name : label,
+          kind: 'Android',
+          status: 'Listo',
+          lastSync: 'Disponible en este dispositivo',
+        );
+      }
+
+      if (Platform.isIOS) {
+        final info = await plugin.iosInfo;
+        final label = [info.name.trim(), info.model.trim()]
+            .where((value) => value.isNotEmpty)
+            .join(' · ');
+        return _LinkedDevice(
+          id: _phoneDeviceId,
+          name: label.isEmpty ? _defaultPhoneDevice.name : label,
+          kind: 'iPhone',
+          status: 'Listo',
+          lastSync: 'Disponible en este dispositivo',
+        );
+      }
+
+      if (Platform.isMacOS) {
+        final info = await plugin.macOsInfo;
+        final label = [info.model.trim(), info.osRelease.trim()]
+            .where((value) => value.isNotEmpty)
+            .join(' · ');
+        return _LinkedDevice(
+          id: _phoneDeviceId,
+          name: label.isEmpty ? 'Este Mac' : label,
+          kind: 'macOS',
+          status: 'Listo',
+          lastSync: 'Disponible en este dispositivo',
+        );
+      }
+
+      if (Platform.isWindows) {
+        final info = await plugin.windowsInfo;
+        final label = info.computerName.trim();
+        return _LinkedDevice(
+          id: _phoneDeviceId,
+          name: label.isEmpty ? 'Este PC' : label,
+          kind: 'Windows',
+          status: 'Listo',
+          lastSync: 'Disponible en este dispositivo',
+        );
+      }
+
+      if (Platform.isLinux) {
+        final info = await plugin.linuxInfo;
+        final label = info.prettyName.trim();
+        return _LinkedDevice(
+          id: _phoneDeviceId,
+          name: label.isEmpty ? 'Este equipo' : label,
+          kind: 'Linux',
+          status: 'Listo',
+          lastSync: 'Disponible en este dispositivo',
+        );
+      }
+    } catch (_) {}
+
+    return _defaultPhoneDevice;
+  }
+
+  void _pruneTemplateDevices() {
+    final templateDevices = _devices
+        .where((device) => _templateDeviceIds.contains(device.id))
+        .toList(growable: false);
+    if (templateDevices.isEmpty) {
+      return;
+    }
+
+    for (final device in templateDevices) {
+      _devices.removeWhere((item) => item.id == device.id);
+      _sessionsModule.deleteLinkedDevice(device.id);
+      if (_selectedDeviceId == device.id) {
+        _selectedDeviceId = null;
+      }
+    }
+  }
+
+  List<String> _availableUploadSpots() {
+    final names = _spotsCatalog
+        .map((spot) => spot.name.trim())
+        .where((name) => name.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    names.sort();
+    return names;
+  }
+
+  void _showRealIntegrationPendingMessage(String feature) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger?.showSnackBar(
+      SnackBar(
+        content: Text(
+          '$feature todavia no esta conectado a datos reales. Hemos quitado la simulacion para no inventar sesiones.',
+        ),
+      ),
+    );
   }
 
   void _ensureSelectedDevice() {
@@ -459,10 +640,11 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   Future<void> _showAddDeviceSheet() async {
-    String customName = '';
-    String kind = 'Woo Sports';
+    final availableDevices = _detectedCompatibleDevices();
+    _DetectedCompatibleDevice? selectedDevice = availableDevices.firstOrNull;
+    String customName = selectedDevice?.defaultName ?? '';
 
-    final accepted = await showDialog<bool>(
+    final linked = await showDialog<_DetectedCompatibleDevice>(
       context: context,
       builder: (context) {
         return StatefulBuilder(
@@ -471,64 +653,124 @@ class SessionsPageState extends State<SessionsPage> {
               title: const Text('Configurar dispositivo'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  DropdownButtonFormField<String>(
-                    initialValue: kind,
-                    decoration: const InputDecoration(
-                      labelText: 'Tipo de dispositivo',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'Woo Sports',
-                        child: Text('Woo Sports'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Apple Watch',
-                        child: Text('Apple Watch'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Smartwatch',
-                        child: Text('Smartwatch'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Dispositivo Android',
-                        child: Text('Dispositivo Android'),
-                      ),
-                      DropdownMenuItem(value: 'SurfR', child: Text('SurfR')),
-                      DropdownMenuItem(
-                        value: 'Personalizado',
-                        child: Text('Personalizado'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) {
-                        return;
-                      }
-                      setDialogState(() {
-                        kind = value;
-                      });
-                    },
+                  Text(
+                    'Aqui solo aparecen dispositivos compatibles detectados y aun no vinculados.',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  TextField(
-                    decoration: const InputDecoration(
-                      labelText: 'Nombre del dispositivo',
-                      border: OutlineInputBorder(),
+                  if (availableDevices.isEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'No se han detectado mas dispositivos compatibles por ahora. El telefono del usuario ya queda disponible automaticamente.',
+                      ),
+                    )
+                  else ...[
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedDevice?.id,
+                      decoration: const InputDecoration(
+                        labelText: 'Dispositivo compatible disponible',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: availableDevices
+                          .map(
+                            (device) => DropdownMenuItem(
+                              value: device.id,
+                              child: Text(
+                                '${device.defaultName} · ${device.kind}',
+                              ),
+                            ),
+                          )
+                          .toList(growable: false),
+                      onChanged: (value) {
+                        if (value == null) {
+                          return;
+                        }
+                        final next = availableDevices
+                            .where((device) => device.id == value)
+                            .firstOrNull;
+                        if (next == null) {
+                          return;
+                        }
+                        setDialogState(() {
+                          selectedDevice = next;
+                          customName = next.defaultName;
+                        });
+                      },
                     ),
-                    onChanged: (value) {
-                      customName = value;
-                    },
-                  ),
+                    const SizedBox(height: AppSpacing.sm),
+                    if (selectedDevice != null)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              selectedDevice!.defaultName,
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${selectedDevice!.kind} · ${selectedDevice!.status}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              selectedDevice!.sensorSummary,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextField(
+                      controller: TextEditingController(text: customName)
+                        ..selection = TextSelection.collapsed(
+                          offset: customName.length,
+                        ),
+                      decoration: const InputDecoration(
+                        labelText: 'Nombre del dispositivo en la app',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) {
+                        customName = value;
+                      },
+                    ),
+                  ],
                 ],
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
+                  onPressed: () => Navigator.of(context).pop(),
                   child: const Text('Cancelar'),
                 ),
                 FilledButton.icon(
-                  onPressed: () => Navigator.of(context).pop(true),
+                  onPressed: selectedDevice == null
+                      ? null
+                      : () => Navigator.of(context).pop(
+                          selectedDevice!.copyWith(
+                            customName: customName.trim().isEmpty
+                                ? selectedDevice!.defaultName
+                                : customName.trim(),
+                          ),
+                        ),
                   icon: const Icon(Icons.link_rounded),
                   label: const Text('Vincular'),
                 ),
@@ -539,59 +781,34 @@ class SessionsPageState extends State<SessionsPage> {
       },
     );
 
-    if (accepted != true || !mounted) {
+    if (linked == null || !mounted) {
       return;
     }
 
-    final deviceName = customName.trim().isEmpty ? kind : customName.trim();
-    final id =
-        '${kind.toLowerCase().replaceAll(' ', '-')}-${DateTime.now().millisecondsSinceEpoch}';
     setState(() {
       final linkedDevice = _LinkedDevice(
-        id: id,
-        name: deviceName,
-        kind: kind,
-        status: 'Pendiente',
+        id: linked.id,
+        name: linked.customName,
+        kind: linked.kind,
+        status: 'Vinculado',
         lastSync: 'recién vinculado',
       );
       _devices.insert(0, linkedDevice);
       _sessionsModule.saveLinkedDevice(linkedDevice);
-      _selectedDeviceId = id;
+      _selectedDeviceId = linked.id;
     });
     _saveSelectedDeviceId();
   }
 
+  List<_DetectedCompatibleDevice> _detectedCompatibleDevices() {
+    final linkedIds = _devices.map((device) => device.id).toSet();
+    return _supportedDetectedDevices
+        .where((device) => !linkedIds.contains(device.id))
+        .toList(growable: false);
+  }
+
   Future<void> _syncSessionFromDevice() async {
-    final device = _selectedDevice;
-    if (device == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona un dispositivo primero.')),
-      );
-      return;
-    }
-
-    setState(() {
-      _syncedPendingSessions
-        ..clear()
-        ..addAll(_mockParseImportedSessions(device));
-      _syncedPendingDeviceId = device.id;
-      _lastImportHint = _syncedPendingSessions.length == 1
-          ? 'Sesion sincronizada desde ${device.name}. Pulsa la tarjeta para configurarla.'
-          : '${_syncedPendingSessions.length} sesiones sincronizadas desde ${device.name}. Pulsa cada una para configurarla.';
-    });
-
-    if (!mounted || Scaffold.maybeOf(context) == null) {
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _syncedPendingSessions.length == 1
-              ? 'Sesion sincronizada desde ${device.name} con ${_syncedPendingSessions.first.jumpHistory.length} saltos detectados.'
-              : '${_syncedPendingSessions.length} sesiones sincronizadas desde ${device.name}.',
-        ),
-      ),
-    );
+    _showRealIntegrationPendingMessage('La sincronizacion de sesiones');
   }
 
   Future<void> _configureSyncedSession(_ImportedSessionResult imported) async {
@@ -721,179 +938,7 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   void _importSessionFile() {
-    final device = _selectedDevice ?? _devices.first;
-    final imported = _mockParseImportedSession(device);
-    _saveImportedSession(
-      device: device,
-      imported: imported,
-      hintText:
-          'Sesion importada desde ${imported.fileName} (${imported.fileExtension}).',
-      eventText: 'Sesion importada desde archivo ${imported.fileExtension}',
-      snackBarText:
-          'Sesion importada con ${imported.jumpHistory.length} saltos detectados.',
-      switchToMySessions: true,
-    );
-  }
-
-  void _saveImportedSession({
-    required _LinkedDevice device,
-    required _ImportedSessionResult imported,
-    required String hintText,
-    required String eventText,
-    required String snackBarText,
-    required bool switchToMySessions,
-  }) {
-    final baseInsights = SessionInsightData.fromSession(
-      title: imported.title,
-      deviceName: device.name,
-      deviceKind: device.kind,
-      endedAt: imported.endedAt,
-      durationLabel: _formatDuration(imported.duration),
-    );
-    final highestJump = imported.jumpHistory
-        .map((jump) => jump.heightMeters)
-        .fold<double?>(null, (prev, h) => prev == null ? h : math.max(prev, h));
-    final highestHangtime = imported.jumpHistory
-        .map((jump) => jump.hangtimeSeconds)
-        .fold<double?>(null, (prev, t) => prev == null ? t : math.max(prev, t));
-
-    final importedInsights = baseInsights.copyWith(
-      jumpsCount: imported.jumpHistory.length,
-      maxJumpHeightMeters: highestJump,
-      maxHangtimeSeconds: highestHangtime,
-      jumpHistory: imported.jumpHistory,
-      events: [...baseInsights.events, eventText],
-    );
-    final session = _RecordedSession(
-      id: _newSessionId(),
-      title: imported.title,
-      deviceName: device.name,
-      endedAt: imported.endedAt,
-      duration: imported.duration,
-      summary: imported.summary,
-      gearSetupName: null,
-      hasSessionPhoto: false,
-      sessionMediaLabel: 'Pantallazo del mapa del spot',
-      sessionPhotoLocalPath: null,
-      spotName: null,
-      insights: importedInsights,
-    );
-
-    setState(() {
-      _lastImportHint = hintText;
-      _captureState = _SessionCaptureState.ready;
-      _recordingStartedAt = null;
-      _recordingTicker?.cancel();
-      _sessionFeed.insert(0, session);
-      if (switchToMySessions) {
-        _sessionTab = _SessionTab.mySessions;
-      }
-    });
-    unawaited(_sessionsModule.saveRecordedSession(session));
-
-    if (Scaffold.maybeOf(context) != null) {
-      final messenger = ScaffoldMessenger.maybeOf(context);
-      messenger?.showSnackBar(SnackBar(content: Text(snackBarText)));
-    }
-  }
-
-  _ImportedSessionResult _mockParseImportedSession(_LinkedDevice device) {
-    final endedAt = DateTime.now().subtract(const Duration(minutes: 9));
-    final duration = const Duration(minutes: 73, seconds: 18);
-    const jumpMoments = [
-      182,
-      268,
-      377,
-      491,
-      614,
-      743,
-      877,
-      1023,
-      1162,
-      1299,
-      1448,
-      1611,
-    ];
-
-    final jumpHistory = List<SessionJumpRecord>.generate(jumpMoments.length, (
-      index,
-    ) {
-      final second = jumpMoments[index];
-      final minuteLabel =
-          '${(second ~/ 60).toString().padLeft(2, '0')}:${(second % 60).toString().padLeft(2, '0')}';
-      final height = 4.1 + (index * 0.52) + ((index % 3) * 0.35);
-      final hangtime = 2.4 + (index * 0.16) + ((index % 2) * 0.14);
-      final fall = 5.4 + (index * 0.19);
-
-      return SessionJumpRecord(
-        jumpNumber: index + 1,
-        heightMeters: height,
-        hangtimeSeconds: hangtime,
-        fallSpeedMetersPerSecond: fall,
-        timeLabel: minuteLabel,
-      );
-    });
-
-    return _ImportedSessionResult(
-      title: 'Sesion importada en Oliva Norte',
-      fileName: 'olive-bigair-track.fit',
-      fileExtension: '.fit',
-      endedAt: endedAt,
-      duration: duration,
-      summary:
-          'Importada desde archivo del dispositivo ${device.name}. Datos de saltos y telemetria sincronizados.',
-      jumpHistory: jumpHistory,
-    );
-  }
-
-  List<_ImportedSessionResult> _mockParseImportedSessions(
-    _LinkedDevice device,
-  ) {
-    final primary = _mockParseImportedSession(device);
-    if (device.kind != 'Woo Sports' && device.kind != 'Garmin') {
-      return <_ImportedSessionResult>[primary];
-    }
-
-    final secondEndedAt = DateTime.now().subtract(
-      const Duration(hours: 3, minutes: 14),
-    );
-    final secondDuration = const Duration(minutes: 48, seconds: 37);
-    final secondJumpHistory = [
-      SessionJumpRecord(
-        jumpNumber: 1,
-        heightMeters: 4.9,
-        hangtimeSeconds: 2.9,
-        fallSpeedMetersPerSecond: 5.8,
-        timeLabel: '06:18',
-      ),
-      SessionJumpRecord(
-        jumpNumber: 2,
-        heightMeters: 6.1,
-        hangtimeSeconds: 3.2,
-        fallSpeedMetersPerSecond: 6.0,
-        timeLabel: '12:44',
-      ),
-      SessionJumpRecord(
-        jumpNumber: 3,
-        heightMeters: 5.7,
-        hangtimeSeconds: 3.0,
-        fallSpeedMetersPerSecond: 5.9,
-        timeLabel: '19:25',
-      ),
-    ];
-
-    final second = _ImportedSessionResult(
-      title: 'Sesion sincronizada en El Saler',
-      fileName: 'elsaler-freeride-track.fit',
-      fileExtension: '.fit',
-      endedAt: secondEndedAt,
-      duration: secondDuration,
-      summary:
-          'Sesion sincronizada desde dispositivo ${device.name}. Navegacion freeride con 3 saltos destacados.',
-      jumpHistory: secondJumpHistory,
-    );
-
-    return <_ImportedSessionResult>[primary, second];
+    _showRealIntegrationPendingMessage('La importacion de sesiones');
   }
 
   _LinkedDevice? get _selectedDevice {
@@ -910,13 +955,59 @@ class SessionsPageState extends State<SessionsPage> {
     if (selected == null) {
       return const <String>{};
     }
-    return SessionInsightData.capabilitiesForDeviceKind(selected.kind);
+    return _physicalSensorsForDeviceKind(selected.kind);
+  }
+
+  String _selectedDeviceSensorCountLabel() {
+    final count = _selectedDeviceCapabilities().length;
+    if (count == 1) {
+      return '1 sensor relevante';
+    }
+    return '$count sensores relevantes';
+  }
+
+  Set<String> _physicalSensorsForDeviceKind(String kind) {
+    switch (kind) {
+      case 'Android':
+      case 'Dispositivo Android':
+        return {
+          'gps',
+          'accelerometer',
+          'gyroscope',
+          'magnetometer',
+          'orientation',
+        };
+      case 'iPhone':
+        return {
+          'gps',
+          'accelerometer',
+          'gyroscope',
+          'magnetometer',
+          'orientation',
+        };
+      case 'Apple Watch':
+      case 'Smartwatch':
+        return {
+          'gps',
+          'accelerometer',
+          'gyroscope',
+          'orientation',
+          'heart_rate',
+          'barometer',
+        };
+      case 'Woo Sports':
+        return {'gps', 'accelerometer', 'gyroscope', 'orientation'};
+      case 'SurfR':
+        return {'gps', 'accelerometer', 'gyroscope', 'orientation'};
+      default:
+        return {'gps', 'accelerometer', 'gyroscope'};
+    }
   }
 
   String _captureButtonLabel() {
     switch (_captureState) {
       case _SessionCaptureState.ready:
-        return 'Iniciar sesion';
+        return 'Captura real proximamente';
       case _SessionCaptureState.recording:
         return 'Detener sesion';
       case _SessionCaptureState.finished:
@@ -947,8 +1038,8 @@ class SessionsPageState extends State<SessionsPage> {
     switch (_captureState) {
       case _SessionCaptureState.ready:
         return _selectedDevice == null
-            ? 'Selecciona un dispositivo para grabar en agua.'
-            : 'Listo para iniciar con ${_selectedDevice!.name}.';
+            ? 'Selecciona un dispositivo para ver el estado de la captura real.'
+            : 'La captura real desde ${_selectedDevice!.name} aun no esta conectada.';
       case _SessionCaptureState.recording:
         return 'Sesion en curso. Datos de sensores llegando en tiempo real.';
       case _SessionCaptureState.finished:
@@ -980,8 +1071,10 @@ class SessionsPageState extends State<SessionsPage> {
 
   Future<void> _showDeviceCapabilitiesDialog() async {
     final capabilities = _selectedDeviceCapabilities();
-    final total = SessionInsightData.capabilityOrder.length;
     final available = capabilities.length;
+    final availableCapabilities = _deviceSensorOrder
+        .where((key) => capabilities.contains(key))
+        .toList(growable: false);
 
     await showDialog<void>(
       context: context,
@@ -993,37 +1086,41 @@ class SessionsPageState extends State<SessionsPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('$available/$total sensores disponibles'),
+                Text(
+                  available == 1
+                      ? '1 sensor disponible'
+                      : '$available sensores disponibles',
+                ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'Los KPI se habilitan automaticamente segun los sensores disponibles.',
+                  'Aqui solo mostramos sensores fisicos reales del dispositivo.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: AppSpacing.xs),
-                Wrap(
-                  spacing: AppSpacing.xs,
-                  runSpacing: AppSpacing.xs,
-                  children: SessionInsightData.capabilityOrder
-                      .map((key) {
-                        final isAvailable = capabilities.contains(key);
-                        final label =
-                            SessionInsightData.capabilityLabels[key] ?? key;
-                        return Chip(
-                          avatar: Icon(
-                            isAvailable
-                                ? Icons.check_circle_rounded
-                                : Icons.cancel_outlined,
-                            size: 16,
-                            color: isAvailable ? const Color(0xFF2E7D32) : null,
-                          ),
-                          label: Text(label),
-                          backgroundColor: isAvailable
-                              ? const Color(0x1F2E7D32)
-                              : null,
-                        );
-                      })
-                      .toList(growable: false),
-                ),
+                if (availableCapabilities.isEmpty)
+                  Text(
+                    'Aun no hemos detectado capacidades utilizables para este dispositivo.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  )
+                else
+                  Wrap(
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
+                    children: availableCapabilities
+                        .map((key) {
+                          final label = _deviceSensorLabels[key] ?? key;
+                          return Chip(
+                            avatar: const Icon(
+                              Icons.check_circle_rounded,
+                              size: 16,
+                              color: Color(0xFF2E7D32),
+                            ),
+                            label: Text(label),
+                            backgroundColor: const Color(0x1F2E7D32),
+                          );
+                        })
+                        .toList(growable: false),
+                  ),
               ],
             ),
           ),
@@ -1039,120 +1136,7 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   Future<void> _onSessionControlPressed() async {
-    if (_captureState == _SessionCaptureState.ready) {
-      if (_selectedDevice == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Selecciona un dispositivo primero.')),
-        );
-        return;
-      }
-      setState(() {
-        _captureState = _SessionCaptureState.recording;
-        _recordingStartedAt = DateTime.now();
-        _lastImportHint = null;
-      });
-      _recordingTicker?.cancel();
-      _recordingTicker = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (!mounted || _captureState != _SessionCaptureState.recording) {
-          return;
-        }
-        setState(() {});
-      });
-      return;
-    }
-
-    if (_captureState == _SessionCaptureState.recording) {
-      _recordingTicker?.cancel();
-      setState(() {
-        _captureState = _SessionCaptureState.finished;
-      });
-      return;
-    }
-
-    if (_captureState == _SessionCaptureState.finished) {
-      final config = await _showUploadSessionDialog();
-      if (!mounted) {
-        return;
-      }
-      if (config == null) {
-        return;
-      }
-
-      setState(() {
-        _captureState = _SessionCaptureState.syncing;
-        _lastUsedGearSetupId = config.gearSetupId;
-        _lastUsedUploadSpot = config.spot;
-      });
-      _saveSessionViewPreferences();
-      await Future<void>.delayed(const Duration(seconds: 1));
-      if (!mounted) return;
-      setState(() {
-        final endedAt = DateTime.now();
-        final duration = _recordingStartedAt == null
-            ? const Duration()
-            : endedAt.difference(_recordingStartedAt!);
-        final session = _buildRecordedSession(
-          config: config,
-          endedAt: endedAt,
-          duration: duration,
-        );
-        _sessionFeed.insert(0, session);
-        _captureState = _SessionCaptureState.synced;
-        unawaited(_sessionsModule.saveRecordedSession(session));
-      });
-      return;
-    }
-
-    if (_captureState == _SessionCaptureState.synced) {
-      setState(() {
-        _captureState = _SessionCaptureState.ready;
-        _recordingStartedAt = null;
-      });
-    }
-  }
-
-  _RecordedSession _buildRecordedSession({
-    required ({
-      String spot,
-      String notes,
-      _SessionMediaSelection mediaSelection,
-      String? sessionPhotoLocalPath,
-      String? gearSetupId,
-      String? gearSetupName,
-    })
-    config,
-    required DateTime endedAt,
-    required Duration duration,
-  }) {
-    final title = 'Sesion en ${config.spot}';
-    final selectedDevice = _selectedDevice;
-    final deviceName = selectedDevice?.name ?? 'Desconocido';
-    final deviceKind = selectedDevice?.kind ?? 'Personalizado';
-
-    return _RecordedSession(
-      id: _newSessionId(),
-      title: title,
-      deviceName: deviceName,
-      endedAt: endedAt,
-      duration: duration,
-      summary: config.notes.isEmpty ? _defaultSessionSummary : config.notes,
-      gearSetupName: config.gearSetupName,
-      hasSessionPhoto: config.sessionPhotoLocalPath != null,
-      sessionMediaLabel: switch (config.mediaSelection) {
-        _SessionMediaSelection.none => 'Pantallazo del mapa del spot',
-        _SessionMediaSelection.camera => 'Foto tomada con camara',
-        _SessionMediaSelection.gallery => 'Foto elegida de galeria',
-      },
-      sessionPhotoLocalPath: config.sessionPhotoLocalPath,
-      spotName: config.spot,
-      insights: SessionInsightData.fromSession(
-        title: title,
-        deviceName: deviceName,
-        deviceKind: deviceKind,
-        endedAt: endedAt,
-        durationLabel: _formatDuration(duration),
-      ),
-    );
+    _showRealIntegrationPendingMessage('La grabacion de sesiones');
   }
 
   List<_RecordedSession> _filteredSessions() {
@@ -1310,10 +1294,15 @@ class SessionsPageState extends State<SessionsPage> {
     })?
   >
   _showUploadSessionDialog() async {
+    final uploadSpotOptions = _availableUploadSpots();
+    if (uploadSpotOptions.isEmpty) {
+      return null;
+    }
+
     const noGearValue = '__none__';
-    String spot = _uploadSpotOptions.contains(_lastUsedUploadSpot)
+    String spot = uploadSpotOptions.contains(_lastUsedUploadSpot)
         ? _lastUsedUploadSpot
-        : _uploadSpotOptions.first;
+        : uploadSpotOptions.first;
     String notes = '';
     _SessionMediaSelection mediaSelection = _SessionMediaSelection.none;
     String? sessionPhotoLocalPath;
@@ -1357,7 +1346,7 @@ class SessionsPageState extends State<SessionsPage> {
                             labelText: 'Spot',
                             border: OutlineInputBorder(),
                           ),
-                          items: _uploadSpotOptions
+                          items: uploadSpotOptions
                               .map(
                                 (option) => DropdownMenuItem(
                                   value: option,
@@ -2150,7 +2139,7 @@ class SessionsPageState extends State<SessionsPage> {
                   const SizedBox(height: AppSpacing.xs),
                   if (_sessionTab == _SessionTab.start) ...[
                     Text(
-                      'Selecciona el dispositivo vinculado para grabar sesion o importa desde archivo.',
+                      'Aqui veras el dispositivo base de la app y los dispositivos compatibles que vincules para sesiones reales.',
                       style: textTheme.bodyMedium,
                     ),
                     const SizedBox(height: AppSpacing.sm),
@@ -2337,9 +2326,17 @@ class SessionsPageState extends State<SessionsPage> {
                                                   _buildDeviceMetaPill(
                                                     context: context,
                                                     icon: Icons
-                                                        .history_toggle_off_rounded,
+                                                        .devices_rounded,
+                                                    text: _deviceAvailabilityLabel(
+                                                      _selectedDevice!,
+                                                    ),
+                                                  ),
+                                                  _buildDeviceMetaPill(
+                                                    context: context,
+                                                    icon:
+                                                        Icons.sensors_rounded,
                                                     text:
-                                                        'Sincronizado ${_selectedDevice!.lastSync.toLowerCase()}',
+                                                        _selectedDeviceSensorCountLabel(),
                                                   ),
                                                 ],
                                               ),
@@ -2566,7 +2563,7 @@ class SessionsPageState extends State<SessionsPage> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Text(
-                              'Control de sesion',
+                              'Captura de sesion',
                               style: textTheme.headlineSmall,
                               textAlign: TextAlign.center,
                             ),
@@ -2605,11 +2602,11 @@ class SessionsPageState extends State<SessionsPage> {
                                     Icons.gps_fixed_rounded,
                                     size: 18,
                                   ),
-                                  label: Text('GPS OK'),
+                                  label: Text('Captura real pendiente'),
                                 ),
                                 const Chip(
                                   avatar: Icon(Icons.speed_rounded, size: 18),
-                                  label: Text('Sensores OK'),
+                                  label: Text('Sin datos simulados'),
                                 ),
                               ],
                             ),
@@ -2652,7 +2649,7 @@ class SessionsPageState extends State<SessionsPage> {
                             OutlinedButton.icon(
                               onPressed: _importSessionFile,
                               icon: const Icon(Icons.file_upload_rounded),
-                              label: const Text('Importar sesion'),
+                              label: const Text('Importar sesion real'),
                             ),
                             if (_lastImportHint != null) ...[
                               const SizedBox(height: AppSpacing.xs),
@@ -3135,6 +3132,35 @@ class _ImportedSessionResult {
   final Duration duration;
   final String summary;
   final List<SessionJumpRecord> jumpHistory;
+}
+
+class _DetectedCompatibleDevice {
+  const _DetectedCompatibleDevice({
+    required this.id,
+    required this.defaultName,
+    required this.kind,
+    required this.status,
+    required this.sensorSummary,
+    String? customName,
+  }) : customName = customName ?? defaultName;
+
+  final String id;
+  final String defaultName;
+  final String kind;
+  final String status;
+  final String sensorSummary;
+  final String customName;
+
+  _DetectedCompatibleDevice copyWith({String? customName}) {
+    return _DetectedCompatibleDevice(
+      id: id,
+      defaultName: defaultName,
+      kind: kind,
+      status: status,
+      sensorSummary: sensorSummary,
+      customName: customName ?? this.customName,
+    );
+  }
 }
 
 enum _SessionCaptureState { ready, recording, finished, syncing, synced }

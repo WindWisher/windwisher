@@ -14965,3 +14965,45 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
         - rematar al fondo tras el layout final,
     - criterio de producto:
       - se decide congelar por ahora el alcance de `Oliva Canal` y tratar este spot como modelo a replicar en los siguientes spots del proyecto.
+
+  - bloque nuevo `2026-04-02`:
+    - reorientacion de la pestana `Session` para eliminar comportamiento de plantilla y dejarla preparada para integraciones reales,
+    - dispositivos:
+      - eliminado el sembrado de dispositivos ficticios (`Woo Sports 3`, `Apple Watch Ultra`) tanto en memoria como en persistencia local,
+      - `Telefono del usuario` pasa a ser el dispositivo base por defecto,
+      - limpieza automatica de dispositivos de plantilla heredados al abrir la pestana,
+      - anadida autodeteccion real del dispositivo base con `device_info_plus` para mostrar marca/modelo/plataforma reales,
+    - vinculacion de dispositivos:
+      - `Configurar dispositivo` deja de crear tipos manuales ficticios,
+      - ahora solo muestra dispositivos compatibles detectados aun no vinculados,
+      - permite editar el nombre visible antes de vincular,
+      - el telefono queda fuera del flujo de configuracion manual porque la app lo autodetecta automaticamente,
+    - sesiones reales vs simuladas:
+      - eliminados los flujos `_mockParseImportedSession(s)` y los helpers de importacion/sincronizacion ficticia desde la pantalla,
+      - `Sincronizar`, `Importar` y `Captura` ahora muestran mensaje honesto cuando la integracion real aun no esta conectada,
+      - sustituidos spots hardcodeados del upload por el catalogo real de spots,
+    - capacidades del dispositivo:
+      - separada la idea de `capacidades` del modelo general de sesiones frente a los sensores fisicos reales del dispositivo,
+      - el dialogo de capacidades ahora muestra solo sensores disponibles,
+      - despues refinado para mostrar solo sensores relevantes para kite:
+        - GPS,
+        - acelerometro,
+        - giroscopio,
+        - magnetometro,
+        - orientacion,
+        - y, cuando aplique, ritmo cardiaco / barometro,
+      - eliminados de la tarjeta sensores poco utiles para esta UX como luz ambiental, proximidad y pasos,
+      - corregido el mapeo de Android/iPhone para no caer al caso por defecto de 3 capacidades,
+      - validado el hardware real del Redmi por `adb shell dumpsys sensorservice`,
+    - UX de la pestana:
+      - corregido overflow horizontal al mostrar nombre real largo del dispositivo,
+      - mejorados textos de la tarjeta principal para reflejar disponibilidad real del dispositivo y numero de sensores relevantes detectados,
+      - renombrado el bloque central a `Captura de sesion`,
+      - ajustado el copy para dejar claro que no se estan inventando datos,
+    - soporte y tooling:
+      - anadida dependencia `device_info_plus`,
+      - actualizado `pubspec.lock` y registradores generados correspondientes,
+    - verificacion:
+      - multiples `flutter analyze` limpios sobre `sessions_page.dart`, `session_detail_page.dart` y adapters de sesiones,
+      - inspeccion del Redmi real (`Xiaomi M2101K7BNY`) via `adb`,
+      - instalacion de build actual en el dispositivo para comprobar la pestana `Session`.

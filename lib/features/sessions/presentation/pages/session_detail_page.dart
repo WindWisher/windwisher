@@ -1356,8 +1356,13 @@ class SessionInsightData {
         };
       case 'SurfR':
         return {'gps', 'speed', 'motion', 'battery', 'network', 'weather'};
+      case 'Android':
       case 'Dispositivo Android':
         return {'gps', 'speed', 'motion', 'battery', 'network', 'weather'};
+      case 'iPhone':
+        return {'gps', 'speed', 'motion', 'battery', 'network', 'weather'};
+      case 'Web':
+        return {'network', 'weather'};
       default:
         return {'gps', 'motion', 'battery'};
     }

@@ -6,28 +6,14 @@ class InMemorySessionDevicesAdapter implements SessionDevicesPort {
 
   final List<LinkedDevice> _devices = [
     const LinkedDevice(
-      id: 'woo-1',
-      name: 'Woo Sports 3',
-      kind: 'Woo Sports',
-      status: 'Conectado',
-      lastSync: 'hace 8 min',
-    ),
-    const LinkedDevice(
-      id: 'watch-1',
-      name: 'Apple Watch Ultra',
-      kind: 'Apple Watch',
-      status: 'Listo',
-      lastSync: 'hace 22 min',
-    ),
-    const LinkedDevice(
       id: phoneDeviceId,
       name: 'Telefono del usuario',
       kind: 'Dispositivo Android',
       status: 'Listo',
-      lastSync: 'hace 2 min',
+      lastSync: 'Disponible en este dispositivo',
     ),
   ];
-  String? _selectedDeviceId = 'woo-1';
+  String? _selectedDeviceId = phoneDeviceId;
 
   @override
   List<LinkedDevice> getLinkedDevices() {

@@ -14,31 +14,17 @@ class LocalFileSessionDevicesAdapter implements SessionDevicesPort {
        _seedDevices = seedDevices == null
            ? _defaultSeedDevices
            : List<LinkedDevice>.from(seedDevices),
-       _seedSelectedDeviceId = seedSelectedDeviceId ?? 'woo-1' {
+       _seedSelectedDeviceId = seedSelectedDeviceId ?? 'phone-1' {
     _load();
   }
 
   static const List<LinkedDevice> _defaultSeedDevices = [
     LinkedDevice(
-      id: 'woo-1',
-      name: 'Woo Sports 3',
-      kind: 'Woo Sports',
-      status: 'Conectado',
-      lastSync: 'hace 8 min',
-    ),
-    LinkedDevice(
-      id: 'watch-1',
-      name: 'Apple Watch Ultra',
-      kind: 'Apple Watch',
-      status: 'Listo',
-      lastSync: 'hace 22 min',
-    ),
-    LinkedDevice(
       id: 'phone-1',
       name: 'Telefono del usuario',
       kind: 'Dispositivo Android',
       status: 'Listo',
-      lastSync: 'hace 2 min',
+      lastSync: 'Disponible en este dispositivo',
     ),
   ];
 
@@ -111,6 +97,7 @@ class LocalFileSessionDevicesAdapter implements SessionDevicesPort {
       _selectedDeviceId = data['selectedDeviceId'] as String?;
       if (_devices.isEmpty) {
         _devices.addAll(_seedDevices);
+        _selectedDeviceId = _seedSelectedDeviceId;
       }
     } catch (_) {
       _devices
