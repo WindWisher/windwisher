@@ -83,6 +83,8 @@
 		<string>La app necesita acceso a tu galeria para adjuntar fotos de la sesion.</string>
 		<key>NSCameraUsageDescription</key>
 		<string>La app necesita acceso a la camara para tomar fotos de la sesion.</string>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>La app necesita tu ubicacion para grabar sesiones reales con el telefono.</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
 	</dict>

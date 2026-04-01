@@ -6,6 +6,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
@@ -89,9 +90,16 @@ class SessionsPageState extends State<SessionsPage> {
   final List<_RecordedSession> _sessionFeed = [];
   final List<_ImportedSessionResult> _syncedPendingSessions = [];
   String? _syncedPendingDeviceId;
-  final _SessionCaptureState _captureState = _SessionCaptureState.ready;
+  _SessionCaptureState _captureState = _SessionCaptureState.ready;
   DateTime? _recordingStartedAt;
   Timer? _recordingTicker;
+  StreamSubscription<Position>? _positionSubscription;
+  final List<_SessionLocationSample> _recordingSamples =
+      <_SessionLocationSample>[];
+  final List<double> _recordingTimelineKnots = <double>[];
+  double _recordingDistanceMeters = 0;
+  double _recordingMaxSpeedKnots = 0;
+  Duration _recordingMovingDuration = Duration.zero;
   final ImagePicker _imagePicker = ImagePicker();
 
   static const String _sortMostRecent = 'Mas recientes';
@@ -263,6 +271,7 @@ class SessionsPageState extends State<SessionsPage> {
   @override
   void dispose() {
     _recordingTicker?.cancel();
+    _positionSubscription?.cancel();
     _sessionSearchController.dispose();
     super.dispose();
   }
@@ -1007,13 +1016,13 @@ class SessionsPageState extends State<SessionsPage> {
   String _captureButtonLabel() {
     switch (_captureState) {
       case _SessionCaptureState.ready:
-        return 'Captura real proximamente';
+        return 'Iniciar sesion real';
       case _SessionCaptureState.recording:
         return 'Detener sesion';
       case _SessionCaptureState.finished:
-        return 'Subir sesion';
+        return 'Guardar sesion';
       case _SessionCaptureState.syncing:
-        return 'Subiendo...';
+        return 'Guardando...';
       case _SessionCaptureState.synced:
         return 'Nueva sesion';
     }
@@ -1038,16 +1047,18 @@ class SessionsPageState extends State<SessionsPage> {
     switch (_captureState) {
       case _SessionCaptureState.ready:
         return _selectedDevice == null
-            ? 'Selecciona un dispositivo para ver el estado de la captura real.'
-            : 'La captura real desde ${_selectedDevice!.name} aun no esta conectada.';
+            ? 'Selecciona un dispositivo para iniciar una sesion real.'
+            : _selectedDevice!.id == _phoneDeviceId
+            ? 'Listo para grabar una sesion real con GPS del telefono.'
+            : 'La captura real de dispositivos externos aun no esta conectada. Usa el telefono.';
       case _SessionCaptureState.recording:
-        return 'Sesion en curso. Datos de sensores llegando en tiempo real.';
+        return 'Sesion real en curso. Grabando recorrido y velocidad por GPS.';
       case _SessionCaptureState.finished:
-        return 'Sesion finalizada. Pendiente por subir.';
+        return 'Sesion finalizada. Revisa los datos y guardala.';
       case _SessionCaptureState.syncing:
-        return 'Subiendo track, eventos y sensores...';
+        return 'Guardando track y resumen real de la sesion...';
       case _SessionCaptureState.synced:
-        return 'Sesion sincronizada correctamente.';
+        return 'Sesion guardada correctamente.';
     }
   }
 
@@ -1136,7 +1147,335 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   Future<void> _onSessionControlPressed() async {
-    _showRealIntegrationPendingMessage('La grabacion de sesiones');
+    if (_captureState == _SessionCaptureState.ready) {
+      if (_selectedDevice == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Selecciona un dispositivo primero.')),
+        );
+        return;
+      }
+      if (_selectedDevice!.id != _phoneDeviceId) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'La captura real externa aun no esta conectada. Usa el telefono del usuario.',
+            ),
+          ),
+        );
+        return;
+      }
+      await _startRealSessionRecording();
+      return;
+    }
+
+    if (_captureState == _SessionCaptureState.recording) {
+      await _stopRealSessionRecording();
+      return;
+    }
+
+    if (_captureState == _SessionCaptureState.finished) {
+      final config = await _showUploadSessionDialog();
+      if (!mounted || config == null) {
+        return;
+      }
+
+      setState(() {
+        _captureState = _SessionCaptureState.syncing;
+        _lastUsedGearSetupId = config.gearSetupId;
+        _lastUsedUploadSpot = config.spot;
+      });
+      _saveSessionViewPreferences();
+
+      final endedAt = _recordingSamples.isNotEmpty
+          ? _recordingSamples.last.timestamp
+          : DateTime.now();
+      final duration = _recordingStartedAt == null
+          ? Duration.zero
+          : endedAt.difference(_recordingStartedAt!);
+      final session = _buildRecordedSessionFromCapture(
+        config: config,
+        endedAt: endedAt,
+        duration: duration,
+      );
+
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _sessionFeed.insert(0, session);
+        _captureState = _SessionCaptureState.synced;
+      });
+      unawaited(_sessionsModule.saveRecordedSession(session));
+      return;
+    }
+
+    if (_captureState == _SessionCaptureState.synced) {
+      setState(() {
+        _captureState = _SessionCaptureState.ready;
+        _recordingStartedAt = null;
+        _recordingSamples.clear();
+        _recordingTimelineKnots.clear();
+        _recordingDistanceMeters = 0;
+        _recordingMaxSpeedKnots = 0;
+        _recordingMovingDuration = Duration.zero;
+      });
+    }
+  }
+
+  Future<void> _startRealSessionRecording() async {
+    final servicesEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!servicesEnabled) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Activa la ubicacion del telefono para grabar la sesion.'),
+        ),
+      );
+      return;
+    }
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Necesitamos permiso de ubicacion para grabar sesiones reales.'),
+        ),
+      );
+      return;
+    }
+
+    _recordingTicker?.cancel();
+    await _positionSubscription?.cancel();
+
+    setState(() {
+      _captureState = _SessionCaptureState.recording;
+      _recordingStartedAt = DateTime.now();
+      _lastImportHint = null;
+      _recordingSamples.clear();
+      _recordingTimelineKnots.clear();
+      _recordingDistanceMeters = 0;
+      _recordingMaxSpeedKnots = 0;
+      _recordingMovingDuration = Duration.zero;
+    });
+
+    _recordingTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || _captureState != _SessionCaptureState.recording) {
+        return;
+      }
+      setState(() {});
+    });
+
+    const settings = LocationSettings(
+      accuracy: LocationAccuracy.bestForNavigation,
+      distanceFilter: 5,
+    );
+    _positionSubscription = Geolocator.getPositionStream(
+      locationSettings: settings,
+    ).listen(_onPositionSample);
+  }
+
+  void _onPositionSample(Position position) {
+    if (_captureState != _SessionCaptureState.recording) {
+      return;
+    }
+
+    final sample = _SessionLocationSample(
+      latitude: position.latitude,
+      longitude: position.longitude,
+      speedKnots: _resolveSpeedKnots(position),
+      timestamp: position.timestamp,
+    );
+
+    final previous = _recordingSamples.isEmpty ? null : _recordingSamples.last;
+    if (previous != null) {
+      final legMeters = Geolocator.distanceBetween(
+        previous.latitude,
+        previous.longitude,
+        sample.latitude,
+        sample.longitude,
+      );
+      if (legMeters.isFinite && legMeters > 0) {
+        _recordingDistanceMeters += legMeters;
+      }
+      final delta = sample.timestamp.difference(previous.timestamp);
+      if (!delta.isNegative &&
+          delta.inSeconds > 0 &&
+          sample.speedKnots >= 8) {
+        _recordingMovingDuration += delta;
+      }
+    }
+
+    _recordingSamples.add(sample);
+    _recordingTimelineKnots.add(sample.speedKnots);
+    if (sample.speedKnots > _recordingMaxSpeedKnots) {
+      _recordingMaxSpeedKnots = sample.speedKnots;
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  double _resolveSpeedKnots(Position position) {
+    const metersPerSecondToKnots = 1.943844;
+    final raw = position.speed;
+    if (raw.isFinite && raw > 0) {
+      return raw * metersPerSecondToKnots;
+    }
+    if (_recordingSamples.isNotEmpty) {
+      final previous = _recordingSamples.last;
+      final now = position.timestamp;
+      final delta = now.difference(previous.timestamp);
+      if (delta.inMilliseconds > 0) {
+        final distance = Geolocator.distanceBetween(
+          previous.latitude,
+          previous.longitude,
+          position.latitude,
+          position.longitude,
+        );
+        final metersPerSecond = distance / (delta.inMilliseconds / 1000);
+        if (metersPerSecond.isFinite && metersPerSecond > 0) {
+          return metersPerSecond * metersPerSecondToKnots;
+        }
+      }
+    }
+    return 0;
+  }
+
+  Future<void> _stopRealSessionRecording() async {
+    _recordingTicker?.cancel();
+    await _positionSubscription?.cancel();
+    _positionSubscription = null;
+
+    if (_recordingSamples.length < 2) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _captureState = _SessionCaptureState.ready;
+        _recordingStartedAt = null;
+        _recordingSamples.clear();
+        _recordingTimelineKnots.clear();
+        _recordingDistanceMeters = 0;
+        _recordingMaxSpeedKnots = 0;
+        _recordingMovingDuration = Duration.zero;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No hemos podido registrar suficientes puntos GPS. Intenta grabar unos segundos mas.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _captureState = _SessionCaptureState.finished;
+    });
+  }
+
+  _RecordedSession _buildRecordedSessionFromCapture({
+    required ({
+      String spot,
+      String notes,
+      _SessionMediaSelection mediaSelection,
+      String? sessionPhotoLocalPath,
+      String? gearSetupId,
+      String? gearSetupName,
+    })
+    config,
+    required DateTime endedAt,
+    required Duration duration,
+  }) {
+    final title = 'Sesion en ${config.spot}';
+    final selectedDevice = _selectedDevice;
+    final deviceName = selectedDevice?.name ?? 'Desconocido';
+    final distanceKm = _recordingDistanceMeters / 1000;
+    final avgSpeedKnots = duration.inSeconds <= 0
+        ? 0.0
+        : ((_recordingDistanceMeters / duration.inSeconds) * 1.943844)
+              .toDouble();
+    final planingMinutes = _recordingMovingDuration.inMinutes > 0
+        ? _recordingMovingDuration.inMinutes
+        : null;
+    final insights = SessionInsightData(
+      distanceKm: distanceKm > 0 ? distanceKm : null,
+      maxSpeedKnots: _recordingMaxSpeedKnots > 0 ? _recordingMaxSpeedKnots : null,
+      avgSpeedKnots: avgSpeedKnots > 0 ? avgSpeedKnots : null,
+      planingMinutes: planingMinutes,
+      batteryStart: null,
+      batteryEnd: null,
+      jumpsCount: null,
+      maxJumpHeightMeters: null,
+      maxHangtimeSeconds: null,
+      jumpHistory: const <SessionJumpRecord>[],
+      timelineKnots: List<double>.unmodifiable(_recordingTimelineKnots),
+      events: <String>[
+        'Sesion real grabada con el GPS del telefono',
+        '${_recordingSamples.length} puntos registrados',
+      ],
+      groups: <SessionKpiGroup>[
+        SessionKpiGroup(
+          title: 'Resumen real',
+          items: <SessionKpiItem>[
+            SessionKpiItem(
+              label: 'Duracion total',
+              value: _formatDuration(duration),
+              available: true,
+            ),
+            SessionKpiItem(
+              label: 'Distancia total',
+              value: '${distanceKm.toStringAsFixed(2)} km',
+              available: distanceKm > 0,
+            ),
+            SessionKpiItem(
+              label: 'Velocidad media',
+              value: '${avgSpeedKnots.toStringAsFixed(1)} kt',
+              available: avgSpeedKnots > 0,
+            ),
+            SessionKpiItem(
+              label: 'Velocidad maxima',
+              value: '${_recordingMaxSpeedKnots.toStringAsFixed(1)} kt',
+              available: _recordingMaxSpeedKnots > 0,
+            ),
+          ],
+        ),
+      ],
+    );
+
+    return _RecordedSession(
+      id: _newSessionId(),
+      title: title,
+      deviceName: deviceName,
+      endedAt: endedAt,
+      duration: duration,
+      summary: config.notes.isEmpty
+          ? 'Sesion real grabada con el telefono.'
+          : config.notes,
+      gearSetupName: config.gearSetupName,
+      hasSessionPhoto: config.sessionPhotoLocalPath != null,
+      sessionMediaLabel: switch (config.mediaSelection) {
+        _SessionMediaSelection.none => 'Pantallazo del mapa del spot',
+        _SessionMediaSelection.camera => 'Foto tomada con camara',
+        _SessionMediaSelection.gallery => 'Foto elegida de galeria',
+      },
+      sessionPhotoLocalPath: config.sessionPhotoLocalPath,
+      spotName: config.spot,
+      insights: insights,
+    );
   }
 
   List<_RecordedSession> _filteredSessions() {
@@ -2602,11 +2941,15 @@ class SessionsPageState extends State<SessionsPage> {
                                     Icons.gps_fixed_rounded,
                                     size: 18,
                                   ),
-                                  label: Text('Captura real pendiente'),
+                                  label: Text('GPS real'),
                                 ),
-                                const Chip(
+                                Chip(
                                   avatar: Icon(Icons.speed_rounded, size: 18),
-                                  label: Text('Sin datos simulados'),
+                                  label: Text(
+                                    _captureState == _SessionCaptureState.recording
+                                        ? '${_recordingSamples.length} puntos'
+                                        : 'Sin datos simulados',
+                                  ),
                                 ),
                               ],
                             ),
@@ -3161,6 +3504,20 @@ class _DetectedCompatibleDevice {
       customName: customName ?? this.customName,
     );
   }
+}
+
+class _SessionLocationSample {
+  const _SessionLocationSample({
+    required this.latitude,
+    required this.longitude,
+    required this.speedKnots,
+    required this.timestamp,
+  });
+
+  final double latitude;
+  final double longitude;
+  final double speedKnots;
+  final DateTime timestamp;
 }
 
 enum _SessionCaptureState { ready, recording, finished, syncing, synced }
