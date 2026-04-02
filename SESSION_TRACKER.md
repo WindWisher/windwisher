@@ -15010,6 +15010,10 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 
   - bloque nuevo `2026-04-03`:
     - evolucion de `Session` hacia captura GPS real util y legible en producto,
+    - duracion estimada del bloque: `6h`,
+    - nota de control horario:
+      - este bloque ya queda consolidado con duracion propia,
+      - el siguiente cierre global de horas debe recomputar el total acumulado historico de `WindWisher` para dejarlo otra vez explicito en el tracker,
     - captura real:
       - anadida grabacion real de sesion con `geolocator`,
       - la sesion ya guarda track GPS real, distancia, velocidad media, velocidad maxima y timeline de velocidad,
