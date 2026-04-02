@@ -2,6 +2,8 @@ import 'dart:math' as math;
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
 
@@ -130,6 +132,15 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
             const SizedBox(height: AppSpacing.sm),
             _buildQuickNavigationCard(textTheme),
             const SizedBox(height: AppSpacing.sm),
+            if (widget.insights.routePoints.isNotEmpty) ...[
+              _buildTrackCard(textTheme),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+            if (widget.insights.recordedPointCount != null ||
+                widget.insights.autoPauseCount != null) ...[
+              _buildCaptureQualityCard(textTheme),
+              const SizedBox(height: AppSpacing.sm),
+            ],
             Card(
               key: _summarySectionKey,
               child: Padding(
@@ -340,6 +351,265 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildTrackCard(TextTheme textTheme) {
+    final routePoints = widget.insights.routePoints;
+    final latLngPoints = routePoints
+        .map((point) => LatLng(point.latitude, point.longitude))
+        .toList(growable: false);
+    final center = _trackCenter(latLngPoints);
+    final zoom = _trackZoom(latLngPoints);
+    final startPoint = latLngPoints.first;
+    final endPoint = latLngPoints.last;
+    final fastestPoint = routePoints.reduce(
+      (best, current) =>
+          current.speedKnots > best.speedKnots ? current : best,
+    );
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Ruta GPS real', style: textTheme.titleMedium),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Track real registrado con el telefono durante la sesion.',
+              style: textTheme.bodySmall,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: SizedBox(
+                height: 220,
+                width: double.infinity,
+                child: FlutterMap(
+                  options: MapOptions(
+                    initialCenter: center,
+                    initialZoom: zoom,
+                    interactionOptions: const InteractionOptions(
+                      flags: InteractiveFlag.drag |
+                          InteractiveFlag.pinchZoom |
+                          InteractiveFlag.doubleTapZoom,
+                    ),
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.windwisher.app',
+                    ),
+                    if (latLngPoints.length >= 2)
+                      PolylineLayer(
+                        polylines: [
+                          Polyline(
+                            points: latLngPoints,
+                            strokeWidth: 4,
+                            color: colorScheme.primary,
+                          ),
+                        ],
+                      ),
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: startPoint,
+                          width: 34,
+                          height: 34,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: const Icon(
+                              Icons.play_arrow_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                        if (latLngPoints.length > 1)
+                          Marker(
+                            point: endPoint,
+                            width: 34,
+                            height: 34,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: colorScheme.error,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: const Icon(
+                                Icons.flag_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                        if (fastestPoint.speedKnots > 0)
+                          Marker(
+                            point: LatLng(
+                              fastestPoint.latitude,
+                              fastestPoint.longitude,
+                            ),
+                            width: 34,
+                            height: 34,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF57C00),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: const Icon(
+                                Icons.bolt_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: [
+                _TrackChip(
+                  icon: Icons.route_rounded,
+                  label: widget.insights.distanceKm == null
+                      ? 'Distancia no disponible'
+                      : '${widget.insights.distanceKm!.toStringAsFixed(2)} km',
+                ),
+                _TrackChip(
+                  icon: Icons.timer_outlined,
+                  label: widget.durationLabel,
+                ),
+                _TrackChip(
+                  icon: Icons.schedule_rounded,
+                  label:
+                      '${_formatTrackTime(routePoints.first.recordedAt)}-${_formatTrackTime(routePoints.last.recordedAt)}',
+                ),
+                _TrackChip(
+                  icon: Icons.bolt_rounded,
+                  label: '${fastestPoint.speedKnots.toStringAsFixed(1)} kt',
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: const [
+                _TrackLegendChip(
+                  color: Colors.blue,
+                  icon: Icons.play_arrow_rounded,
+                  label: 'Inicio',
+                ),
+                _TrackLegendChip(
+                  color: Colors.red,
+                  icon: Icons.flag_rounded,
+                  label: 'Fin',
+                ),
+                _TrackLegendChip(
+                  color: Color(0xFFF57C00),
+                  icon: Icons.bolt_rounded,
+                  label: 'Punta maxima',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCaptureQualityCard(TextTheme textTheme) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Calidad de captura', style: textTheme.titleMedium),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Resumen tecnico de como se ha registrado esta sesion real.',
+              style: textTheme.bodySmall,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: [
+                _MetricKpiTile(
+                  label: 'Puntos GPS validos',
+                  value: widget.insights.recordedPointCount == null
+                      ? '--'
+                      : '${widget.insights.recordedPointCount}',
+                  icon: Icons.gps_fixed_rounded,
+                ),
+                _MetricKpiTile(
+                  label: 'Auto-pausas',
+                  value: widget.insights.autoPauseCount == null
+                      ? '--'
+                      : '${widget.insights.autoPauseCount}',
+                  icon: Icons.pause_circle_filled_rounded,
+                ),
+                _MetricKpiTile(
+                  label: 'Media en movimiento',
+                  value: widget.insights.movingAvgSpeedKnots == null
+                      ? '--'
+                      : '${widget.insights.movingAvgSpeedKnots!.toStringAsFixed(1)} kt',
+                  icon: Icons.speed_rounded,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatTrackTime(DateTime value) {
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  LatLng _trackCenter(List<LatLng> points) {
+    if (points.length == 1) {
+      return points.first;
+    }
+    final lat = points.map((point) => point.latitude).reduce((a, b) => a + b) /
+        points.length;
+    final lon = points
+            .map((point) => point.longitude)
+            .reduce((a, b) => a + b) /
+        points.length;
+    return LatLng(lat, lon);
+  }
+
+  double _trackZoom(List<LatLng> points) {
+    if (points.length <= 1) {
+      return 15.5;
+    }
+    final latitudes = points.map((point) => point.latitude);
+    final longitudes = points.map((point) => point.longitude);
+    final latSpan = latitudes.reduce(math.max) - latitudes.reduce(math.min);
+    final lonSpan = longitudes.reduce(math.max) - longitudes.reduce(math.min);
+    final span = math.max(latSpan, lonSpan);
+    if (span <= 0.0015) return 16.5;
+    if (span <= 0.003) return 15.5;
+    if (span <= 0.006) return 14.5;
+    if (span <= 0.015) return 13.5;
+    if (span <= 0.04) return 12.5;
+    return 11.5;
   }
 
   Widget _buildQuickNavigationCard(TextTheme textTheme) {
@@ -860,12 +1130,90 @@ class _JumpHistoryTable extends StatelessWidget {
   }
 }
 
+class _TrackChip extends StatelessWidget {
+  const _TrackChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16),
+            const SizedBox(width: 6),
+            Text(label),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TrackLegendChip extends StatelessWidget {
+  const _TrackLegendChip({
+    required this.color,
+    required this.icon,
+    required this.label,
+  });
+
+  final Color color;
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(icon, size: 12, color: Colors.white),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(label),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class SessionInsightData {
   const SessionInsightData({
     required this.distanceKm,
     required this.maxSpeedKnots,
     required this.avgSpeedKnots,
+    required this.movingAvgSpeedKnots,
     required this.planingMinutes,
+    required this.recordedPointCount,
+    required this.autoPauseCount,
     required this.batteryStart,
     required this.batteryEnd,
     required this.jumpsCount,
@@ -873,6 +1221,7 @@ class SessionInsightData {
     required this.maxHangtimeSeconds,
     required this.jumpHistory,
     required this.timelineKnots,
+    required this.routePoints,
     required this.events,
     required this.groups,
   });
@@ -880,7 +1229,10 @@ class SessionInsightData {
   final double? distanceKm;
   final double? maxSpeedKnots;
   final double? avgSpeedKnots;
+  final double? movingAvgSpeedKnots;
   final int? planingMinutes;
+  final int? recordedPointCount;
+  final int? autoPauseCount;
   final int? batteryStart;
   final int? batteryEnd;
   final int? jumpsCount;
@@ -888,6 +1240,7 @@ class SessionInsightData {
   final double? maxHangtimeSeconds;
   final List<SessionJumpRecord> jumpHistory;
   final List<double> timelineKnots;
+  final List<SessionTrackPoint> routePoints;
   final List<String> events;
   final List<SessionKpiGroup> groups;
 
@@ -896,7 +1249,10 @@ class SessionInsightData {
       'distanceKm': distanceKm,
       'maxSpeedKnots': maxSpeedKnots,
       'avgSpeedKnots': avgSpeedKnots,
+      'movingAvgSpeedKnots': movingAvgSpeedKnots,
       'planingMinutes': planingMinutes,
+      'recordedPointCount': recordedPointCount,
+      'autoPauseCount': autoPauseCount,
       'batteryStart': batteryStart,
       'batteryEnd': batteryEnd,
       'jumpsCount': jumpsCount,
@@ -906,6 +1262,9 @@ class SessionInsightData {
           .map((entry) => entry.toJson())
           .toList(growable: false),
       'timelineKnots': timelineKnots,
+      'routePoints': routePoints
+          .map((entry) => entry.toJson())
+          .toList(growable: false),
       'events': events,
       'groups': groups.map((entry) => entry.toJson()).toList(growable: false),
     };
@@ -916,7 +1275,10 @@ class SessionInsightData {
       distanceKm: (json['distanceKm'] as num?)?.toDouble(),
       maxSpeedKnots: (json['maxSpeedKnots'] as num?)?.toDouble(),
       avgSpeedKnots: (json['avgSpeedKnots'] as num?)?.toDouble(),
+      movingAvgSpeedKnots: (json['movingAvgSpeedKnots'] as num?)?.toDouble(),
       planingMinutes: (json['planingMinutes'] as num?)?.toInt(),
+      recordedPointCount: (json['recordedPointCount'] as num?)?.toInt(),
+      autoPauseCount: (json['autoPauseCount'] as num?)?.toInt(),
       batteryStart: (json['batteryStart'] as num?)?.toInt(),
       batteryEnd: (json['batteryEnd'] as num?)?.toInt(),
       jumpsCount: (json['jumpsCount'] as num?)?.toInt(),
@@ -929,6 +1291,10 @@ class SessionInsightData {
       timelineKnots: (json['timelineKnots'] as List<dynamic>? ?? const [])
           .whereType<num>()
           .map((entry) => entry.toDouble())
+          .toList(growable: false),
+      routePoints: (json['routePoints'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(SessionTrackPoint.fromJson)
           .toList(growable: false),
       events: (json['events'] as List<dynamic>? ?? const [])
           .map((entry) => entry.toString())
@@ -944,7 +1310,10 @@ class SessionInsightData {
     double? distanceKm,
     double? maxSpeedKnots,
     double? avgSpeedKnots,
+    double? movingAvgSpeedKnots,
     int? planingMinutes,
+    int? recordedPointCount,
+    int? autoPauseCount,
     int? batteryStart,
     int? batteryEnd,
     int? jumpsCount,
@@ -952,6 +1321,7 @@ class SessionInsightData {
     double? maxHangtimeSeconds,
     List<SessionJumpRecord>? jumpHistory,
     List<double>? timelineKnots,
+    List<SessionTrackPoint>? routePoints,
     List<String>? events,
     List<SessionKpiGroup>? groups,
   }) {
@@ -959,7 +1329,10 @@ class SessionInsightData {
       distanceKm: distanceKm ?? this.distanceKm,
       maxSpeedKnots: maxSpeedKnots ?? this.maxSpeedKnots,
       avgSpeedKnots: avgSpeedKnots ?? this.avgSpeedKnots,
+      movingAvgSpeedKnots: movingAvgSpeedKnots ?? this.movingAvgSpeedKnots,
       planingMinutes: planingMinutes ?? this.planingMinutes,
+      recordedPointCount: recordedPointCount ?? this.recordedPointCount,
+      autoPauseCount: autoPauseCount ?? this.autoPauseCount,
       batteryStart: batteryStart ?? this.batteryStart,
       batteryEnd: batteryEnd ?? this.batteryEnd,
       jumpsCount: jumpsCount ?? this.jumpsCount,
@@ -967,6 +1340,7 @@ class SessionInsightData {
       maxHangtimeSeconds: maxHangtimeSeconds ?? this.maxHangtimeSeconds,
       jumpHistory: jumpHistory ?? this.jumpHistory,
       timelineKnots: timelineKnots ?? this.timelineKnots,
+      routePoints: routePoints ?? this.routePoints,
       events: events ?? this.events,
       groups: groups ?? this.groups,
     );
@@ -1298,7 +1672,10 @@ class SessionInsightData {
       distanceKm: capabilities.contains('gps') ? distance : null,
       maxSpeedKnots: capabilities.contains('speed') ? maxSpeed : null,
       avgSpeedKnots: capabilities.contains('speed') ? avgSpeed : null,
+      movingAvgSpeedKnots: capabilities.contains('speed') ? avgSpeed : null,
       planingMinutes: capabilities.contains('motion') ? planing : null,
+      recordedPointCount: null,
+      autoPauseCount: null,
       batteryStart: capabilities.contains('battery') ? batteryStart : null,
       batteryEnd: capabilities.contains('battery') ? batteryEnd : null,
       jumpsCount: capabilities.contains('altitude') ? jumps : null,
@@ -1310,6 +1687,7 @@ class SessionInsightData {
           : null,
       jumpHistory: jumpHistory,
       timelineKnots: timeline,
+      routePoints: const <SessionTrackPoint>[],
       events: events,
       groups: groups,
     );
@@ -1447,6 +1825,39 @@ class SessionInsightData {
     }
 
     return records;
+  }
+}
+
+class SessionTrackPoint {
+  const SessionTrackPoint({
+    required this.latitude,
+    required this.longitude,
+    required this.speedKnots,
+    required this.recordedAt,
+  });
+
+  final double latitude;
+  final double longitude;
+  final double speedKnots;
+  final DateTime recordedAt;
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'latitude': latitude,
+      'longitude': longitude,
+      'speedKnots': speedKnots,
+      'recordedAt': recordedAt.toIso8601String(),
+    };
+  }
+
+  static SessionTrackPoint fromJson(Map<String, dynamic> json) {
+    return SessionTrackPoint(
+      latitude: (json['latitude'] as num?)?.toDouble() ?? 0,
+      longitude: (json['longitude'] as num?)?.toDouble() ?? 0,
+      speedKnots: (json['speedKnots'] as num?)?.toDouble() ?? 0,
+      recordedAt: DateTime.tryParse(json['recordedAt']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+    );
   }
 }
 

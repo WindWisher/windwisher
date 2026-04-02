@@ -15007,3 +15007,53 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - multiples `flutter analyze` limpios sobre `sessions_page.dart`, `session_detail_page.dart` y adapters de sesiones,
       - inspeccion del Redmi real (`Xiaomi M2101K7BNY`) via `adb`,
       - instalacion de build actual en el dispositivo para comprobar la pestana `Session`.
+
+  - bloque nuevo `2026-04-03`:
+    - evolucion de `Session` hacia captura GPS real util y legible en producto,
+    - captura real:
+      - anadida grabacion real de sesion con `geolocator`,
+      - la sesion ya guarda track GPS real, distancia, velocidad media, velocidad maxima y timeline de velocidad,
+      - ajustado el flujo de detener/grabar para separar mejor:
+        - detener y revisar,
+        - detener sin `GPS OK` y descartar,
+      - el guardado sigue siendo honesto y no se inventan metricas de saltos o hangtime,
+    - calidad GPS / captura:
+      - chip de GPS mejorado con estados visuales y precision en metros,
+      - `GPS OK` fijado en `<= 5 m`,
+      - filtrado basico de muestras malas:
+        - se descartan fixes con precision > `25 m`,
+        - se descartan saltos imposibles > `65 kt`,
+      - anadido chip de `Auto-pausa` con estado visible,
+    - auto-pausa:
+      - anadida auto-pausa inteligente para sesiones reales,
+      - entra con velocidad <= `1.5 kt` durante `20 s`,
+      - sale con velocidad >= `4 kt` durante `6 s`,
+      - tiempos `activo` y `parado` pasan a apoyarse en esta logica,
+      - se persiste tambien el numero de auto-pausas de la sesion,
+    - feedback en vivo durante grabacion:
+      - anadidos chips de:
+        - velocidad actual,
+        - velocidad maxima,
+        - tiempo activo,
+        - tiempo parado,
+      - suavizada la `Velocidad actual` con media corta de las ultimas 4 muestras para evitar dientes del GPS,
+    - detalle de sesion:
+      - anadida tarjeta `Ruta GPS real` con mapa del track guardado,
+      - la tarjeta muestra:
+        - distancia,
+        - duracion,
+        - franja horaria inicio-fin,
+        - punta maxima en kt,
+      - marcadores visibles en mapa para:
+        - inicio,
+        - fin,
+        - punto de velocidad maxima,
+      - anadida leyenda para interpretar esos marcadores,
+      - anadida tarjeta `Calidad de captura` con:
+        - puntos GPS validos,
+        - auto-pausas,
+        - velocidad media en movimiento,
+    - verificacion:
+      - multiples `flutter analyze` limpios sobre `sessions_page.dart` y `session_detail_page.dart`,
+      - pruebas orientadas a iteracion con `hot reload / hot restart`,
+      - sin tocar ya `Meteokite`; todo el trabajo queda consolidado solo en `WindWisher`.

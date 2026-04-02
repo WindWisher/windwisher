@@ -41,6 +41,12 @@ class SessionsPage extends StatefulWidget {
 
 class SessionsPageState extends State<SessionsPage> {
   static const String _phoneDeviceId = 'phone-1';
+  static const double _gpsSampleMaxAccuracyMeters = 25;
+  static const double _gpsMaxPlausibleSpeedKnots = 65;
+  static const double _autoPauseSpeedKnots = 1.5;
+  static const double _autoResumeSpeedKnots = 4;
+  static const Duration _autoPauseDelay = Duration(seconds: 20);
+  static const Duration _autoResumeDelay = Duration(seconds: 6);
   static const String _defaultSessionSummary =
       'Track sincronizado con sensores de velocidad, GPS y eventos.';
   static const Set<String> _templateDeviceIds = {'woo-1', 'watch-1'};
@@ -99,7 +105,13 @@ class SessionsPageState extends State<SessionsPage> {
   final List<double> _recordingTimelineKnots = <double>[];
   double _recordingDistanceMeters = 0;
   double _recordingMaxSpeedKnots = 0;
+  double? _lastGpsAccuracyMeters;
   Duration _recordingMovingDuration = Duration.zero;
+  Duration _recordingAutoPausedDuration = Duration.zero;
+  Duration _recordingLowSpeedCandidateDuration = Duration.zero;
+  Duration _recordingResumeCandidateDuration = Duration.zero;
+  int _recordingAutoPauseCount = 0;
+  bool _isAutoPaused = false;
   final ImagePicker _imagePicker = ImagePicker();
 
   static const String _sortMostRecent = 'Mas recientes';
@@ -1052,7 +1064,9 @@ class SessionsPageState extends State<SessionsPage> {
             ? 'Listo para grabar una sesion real con GPS del telefono.'
             : 'La captura real de dispositivos externos aun no esta conectada. Usa el telefono.';
       case _SessionCaptureState.recording:
-        return 'Sesion real en curso. Grabando recorrido y velocidad por GPS.';
+        return _isAutoPaused
+            ? 'Sesion en pausa automatica. Esperando que vuelvas a moverte.'
+            : 'Sesion real en curso. Grabando recorrido y velocidad por GPS.';
       case _SessionCaptureState.finished:
         return 'Sesion finalizada. Revisa los datos y guardala.';
       case _SessionCaptureState.syncing:
@@ -1067,9 +1081,210 @@ class SessionsPageState extends State<SessionsPage> {
       return '--:--';
     }
     final elapsed = DateTime.now().difference(_recordingStartedAt!);
-    final minutes = elapsed.inMinutes.toString().padLeft(2, '0');
-    final seconds = (elapsed.inSeconds % 60).toString().padLeft(2, '0');
-    return '$minutes:$seconds';
+    return _formatDuration(elapsed);
+  }
+
+  String _recordingActiveText() {
+    if (_recordingStartedAt == null) {
+      return '--:--';
+    }
+    final elapsed = DateTime.now().difference(_recordingStartedAt!);
+    final active = elapsed - _recordingAutoPausedDuration;
+    return _formatDuration(active.isNegative ? Duration.zero : active);
+  }
+
+  String _recordingPausedText() {
+    return _formatDuration(_recordingAutoPausedDuration);
+  }
+
+  String _recordingCurrentSpeedText() {
+    if (_recordingSamples.isEmpty) {
+      return '--';
+    }
+    final recentSamples = _recordingSamples.length <= 4
+        ? _recordingSamples
+        : _recordingSamples.sublist(_recordingSamples.length - 4);
+    final smoothedKnots =
+        recentSamples
+            .map((sample) => sample.speedKnots)
+            .reduce((a, b) => a + b) /
+        recentSamples.length;
+    return '${smoothedKnots.toStringAsFixed(1)} kt';
+  }
+
+  String _recordingMaxSpeedText() {
+    if (_recordingMaxSpeedKnots <= 0) {
+      return '--';
+    }
+    return '${_recordingMaxSpeedKnots.toStringAsFixed(1)} kt';
+  }
+
+  String _gpsSignalChipLabel() {
+    if (_captureState != _SessionCaptureState.recording) {
+      return 'GPS pendiente';
+    }
+    final accuracy = _lastGpsAccuracyMeters;
+    if (accuracy == null) {
+      return 'Buscando GPS...';
+    }
+    final accuracyLabel = '${accuracy.toStringAsFixed(1)} m';
+    if (accuracy <= 5) {
+      return 'GPS OK · $accuracyLabel';
+    }
+    return 'GPS señal débil · $accuracyLabel';
+  }
+
+  String _autoPauseChipLabel() {
+    if (_captureState != _SessionCaptureState.recording) {
+      return 'Auto-pausa lista';
+    }
+    return _isAutoPaused ? 'Auto-pausa ON' : 'Auto-pausa OFF';
+  }
+
+  Color _autoPauseChipBackgroundColor(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    if (_captureState != _SessionCaptureState.recording) {
+      return colorScheme.surfaceContainerHighest;
+    }
+    return _isAutoPaused
+        ? const Color(0x1F1565C0)
+        : colorScheme.surfaceContainerHighest;
+  }
+
+  Color _autoPauseChipForegroundColor(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    if (_captureState != _SessionCaptureState.recording) {
+      return colorScheme.onSurfaceVariant;
+    }
+    return _isAutoPaused
+        ? const Color(0xFF1565C0)
+        : colorScheme.onSurfaceVariant;
+  }
+
+  IconData _autoPauseChipIcon() {
+    return _isAutoPaused
+        ? Icons.pause_circle_filled_rounded
+        : Icons.play_circle_outline_rounded;
+  }
+
+  Color _gpsChipBackgroundColor(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    if (_captureState != _SessionCaptureState.recording) {
+      return colorScheme.surfaceContainerHighest;
+    }
+    final accuracy = _lastGpsAccuracyMeters;
+    if (accuracy == null) {
+      return colorScheme.secondaryContainer;
+    }
+    if (accuracy <= 5) {
+      return const Color(0x1F2E7D32);
+    }
+    return const Color(0x1FFF8F00);
+  }
+
+  Color _gpsChipForegroundColor(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    if (_captureState != _SessionCaptureState.recording) {
+      return colorScheme.onSurfaceVariant;
+    }
+    final accuracy = _lastGpsAccuracyMeters;
+    if (accuracy == null) {
+      return colorScheme.onSecondaryContainer;
+    }
+    if (accuracy <= 5) {
+      return const Color(0xFF2E7D32);
+    }
+    return const Color(0xFF8D6E00);
+  }
+
+  IconData _gpsChipIcon() {
+    if (_captureState != _SessionCaptureState.recording) {
+      return Icons.gps_not_fixed_rounded;
+    }
+    final accuracy = _lastGpsAccuracyMeters;
+    if (accuracy == null) {
+      return Icons.gps_not_fixed_rounded;
+    }
+    if (accuracy <= 5) {
+      return Icons.gps_fixed_rounded;
+    }
+    return Icons.gps_off_rounded;
+  }
+
+  bool _hasGoodGpsSignal() {
+    final accuracy = _lastGpsAccuracyMeters;
+    return accuracy != null && accuracy <= 5;
+  }
+
+  Future<bool> _confirmStopRealSessionRecording() async {
+    final hasGoodSignal = _hasGoodGpsSignal();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(
+            hasGoodSignal
+                ? 'Detener y revisar sesion'
+                : 'Detener sin GPS OK',
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                hasGoodSignal
+                    ? 'La sesion dejará de grabarse ahora.'
+                    : 'El GPS todavia no ha llegado a GPS OK.',
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                hasGoodSignal
+                    ? 'Podras revisar los datos y decidir si quieres guardarlos.'
+                    : 'Si detienes ahora, esta sesion no se podra guardar.',
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                hasGoodSignal
+                    ? 'Si sales sin guardar, se perderan los datos recogidos.'
+                    : 'Los datos recogidos hasta ahora se perderan.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Seguir grabando'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(
+                hasGoodSignal ? 'Detener y revisar' : 'Detener y descartar',
+              ),
+            ),
+          ],
+        );
+      },
+    );
+    return result ?? false;
+  }
+
+  void _resetRecordingState() {
+    setState(() {
+      _captureState = _SessionCaptureState.ready;
+      _recordingStartedAt = null;
+      _recordingSamples.clear();
+      _recordingTimelineKnots.clear();
+      _recordingDistanceMeters = 0;
+      _recordingMaxSpeedKnots = 0;
+      _lastGpsAccuracyMeters = null;
+      _recordingMovingDuration = Duration.zero;
+      _recordingAutoPausedDuration = Duration.zero;
+      _recordingLowSpeedCandidateDuration = Duration.zero;
+      _recordingResumeCandidateDuration = Duration.zero;
+      _recordingAutoPauseCount = 0;
+      _isAutoPaused = false;
+    });
   }
 
   String _formatSessionDateTime(DateTime value) {
@@ -1169,7 +1384,11 @@ class SessionsPageState extends State<SessionsPage> {
     }
 
     if (_captureState == _SessionCaptureState.recording) {
-      await _stopRealSessionRecording();
+      final confirm = await _confirmStopRealSessionRecording();
+      if (!mounted || !confirm) {
+        return;
+      }
+      await _stopRealSessionRecording(discardIfGpsInvalid: !_hasGoodGpsSignal());
       return;
     }
 
@@ -1210,15 +1429,7 @@ class SessionsPageState extends State<SessionsPage> {
     }
 
     if (_captureState == _SessionCaptureState.synced) {
-      setState(() {
-        _captureState = _SessionCaptureState.ready;
-        _recordingStartedAt = null;
-        _recordingSamples.clear();
-        _recordingTimelineKnots.clear();
-        _recordingDistanceMeters = 0;
-        _recordingMaxSpeedKnots = 0;
-        _recordingMovingDuration = Duration.zero;
-      });
+      _resetRecordingState();
     }
   }
 
@@ -1256,16 +1467,22 @@ class SessionsPageState extends State<SessionsPage> {
     _recordingTicker?.cancel();
     await _positionSubscription?.cancel();
 
-    setState(() {
-      _captureState = _SessionCaptureState.recording;
-      _recordingStartedAt = DateTime.now();
-      _lastImportHint = null;
-      _recordingSamples.clear();
-      _recordingTimelineKnots.clear();
-      _recordingDistanceMeters = 0;
-      _recordingMaxSpeedKnots = 0;
-      _recordingMovingDuration = Duration.zero;
-    });
+      setState(() {
+        _captureState = _SessionCaptureState.recording;
+        _recordingStartedAt = DateTime.now();
+        _lastImportHint = null;
+        _recordingSamples.clear();
+        _recordingTimelineKnots.clear();
+        _recordingDistanceMeters = 0;
+        _recordingMaxSpeedKnots = 0;
+        _lastGpsAccuracyMeters = null;
+        _recordingMovingDuration = Duration.zero;
+        _recordingAutoPausedDuration = Duration.zero;
+        _recordingLowSpeedCandidateDuration = Duration.zero;
+        _recordingResumeCandidateDuration = Duration.zero;
+        _recordingAutoPauseCount = 0;
+        _isAutoPaused = false;
+      });
 
     _recordingTicker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted || _captureState != _SessionCaptureState.recording) {
@@ -1288,14 +1505,31 @@ class SessionsPageState extends State<SessionsPage> {
       return;
     }
 
+    _lastGpsAccuracyMeters = position.accuracy;
+    if (!_isUsableRecordingPosition(position)) {
+      if (mounted) {
+        setState(() {});
+      }
+      return;
+    }
+
+    final speedKnots = _resolveSpeedKnots(position);
+
     final sample = _SessionLocationSample(
       latitude: position.latitude,
       longitude: position.longitude,
-      speedKnots: _resolveSpeedKnots(position),
+      speedKnots: speedKnots,
       timestamp: position.timestamp,
     );
 
     final previous = _recordingSamples.isEmpty ? null : _recordingSamples.last;
+    if (!_isPlausibleTrackStep(previous: previous, current: sample)) {
+      if (mounted) {
+        setState(() {});
+      }
+      return;
+    }
+
     if (previous != null) {
       final legMeters = Geolocator.distanceBetween(
         previous.latitude,
@@ -1307,10 +1541,11 @@ class SessionsPageState extends State<SessionsPage> {
         _recordingDistanceMeters += legMeters;
       }
       final delta = sample.timestamp.difference(previous.timestamp);
-      if (!delta.isNegative &&
-          delta.inSeconds > 0 &&
-          sample.speedKnots >= 8) {
-        _recordingMovingDuration += delta;
+      if (!delta.isNegative && delta.inSeconds > 0) {
+        _updateAutoPauseState(delta: delta, speedKnots: sample.speedKnots);
+        if (!_isAutoPaused && sample.speedKnots >= 8) {
+          _recordingMovingDuration += delta;
+        }
       }
     }
 
@@ -1323,6 +1558,83 @@ class SessionsPageState extends State<SessionsPage> {
     if (mounted) {
       setState(() {});
     }
+  }
+
+  void _updateAutoPauseState({
+    required Duration delta,
+    required double speedKnots,
+  }) {
+    if (_isAutoPaused) {
+      if (speedKnots >= _autoResumeSpeedKnots) {
+        _recordingResumeCandidateDuration += delta;
+        if (_recordingResumeCandidateDuration >= _autoResumeDelay) {
+          _isAutoPaused = false;
+          _recordingLowSpeedCandidateDuration = Duration.zero;
+          _recordingResumeCandidateDuration = Duration.zero;
+        }
+        return;
+      }
+      _recordingResumeCandidateDuration = Duration.zero;
+      _recordingAutoPausedDuration += delta;
+      return;
+    }
+
+    if (speedKnots <= _autoPauseSpeedKnots) {
+      _recordingLowSpeedCandidateDuration += delta;
+      _recordingResumeCandidateDuration = Duration.zero;
+      if (_recordingLowSpeedCandidateDuration >= _autoPauseDelay) {
+        _isAutoPaused = true;
+        _recordingAutoPausedDuration += _recordingLowSpeedCandidateDuration;
+        _recordingLowSpeedCandidateDuration = Duration.zero;
+        _recordingAutoPauseCount += 1;
+      }
+      return;
+    }
+
+    _recordingLowSpeedCandidateDuration = Duration.zero;
+    _recordingResumeCandidateDuration = Duration.zero;
+  }
+
+  bool _isUsableRecordingPosition(Position position) {
+    final accuracy = position.accuracy;
+    if (!accuracy.isFinite || accuracy <= 0) {
+      return false;
+    }
+    if (accuracy > _gpsSampleMaxAccuracyMeters) {
+      return false;
+    }
+    if (!position.latitude.isFinite || !position.longitude.isFinite) {
+      return false;
+    }
+    return true;
+  }
+
+  bool _isPlausibleTrackStep({
+    required _SessionLocationSample? previous,
+    required _SessionLocationSample current,
+  }) {
+    if (previous == null) {
+      return true;
+    }
+    final deltaMs = current.timestamp.difference(previous.timestamp).inMilliseconds;
+    if (deltaMs <= 0) {
+      return false;
+    }
+    final legMeters = Geolocator.distanceBetween(
+      previous.latitude,
+      previous.longitude,
+      current.latitude,
+      current.longitude,
+    );
+    if (!legMeters.isFinite || legMeters < 0) {
+      return false;
+    }
+    final metersPerSecond = legMeters / (deltaMs / 1000);
+    if (!metersPerSecond.isFinite) {
+      return false;
+    }
+    final knots = metersPerSecond * 1.943844;
+    return knots <= _gpsMaxPlausibleSpeedKnots;
   }
 
   double _resolveSpeedKnots(Position position) {
@@ -1351,28 +1663,25 @@ class SessionsPageState extends State<SessionsPage> {
     return 0;
   }
 
-  Future<void> _stopRealSessionRecording() async {
+  Future<void> _stopRealSessionRecording({
+    required bool discardIfGpsInvalid,
+  }) async {
     _recordingTicker?.cancel();
     await _positionSubscription?.cancel();
     _positionSubscription = null;
 
-    if (_recordingSamples.length < 2) {
+    final hasEnoughSamples = _recordingSamples.length >= 2;
+    if (discardIfGpsInvalid || !hasEnoughSamples) {
       if (!mounted) {
         return;
       }
-      setState(() {
-        _captureState = _SessionCaptureState.ready;
-        _recordingStartedAt = null;
-        _recordingSamples.clear();
-        _recordingTimelineKnots.clear();
-        _recordingDistanceMeters = 0;
-        _recordingMaxSpeedKnots = 0;
-        _recordingMovingDuration = Duration.zero;
-      });
+      _resetRecordingState();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'No hemos podido registrar suficientes puntos GPS. Intenta grabar unos segundos mas.',
+            discardIfGpsInvalid
+                ? 'Sesion detenida sin GPS OK. Los datos recogidos no se han guardado.'
+                : 'No hemos podido registrar suficientes puntos GPS. La sesion no se ha guardado.',
           ),
         ),
       );
@@ -1408,14 +1717,23 @@ class SessionsPageState extends State<SessionsPage> {
         ? 0.0
         : ((_recordingDistanceMeters / duration.inSeconds) * 1.943844)
               .toDouble();
+    final activeDuration = duration - _recordingAutoPausedDuration;
+    final movingAvgSpeedKnots = activeDuration.inSeconds <= 0
+        ? 0.0
+        : ((_recordingDistanceMeters / activeDuration.inSeconds) * 1.943844)
+              .toDouble();
     final planingMinutes = _recordingMovingDuration.inMinutes > 0
         ? _recordingMovingDuration.inMinutes
         : null;
+    final pausedDuration = _recordingAutoPausedDuration;
     final insights = SessionInsightData(
       distanceKm: distanceKm > 0 ? distanceKm : null,
       maxSpeedKnots: _recordingMaxSpeedKnots > 0 ? _recordingMaxSpeedKnots : null,
       avgSpeedKnots: avgSpeedKnots > 0 ? avgSpeedKnots : null,
+      movingAvgSpeedKnots: movingAvgSpeedKnots > 0 ? movingAvgSpeedKnots : null,
       planingMinutes: planingMinutes,
+      recordedPointCount: _recordingSamples.length,
+      autoPauseCount: _recordingAutoPauseCount,
       batteryStart: null,
       batteryEnd: null,
       jumpsCount: null,
@@ -1423,6 +1741,18 @@ class SessionsPageState extends State<SessionsPage> {
       maxHangtimeSeconds: null,
       jumpHistory: const <SessionJumpRecord>[],
       timelineKnots: List<double>.unmodifiable(_recordingTimelineKnots),
+      routePoints: List<SessionTrackPoint>.unmodifiable(
+        _recordingSamples
+            .map(
+              (sample) => SessionTrackPoint(
+                latitude: sample.latitude,
+                longitude: sample.longitude,
+                speedKnots: sample.speedKnots,
+                recordedAt: sample.timestamp,
+              ),
+            )
+            .toList(growable: false),
+      ),
       events: <String>[
         'Sesion real grabada con el GPS del telefono',
         '${_recordingSamples.length} puntos registrados',
@@ -1434,6 +1764,25 @@ class SessionsPageState extends State<SessionsPage> {
             SessionKpiItem(
               label: 'Duracion total',
               value: _formatDuration(duration),
+              available: true,
+            ),
+            SessionKpiItem(
+              label: 'Tiempo activo',
+              value: _formatDuration(
+                activeDuration.isNegative ? Duration.zero : activeDuration,
+              ),
+              available: true,
+            ),
+            SessionKpiItem(
+              label: 'Tiempo parado',
+              value: _formatDuration(
+                pausedDuration.isNegative ? Duration.zero : pausedDuration,
+              ),
+              available: true,
+            ),
+            SessionKpiItem(
+              label: 'Auto-pausas',
+              value: '$_recordingAutoPauseCount',
               available: true,
             ),
             SessionKpiItem(
@@ -2936,19 +3285,74 @@ class SessionsPageState extends State<SessionsPage> {
                                     style: textTheme.bodyMedium,
                                   ),
                                 ),
-                                const Chip(
+                                Chip(
+                                  backgroundColor:
+                                      _gpsChipBackgroundColor(context),
                                   avatar: Icon(
-                                    Icons.gps_fixed_rounded,
+                                    _gpsChipIcon(),
                                     size: 18,
+                                    color: _gpsChipForegroundColor(context),
                                   ),
-                                  label: Text('GPS real'),
+                                  label: Text(
+                                    _gpsSignalChipLabel(),
+                                    style: textTheme.bodyMedium?.copyWith(
+                                      color: _gpsChipForegroundColor(context),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
                                 ),
                                 Chip(
-                                  avatar: Icon(Icons.speed_rounded, size: 18),
+                                  backgroundColor:
+                                      _autoPauseChipBackgroundColor(context),
+                                  avatar: Icon(
+                                    _autoPauseChipIcon(),
+                                    size: 18,
+                                    color:
+                                        _autoPauseChipForegroundColor(context),
+                                  ),
                                   label: Text(
-                                    _captureState == _SessionCaptureState.recording
-                                        ? '${_recordingSamples.length} puntos'
-                                        : 'Sin datos simulados',
+                                    _autoPauseChipLabel(),
+                                    style: textTheme.bodyMedium?.copyWith(
+                                      color:
+                                          _autoPauseChipForegroundColor(context),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                Chip(
+                                  avatar: const Icon(
+                                    Icons.speed_rounded,
+                                    size: 18,
+                                  ),
+                                  label: Text(
+                                    'Actual: ${_recordingCurrentSpeedText()}',
+                                  ),
+                                ),
+                                Chip(
+                                  avatar: const Icon(
+                                    Icons.bolt_rounded,
+                                    size: 18,
+                                  ),
+                                  label: Text(
+                                    'Max: ${_recordingMaxSpeedText()}',
+                                  ),
+                                ),
+                                Chip(
+                                  avatar: const Icon(
+                                    Icons.kayaking_rounded,
+                                    size: 18,
+                                  ),
+                                  label: Text(
+                                    'Activo: ${_recordingActiveText()}',
+                                  ),
+                                ),
+                                Chip(
+                                  avatar: const Icon(
+                                    Icons.pause_circle_outline_rounded,
+                                    size: 18,
+                                  ),
+                                  label: Text(
+                                    'Parado: ${_recordingPausedText()}',
                                   ),
                                 ),
                               ],
