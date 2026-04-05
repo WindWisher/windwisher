@@ -2,39 +2,20 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/features/sessions/presentation/models/my_sessions_models.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/shared/session_device_action_chip.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/shared/session_gear_action_chip.dart';
 
 class MySessionCard extends StatelessWidget {
   const MySessionCard({
     super.key,
-    required this.title,
-    required this.subtitle,
-    required this.summary,
-    required this.deviceName,
-    required this.deviceKind,
-    this.gearSetupName,
-    required this.localPhotoPath,
-    required this.durationLabel,
-    required this.jumpLabel,
-    required this.hangtimeLabel,
-    required this.maxSpeedLabel,
+    required this.data,
     required this.onTap,
     required this.onDevicePressed,
     required this.onGearPressed,
   });
 
-  final String title;
-  final String subtitle;
-  final String summary;
-  final String deviceName;
-  final String deviceKind;
-  final String? gearSetupName;
-  final String? localPhotoPath;
-  final String durationLabel;
-  final String? jumpLabel;
-  final String? hangtimeLabel;
-  final String? maxSpeedLabel;
+  final MySessionCardData data;
   final VoidCallback onTap;
   final VoidCallback onDevicePressed;
   final VoidCallback onGearPressed;
@@ -43,30 +24,30 @@ class MySessionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final hasPhotoPreview =
-        localPhotoPath != null && File(localPhotoPath!).existsSync();
+        data.localPhotoPath != null && File(data.localPhotoPath!).existsSync();
     final metricChips = <Widget>[
       _buildChip(
         context: context,
         icon: Icons.timer_outlined,
-        label: durationLabel,
+        label: data.durationLabel,
       ),
-      if (maxSpeedLabel != null)
+      if (data.maxSpeedLabel != null)
         _buildChip(
           context: context,
           icon: Icons.speed_rounded,
-          label: maxSpeedLabel!,
+          label: data.maxSpeedLabel!,
         ),
-      if (hangtimeLabel != null)
+      if (data.hangtimeLabel != null)
         _buildChip(
           context: context,
           icon: Icons.air_rounded,
-          label: 'Hangtime $hangtimeLabel',
+          label: 'Hangtime ${data.hangtimeLabel}',
         ),
-      if (jumpLabel != null)
+      if (data.jumpLabel != null)
         _buildChip(
           context: context,
           icon: Icons.arrow_upward_rounded,
-          label: 'Salto $jumpLabel',
+          label: 'Salto ${data.jumpLabel}',
         ),
     ];
 
@@ -84,7 +65,7 @@ class MySessionCard extends StatelessWidget {
               ),
               child: hasPhotoPreview
                   ? Image.file(
-                      File(localPhotoPath!),
+                      File(data.localPhotoPath!),
                       fit: BoxFit.cover,
                       width: double.infinity,
                       height: 170,
@@ -119,22 +100,22 @@ class MySessionCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    data.title,
                     style: textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    subtitle,
+                    data.subtitle,
                     style: textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  if (summary.isNotEmpty) ...[
+                  if (data.summary.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
-                      summary,
+                      data.summary,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: textTheme.bodyMedium?.copyWith(
@@ -148,13 +129,14 @@ class MySessionCard extends StatelessWidget {
                     runSpacing: AppSpacing.xs,
                     children: [
                       SessionDeviceActionChip(
-                        deviceName: deviceName,
-                        deviceKind: deviceKind,
+                        deviceName: data.deviceName,
+                        deviceKind: data.deviceKind,
                         onPressed: onDevicePressed,
                       ),
-                      if (gearSetupName != null && gearSetupName!.isNotEmpty)
+                      if (data.gearSetupName != null &&
+                          data.gearSetupName!.isNotEmpty)
                         SessionGearActionChip(
-                          label: gearSetupName!,
+                          label: data.gearSetupName!,
                           onPressed: onGearPressed,
                         ),
                     ],

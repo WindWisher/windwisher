@@ -1,9 +1,6 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:math' as math;
 
-import 'package:device_info_plus/device_info_plus.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
@@ -13,20 +10,38 @@ import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
 import 'package:windwisher/features/profile/di/profile_module.dart';
-import 'package:windwisher/features/profile/domain/entities/profile_gear_entities.dart';
 import 'package:windwisher/features/sessions/di/sessions_module.dart';
 import 'package:windwisher/features/sessions/domain/entities/linked_device.dart';
 import 'package:windwisher/features/sessions/domain/entities/recorded_session.dart';
 import 'package:windwisher/features/sessions/domain/entities/session_view_preferences.dart';
+import 'package:windwisher/features/sessions/presentation/builders/start_session_recorded_session_builder.dart';
+import 'package:windwisher/features/sessions/presentation/logic/start_session_capture_logic.dart';
+import 'package:windwisher/features/sessions/presentation/logic/start_session_device_detection_logic.dart';
+import 'package:windwisher/features/sessions/presentation/logic/start_session_location_logic.dart';
+import 'package:windwisher/features/sessions/presentation/logic/start_session_media_logic.dart';
+import 'package:windwisher/features/sessions/presentation/mappers/my_sessions_mapper.dart';
+import 'package:windwisher/features/sessions/presentation/mappers/session_gear_mapper.dart';
+import 'package:windwisher/features/sessions/presentation/models/my_sessions_models.dart';
+import 'package:windwisher/features/sessions/presentation/models/session_gear_models.dart';
+import 'package:windwisher/features/sessions/presentation/mappers/start_session_mapper.dart';
+import 'package:windwisher/features/sessions/presentation/models/start_session_models.dart';
 import 'package:windwisher/features/sessions/presentation/models/session_detail_models.dart';
+import 'package:windwisher/features/sessions/presentation/pages/my_sessions_page.dart';
 import 'package:windwisher/features/sessions/presentation/pages/session_detail_page.dart';
+import 'package:windwisher/features/sessions/presentation/pages/start_session_page.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/my_sessions/my_session_card.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/shared/session_device_dialog.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/shared/session_gear_dialog.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_capture_status_card.dart';
+import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_add_device_dialog.dart';
+import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_device_capabilities_dialog.dart';
+import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_selected_device_card.dart';
+import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_start_panel.dart';
+import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_stop_recording_dialog.dart';
+import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_synced_pending_card.dart';
+import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_upload_dialog.dart';
 import 'package:windwisher/features/spots/di/spots_module.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_item.dart';
-import 'package:path_provider/path_provider.dart';
 
 typedef _LinkedDevice = LinkedDevice;
 typedef _RecordedSession = RecordedSession;
@@ -72,8 +87,8 @@ class SessionsPageState extends State<SessionsPage> {
   static const String _defaultSessionSummary =
       'Track sincronizado con sensores de velocidad, GPS y eventos.';
   static const Set<String> _templateDeviceIds = {'woo-1', 'watch-1'};
-  static const List<_DetectedCompatibleDevice> _supportedDetectedDevices =
-      <_DetectedCompatibleDevice>[];
+  static const List<SessionDetectedCompatibleDeviceData>
+  _supportedDetectedDevices = <SessionDetectedCompatibleDeviceData>[];
   static const _LinkedDevice _defaultPhoneDevice = _LinkedDevice(
     id: _phoneDeviceId,
     name: 'Telefono del usuario',
@@ -81,25 +96,6 @@ class SessionsPageState extends State<SessionsPage> {
     status: 'Listo',
     lastSync: 'Disponible en este dispositivo',
   );
-  static const List<String> _deviceSensorOrder = [
-    'gps',
-    'accelerometer',
-    'gyroscope',
-    'magnetometer',
-    'orientation',
-    'heart_rate',
-    'barometer',
-  ];
-  static const Map<String, String> _deviceSensorLabels = {
-    'gps': 'GPS',
-    'accelerometer': 'Acelerometro',
-    'gyroscope': 'Giroscopio',
-    'magnetometer': 'Magnetometro',
-    'orientation': 'Orientacion',
-    'heart_rate': 'Ritmo cardiaco',
-    'barometer': 'Barometro',
-  };
-
   late final SessionsModule _sessionsModule;
   late final SpotsModule _spotsModule;
   late final ProfileModule _profileModule;
@@ -116,7 +112,7 @@ class SessionsPageState extends State<SessionsPage> {
   String? _lastUsedGearSetupId;
   String _lastUsedUploadSpot = '';
   final List<_RecordedSession> _sessionFeed = [];
-  final List<_ImportedSessionResult> _syncedPendingSessions = [];
+  final List<SessionImportedPendingResult> _syncedPendingSessions = [];
   String? _syncedPendingDeviceId;
   _SessionCaptureState _captureState = _SessionCaptureState.ready;
   DateTime? _recordingStartedAt;
@@ -124,8 +120,8 @@ class SessionsPageState extends State<SessionsPage> {
   StreamSubscription<Position>? _positionSubscription;
   StreamSubscription<UserAccelerometerEvent>? _userAccelerometerSubscription;
   StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
-  final List<_SessionLocationSample> _recordingSamples =
-      <_SessionLocationSample>[];
+  final List<SessionCaptureSample> _recordingSamples =
+      <SessionCaptureSample>[];
   final List<double> _recordingTimelineKnots = <double>[];
   double _recordingDistanceMeters = 0;
   double _recordingMaxSpeedKnots = 0;
@@ -147,7 +143,7 @@ class SessionsPageState extends State<SessionsPage> {
   DateTime? _lastAccelerationEventAt;
   DateTime? _lastRotationEventAt;
   DateTime? _lastJumpRecordedAt;
-  _PendingJumpCandidate? _pendingJumpCandidate;
+  SessionPendingJumpCandidate? _pendingJumpCandidate;
   bool _isAutoPaused = false;
   final ImagePicker _imagePicker = ImagePicker();
 
@@ -301,7 +297,7 @@ class SessionsPageState extends State<SessionsPage> {
   }) {
     return SessionInsightData.empty(
       deviceKind: deviceKind,
-      deviceSensorKeys: _physicalSensorsForDeviceKind(
+      deviceSensorKeys: SessionInsightData.physicalSensorsForDeviceKind(
         deviceKind,
       ).toList(growable: false),
       events: events,
@@ -334,7 +330,7 @@ class SessionsPageState extends State<SessionsPage> {
       case _SessionCaptureState.recording:
         return 'Grabando';
       case _SessionCaptureState.finished:
-        return 'Sesion finalizada';
+        return 'Sesión finalizada';
       case _SessionCaptureState.syncing:
         return 'Sincronizando';
       case _SessionCaptureState.synced:
@@ -371,35 +367,6 @@ class SessionsPageState extends State<SessionsPage> {
     return Icons.memory_rounded;
   }
 
-  Widget _buildDeviceMetaPill({
-    required BuildContext context,
-    required IconData icon,
-    required String text,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.75),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   String _deviceAvailabilityLabel(_LinkedDevice device) {
     if (device.id == _phoneDeviceId) {
       return 'Disponible en este dispositivo';
@@ -412,7 +379,7 @@ class SessionsPageState extends State<SessionsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'El telefono del usuario siempre debe estar disponible.',
+            'El teléfono del usuario siempre debe estar disponible.',
           ),
         ),
       );
@@ -474,7 +441,11 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   Future<void> _hydratePhoneDeviceInfo() async {
-    final phoneDevice = await _detectPhoneDevice();
+    final phoneDevice =
+        await StartSessionDeviceDetectionLogic.detectCurrentDevice(
+          phoneDeviceId: _phoneDeviceId,
+          fallbackDevice: _defaultPhoneDevice,
+        );
     if (!mounted) {
       return;
     }
@@ -498,95 +469,6 @@ class SessionsPageState extends State<SessionsPage> {
     });
     _sessionsModule.saveLinkedDevice(phoneDevice);
     _saveSelectedDeviceId();
-  }
-
-  Future<_LinkedDevice> _detectPhoneDevice() async {
-    try {
-      final plugin = DeviceInfoPlugin();
-      if (kIsWeb) {
-        final info = await plugin.webBrowserInfo;
-        final browserName = info.browserName.name;
-        return _LinkedDevice(
-          id: _phoneDeviceId,
-          name: 'Este navegador',
-          kind: 'Web · $browserName',
-          status: 'Listo',
-          lastSync: 'Disponible en este dispositivo',
-        );
-      }
-
-      if (Platform.isAndroid) {
-        final info = await plugin.androidInfo;
-        final brand = info.brand.trim();
-        final model = info.model.trim();
-        final manufacturer = info.manufacturer.trim();
-        final resolvedBrand = brand.isNotEmpty ? brand : manufacturer;
-        final label = [resolvedBrand, model]
-            .where((value) => value.isNotEmpty)
-            .join(' ');
-        return _LinkedDevice(
-          id: _phoneDeviceId,
-          name: label.isEmpty ? _defaultPhoneDevice.name : label,
-          kind: 'Android',
-          status: 'Listo',
-          lastSync: 'Disponible en este dispositivo',
-        );
-      }
-
-      if (Platform.isIOS) {
-        final info = await plugin.iosInfo;
-        final label = [info.name.trim(), info.model.trim()]
-            .where((value) => value.isNotEmpty)
-            .join(' · ');
-        return _LinkedDevice(
-          id: _phoneDeviceId,
-          name: label.isEmpty ? _defaultPhoneDevice.name : label,
-          kind: 'iPhone',
-          status: 'Listo',
-          lastSync: 'Disponible en este dispositivo',
-        );
-      }
-
-      if (Platform.isMacOS) {
-        final info = await plugin.macOsInfo;
-        final label = [info.model.trim(), info.osRelease.trim()]
-            .where((value) => value.isNotEmpty)
-            .join(' · ');
-        return _LinkedDevice(
-          id: _phoneDeviceId,
-          name: label.isEmpty ? 'Este Mac' : label,
-          kind: 'macOS',
-          status: 'Listo',
-          lastSync: 'Disponible en este dispositivo',
-        );
-      }
-
-      if (Platform.isWindows) {
-        final info = await plugin.windowsInfo;
-        final label = info.computerName.trim();
-        return _LinkedDevice(
-          id: _phoneDeviceId,
-          name: label.isEmpty ? 'Este PC' : label,
-          kind: 'Windows',
-          status: 'Listo',
-          lastSync: 'Disponible en este dispositivo',
-        );
-      }
-
-      if (Platform.isLinux) {
-        final info = await plugin.linuxInfo;
-        final label = info.prettyName.trim();
-        return _LinkedDevice(
-          id: _phoneDeviceId,
-          name: label.isEmpty ? 'Este equipo' : label,
-          kind: 'Linux',
-          status: 'Listo',
-          lastSync: 'Disponible en este dispositivo',
-        );
-      }
-    } catch (_) {}
-
-    return _defaultPhoneDevice;
   }
 
   void _pruneTemplateDevices() {
@@ -621,7 +503,7 @@ class SessionsPageState extends State<SessionsPage> {
     messenger?.showSnackBar(
       SnackBar(
         content: Text(
-          '$feature todavia no esta conectado a datos reales. Hemos quitado la simulacion para no inventar sesiones.',
+          '$feature todavia no esta conectado a datos reales. Hemos quitado la simulación para no inventar sesiones.',
         ),
       ),
     );
@@ -644,7 +526,7 @@ class SessionsPageState extends State<SessionsPage> {
     if (spotName != null && spotName.isNotEmpty) {
       return spotName;
     }
-    const prefix = 'Sesion en ';
+    const prefix = 'Sesión en ';
     if (session.title.startsWith(prefix)) {
       final trimmed = session.title.substring(prefix.length).trim();
       return trimmed.isEmpty ? null : trimmed;
@@ -692,144 +574,9 @@ class SessionsPageState extends State<SessionsPage> {
 
   Future<void> _showAddDeviceSheet() async {
     final availableDevices = _detectedCompatibleDevices();
-    _DetectedCompatibleDevice? selectedDevice = availableDevices.firstOrNull;
-    String customName = selectedDevice?.defaultName ?? '';
-
-    final linked = await showDialog<_DetectedCompatibleDevice>(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Configurar dispositivo'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Aqui solo aparecen dispositivos compatibles detectados y aun no vinculados.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  if (availableDevices.isEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'No se han detectado mas dispositivos compatibles por ahora. El telefono del usuario ya queda disponible automaticamente.',
-                      ),
-                    )
-                  else ...[
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedDevice?.id,
-                      decoration: const InputDecoration(
-                        labelText: 'Dispositivo compatible disponible',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: availableDevices
-                          .map(
-                            (device) => DropdownMenuItem(
-                              value: device.id,
-                              child: Text(
-                                '${device.defaultName} · ${device.kind}',
-                              ),
-                            ),
-                          )
-                          .toList(growable: false),
-                      onChanged: (value) {
-                        if (value == null) {
-                          return;
-                        }
-                        final next = availableDevices
-                            .where((device) => device.id == value)
-                            .firstOrNull;
-                        if (next == null) {
-                          return;
-                        }
-                        setDialogState(() {
-                          selectedDevice = next;
-                          customName = next.defaultName;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    if (selectedDevice != null)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(AppSpacing.sm),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              selectedDevice!.defaultName,
-                              style: Theme.of(context).textTheme.titleSmall
-                                  ?.copyWith(fontWeight: FontWeight.w700),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${selectedDevice!.kind} · ${selectedDevice!.status}',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              selectedDevice!.sensorSummary,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                    const SizedBox(height: AppSpacing.sm),
-                    TextField(
-                      controller: TextEditingController(text: customName)
-                        ..selection = TextSelection.collapsed(
-                          offset: customName.length,
-                        ),
-                      decoration: const InputDecoration(
-                        labelText: 'Nombre del dispositivo en la app',
-                        border: OutlineInputBorder(),
-                      ),
-                      onChanged: (value) {
-                        customName = value;
-                      },
-                    ),
-                  ],
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancelar'),
-                ),
-                FilledButton.icon(
-                  onPressed: selectedDevice == null
-                      ? null
-                      : () => Navigator.of(context).pop(
-                          selectedDevice!.copyWith(
-                            customName: customName.trim().isEmpty
-                                ? selectedDevice!.defaultName
-                                : customName.trim(),
-                          ),
-                        ),
-                  icon: const Icon(Icons.link_rounded),
-                  label: const Text('Vincular'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+    final linked = await SessionAddDeviceDialog.show(
+      context,
+      availableDevices: availableDevices,
     );
 
     if (linked == null || !mounted) {
@@ -851,7 +598,7 @@ class SessionsPageState extends State<SessionsPage> {
     _saveSelectedDeviceId();
   }
 
-  List<_DetectedCompatibleDevice> _detectedCompatibleDevices() {
+  List<SessionDetectedCompatibleDeviceData> _detectedCompatibleDevices() {
     final linkedIds = _devices.map((device) => device.id).toSet();
     return _supportedDetectedDevices
         .where((device) => !linkedIds.contains(device.id))
@@ -859,10 +606,10 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   Future<void> _syncSessionFromDevice() async {
-    _showRealIntegrationPendingMessage('La sincronizacion de sesiones');
+    _showRealIntegrationPendingMessage('La sincronización de sesiones');
   }
 
-  Future<void> _configureSyncedSession(_ImportedSessionResult imported) async {
+  Future<void> _configureSyncedSession(SessionImportedPendingResult imported) async {
     final device = _selectedDevice;
     if (device == null) {
       return;
@@ -873,27 +620,34 @@ class SessionsPageState extends State<SessionsPage> {
       return;
     }
 
-    final session = _buildSyncedRecordedSession(
-      device: device,
-      imported: imported,
-      config: config,
+    final session = StartSessionRecordedSessionBuilder.buildImportedSession(
+      ImportedRecordedSessionBuilderInput(
+        id: _newSessionId(),
+        deviceName: device.name,
+        deviceKind: device.kind,
+        imported: imported,
+        config: StartSessionSaveConfigData(
+          spot: config.spot,
+          notes: config.notes,
+          sessionMediaLabel: StartSessionMediaLogic.labelForSelection(
+            config.mediaSelection,
+          ),
+          sessionPhotoLocalPath: config.sessionPhotoLocalPath,
+          gearSetupId: config.gearSetupId,
+          gearSetupName: config.gearSetupName,
+        ),
+      ),
     );
-
-    setState(() {
-      _lastUsedGearSetupId = config.gearSetupId;
-      _lastUsedUploadSpot = config.spot;
-      _sessionFeed.insert(0, session);
-      _syncedPendingSessions.remove(imported);
-      if (_syncedPendingSessions.isEmpty) {
-        _syncedPendingDeviceId = null;
-      }
-    });
-    _saveSessionViewPreferences();
-    await _sessionsModule.saveRecordedSession(session);
+    await _persistSessionIntoFeed(
+      session,
+      gearSetupId: config.gearSetupId,
+      uploadSpot: config.spot,
+      importedToRemove: imported,
+    );
   }
 
   Future<void> _removeSyncedPendingSession(
-    _ImportedSessionResult imported,
+    SessionImportedPendingResult imported,
   ) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -930,62 +684,8 @@ class SessionsPageState extends State<SessionsPage> {
     });
   }
 
-  _RecordedSession _buildSyncedRecordedSession({
-    required _LinkedDevice device,
-    required _ImportedSessionResult imported,
-    required ({
-      String spot,
-      String notes,
-      _SessionMediaSelection mediaSelection,
-      String? sessionPhotoLocalPath,
-      String? gearSetupId,
-      String? gearSetupName,
-    })
-    config,
-  }) {
-    final baseInsights = _emptySessionInsights(
-      deviceKind: device.kind,
-      events: [
-        'Sesion sincronizada desde dispositivo ${device.name}',
-      ],
-    );
-    final highestJump = imported.jumpHistory
-        .map((jump) => jump.heightMeters)
-        .fold<double?>(null, (prev, h) => prev == null ? h : math.max(prev, h));
-    final highestHangtime = imported.jumpHistory
-        .map((jump) => jump.hangtimeSeconds)
-        .fold<double?>(null, (prev, t) => prev == null ? t : math.max(prev, t));
-
-    final importedInsights = baseInsights.copyWith(
-      jumpsCount: imported.jumpHistory.length,
-      maxJumpHeightMeters: highestJump,
-      maxHangtimeSeconds: highestHangtime,
-      jumpHistory: imported.jumpHistory,
-    );
-
-    return _RecordedSession(
-      id: _newSessionId(),
-      title: imported.title,
-      deviceName: device.name,
-      endedAt: imported.endedAt,
-      duration: imported.duration,
-      summary: config.notes.isEmpty ? imported.summary : config.notes,
-      gearSetupId: config.gearSetupId,
-      gearSetupName: config.gearSetupName,
-      hasSessionPhoto: config.sessionPhotoLocalPath != null,
-      sessionMediaLabel: switch (config.mediaSelection) {
-        _SessionMediaSelection.none => 'Pantallazo del mapa del spot',
-        _SessionMediaSelection.camera => 'Foto tomada con camara',
-        _SessionMediaSelection.gallery => 'Foto elegida de galeria',
-      },
-      sessionPhotoLocalPath: config.sessionPhotoLocalPath,
-      spotName: config.spot,
-      insights: importedInsights,
-    );
-  }
-
   void _importSessionFile() {
-    _showRealIntegrationPendingMessage('La importacion de sesiones');
+    _showRealIntegrationPendingMessage('La importación de sesiones');
   }
 
   _LinkedDevice? get _selectedDevice {
@@ -1002,7 +702,7 @@ class SessionsPageState extends State<SessionsPage> {
     if (selected == null) {
       return const <String>{};
     }
-    return _physicalSensorsForDeviceKind(selected.kind);
+    return SessionInsightData.physicalSensorsForDeviceKind(selected.kind);
   }
 
   String _selectedDeviceSensorCountLabel() {
@@ -1011,97 +711,6 @@ class SessionsPageState extends State<SessionsPage> {
       return '1 sensor relevante';
     }
     return '$count sensores relevantes';
-  }
-
-  Set<String> _physicalSensorsForDeviceKind(String kind) {
-    switch (kind) {
-      case 'Android':
-      case 'Dispositivo Android':
-        return {
-          'gps',
-          'accelerometer',
-          'gyroscope',
-          'magnetometer',
-          'orientation',
-        };
-      case 'iPhone':
-        return {
-          'gps',
-          'accelerometer',
-          'gyroscope',
-          'magnetometer',
-          'orientation',
-        };
-      case 'Apple Watch':
-      case 'Smartwatch':
-        return {
-          'gps',
-          'accelerometer',
-          'gyroscope',
-          'orientation',
-          'heart_rate',
-          'barometer',
-        };
-      case 'Woo Sports':
-        return {'gps', 'accelerometer', 'gyroscope', 'orientation'};
-      case 'SurfR':
-        return {'gps', 'accelerometer', 'gyroscope', 'orientation'};
-      default:
-        return {'gps', 'accelerometer', 'gyroscope'};
-    }
-  }
-
-  String _captureButtonLabel() {
-    switch (_captureState) {
-      case _SessionCaptureState.ready:
-        return 'Iniciar sesion real';
-      case _SessionCaptureState.recording:
-        return 'Detener sesion';
-      case _SessionCaptureState.finished:
-        return 'Guardar sesion';
-      case _SessionCaptureState.syncing:
-        return 'Guardando...';
-      case _SessionCaptureState.synced:
-        return 'Nueva sesion';
-    }
-  }
-
-  IconData _captureButtonIcon() {
-    switch (_captureState) {
-      case _SessionCaptureState.ready:
-        return Icons.play_circle_fill_rounded;
-      case _SessionCaptureState.recording:
-        return Icons.stop_circle_rounded;
-      case _SessionCaptureState.finished:
-        return Icons.sync_rounded;
-      case _SessionCaptureState.syncing:
-        return Icons.sync;
-      case _SessionCaptureState.synced:
-        return Icons.replay_rounded;
-    }
-  }
-
-  String _captureStatusText() {
-    switch (_captureState) {
-      case _SessionCaptureState.ready:
-        return _selectedDevice == null
-            ? 'Selecciona un dispositivo para iniciar una sesion real.'
-            : _selectedDevice!.id == _phoneDeviceId
-            ? 'Listo para grabar una sesion real con GPS del telefono.'
-            : 'La captura real de dispositivos externos aun no esta conectada. Usa el telefono.';
-      case _SessionCaptureState.recording:
-        return _isAutoPaused
-            ? 'Sesion en pausa automatica. Esperando que vuelvas a moverte.'
-            : _isAutoPausePending()
-            ? 'Auto-pausa pendiente. Detectamos baja velocidad y sin actividad reciente.'
-            : 'Sesion real en curso. Grabando recorrido y velocidad por GPS.';
-      case _SessionCaptureState.finished:
-        return 'Sesion finalizada. Revisa los datos y guardala.';
-      case _SessionCaptureState.syncing:
-        return 'Guardando track y resumen real de la sesion...';
-      case _SessionCaptureState.synced:
-        return 'Sesion guardada correctamente.';
-    }
   }
 
   String _recordingElapsedText() {
@@ -1154,117 +763,11 @@ class SessionsPageState extends State<SessionsPage> {
     return _recordingSamples.last.speedKnots;
   }
 
-  String _gpsSignalChipLabel() {
-    if (_captureState != _SessionCaptureState.recording) {
-      return 'GPS pendiente';
-    }
-    final accuracy = _lastGpsAccuracyMeters;
-    if (accuracy == null) {
-      return 'Buscando GPS...';
-    }
-    final accuracyLabel = '${accuracy.toStringAsFixed(1)} m';
-    if (accuracy <= 5) {
-      return 'GPS OK · $accuracyLabel';
-    }
-    return 'GPS señal débil · $accuracyLabel';
-  }
-
-  String _autoPauseChipLabel() {
-    if (_captureState != _SessionCaptureState.recording) {
-      return 'Auto-pausa lista';
-    }
-    if (_isAutoPaused) {
-      return 'Auto-pausa ON';
-    }
-    if (_isAutoPausePending()) {
-      final remaining = _autoPauseDelay - _recordingLowSpeedCandidateDuration;
-      final seconds = remaining.inSeconds.clamp(0, _autoPauseDelay.inSeconds);
-      return 'Auto-pausa pendiente · ${seconds}s';
-    }
-    return 'Auto-pausa OFF';
-  }
-
-  Color _autoPauseChipBackgroundColor(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    if (_captureState != _SessionCaptureState.recording) {
-      return colorScheme.surfaceContainerHighest;
-    }
-    return _isAutoPaused
-        ? const Color(0x1F1565C0)
-        : _isAutoPausePending()
-        ? const Color(0x1FF57C00)
-        : colorScheme.surfaceContainerHighest;
-  }
-
-  Color _autoPauseChipForegroundColor(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    if (_captureState != _SessionCaptureState.recording) {
-      return colorScheme.onSurfaceVariant;
-    }
-    return _isAutoPaused
-        ? const Color(0xFF1565C0)
-        : _isAutoPausePending()
-        ? const Color(0xFFEF6C00)
-        : colorScheme.onSurfaceVariant;
-  }
-
-  IconData _autoPauseChipIcon() {
-    return _isAutoPaused
-        ? Icons.pause_circle_filled_rounded
-        : _isAutoPausePending()
-        ? Icons.hourglass_bottom_rounded
-        : Icons.play_circle_outline_rounded;
-  }
-
   bool _isAutoPausePending() {
     if (_captureState != _SessionCaptureState.recording || _isAutoPaused) {
       return false;
     }
     return _recordingLowSpeedCandidateDuration > Duration.zero;
-  }
-
-  Color _gpsChipBackgroundColor(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    if (_captureState != _SessionCaptureState.recording) {
-      return colorScheme.surfaceContainerHighest;
-    }
-    final accuracy = _lastGpsAccuracyMeters;
-    if (accuracy == null) {
-      return colorScheme.secondaryContainer;
-    }
-    if (accuracy <= 5) {
-      return const Color(0x1F2E7D32);
-    }
-    return const Color(0x1FFF8F00);
-  }
-
-  Color _gpsChipForegroundColor(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    if (_captureState != _SessionCaptureState.recording) {
-      return colorScheme.onSurfaceVariant;
-    }
-    final accuracy = _lastGpsAccuracyMeters;
-    if (accuracy == null) {
-      return colorScheme.onSecondaryContainer;
-    }
-    if (accuracy <= 5) {
-      return const Color(0xFF2E7D32);
-    }
-    return const Color(0xFF8D6E00);
-  }
-
-  IconData _gpsChipIcon() {
-    if (_captureState != _SessionCaptureState.recording) {
-      return Icons.gps_not_fixed_rounded;
-    }
-    final accuracy = _lastGpsAccuracyMeters;
-    if (accuracy == null) {
-      return Icons.gps_not_fixed_rounded;
-    }
-    if (accuracy <= 5) {
-      return Icons.gps_fixed_rounded;
-    }
-    return Icons.gps_off_rounded;
   }
 
   bool _hasGoodGpsSignal() {
@@ -1304,157 +807,90 @@ class SessionsPageState extends State<SessionsPage> {
     return count;
   }
 
-  String _saveReadinessChipLabel() {
-    if (_captureState != _SessionCaptureState.recording &&
-        _captureState != _SessionCaptureState.finished) {
-      return 'Guardado pendiente';
-    }
-    final count = _saveReadinessSatisfiedRuleCount();
-    if (_hasEnoughRecordedTrackForSave()) {
-      return 'Guardable · 3/3';
-    }
-    return 'Guardable · $count/3';
-  }
-
-  Color _saveReadinessChipBackgroundColor(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    if (_captureState != _SessionCaptureState.recording &&
-        _captureState != _SessionCaptureState.finished) {
-      return colorScheme.surfaceContainerHighest;
-    }
-    if (_hasEnoughRecordedTrackForSave()) {
-      return const Color(0x1F2E7D32);
-    }
-    if (_saveReadinessSatisfiedRuleCount() > 0) {
-      return const Color(0x1FFF8F00);
-    }
-    return colorScheme.surfaceContainerHighest;
-  }
-
-  Color _saveReadinessChipForegroundColor(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    if (_captureState != _SessionCaptureState.recording &&
-        _captureState != _SessionCaptureState.finished) {
-      return colorScheme.onSurfaceVariant;
-    }
-    if (_hasEnoughRecordedTrackForSave()) {
-      return const Color(0xFF2E7D32);
-    }
-    if (_saveReadinessSatisfiedRuleCount() > 0) {
-      return const Color(0xFFEF6C00);
-    }
-    return colorScheme.onSurfaceVariant;
-  }
-
-  IconData _saveReadinessChipIcon() {
-    if (_captureState != _SessionCaptureState.recording &&
-        _captureState != _SessionCaptureState.finished) {
-      return Icons.save_outlined;
-    }
-    if (_hasEnoughRecordedTrackForSave()) {
-      return Icons.check_circle_rounded;
-    }
-    if (_saveReadinessSatisfiedRuleCount() > 0) {
-      return Icons.timelapse_rounded;
-    }
-    return Icons.hourglass_empty_rounded;
-  }
-
   Future<bool> _confirmStopRealSessionRecording() async {
     final hasEnoughTrack = _hasEnoughRecordedTrackForSave();
     final hasGoodSignal = _hasGoodGpsSignal();
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(
-            hasEnoughTrack
-                ? 'Detener y revisar sesion'
-                : 'Detener sin track suficiente',
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                hasEnoughTrack
-                    ? 'La sesion dejará de grabarse ahora.'
-                    : 'Todavia no hemos registrado suficiente track GPS para guardar esta sesion.',
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                hasEnoughTrack
-                    ? 'Podras revisar los datos y decidir si quieres guardarlos.'
-                    : 'Si detienes ahora, esta sesion se descartara.',
-              ),
-              if (!hasEnoughTrack) ...[
-                const SizedBox(height: AppSpacing.xs),
-                const Text(
-                  'Necesitamos al menos 2 puntos GPS validos, 1 minuto de duracion y 20 metros de distancia.',
-                ),
-              ],
-              if (hasEnoughTrack && !hasGoodSignal) ...[
-                const SizedBox(height: AppSpacing.xs),
-                const Text(
-                  'Aunque el GPS no este en OK ahora mismo, la sesion ya tiene track suficiente para revisarse y guardarse.',
-                ),
-              ],
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                hasEnoughTrack
-                    ? 'Si sales sin guardar, se perderan los datos recogidos.'
-                    : 'Los datos recogidos hasta ahora se perderan.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Seguir grabando'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text(
-                hasEnoughTrack ? 'Detener y revisar' : 'Detener y descartar',
-              ),
-            ),
-          ],
-        );
-      },
+    final result = await SessionStopRecordingDialog.show(
+      context,
+      data: SessionStopRecordingDialogData(
+        title: hasEnoughTrack
+            ? 'Detener y revisar sesión'
+            : 'Detener sin track suficiente',
+        primaryMessage: hasEnoughTrack
+            ? 'La sesión dejará de grabarse ahora.'
+            : 'Todavia no hemos registrado suficiente track GPS para guardar esta sesión.',
+        secondaryMessage: hasEnoughTrack
+            ? 'Podrás revisar los datos y decidir si quieres guardarlos.'
+            : 'Si detienes ahora, esta sesión se descartará.',
+        requirementsMessage: hasEnoughTrack
+            ? null
+            : 'Necesitamos al menos 2 puntos GPS validos, 1 minuto de duracion y 20 metros de distancia.',
+        gpsWarningMessage: hasEnoughTrack && !hasGoodSignal
+            ? 'Aunque el GPS no este en OK ahora mismo, la sesión ya tiene track suficiente para revisarse y guardarse.'
+            : null,
+        lossWarningMessage: hasEnoughTrack
+            ? 'Si sales sin guardar, se perderan los datos recogidos.'
+            : 'Los datos recogidos hasta ahora se perderan.',
+        confirmLabel: hasEnoughTrack
+            ? 'Detener y revisar'
+            : 'Detener y descartar',
+      ),
     );
-    return result ?? false;
+    return result;
   }
 
   void _resetRecordingState() {
     setState(() {
       _captureState = _SessionCaptureState.ready;
       _recordingStartedAt = null;
-      _recordingSamples.clear();
-      _recordingTimelineKnots.clear();
-      _recordingDistanceMeters = 0;
-      _recordingMaxSpeedKnots = 0;
       _lastGpsAccuracyMeters = null;
-      _recordingMovingDuration = Duration.zero;
-      _recordingAutoPausedDuration = Duration.zero;
-      _recordingLowSpeedCandidateDuration = Duration.zero;
-      _recordingResumeCandidateDuration = Duration.zero;
-      _recordingAutoPauseCount = 0;
-      _recordingRawPositionCount = 0;
-      _recordingRejectedAccuracyCount = 0;
-      _recordingRejectedPlausibilityCount = 0;
-      _recordingAccelerationEventCount = 0;
-      _recordingRotationEventCount = 0;
-      _recordingMaxAccelerationG = 0;
-      _recordingMaxRotationDegPerSec = 0;
-      _recentAccelerationGs.clear();
-      _recordingJumpHistory.clear();
-      _lastAccelerationEventAt = null;
-      _lastRotationEventAt = null;
-      _lastJumpRecordedAt = null;
-      _pendingJumpCandidate = null;
-      _isAutoPaused = false;
+      _clearRecordingCaptureData();
     });
+  }
+
+  void _clearRecordingCaptureData() {
+    _recordingSamples.clear();
+    _recordingTimelineKnots.clear();
+    _recordingDistanceMeters = 0;
+    _recordingMaxSpeedKnots = 0;
+    _recordingMovingDuration = Duration.zero;
+    _recordingAutoPausedDuration = Duration.zero;
+    _recordingLowSpeedCandidateDuration = Duration.zero;
+    _recordingResumeCandidateDuration = Duration.zero;
+    _recordingAutoPauseCount = 0;
+    _recordingRawPositionCount = 0;
+    _recordingRejectedAccuracyCount = 0;
+    _recordingRejectedPlausibilityCount = 0;
+    _recordingAccelerationEventCount = 0;
+    _recordingRotationEventCount = 0;
+    _recordingMaxAccelerationG = 0;
+    _recordingMaxRotationDegPerSec = 0;
+    _recentAccelerationGs.clear();
+    _recordingJumpHistory.clear();
+    _lastAccelerationEventAt = null;
+    _lastRotationEventAt = null;
+    _lastJumpRecordedAt = null;
+    _pendingJumpCandidate = null;
+    _isAutoPaused = false;
+  }
+
+  void _beginRecordingCaptureState(DateTime startedAt) {
+    _captureState = _SessionCaptureState.recording;
+    _recordingStartedAt = startedAt;
+    _lastImportHint = null;
+    _lastGpsAccuracyMeters = null;
+    _clearRecordingCaptureData();
+  }
+
+  Future<void> _cancelCaptureStreams() async {
+    _recordingTicker?.cancel();
+    _recordingTicker = null;
+    await _positionSubscription?.cancel();
+    _positionSubscription = null;
+    await _userAccelerometerSubscription?.cancel();
+    _userAccelerometerSubscription = null;
+    await _gyroscopeSubscription?.cancel();
+    _gyroscopeSubscription = null;
   }
 
   String _formatSessionDateTime(DateTime value) {
@@ -1466,216 +902,168 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   Future<void> _showDeviceCapabilitiesDialog() async {
-    final capabilities = _selectedDeviceCapabilities();
-    final available = capabilities.length;
-    final availableCapabilities = _deviceSensorOrder
-        .where((key) => capabilities.contains(key))
-        .toList(growable: false);
-
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Capacidades del dispositivo'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  available == 1
-                      ? '1 sensor disponible'
-                      : '$available sensores disponibles',
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Aqui solo mostramos sensores fisicos reales del dispositivo.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                if (availableCapabilities.isEmpty)
-                  Text(
-                    'Aun no hemos detectado capacidades utilizables para este dispositivo.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  )
-                else
-                  Wrap(
-                    spacing: AppSpacing.xs,
-                    runSpacing: AppSpacing.xs,
-                    children: availableCapabilities
-                        .map((key) {
-                          final label = _deviceSensorLabels[key] ?? key;
-                          return Chip(
-                            avatar: const Icon(
-                              Icons.check_circle_rounded,
-                              size: 16,
-                              color: Color(0xFF2E7D32),
-                            ),
-                            label: Text(label),
-                            backgroundColor: const Color(0x1F2E7D32),
-                          );
-                        })
-                        .toList(growable: false),
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cerrar'),
-            ),
-          ],
-        );
-      },
+    await SessionDeviceCapabilitiesDialog.show(
+      context,
+      capabilities: _selectedDeviceCapabilities(),
     );
   }
 
   Future<void> _onSessionControlPressed() async {
-    if (_captureState == _SessionCaptureState.ready) {
-      if (_selectedDevice == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Selecciona un dispositivo primero.')),
-        );
+    final decision = StartSessionPresentationMapper.resolveCaptureControlDecision(
+      phase: switch (_captureState) {
+        _SessionCaptureState.ready => SessionCapturePhase.ready,
+        _SessionCaptureState.recording => SessionCapturePhase.recording,
+        _SessionCaptureState.finished => SessionCapturePhase.finished,
+        _SessionCaptureState.syncing => SessionCapturePhase.syncing,
+        _SessionCaptureState.synced => SessionCapturePhase.synced,
+      },
+      hasSelectedDevice: _selectedDevice != null,
+      isPhoneDeviceSelected: _selectedDevice?.id == _phoneDeviceId,
+    );
+
+    switch (decision.action) {
+      case SessionCaptureControlAction.showMessage:
+        if (decision.message != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(decision.message!)),
+          );
+        }
         return;
-      }
-      if (_selectedDevice!.id != _phoneDeviceId) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'La captura real externa aun no esta conectada. Usa el telefono del usuario.',
-            ),
-          ),
-        );
+      case SessionCaptureControlAction.startRecording:
+        await _startRealSessionRecording();
         return;
-      }
-      await _startRealSessionRecording();
-      return;
-    }
-
-    if (_captureState == _SessionCaptureState.recording) {
-      final confirm = await _confirmStopRealSessionRecording();
-      if (!mounted || !confirm) {
+      case SessionCaptureControlAction.confirmStopRecording:
+        final confirm = await _confirmStopRealSessionRecording();
+        if (!mounted || !confirm) {
+          return;
+        }
+        await _stopRealSessionRecording();
         return;
-      }
-      await _stopRealSessionRecording();
-      return;
-    }
-
-    if (_captureState == _SessionCaptureState.finished) {
-      final config = await _showUploadSessionDialog();
-      if (!mounted || config == null) {
+      case SessionCaptureControlAction.showSaveDialog:
+        await _handleFinishedCaptureSave();
         return;
-      }
-
-      setState(() {
-        _captureState = _SessionCaptureState.syncing;
-        _lastUsedGearSetupId = config.gearSetupId;
-        _lastUsedUploadSpot = config.spot;
-      });
-      _saveSessionViewPreferences();
-
-      final endedAt = _recordingSamples.isNotEmpty
-          ? _recordingSamples.last.timestamp
-          : DateTime.now();
-      final duration = _recordingStartedAt == null
-          ? Duration.zero
-          : endedAt.difference(_recordingStartedAt!);
-      final session = _buildRecordedSessionFromCapture(
-        config: config,
-        endedAt: endedAt,
-        duration: duration,
-      );
-
-      if (!mounted) {
+      case SessionCaptureControlAction.resetToReady:
+        _resetRecordingState();
         return;
-      }
-      setState(() {
-        _sessionFeed.insert(0, session);
-        _captureState = _SessionCaptureState.synced;
-      });
-      await _sessionsModule.saveRecordedSession(session);
-      return;
-    }
-
-    if (_captureState == _SessionCaptureState.synced) {
-      _resetRecordingState();
+      case SessionCaptureControlAction.none:
+        return;
     }
   }
 
   Future<void> _startRealSessionRecording() async {
-    final servicesEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!servicesEnabled) {
-      if (!mounted) {
+    final locationDecision =
+        await StartSessionLocationLogic.resolveLocationAccess();
+    if (locationDecision.action == SessionLocationAccessAction.showMessage) {
+      if (!mounted || locationDecision.message == null) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Activa la ubicacion del telefono para grabar la sesion.'),
-        ),
+        SnackBar(content: Text(locationDecision.message!)),
       );
       return;
     }
 
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Necesitamos permiso de ubicacion para grabar sesiones reales.'),
-        ),
-      );
+    await _cancelCaptureStreams();
+    _activateRecordingCapture();
+    _startCaptureTicker();
+    _attachCaptureStreams();
+  }
+
+  Future<void> _handleFinishedCaptureSave() async {
+    final config = await _showUploadSessionDialog();
+    if (!mounted || config == null) {
       return;
     }
 
-    _recordingTicker?.cancel();
-    await _positionSubscription?.cancel();
-    await _userAccelerometerSubscription?.cancel();
-    await _gyroscopeSubscription?.cancel();
+    _beginCaptureSyncing(config);
 
-      setState(() {
-        _captureState = _SessionCaptureState.recording;
-        _recordingStartedAt = DateTime.now();
-        _lastImportHint = null;
-        _recordingSamples.clear();
-        _recordingTimelineKnots.clear();
-        _recordingDistanceMeters = 0;
-        _recordingMaxSpeedKnots = 0;
-        _lastGpsAccuracyMeters = null;
-        _recordingMovingDuration = Duration.zero;
-        _recordingAutoPausedDuration = Duration.zero;
-        _recordingLowSpeedCandidateDuration = Duration.zero;
-        _recordingResumeCandidateDuration = Duration.zero;
-        _recordingAutoPauseCount = 0;
-        _recordingRawPositionCount = 0;
-        _recordingRejectedAccuracyCount = 0;
-        _recordingRejectedPlausibilityCount = 0;
-        _recordingAccelerationEventCount = 0;
-        _recordingRotationEventCount = 0;
-        _recordingMaxAccelerationG = 0;
-        _recordingMaxRotationDegPerSec = 0;
-        _recentAccelerationGs.clear();
-        _recordingJumpHistory.clear();
-        _lastAccelerationEventAt = null;
-        _lastRotationEventAt = null;
-        _lastJumpRecordedAt = null;
-        _pendingJumpCandidate = null;
-        _isAutoPaused = false;
-      });
+    final sessionTiming = _buildCaptureSessionTiming();
+    final session = _buildRecordedSessionFromCapture(
+      config: config,
+      endedAt: sessionTiming.endedAt,
+      duration: sessionTiming.duration,
+    );
 
+    await _persistSessionIntoFeed(
+      session,
+      gearSetupId: config.gearSetupId,
+      uploadSpot: config.spot,
+      markCaptureAsSynced: true,
+    );
+  }
+
+  ({DateTime endedAt, Duration duration}) _buildCaptureSessionTiming() {
+    final endedAt = _recordingSamples.isNotEmpty
+        ? _recordingSamples.last.timestamp
+        : DateTime.now();
+    final duration = _recordingStartedAt == null
+        ? Duration.zero
+        : endedAt.difference(_recordingStartedAt!);
+    return (endedAt: endedAt, duration: duration);
+  }
+
+  void _beginCaptureSyncing(
+    ({
+      String spot,
+      String notes,
+      SessionMediaSelection mediaSelection,
+      String? sessionPhotoLocalPath,
+      String? gearSetupId,
+      String? gearSetupName,
+    }) config,
+  ) {
+    setState(() {
+      _captureState = _SessionCaptureState.syncing;
+      _lastUsedGearSetupId = config.gearSetupId;
+      _lastUsedUploadSpot = config.spot;
+    });
+    _saveSessionViewPreferences();
+  }
+
+  Future<void> _persistSessionIntoFeed(
+    _RecordedSession session, {
+    required String? gearSetupId,
+    required String uploadSpot,
+    SessionImportedPendingResult? importedToRemove,
+    bool markCaptureAsSynced = false,
+  }) async {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _lastUsedGearSetupId = gearSetupId;
+      _lastUsedUploadSpot = uploadSpot;
+      _sessionFeed.insert(0, session);
+      if (markCaptureAsSynced) {
+        _captureState = _SessionCaptureState.synced;
+      }
+      if (importedToRemove != null) {
+        _syncedPendingSessions.remove(importedToRemove);
+        if (_syncedPendingSessions.isEmpty) {
+          _syncedPendingDeviceId = null;
+        }
+      }
+    });
+    _saveSessionViewPreferences();
+    await _sessionsModule.saveRecordedSession(session);
+  }
+
+  void _activateRecordingCapture() {
+    setState(() {
+      _beginRecordingCaptureState(DateTime.now());
+    });
+  }
+
+  void _startCaptureTicker() {
     _recordingTicker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted || _captureState != _SessionCaptureState.recording) {
         return;
       }
       setState(() {});
     });
+  }
 
+  void _attachCaptureStreams() {
     const settings = LocationSettings(
       accuracy: LocationAccuracy.bestForNavigation,
       distanceFilter: 5,
@@ -1686,9 +1074,7 @@ class SessionsPageState extends State<SessionsPage> {
     _userAccelerometerSubscription = userAccelerometerEventStream().listen(
       _onUserAccelerometerSample,
     );
-    _gyroscopeSubscription = gyroscopeEventStream().listen(
-      _onGyroscopeSample,
-    );
+    _gyroscopeSubscription = gyroscopeEventStream().listen(_onGyroscopeSample);
   }
 
   void _onPositionSample(Position position) {
@@ -1698,56 +1084,90 @@ class SessionsPageState extends State<SessionsPage> {
 
     _recordingRawPositionCount += 1;
     _lastGpsAccuracyMeters = position.accuracy;
-    if (!_isUsableRecordingPosition(position)) {
-      _recordingRejectedAccuracyCount += 1;
-      if (mounted) {
-        setState(() {});
-      }
-      return;
-    }
+    final previous = _recordingSamples.isEmpty ? null : _recordingSamples.last;
+    final speedKnots = StartSessionCaptureLogic.resolveSpeedKnots(
+      SessionCaptureSpeedResolutionInput(
+        rawSpeedMetersPerSecond: position.speed,
+        positionLatitude: position.latitude,
+        positionLongitude: position.longitude,
+        positionTimestamp: position.timestamp,
+        previous: previous,
+      ),
+    );
 
-    final speedKnots = _resolveSpeedKnots(position);
-
-    final sample = _SessionLocationSample(
+    final sample = SessionCaptureSample(
       latitude: position.latitude,
       longitude: position.longitude,
       speedKnots: speedKnots,
       timestamp: position.timestamp,
     );
+    final trackStep = StartSessionCaptureLogic.evaluateTrackStep(
+      SessionCaptureTrackStepEvaluationInput(
+        accuracyMeters: position.accuracy,
+        maxAccuracyMeters: _gpsSampleMaxAccuracyMeters,
+        previous: previous,
+        current: sample,
+        maxPlausibleSpeedKnots: _gpsMaxPlausibleSpeedKnots,
+      ),
+    );
 
-    final previous = _recordingSamples.isEmpty ? null : _recordingSamples.last;
-    if (!_isPlausibleTrackStep(previous: previous, current: sample)) {
-      _recordingRejectedPlausibilityCount += 1;
-      if (mounted) {
-        setState(() {});
-      }
+    if (!trackStep.isUsablePosition) {
+      _handleRejectedTrackSample(isAccuracyRejection: true);
+      return;
+    }
+    if (!trackStep.isPlausibleStep) {
+      _handleRejectedTrackSample(isAccuracyRejection: false);
       return;
     }
 
+    _applyAcceptedTrackSample(
+      previous: previous,
+      sample: sample,
+      trackStep: trackStep,
+    );
+  }
+
+  void _handleRejectedTrackSample({required bool isAccuracyRejection}) {
+    if (isAccuracyRejection) {
+      _recordingRejectedAccuracyCount += 1;
+    } else {
+      _recordingRejectedPlausibilityCount += 1;
+    }
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _applyAcceptedTrackSample({
+    required SessionCaptureSample? previous,
+    required SessionCaptureSample sample,
+    required SessionCaptureTrackStepEvaluationResult trackStep,
+  }) {
     if (previous != null) {
-      final legMeters = Geolocator.distanceBetween(
-        previous.latitude,
-        previous.longitude,
-        sample.latitude,
-        sample.longitude,
-      );
-      if (legMeters.isFinite && legMeters > 0) {
-        _recordingDistanceMeters += legMeters;
-      }
-      final delta = sample.timestamp.difference(previous.timestamp);
+      final delta = trackStep.delta ?? Duration.zero;
       if (!delta.isNegative && delta.inSeconds > 0) {
         _updateAutoPauseState(delta: delta, speedKnots: sample.speedKnots);
-        if (!_isAutoPaused && sample.speedKnots >= 8) {
-          _recordingMovingDuration += delta;
-        }
       }
     }
 
+    final accumulation = StartSessionCaptureLogic.accumulateTrackStep(
+      SessionCaptureTrackAccumulationInput(
+        legMeters: trackStep.legMeters,
+        delta: trackStep.delta,
+        speedKnots: sample.speedKnots,
+        isAutoPaused: _isAutoPaused,
+        currentDistanceMeters: _recordingDistanceMeters,
+        currentMovingDuration: _recordingMovingDuration,
+        currentMaxSpeedKnots: _recordingMaxSpeedKnots,
+        movingMinSpeedKnots: 8,
+      ),
+    );
+    _recordingDistanceMeters = accumulation.distanceMeters;
+    _recordingMovingDuration = accumulation.movingDuration;
+    _recordingMaxSpeedKnots = accumulation.maxSpeedKnots;
+
     _recordingSamples.add(sample);
     _recordingTimelineKnots.add(sample.speedKnots);
-    if (sample.speedKnots > _recordingMaxSpeedKnots) {
-      _recordingMaxSpeedKnots = sample.speedKnots;
-    }
 
     if (mounted) {
       setState(() {});
@@ -1758,40 +1178,49 @@ class SessionsPageState extends State<SessionsPage> {
     if (_captureState != _SessionCaptureState.recording) {
       return;
     }
-    const gravityMetersPerSecond2 = 9.80665;
-    final metersPerSecond2 = math.sqrt(
-      event.x * event.x + event.y * event.y + event.z * event.z,
+    final now = DateTime.now();
+    final evaluation = StartSessionCaptureLogic.evaluateAcceleration(
+      SessionAccelerationEvaluationInput(
+        x: event.x,
+        y: event.y,
+        z: event.z,
+        recentAccelerationGs: _recentAccelerationGs,
+        currentMaxAccelerationG: _recordingMaxAccelerationG,
+        accelerationPeakConfirmationRatio: _accelerationPeakConfirmationRatio,
+        accelerationPeakRequiredMatches: _accelerationPeakRequiredMatches,
+        accelerationEventThresholdG: _accelerationEventThresholdG,
+        currentTrackSpeedKnots: _currentTrackSpeedKnots(),
+        motionEventMinSpeedKnots: _motionEventMinSpeedKnots,
+        canRegisterMotionEvent: StartSessionCaptureLogic.canRegisterMotionEvent(
+          SessionMotionEventCooldownInput(
+            now: now,
+            lastEventAt: _lastAccelerationEventAt,
+            cooldown: _motionEventCooldown,
+          ),
+        ),
+      ),
     );
-    final accelerationG = metersPerSecond2 / gravityMetersPerSecond2;
-    if (accelerationG.isFinite) {
-      _recentAccelerationGs.add(accelerationG);
-      if (_recentAccelerationGs.length > _accelerationPeakWindowSize) {
-        _recentAccelerationGs.removeAt(0);
-      }
-      final confirmationThreshold =
-          accelerationG * _accelerationPeakConfirmationRatio;
-      final confirmationMatches = _recentAccelerationGs
-          .where((value) => value >= confirmationThreshold)
-          .length;
-      final hasConfirmedPeak =
-          confirmationMatches >= _accelerationPeakRequiredMatches;
-      if (hasConfirmedPeak && accelerationG > _recordingMaxAccelerationG) {
-        _recordingMaxAccelerationG = accelerationG;
-      }
-      _updateJumpDetectionFromAcceleration(accelerationG);
-      if (mounted) {
-        setState(() {});
-      }
+    final applied = StartSessionCaptureLogic.applyAccelerationEvaluation(
+      SessionApplyAccelerationEvaluationInput(
+        evaluation: evaluation,
+        accelerationPeakWindowSize: _accelerationPeakWindowSize,
+        currentAccelerationEventCount: _recordingAccelerationEventCount,
+        now: now,
+      ),
+    );
+    _recentAccelerationGs
+      ..clear()
+      ..addAll(applied.updatedRecentAccelerationGs);
+    _recordingMaxAccelerationG = applied.updatedMaxAccelerationG;
+    _recordingAccelerationEventCount = applied.updatedAccelerationEventCount;
+    if (applied.updatedLastAccelerationEventAt != null) {
+      _lastAccelerationEventAt = applied.updatedLastAccelerationEventAt;
     }
-    if (accelerationG.isFinite &&
-        accelerationG >= _accelerationEventThresholdG &&
-        _currentTrackSpeedKnots() >= _motionEventMinSpeedKnots &&
-        _canRegisterMotionEvent(_lastAccelerationEventAt)) {
-      _recordingAccelerationEventCount += 1;
-      _lastAccelerationEventAt = DateTime.now();
-      if (mounted) {
-        setState(() {});
-      }
+    if (applied.detectedAccelerationG != null) {
+      _updateJumpDetectionFromAcceleration(applied.detectedAccelerationG!);
+    }
+    if (applied.shouldRefreshUi && mounted) {
+      setState(() {});
     }
   }
 
@@ -1799,166 +1228,104 @@ class SessionsPageState extends State<SessionsPage> {
     if (_captureState != _SessionCaptureState.recording) {
       return;
     }
-    const radiansToDegrees = 57.295779513;
-    final rotationDegPerSec =
-        math.sqrt(event.x * event.x + event.y * event.y + event.z * event.z) *
-        radiansToDegrees;
-    if (rotationDegPerSec.isFinite &&
-        rotationDegPerSec > _recordingMaxRotationDegPerSec) {
-      _recordingMaxRotationDegPerSec = rotationDegPerSec;
-      if (mounted) {
-        setState(() {});
-      }
+    final now = DateTime.now();
+    final evaluation = StartSessionCaptureLogic.evaluateRotation(
+      SessionRotationEvaluationInput(
+        x: event.x,
+        y: event.y,
+        z: event.z,
+        currentMaxRotationDegPerSec: _recordingMaxRotationDegPerSec,
+        rotationEventThresholdDegPerSec: _rotationEventThresholdDegPerSec,
+        currentTrackSpeedKnots: _currentTrackSpeedKnots(),
+        motionEventMinSpeedKnots: _motionEventMinSpeedKnots,
+        canRegisterMotionEvent: StartSessionCaptureLogic.canRegisterMotionEvent(
+          SessionMotionEventCooldownInput(
+            now: now,
+            lastEventAt: _lastRotationEventAt,
+            cooldown: _motionEventCooldown,
+          ),
+        ),
+      ),
+    );
+    final applied = StartSessionCaptureLogic.applyRotationEvaluation(
+      SessionApplyRotationEvaluationInput(
+        evaluation: evaluation,
+        currentRotationEventCount: _recordingRotationEventCount,
+        now: now,
+      ),
+    );
+    _recordingMaxRotationDegPerSec = applied.updatedMaxRotationDegPerSec;
+    _recordingRotationEventCount = applied.updatedRotationEventCount;
+    if (applied.updatedLastRotationEventAt != null) {
+      _lastRotationEventAt = applied.updatedLastRotationEventAt;
     }
-    if (rotationDegPerSec.isFinite) {
-      _updateJumpDetectionFromRotation(rotationDegPerSec);
+    if (applied.detectedRotationDegPerSec != null) {
+      _updateJumpDetectionFromRotation(applied.detectedRotationDegPerSec!);
     }
-    if (rotationDegPerSec.isFinite &&
-        rotationDegPerSec >= _rotationEventThresholdDegPerSec &&
-        _currentTrackSpeedKnots() >= _motionEventMinSpeedKnots &&
-        _canRegisterMotionEvent(_lastRotationEventAt)) {
-      _recordingRotationEventCount += 1;
-      _lastRotationEventAt = DateTime.now();
-      if (mounted) {
-        setState(() {});
-      }
+    if (applied.shouldRefreshUi && mounted) {
+      setState(() {});
     }
   }
 
   void _updateJumpDetectionFromAcceleration(double accelerationG) {
-    switch (_activeJumpDetectionMode()) {
-      case 'barometric':
-        _updateBarometricJumpDetectionFromAcceleration(accelerationG);
-        return;
-      case 'inertial_fallback':
-        _updateInertialJumpDetectionFromAcceleration(accelerationG);
-        return;
-    }
-  }
-
-  void _updateInertialJumpDetectionFromAcceleration(double accelerationG) {
     final now = DateTime.now();
     final currentSpeedKnots = _currentTrackSpeedKnots();
-    _expirePendingJumpIfNeeded(now);
-    _maybeStartJumpCandidate(
-      now: now,
-      currentSpeedKnots: currentSpeedKnots,
-      accelerationG: accelerationG,
+    final result = StartSessionCaptureLogic.updateJumpDetectionFromAcceleration(
+      SessionJumpDetectionAccelerationInput(
+        jumpDetectionMode:
+            StartSessionCaptureLogic.activeJumpDetectionModeForDeviceKind(
+              _selectedDevice?.kind,
+            ),
+        pendingCandidate: _pendingJumpCandidate,
+        lastJumpRecordedAt: _lastJumpRecordedAt,
+        now: now,
+        currentSpeedKnots: currentSpeedKnots,
+        accelerationG: accelerationG,
+        jumpMinTakeoffSpeedKnots: _jumpMinTakeoffSpeedKnots,
+        jumpMinManeuverG: _jumpMinManeuverG,
+        jumpMinManeuverRotationDegPerSec: _jumpMinManeuverRotationDegPerSec,
+        jumpCooldown: _jumpCooldown,
+        jumpMinAirTime: _jumpMinAirTime,
+        jumpMaxAirTime: _jumpMaxAirTime,
+        jumpLandingThresholdG: _jumpLandingThresholdG,
+        jumpLandingMinSpeedKnots: _jumpLandingMinSpeedKnots,
+      ),
     );
-
-    final candidate = _pendingJumpCandidate;
-    if (candidate == null) {
-      return;
-    }
-
-    _pendingJumpCandidate = candidate.copyWith(
-      maxManeuverG: math.max(candidate.maxManeuverG, accelerationG),
-    );
-
-    final airborneTime = now.difference(candidate.startedAt);
-    if (airborneTime >= _jumpMinAirTime &&
-        airborneTime <= _jumpMaxAirTime &&
-        accelerationG >= _jumpLandingThresholdG &&
-        currentSpeedKnots >= _jumpLandingMinSpeedKnots) {
+    _pendingJumpCandidate = result.pendingCandidate;
+    if (result.shouldFinalize &&
+        result.landedAt != null &&
+        result.landingG != null &&
+        result.landingSpeedKnots != null) {
       _finalizeJumpCandidate(
-        landedAt: now,
-        landingG: accelerationG,
-        landingSpeedKnots: currentSpeedKnots,
+        landedAt: result.landedAt!,
+        landingG: result.landingG!,
+        landingSpeedKnots: result.landingSpeedKnots!,
       );
     }
   }
 
   void _updateJumpDetectionFromRotation(double rotationDegPerSec) {
-    switch (_activeJumpDetectionMode()) {
-      case 'barometric':
-        _updateBarometricJumpDetectionFromRotation(rotationDegPerSec);
-        return;
-      case 'inertial_fallback':
-        _updateInertialJumpDetectionFromRotation(rotationDegPerSec);
-        return;
-    }
-  }
-
-  void _updateInertialJumpDetectionFromRotation(double rotationDegPerSec) {
     final now = DateTime.now();
     final currentSpeedKnots = _currentTrackSpeedKnots();
-    _expirePendingJumpIfNeeded(now);
-    _maybeStartJumpCandidate(
-      now: now,
-      currentSpeedKnots: currentSpeedKnots,
-      rotationDegPerSec: rotationDegPerSec,
-    );
-
-    final candidate = _pendingJumpCandidate;
-    if (candidate == null) {
-      return;
-    }
-
-    _pendingJumpCandidate = candidate.copyWith(
-      maxRotationDegPerSec: math.max(
-        candidate.maxRotationDegPerSec,
-        rotationDegPerSec,
+    final result = StartSessionCaptureLogic.updateJumpDetectionFromRotation(
+      SessionJumpDetectionRotationInput(
+        jumpDetectionMode:
+            StartSessionCaptureLogic.activeJumpDetectionModeForDeviceKind(
+              _selectedDevice?.kind,
+            ),
+        pendingCandidate: _pendingJumpCandidate,
+        lastJumpRecordedAt: _lastJumpRecordedAt,
+        now: now,
+        currentSpeedKnots: currentSpeedKnots,
+        rotationDegPerSec: rotationDegPerSec,
+        jumpMinTakeoffSpeedKnots: _jumpMinTakeoffSpeedKnots,
+        jumpMinManeuverG: _jumpMinManeuverG,
+        jumpMinManeuverRotationDegPerSec: _jumpMinManeuverRotationDegPerSec,
+        jumpCooldown: _jumpCooldown,
+        jumpMaxAirTime: _jumpMaxAirTime,
       ),
     );
-  }
-
-  void _updateBarometricJumpDetectionFromAcceleration(double accelerationG) {
-    // Ruta provisional hasta que conectemos deteccion real por altitud relativa.
-    _updateInertialJumpDetectionFromAcceleration(accelerationG);
-  }
-
-  void _updateBarometricJumpDetectionFromRotation(double rotationDegPerSec) {
-    // Ruta provisional hasta que conectemos perfil vertical barometrico real.
-    _updateInertialJumpDetectionFromRotation(rotationDegPerSec);
-  }
-
-  String _activeJumpDetectionMode() {
-    final deviceKind = _selectedDevice?.kind ?? 'Dispositivo Android';
-    return SessionInsightData.jumpDetectionModeForSensors(
-      _physicalSensorsForDeviceKind(deviceKind),
-    );
-  }
-
-  void _maybeStartJumpCandidate({
-    required DateTime now,
-    required double currentSpeedKnots,
-    double? accelerationG,
-    double? rotationDegPerSec,
-  }) {
-    if (_pendingJumpCandidate != null ||
-        currentSpeedKnots < _jumpMinTakeoffSpeedKnots) {
-      return;
-    }
-    if (_lastJumpRecordedAt != null &&
-        now.difference(_lastJumpRecordedAt!) < _jumpCooldown) {
-      return;
-    }
-
-    final hasAccelerationTrigger =
-        accelerationG != null && accelerationG >= _jumpMinManeuverG;
-    final hasRotationTrigger =
-        rotationDegPerSec != null &&
-        rotationDegPerSec >= _jumpMinManeuverRotationDegPerSec;
-    if (!hasAccelerationTrigger && !hasRotationTrigger) {
-      return;
-    }
-
-    _pendingJumpCandidate = _PendingJumpCandidate(
-      startedAt: now,
-      takeoffSpeedKnots: currentSpeedKnots,
-      maxManeuverG: accelerationG ?? 0,
-      maxRotationDegPerSec: rotationDegPerSec ?? 0,
-    );
-  }
-
-  void _expirePendingJumpIfNeeded(DateTime now) {
-    final candidate = _pendingJumpCandidate;
-    if (candidate == null) {
-      return;
-    }
-    if (now.difference(candidate.startedAt) > _jumpMaxAirTime) {
-      _pendingJumpCandidate = null;
-    }
+    _pendingJumpCandidate = result.pendingCandidate;
   }
 
   void _finalizeJumpCandidate({
@@ -1966,505 +1333,90 @@ class SessionsPageState extends State<SessionsPage> {
     required double landingG,
     required double landingSpeedKnots,
   }) {
-    final candidate = _pendingJumpCandidate;
-    final startedAt = _recordingStartedAt;
-    if (candidate == null || startedAt == null) {
-      _pendingJumpCandidate = null;
-      return;
-    }
-
-    final hangtime = landedAt.difference(candidate.startedAt);
-    final hangtimeSeconds = hangtime.inMilliseconds / 1000;
-    if (hangtimeSeconds < (_jumpMinAirTime.inMilliseconds / 1000)) {
-      _pendingJumpCandidate = null;
-      return;
-    }
-
-    const gravityMetersPerSecond2 = 9.80665;
-    final estimatedHeightMeters =
-        gravityMetersPerSecond2 *
-        hangtimeSeconds *
-        hangtimeSeconds /
-        8;
-    final estimatedFallSpeedMetersPerSecond =
-        gravityMetersPerSecond2 * hangtimeSeconds / 2;
-
-    _recordingJumpHistory.add(
-      SessionJumpRecord(
-        index: _recordingJumpHistory.length + 1,
-        heightMeters: estimatedHeightMeters,
-        hangtimeSeconds: hangtimeSeconds,
-        maneuverG: candidate.maxManeuverG > 0 ? candidate.maxManeuverG : null,
-        maneuverRotationDegPerSec: candidate.maxRotationDegPerSec > 0
-            ? candidate.maxRotationDegPerSec
-            : null,
-        fallSpeedMetersPerSecond: estimatedFallSpeedMetersPerSecond,
-        takeoffSpeedKnots: candidate.takeoffSpeedKnots,
-        landingSpeedKnots: landingSpeedKnots,
+    final result = StartSessionCaptureLogic.applyJumpFinalize(
+      SessionApplyJumpFinalizeInput(
+        pendingCandidate: _pendingJumpCandidate,
+        recordingStartedAt: _recordingStartedAt,
+        landedAt: landedAt,
         landingG: landingG,
-        recordedAt: candidate.startedAt.difference(startedAt),
+        landingSpeedKnots: landingSpeedKnots,
+        nextJumpIndex: _recordingJumpHistory.length + 1,
+        jumpMinAirTime: _jumpMinAirTime,
+        currentJumpHistory: _recordingJumpHistory,
       ),
     );
-    _lastJumpRecordedAt = landedAt;
-    _pendingJumpCandidate = null;
-  }
-
-  bool _canRegisterMotionEvent(DateTime? lastEventAt) {
-    if (lastEventAt == null) {
-      return true;
-    }
-    return DateTime.now().difference(lastEventAt) >= _motionEventCooldown;
+    _recordingJumpHistory
+      ..clear()
+      ..addAll(result.updatedJumpHistory);
+    _lastJumpRecordedAt = result.lastJumpRecordedAt;
+    _pendingJumpCandidate = result.pendingCandidate;
   }
 
   void _updateAutoPauseState({
     required Duration delta,
     required double speedKnots,
   }) {
-    if (_isAutoPaused) {
-      if (speedKnots >= _autoResumeSpeedKnots) {
-        _recordingResumeCandidateDuration += delta;
-        if (_recordingResumeCandidateDuration >= _autoResumeDelay) {
-          _isAutoPaused = false;
-          _recordingLowSpeedCandidateDuration = Duration.zero;
-          _recordingResumeCandidateDuration = Duration.zero;
-        }
-        return;
-      }
-      _recordingResumeCandidateDuration = Duration.zero;
-      _recordingAutoPausedDuration += delta;
-      return;
-    }
-
-    final hasLowSpeed = speedKnots <= _autoPauseSpeedKnots;
-    final hasNoRecentMotion = !_hasRecentMotionActivity(
-      window: _autoPauseDelay,
-    );
-    if (hasLowSpeed && hasNoRecentMotion) {
-      _recordingLowSpeedCandidateDuration += delta;
-      _recordingResumeCandidateDuration = Duration.zero;
-      if (_recordingLowSpeedCandidateDuration >= _autoPauseDelay) {
-        _isAutoPaused = true;
-        _recordingAutoPausedDuration += _recordingLowSpeedCandidateDuration;
-        _recordingLowSpeedCandidateDuration = Duration.zero;
-        _recordingAutoPauseCount += 1;
-      }
-      return;
-    }
-
-    _recordingLowSpeedCandidateDuration = Duration.zero;
-    _recordingResumeCandidateDuration = Duration.zero;
-  }
-
-  bool _hasRecentMotionActivity({required Duration window}) {
-    final now = DateTime.now();
-    final lastMotionAt = <DateTime?>[
-      _lastAccelerationEventAt,
-      _lastRotationEventAt,
-    ].whereType<DateTime>().fold<DateTime?>(
-      null,
-      (latest, value) => latest == null || value.isAfter(latest) ? value : latest,
-    );
-    if (lastMotionAt == null) {
-      return false;
-    }
-    return now.difference(lastMotionAt) < window;
-  }
-
-  bool _isUsableRecordingPosition(Position position) {
-    final accuracy = position.accuracy;
-    if (!accuracy.isFinite || accuracy <= 0) {
-      return false;
-    }
-    if (accuracy > _gpsSampleMaxAccuracyMeters) {
-      return false;
-    }
-    if (!position.latitude.isFinite || !position.longitude.isFinite) {
-      return false;
-    }
-    return true;
-  }
-
-  bool _isPlausibleTrackStep({
-    required _SessionLocationSample? previous,
-    required _SessionLocationSample current,
-  }) {
-    if (previous == null) {
-      return true;
-    }
-    final deltaMs = current.timestamp.difference(previous.timestamp).inMilliseconds;
-    if (deltaMs <= 0) {
-      return false;
-    }
-    final legMeters = Geolocator.distanceBetween(
-      previous.latitude,
-      previous.longitude,
-      current.latitude,
-      current.longitude,
-    );
-    if (!legMeters.isFinite || legMeters < 0) {
-      return false;
-    }
-    final metersPerSecond = legMeters / (deltaMs / 1000);
-    if (!metersPerSecond.isFinite) {
-      return false;
-    }
-    final knots = metersPerSecond * 1.943844;
-    return knots <= _gpsMaxPlausibleSpeedKnots;
-  }
-
-  double _resolveSpeedKnots(Position position) {
-    const metersPerSecondToKnots = 1.943844;
-    final raw = position.speed;
-    if (raw.isFinite && raw > 0) {
-      return raw * metersPerSecondToKnots;
-    }
-    if (_recordingSamples.isNotEmpty) {
-      final previous = _recordingSamples.last;
-      final now = position.timestamp;
-      final delta = now.difference(previous.timestamp);
-      if (delta.inMilliseconds > 0) {
-        final distance = Geolocator.distanceBetween(
-          previous.latitude,
-          previous.longitude,
-          position.latitude,
-          position.longitude,
-        );
-        final metersPerSecond = distance / (delta.inMilliseconds / 1000);
-        if (metersPerSecond.isFinite && metersPerSecond > 0) {
-          return metersPerSecond * metersPerSecondToKnots;
-        }
-      }
-    }
-    return 0;
-  }
-
-  double _computeNetDisplacementKm() {
-    if (_recordingSamples.length < 2) {
-      return 0;
-    }
-    final first = _recordingSamples.first;
-    final last = _recordingSamples.last;
-    return Geolocator.distanceBetween(
-          first.latitude,
-          first.longitude,
-          last.latitude,
-          last.longitude,
-        ) /
-        1000;
-  }
-
-  double _computeCoverageAreaKm2() {
-    if (_recordingSamples.length < 2) {
-      return 0;
-    }
-    var minLat = _recordingSamples.first.latitude;
-    var maxLat = _recordingSamples.first.latitude;
-    var minLon = _recordingSamples.first.longitude;
-    var maxLon = _recordingSamples.first.longitude;
-
-    for (final sample in _recordingSamples.skip(1)) {
-      minLat = math.min(minLat, sample.latitude);
-      maxLat = math.max(maxLat, sample.latitude);
-      minLon = math.min(minLon, sample.longitude);
-      maxLon = math.max(maxLon, sample.longitude);
-    }
-
-    final midLatRadians = ((minLat + maxLat) / 2) * math.pi / 180;
-    final latKm = (maxLat - minLat) * 111.32;
-    final lonKm = (maxLon - minLon) * 111.32 * math.cos(midLatRadians);
-    final area = latKm * lonKm;
-    return area.isFinite ? area.abs() : 0;
-  }
-
-  double _computeMaxDistanceFromStartKm() {
-    if (_recordingSamples.length < 2) {
-      return 0;
-    }
-    final first = _recordingSamples.first;
-    var maxDistanceMeters = 0.0;
-    for (final sample in _recordingSamples.skip(1)) {
-      final distanceMeters = Geolocator.distanceBetween(
-        first.latitude,
-        first.longitude,
-        sample.latitude,
-        sample.longitude,
-      );
-      if (!distanceMeters.isFinite || distanceMeters < 0) {
-        continue;
-      }
-      if (distanceMeters > maxDistanceMeters) {
-        maxDistanceMeters = distanceMeters;
-      }
-    }
-    return maxDistanceMeters / 1000;
-  }
-
-  Duration _computeTimeInRiskZone() {
-    if (_recordingSamples.length < 2) {
-      return Duration.zero;
-    }
-    const riskDistanceMeters = 500.0;
-    final first = _recordingSamples.first;
-    var total = Duration.zero;
-
-    for (var i = 1; i < _recordingSamples.length; i++) {
-      final previous = _recordingSamples[i - 1];
-      final current = _recordingSamples[i];
-      final distanceFromStartMeters = Geolocator.distanceBetween(
-        first.latitude,
-        first.longitude,
-        current.latitude,
-        current.longitude,
-      );
-      if (!distanceFromStartMeters.isFinite ||
-          distanceFromStartMeters < riskDistanceMeters) {
-        continue;
-      }
-      final delta = current.timestamp.difference(previous.timestamp);
-      if (delta.isNegative || delta.inMilliseconds <= 0) {
-        continue;
-      }
-      total += delta;
-    }
-
-    return total;
-  }
-
-  double _computeSweetspotPercent() {
-    if (_recordingSamples.isEmpty || _recordingMaxSpeedKnots <= 0) {
-      return 0;
-    }
-    final minSweetspot = _recordingMaxSpeedKnots * 0.7;
-    final maxSweetspot = _recordingMaxSpeedKnots * 0.9;
-    final matchingCount = _recordingSamples
-        .where(
-          (sample) =>
-              sample.speedKnots >= minSweetspot &&
-              sample.speedKnots <= maxSweetspot,
-        )
-        .length;
-    return (matchingCount / _recordingSamples.length) * 100;
-  }
-
-  double _computeDirectionalStabilityPercent() {
-    final bearings = <double>[];
-    for (var i = 1; i < _recordingSamples.length; i++) {
-      final previous = _recordingSamples[i - 1];
-      final current = _recordingSamples[i];
-      final distance = Geolocator.distanceBetween(
-        previous.latitude,
-        previous.longitude,
-        current.latitude,
-        current.longitude,
-      );
-      if (!distance.isFinite || distance < 3) {
-        continue;
-      }
-      bearings.add(
-        Geolocator.bearingBetween(
-          previous.latitude,
-          previous.longitude,
-          current.latitude,
-          current.longitude,
+    final evaluation = StartSessionCaptureLogic.evaluateAutoPause(
+      SessionAutoPauseEvaluationInput(
+        isAutoPaused: _isAutoPaused,
+        delta: delta,
+        speedKnots: speedKnots,
+        hasRecentMotionActivity: StartSessionCaptureLogic.hasRecentMotionActivity(
+          SessionRecentMotionActivityInput(
+            now: DateTime.now(),
+            lastAccelerationEventAt: _lastAccelerationEventAt,
+            lastRotationEventAt: _lastRotationEventAt,
+            window: _autoPauseDelay,
+          ),
         ),
-      );
-    }
-    if (bearings.length < 2) {
-      return 0;
-    }
-    var totalDelta = 0.0;
-    for (var i = 1; i < bearings.length; i++) {
-      final delta = (bearings[i] - bearings[i - 1]).abs();
-      totalDelta += math.min(delta, 360 - delta);
-    }
-    final averageDelta = totalDelta / (bearings.length - 1);
-    return (100 - (averageDelta / 180) * 100).clamp(0, 100);
-  }
-
-  double _computeRouteEfficiencyPercent() {
-    if (_recordingDistanceMeters <= 0) {
-      return 0;
-    }
-    final netDistanceMeters = _computeNetDisplacementKm() * 1000;
-    return ((netDistanceMeters / _recordingDistanceMeters) * 100).clamp(
-      0,
-      100,
+        lowSpeedCandidateDuration: _recordingLowSpeedCandidateDuration,
+        resumeCandidateDuration: _recordingResumeCandidateDuration,
+        autoPausedDuration: _recordingAutoPausedDuration,
+        autoPauseCount: _recordingAutoPauseCount,
+        autoPauseSpeedKnots: _autoPauseSpeedKnots,
+        autoResumeSpeedKnots: _autoResumeSpeedKnots,
+        autoPauseDelay: _autoPauseDelay,
+        autoResumeDelay: _autoResumeDelay,
+      ),
     );
-  }
-
-  double _computeAverageSampleIntervalSeconds() {
-    if (_recordingSamples.length < 2) {
-      return 0;
-    }
-    var totalSeconds = 0.0;
-    var segmentCount = 0;
-    for (var i = 1; i < _recordingSamples.length; i++) {
-      final delta = _recordingSamples[i].timestamp
-          .difference(_recordingSamples[i - 1].timestamp)
-          .inMilliseconds /
-          1000;
-      if (!delta.isFinite || delta <= 0) {
-        continue;
-      }
-      totalSeconds += delta;
-      segmentCount += 1;
-    }
-    if (segmentCount == 0) {
-      return 0;
-    }
-    return totalSeconds / segmentCount;
-  }
-
-  double _computeBoundedScore(List<double> components) {
-    final normalized = components
-        .where((value) => value.isFinite)
-        .map((value) => value.clamp(0, 100).toDouble())
-        .toList(growable: false);
-    if (normalized.isEmpty) {
-      return 0;
-    }
-    final total = normalized.reduce((a, b) => a + b);
-    return total / normalized.length;
-  }
-
-  _TrackTransitionSummary _analyzeTrackTransitions() {
-    if (_recordingSamples.length < 3) {
-      return const _TrackTransitionSummary.empty();
-    }
-
-    var transitionCount = 0;
-    var cleanCount = 0;
-    var totalSpeedLossKnots = 0.0;
-    var totalRecoverySeconds = 0.0;
-    var recoveryCount = 0;
-
-    for (var i = 1; i < _recordingSamples.length - 1; i++) {
-      final previous = _recordingSamples[i - 1];
-      final current = _recordingSamples[i];
-      final next = _recordingSamples[i + 1];
-
-      final previousDistance = Geolocator.distanceBetween(
-        previous.latitude,
-        previous.longitude,
-        current.latitude,
-        current.longitude,
-      );
-      final nextDistance = Geolocator.distanceBetween(
-        current.latitude,
-        current.longitude,
-        next.latitude,
-        next.longitude,
-      );
-      if (!previousDistance.isFinite ||
-          !nextDistance.isFinite ||
-          previousDistance < 3 ||
-          nextDistance < 3) {
-        continue;
-      }
-
-      final previousBearing = Geolocator.bearingBetween(
-        previous.latitude,
-        previous.longitude,
-        current.latitude,
-        current.longitude,
-      );
-      final nextBearing = Geolocator.bearingBetween(
-        current.latitude,
-        current.longitude,
-        next.latitude,
-        next.longitude,
-      );
-      final rawDelta = (nextBearing - previousBearing).abs();
-      final bearingDelta = math.min(rawDelta, 360 - rawDelta);
-      if (bearingDelta < 35 || bearingDelta > 170) {
-        continue;
-      }
-
-      final beforeSpeed = ((previous.speedKnots + current.speedKnots) / 2);
-      final afterSpeed = ((current.speedKnots + next.speedKnots) / 2);
-      if (beforeSpeed < _movingAverageMinSpeedKnots &&
-          afterSpeed < _movingAverageMinSpeedKnots) {
-        continue;
-      }
-
-      transitionCount += 1;
-      final speedLoss = math.max(0.0, beforeSpeed - afterSpeed);
-      totalSpeedLossKnots += speedLoss;
-
-      if (afterSpeed >= beforeSpeed * 0.7) {
-        cleanCount += 1;
-      }
-
-      final recoveryThreshold = math.max(_movingAverageMinSpeedKnots, beforeSpeed * 0.8);
-      for (var j = i + 1; j < _recordingSamples.length; j++) {
-        final recoverySample = _recordingSamples[j];
-        if (recoverySample.speedKnots < recoveryThreshold) {
-          continue;
-        }
-        final recoverySeconds = recoverySample.timestamp
-            .difference(current.timestamp)
-            .inMilliseconds /
-            1000;
-        if (recoverySeconds.isFinite && recoverySeconds >= 0) {
-          totalRecoverySeconds += recoverySeconds;
-          recoveryCount += 1;
-        }
-        break;
-      }
-    }
-
-    if (transitionCount == 0) {
-      return const _TrackTransitionSummary.empty();
-    }
-
-    return _TrackTransitionSummary(
-      count: transitionCount,
-      qualityPercent: (cleanCount / transitionCount) * 100,
-      avgSpeedLossKnots: totalSpeedLossKnots / transitionCount,
-      avgRecoverySeconds: recoveryCount == 0
-          ? 0
-          : totalRecoverySeconds / recoveryCount,
-    );
+    _isAutoPaused = evaluation.isAutoPaused;
+    _recordingLowSpeedCandidateDuration = evaluation.lowSpeedCandidateDuration;
+    _recordingResumeCandidateDuration = evaluation.resumeCandidateDuration;
+    _recordingAutoPausedDuration = evaluation.autoPausedDuration;
+    _recordingAutoPauseCount = evaluation.autoPauseCount;
   }
 
   Future<void> _stopRealSessionRecording() async {
-    _recordingTicker?.cancel();
-    await _positionSubscription?.cancel();
-    _positionSubscription = null;
-    await _userAccelerometerSubscription?.cancel();
-    _userAccelerometerSubscription = null;
-    await _gyroscopeSubscription?.cancel();
-    _gyroscopeSubscription = null;
-
-    final hasEnoughSamples = _hasEnoughRecordedTrackForSave();
-    if (!hasEnoughSamples) {
-      if (!mounted) {
-        return;
-      }
-      _resetRecordingState();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'No hemos podido registrar suficiente track GPS. Necesitamos 2 puntos validos, 1 minuto y 20 metros.',
-          ),
-        ),
-      );
-      return;
-    }
-
+    await _cancelCaptureStreams();
+    final decision = StartSessionPresentationMapper.resolveStopCaptureDecision(
+      hasEnoughRecordedTrackForSave: _hasEnoughRecordedTrackForSave(),
+    );
     if (!mounted) {
       return;
     }
-    setState(() {
-      _captureState = _SessionCaptureState.finished;
-    });
+
+    switch (decision.action) {
+      case SessionStopCaptureAction.discardAndReset:
+        _resetRecordingState();
+        if (decision.message != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(decision.message!)),
+          );
+        }
+        return;
+      case SessionStopCaptureAction.markFinished:
+        setState(() {
+          _captureState = _SessionCaptureState.finished;
+        });
+        return;
+    }
   }
 
   _RecordedSession _buildRecordedSessionFromCapture({
     required ({
       String spot,
       String notes,
-      _SessionMediaSelection mediaSelection,
+      SessionMediaSelection mediaSelection,
       String? sessionPhotoLocalPath,
       String? gearSetupId,
       String? gearSetupName,
@@ -2473,325 +1425,83 @@ class SessionsPageState extends State<SessionsPage> {
     required DateTime endedAt,
     required Duration duration,
   }) {
-    final title = 'Sesion en ${config.spot}';
+    final title = 'Sesión en ${config.spot}';
     final selectedDevice = _selectedDevice;
     final deviceName = selectedDevice?.name ?? 'Desconocido';
     final deviceKind = selectedDevice?.kind ?? 'Dispositivo Android';
-    final deviceSensorKeys = _physicalSensorsForDeviceKind(deviceKind)
-        .toList(growable: false);
+    final deviceSensorKeys = SessionInsightData.physicalSensorsForDeviceKind(
+      deviceKind,
+    ).toList(growable: false);
     final jumpDetectionMode = SessionInsightData.jumpDetectionModeForSensors(
       deviceSensorKeys,
     );
-    final distanceKm = _recordingDistanceMeters / 1000;
-    final avgSpeedKnots = _recordingSamples.isEmpty
-        ? 0.0
-        : _recordingSamples
-                  .map((sample) => sample.speedKnots)
-                  .reduce((a, b) => a + b) /
-              _recordingSamples.length;
-    final activeDuration = duration - _recordingAutoPausedDuration;
-    final movingSpeedSamples = _recordingSamples
-        .where((sample) => sample.speedKnots >= _movingAverageMinSpeedKnots)
-        .map((sample) => sample.speedKnots)
-        .toList(growable: false);
-    final movingAvgSpeedKnots = movingSpeedSamples.isEmpty
-        ? 0.0
-        : movingSpeedSamples.reduce((a, b) => a + b) / movingSpeedSamples.length;
-    final planingMinutes = _recordingMovingDuration.inMinutes > 0
-        ? _recordingMovingDuration.inMinutes
-        : null;
-    final pausedDuration = _recordingAutoPausedDuration;
-    final safeActiveDuration = activeDuration.isNegative
-        ? Duration.zero
-        : activeDuration;
-    final safePausedDuration = pausedDuration.isNegative
-        ? Duration.zero
-        : pausedDuration;
-    final timelineSamples = List<double>.from(_recordingTimelineKnots)
-      ..sort();
-    final speedP95Knots = timelineSamples.isEmpty
-        ? 0.0
-        : timelineSamples[((timelineSamples.length - 1) * 0.95).floor()];
-    final netDisplacementKm = _computeNetDisplacementKm();
-    final maxDistanceFromStartKm = _computeMaxDistanceFromStartKm();
-    final timeInRiskZone = _computeTimeInRiskZone();
-    final coverageAreaKm2 = _computeCoverageAreaKm2();
-    final sweetspotPercent = _computeSweetspotPercent();
-    final directionalStabilityPercent = _computeDirectionalStabilityPercent();
-    final routeEfficiencyPercent = _computeRouteEfficiencyPercent();
-    final transitionSummary = _analyzeTrackTransitions();
-    final rawPositionCount = _recordingRawPositionCount;
-    final rejectedCount =
-        _recordingRejectedAccuracyCount + _recordingRejectedPlausibilityCount;
-    final lostSamplesPercent = rawPositionCount <= 0
-        ? 0.0
-        : (rejectedCount / rawPositionCount) * 100;
-    final datasetHealthPercent = rawPositionCount <= 0
-        ? 0.0
-        : ((_recordingSamples.length / rawPositionCount) * 100)
-              .clamp(0, 100)
-              .toDouble();
-    final averageSampleIntervalSeconds = _computeAverageSampleIntervalSeconds();
-    final sessionScore = _computeBoundedScore([
-      datasetHealthPercent,
-      (100 - lostSamplesPercent).toDouble(),
-      sweetspotPercent,
-      routeEfficiencyPercent,
-      directionalStabilityPercent,
-    ]);
-    final freerideScore = _computeBoundedScore([
-      routeEfficiencyPercent,
-      sweetspotPercent,
-      directionalStabilityPercent,
-      timelineSamples.isEmpty
-          ? 0.0
-          : (10 - (timelineSamples.last - timelineSamples.first).clamp(0, 10)) *
-                10.0,
-    ]);
-    final safetyScore = _computeBoundedScore([
-      datasetHealthPercent,
-      _lastGpsAccuracyMeters == null
-          ? 0.0
-          : (100 - (_lastGpsAccuracyMeters!.clamp(0, 25) / 25) * 100)
-                .toDouble(),
-      math.max(
-        0.0,
-        100 -
-            ((duration.inSeconds <= 0
-                        ? 0.0
-                        : (_recordingAccelerationEventCount /
-                              (duration.inSeconds / 3600))) *
-                    18),
-      ),
-      math.max(0.0, 100 - (_recordingRotationEventCount * 10)),
-    ]);
-    final distancePlaningKm = movingAvgSpeedKnots > 0 && _recordingMovingDuration > Duration.zero
-        ? ((movingAvgSpeedKnots * 0.514444) *
-                  _recordingMovingDuration.inMilliseconds /
-                  1000) /
-              1000
-        : 0.0;
-    final transitionsCount = transitionSummary.count > 0
-        ? transitionSummary.count
-        : _recordingAccelerationEventCount + _recordingRotationEventCount;
-    final transitionsPerHour = duration.inSeconds <= 0
-        ? 0.0
-        : transitionsCount / (duration.inSeconds / 3600);
     final jumpHistory = List<SessionJumpRecord>.unmodifiable(
       _recordingJumpHistory,
     );
-    final jumpsCount = jumpHistory.length;
-    final maxJumpHeightMeters = jumpHistory.isEmpty
-        ? null
-        : jumpHistory
-            .map((jump) => jump.heightMeters)
-            .reduce(math.max);
-    final maxHangtimeSeconds = jumpHistory.isEmpty
-        ? null
-        : jumpHistory
-            .map((jump) => jump.hangtimeSeconds)
-            .reduce(math.max);
-    final avgJumpHeightMeters = jumpHistory.isEmpty
-        ? null
-        : jumpHistory
-                  .map((jump) => jump.heightMeters)
-                  .reduce((a, b) => a + b) /
-              jumpHistory.length;
-    final top5AverageJumpMeters = jumpHistory.isEmpty
-        ? null
-        : (List<SessionJumpRecord>.from(jumpHistory)
-                  ..sort((a, b) => b.heightMeters.compareTo(a.heightMeters)))
-                .take(5)
-                .map((jump) => jump.heightMeters)
-                .reduce((a, b) => a + b) /
-            math.min(5, jumpHistory.length);
-    final hangtimeP95Seconds = jumpHistory.isEmpty
-        ? null
-        : (() {
-            final values = jumpHistory
-                .map((jump) => jump.hangtimeSeconds)
-                .toList(growable: false)
-              ..sort();
-            return values[((values.length - 1) * 0.95).floor()];
-          })();
-    final takeoffSpeedKnots = jumpHistory
-        .map((jump) => jump.takeoffSpeedKnots)
-        .whereType<double>()
-        .toList(growable: false);
-    final landingSpeedKnots = jumpHistory
-        .map((jump) => jump.landingSpeedKnots)
-        .whereType<double>()
-        .toList(growable: false);
-    final landingGs = jumpHistory
-        .map((jump) => jump.landingG)
-        .toList(growable: false);
-    final cleanLandingRate = landingGs.isEmpty
-        ? null
-        : (landingGs.where((value) => value <= 2.4).length / landingGs.length) *
-              100;
-    final impactScore = landingGs.isEmpty
-        ? null
-        : landingGs.reduce((a, b) => a + b) / landingGs.length;
-    final jumpCadencePerHour = jumpsCount == 0 || duration.inSeconds <= 0
-        ? null
-        : jumpsCount / (duration.inSeconds / 3600);
-    final jumpHeights = jumpHistory
-        .map((jump) => jump.heightMeters)
-        .toList(growable: false);
-    final jumpHeightSpread = jumpHeights.length < 2
-        ? null
-        : jumpHeights.reduce(math.max) - jumpHeights.reduce(math.min);
-    final jumpHeightConsistency = jumpHeightSpread == null || avgJumpHeightMeters == null
-        ? null
-        : math.max(
-            0.0,
-            100 -
-                ((jumpHeightSpread /
-                            math.max(avgJumpHeightMeters, 0.1)) *
-                        100)
-                    .clamp(0, 100),
-          ).toDouble();
-    final averageTakeoffSpeedKnots = takeoffSpeedKnots.isEmpty
-        ? null
-        : takeoffSpeedKnots.reduce((a, b) => a + b) / takeoffSpeedKnots.length;
-    final jumpWindEfficiency = maxJumpHeightMeters == null ||
-            averageTakeoffSpeedKnots == null ||
-            averageTakeoffSpeedKnots <= 0
-        ? null
-        : (maxJumpHeightMeters / averageTakeoffSpeedKnots) * 10;
-    final jumpHeightDistribution = jumpHeights.isEmpty
-        ? null
-        : '${jumpHeights.where((value) => value < 3).length}/'
-            '${jumpHeights.where((value) => value >= 3 && value < 6).length}/'
-            '${jumpHeights.where((value) => value >= 6).length}';
-    final bigAirScore = jumpsCount == 0
-        ? null
-        : _computeBoundedScore([
-            maxJumpHeightMeters == null
-                ? 0
-                : (maxJumpHeightMeters * 12).clamp(0, 100).toDouble(),
-            maxHangtimeSeconds == null
-                ? 0
-                : (maxHangtimeSeconds * 20).clamp(0, 100).toDouble(),
-            cleanLandingRate ?? 0,
-            jumpHeightConsistency ?? 0,
-          ]);
-    final measuredValues = <String, String>{
-      'duracion_total': _formatDuration(duration),
-      'tiempo_activo': _formatDuration(safeActiveDuration),
-      'tiempo_parado': _formatDuration(safePausedDuration),
-      'ratio_activo_parado': safePausedDuration.inSeconds <= 0
-          ? '${safeActiveDuration.inMinutes}:0'
-          : '${(safeActiveDuration.inSeconds / safePausedDuration.inSeconds).toStringAsFixed(1)}:1',
-      'distancia_total': '${distanceKm.toStringAsFixed(2)} km',
-      'distancia_planeo': '${distancePlaningKm.toStringAsFixed(2)} km',
-      'velocidad_media': '${avgSpeedKnots.toStringAsFixed(1)} kt',
-      'velocidad_max': '${_recordingMaxSpeedKnots.toStringAsFixed(1)} kt',
-      'velocidad_p95': '${speedP95Knots.toStringAsFixed(1)} kt',
-      'transiciones': '$transitionsCount',
-      'transiciones_hora': transitionsPerHour.toStringAsFixed(1),
-      if (top5AverageJumpMeters != null)
-        'top5_saltos': '${top5AverageJumpMeters.toStringAsFixed(1)} m',
-      if (avgJumpHeightMeters != null)
-        'altura_media_saltos': '${avgJumpHeightMeters.toStringAsFixed(1)} m',
-      if (maxHangtimeSeconds != null)
-        'hangtime_max': '${maxHangtimeSeconds.toStringAsFixed(1)} s',
-      if (hangtimeP95Seconds != null)
-        'hangtime_p95': '${hangtimeP95Seconds.toStringAsFixed(1)} s',
-      if (jumpWindEfficiency != null)
-        'eficiencia_salto_viento': jumpWindEfficiency.toStringAsFixed(2),
-      if (jumpCadencePerHour != null)
-        'cadencia_saltos': '${jumpCadencePerHour.toStringAsFixed(1)}/h',
-      if (jumpHeightConsistency != null)
-        'consistencia_alturas':
-            '${jumpHeightConsistency.toStringAsFixed(0)}%',
-      'eficiencia_bordos': '${routeEfficiencyPercent.toStringAsFixed(0)}%',
-      'tiempo_sweetspot': '${sweetspotPercent.toStringAsFixed(0)}%',
-      'deriva_neta': '${netDisplacementKm.toStringAsFixed(2)} km',
-      'cobertura_area': '${coverageAreaKm2.toStringAsFixed(2)} km2',
-      if (maxJumpHeightMeters != null)
-        'salto_mas_alto': '${maxJumpHeightMeters.toStringAsFixed(1)} m',
-      if (maxJumpHeightMeters != null)
-        'distancia_salto_estimada':
-            '${(maxJumpHeightMeters * 4.5).toStringAsFixed(0)} m',
-      ...?jumpHeightDistribution == null
-          ? null
-          : <String, String>{
-              'distribucion_alturas': jumpHeightDistribution,
-            },
-      if (takeoffSpeedKnots.isNotEmpty)
-        'takeoff_speed':
-            '${(takeoffSpeedKnots.reduce((a, b) => a + b) / takeoffSpeedKnots.length).toStringAsFixed(1)} kt',
-      if (landingSpeedKnots.isNotEmpty)
-        'landing_speed':
-            '${(landingSpeedKnots.reduce((a, b) => a + b) / landingSpeedKnots.length).toStringAsFixed(1)} kt',
-      if (cleanLandingRate != null)
-        'clean_landing_rate': '${cleanLandingRate.toStringAsFixed(0)}%',
-      if (impactScore != null)
-        'impact_score': '${impactScore.toStringAsFixed(1)} G',
-      'variabilidad_velocidad': timelineSamples.length >= 2
-          ? '${(timelineSamples.last - timelineSamples.first).toStringAsFixed(1)} kt'
-          : '0.0 kt',
-      'estabilidad_direccional': '${directionalStabilityPercent.toStringAsFixed(0)}%',
-      'calidad_jibe': transitionSummary.count > 0
-          ? '${transitionSummary.qualityPercent.toStringAsFixed(0)}%'
-          : '0%',
-      'perdida_vel_transiciones': transitionSummary.avgSpeedLossKnots > 0
-          ? '${transitionSummary.avgSpeedLossKnots.toStringAsFixed(1)} kt'
-          : '0.0 kt',
-      'recuperacion_planeo': transitionSummary.avgRecoverySeconds > 0
-          ? '${transitionSummary.avgRecoverySeconds.toStringAsFixed(1)} s'
-          : '0.0 s',
-      'smoothness_score': timelineSamples.length >= 2
-          ? '${(10 - (timelineSamples.last - timelineSamples.first).clamp(0, 10) / 2).toStringAsFixed(1)}/10'
-          : '10.0/10',
-      'caidas_hora': duration.inSeconds <= 0
-          ? '0.0'
-          : (_recordingAccelerationEventCount / (duration.inSeconds / 3600))
-                .toStringAsFixed(1),
-      'eventos_sobrepotencia': '$_recordingRotationEventCount',
-      'distancia_max_costa': '${maxDistanceFromStartKm.toStringAsFixed(2)} km',
-      'tiempo_zona_riesgo': _formatDuration(timeInRiskZone),
-      'calidad_gps': _lastGpsAccuracyMeters == null
-          ? '--'
-          : '${_lastGpsAccuracyMeters!.toStringAsFixed(1)} m',
-      'samples_perdidos': '${lostSamplesPercent.toStringAsFixed(0)}%',
-      'latencia_sync': averageSampleIntervalSeconds > 0
-          ? '${averageSampleIntervalSeconds.toStringAsFixed(1)} s'
-          : '--',
-      'health_dataset': '${datasetHealthPercent.toStringAsFixed(0)}%',
-      'session_score': '${sessionScore.toStringAsFixed(0)}/100',
-      if (bigAirScore != null)
-        'big_air_score': '${bigAirScore.toStringAsFixed(0)}/100',
-      'freeride_score': '${freerideScore.toStringAsFixed(0)}/100',
-      'safety_score': '${safetyScore.toStringAsFixed(0)}/100',
-    };
-    final insights = SessionInsightData(
-      deviceKind: deviceKind,
-      deviceSensorKeys: deviceSensorKeys,
-      jumpDetectionMode: jumpDetectionMode,
-      distanceKm: distanceKm > 0 ? distanceKm : null,
-      maxSpeedKnots: _recordingMaxSpeedKnots > 0 ? _recordingMaxSpeedKnots : null,
-      avgSpeedKnots: avgSpeedKnots > 0 ? avgSpeedKnots : null,
-      movingAvgSpeedKnots: movingAvgSpeedKnots > 0 ? movingAvgSpeedKnots : null,
-      planingMinutes: planingMinutes,
-      recordedPointCount: _recordingSamples.length,
-      autoPauseCount: _recordingAutoPauseCount,
-      accelerationEventCount: _recordingAccelerationEventCount,
-      rotationEventCount: _recordingRotationEventCount,
-      maxAccelerationG: null,
-      maxRotationDegPerSec: _recordingMaxRotationDegPerSec > 0
-          ? _recordingMaxRotationDegPerSec
-          : null,
-      batteryStart: null,
-      batteryEnd: null,
-      jumpsCount: jumpsCount > 0 ? jumpsCount : null,
-      maxJumpHeightMeters: maxJumpHeightMeters,
-      maxHangtimeSeconds: maxHangtimeSeconds,
-      jumpHistory: jumpHistory,
-      timelineKnots: List<double>.unmodifiable(_recordingTimelineKnots),
-      routePoints: List<SessionTrackPoint>.unmodifiable(
-        _recordingSamples
+    final metricsSummary = StartSessionRecordedSessionBuilder.buildMetricsSummary(
+      SessionRecordedMetricsSummaryInput(
+        samples: _recordingSamples,
+        timelineKnots: _recordingTimelineKnots,
+        jumpHistory: jumpHistory,
+        duration: duration,
+        autoPausedDuration: _recordingAutoPausedDuration,
+        movingDuration: _recordingMovingDuration,
+        recordingDistanceMeters: _recordingDistanceMeters,
+        recordingMaxSpeedKnots: _recordingMaxSpeedKnots,
+        rawPositionCount: _recordingRawPositionCount,
+        rejectedAccuracyCount: _recordingRejectedAccuracyCount,
+        rejectedPlausibilityCount: _recordingRejectedPlausibilityCount,
+        lastGpsAccuracyMeters: _lastGpsAccuracyMeters,
+        accelerationEventCount: _recordingAccelerationEventCount,
+        rotationEventCount: _recordingRotationEventCount,
+        autoPauseCount: _recordingAutoPauseCount,
+        movingAverageMinSpeedKnots: _movingAverageMinSpeedKnots,
+      ),
+    );
+    return StartSessionRecordedSessionBuilder.build(
+      RecordedSessionBuilderInput(
+        id: _newSessionId(),
+        title: title,
+        deviceName: deviceName,
+        deviceKind: deviceKind,
+        deviceSensorKeys: deviceSensorKeys,
+        jumpDetectionMode: jumpDetectionMode,
+        endedAt: endedAt,
+        duration: duration,
+        config: StartSessionSaveConfigData(
+          spot: config.spot,
+          notes: config.notes,
+          sessionMediaLabel: StartSessionMediaLogic.labelForSelection(
+            config.mediaSelection,
+          ),
+          sessionPhotoLocalPath: config.sessionPhotoLocalPath,
+          gearSetupId: config.gearSetupId,
+          gearSetupName: config.gearSetupName,
+        ),
+        distanceKm: metricsSummary.distanceKm > 0 ? metricsSummary.distanceKm : null,
+        maxSpeedKnots: _recordingMaxSpeedKnots > 0
+            ? _recordingMaxSpeedKnots
+            : null,
+        avgSpeedKnots: metricsSummary.avgSpeedKnots > 0
+            ? metricsSummary.avgSpeedKnots
+            : null,
+        movingAvgSpeedKnots: metricsSummary.movingAvgSpeedKnots > 0
+            ? metricsSummary.movingAvgSpeedKnots
+            : null,
+        planingMinutes: metricsSummary.planingMinutes,
+        recordedPointCount: _recordingSamples.length,
+        autoPauseCount: _recordingAutoPauseCount,
+        accelerationEventCount: _recordingAccelerationEventCount,
+        rotationEventCount: _recordingRotationEventCount,
+        maxRotationDegPerSec: _recordingMaxRotationDegPerSec > 0
+            ? _recordingMaxRotationDegPerSec
+            : null,
+        jumpsCount: metricsSummary.jumpsCount > 0 ? metricsSummary.jumpsCount : null,
+        maxJumpHeightMeters: metricsSummary.maxJumpHeightMeters,
+        maxHangtimeSeconds: metricsSummary.maxHangtimeSeconds,
+        jumpHistory: jumpHistory,
+        timelineKnots: List<double>.from(_recordingTimelineKnots),
+        routePoints: _recordingSamples
             .map(
               (sample) => SessionTrackPoint(
                 latitude: sample.latitude,
@@ -2801,64 +1511,11 @@ class SessionsPageState extends State<SessionsPage> {
               ),
             )
             .toList(growable: false),
-      ),
-      events: _buildDetectedEvents(
-        pointCount: _recordingSamples.length,
-        maxSpeedKnots: _recordingMaxSpeedKnots,
-      ),
-      groups: SessionInsightData.buildGroupsForRecordedSession(
-        values: measuredValues,
+        eventPointCount: _recordingSamples.length,
+        eventMaxSpeedKnots: _recordingMaxSpeedKnots,
+        measuredValues: metricsSummary.measuredValues,
       ),
     );
-
-    return _RecordedSession(
-      id: _newSessionId(),
-      title: title,
-      deviceName: deviceName,
-      endedAt: endedAt,
-      duration: duration,
-      summary: config.notes.isEmpty
-          ? 'Sesion real grabada con el telefono.'
-          : config.notes,
-      gearSetupId: config.gearSetupId,
-      gearSetupName: config.gearSetupName,
-      hasSessionPhoto: config.sessionPhotoLocalPath != null,
-      sessionMediaLabel: switch (config.mediaSelection) {
-        _SessionMediaSelection.none => 'Pantallazo del mapa del spot',
-        _SessionMediaSelection.camera => 'Foto tomada con camara',
-        _SessionMediaSelection.gallery => 'Foto elegida de galeria',
-      },
-      sessionPhotoLocalPath: config.sessionPhotoLocalPath,
-      spotName: config.spot,
-      insights: insights,
-    );
-  }
-
-  List<String> _buildDetectedEvents({
-    required int pointCount,
-    required double maxSpeedKnots,
-  }) {
-    final events = <String>[
-      'Sesion real grabada con el GPS del telefono',
-      'Track validado con $pointCount puntos GPS',
-    ];
-    if (_recordingAutoPauseCount > 0) {
-      events.add('$_recordingAutoPauseCount auto-pausas detectadas');
-    }
-    if (_recordingAccelerationEventCount > 0) {
-      events.add(
-        '$_recordingAccelerationEventCount aceleraciones bruscas detectadas',
-      );
-    }
-    if (_recordingRotationEventCount > 0) {
-      events.add('$_recordingRotationEventCount giros bruscos detectados');
-    }
-    if (maxSpeedKnots > 0) {
-      events.add(
-        'Punta maxima registrada: ${maxSpeedKnots.toStringAsFixed(1)} kt',
-      );
-    }
-    return events;
   }
 
   List<_RecordedSession> _filteredSessions() {
@@ -2908,6 +1565,252 @@ class SessionsPageState extends State<SessionsPage> {
     return '${knots.toStringAsFixed(1)} kt';
   }
 
+  MySessionCardData _buildMySessionCardData(_RecordedSession session) {
+    final insights = _sessionInsightsForDetail(session);
+    return MySessionsPresentationMapper.buildCardData(
+      title: session.title,
+      endedAt: session.endedAt,
+      summary: session.summary,
+      deviceName: session.deviceName,
+      insights: insights,
+      gearSetupName: session.gearSetupName,
+      localPhotoPath: session.sessionPhotoLocalPath,
+      defaultSessionSummary: _defaultSessionSummary,
+      durationLabel: _formatDuration(session.duration),
+      jumpLabel: _optionalLabel(
+        _formatJumpHeight(insights.maxJumpHeightMeters),
+      ),
+      hangtimeLabel: _optionalLabel(
+        _formatHangtime(insights.maxHangtimeSeconds),
+      ),
+      maxSpeedLabel: _optionalLabel(_formatSpeedKnots(insights.maxSpeedKnots)),
+    );
+  }
+
+  SessionSelectedDeviceCard? _buildSelectedDeviceCard() {
+    final selectedDevice = _selectedDevice;
+    if (selectedDevice == null) {
+      return null;
+    }
+    final statusLabel = _autoDetectedDeviceStatus(selectedDevice);
+    return SessionSelectedDeviceCard(
+      data: StartSessionPresentationMapper.buildSelectedDeviceCardData(
+        selectedDevice: selectedDevice,
+        capabilitiesIcon: _capabilitiesActionIcon(selectedDevice.kind),
+        statusLabel: statusLabel,
+        statusColor: _statusChipColor(statusLabel),
+        availabilityLabel: _deviceAvailabilityLabel(selectedDevice),
+        sensorCountLabel: _selectedDeviceSensorCountLabel(),
+        isPhoneDeviceSelected: selectedDevice.id == _phoneDeviceId,
+      ),
+      onCapabilitiesPressed: _showDeviceCapabilitiesDialog,
+      onSyncPressed: _syncSessionFromDevice,
+    );
+  }
+
+  SessionSyncedPendingCard? _buildSyncedPendingCard() {
+    if (_selectedDeviceId == null ||
+        _syncedPendingDeviceId != _selectedDeviceId ||
+        _syncedPendingSessions.isEmpty) {
+      return null;
+    }
+    return SessionSyncedPendingCard(
+      sessions: _syncedPendingSessions
+          .map(
+            (session) => SessionSyncedPendingItemData(
+              id: '${session.fileName}-${session.endedAt.toIso8601String()}',
+              title: session.title,
+              subtitle:
+                  '${session.duration.inMinutes} min · ${_formatSessionDateTime(session.endedAt)}',
+            ),
+          )
+          .toList(growable: false),
+      onConfigure: (sessionId) {
+        final session = _syncedPendingSessions
+            .where(
+              (item) =>
+                  '${item.fileName}-${item.endedAt.toIso8601String()}' ==
+                  sessionId,
+            )
+            .firstOrNull;
+        if (session == null) {
+          return;
+        }
+        _configureSyncedSession(session);
+      },
+      onDelete: (sessionId) {
+        final session = _syncedPendingSessions
+            .where(
+              (item) =>
+                  '${item.fileName}-${item.endedAt.toIso8601String()}' ==
+                  sessionId,
+            )
+            .firstOrNull;
+        if (session == null) {
+          return;
+        }
+        _removeSyncedPendingSession(session);
+      },
+    );
+  }
+
+  SessionCaptureStatusCard _buildSessionCaptureStatusCard(BuildContext context) {
+    final captureInput = _buildSessionCapturePresentationInput();
+    final data = StartSessionPresentationMapper.buildCaptureStatusCardData(
+      input: captureInput,
+      colorScheme: Theme.of(context).colorScheme,
+    );
+    return SessionCaptureStatusCard(
+      data: data,
+      onActionPressed: _onSessionControlPressed,
+    );
+  }
+
+  Widget _buildStartSessionSection(BuildContext context, TextTheme textTheme) {
+    final captureInput = _buildSessionCapturePresentationInput();
+    return StartSessionPage(
+      data: StartSessionPresentationMapper.pageData,
+      descriptionTextStyle: textTheme.bodyMedium,
+      panel: SessionStartPanel(
+        data: StartSessionPresentationMapper.buildPanelData(
+          captureStatusText:
+              StartSessionPresentationMapper.buildCaptureStatusText(
+                captureInput,
+              ),
+          importHintText: _lastImportHint,
+        ),
+        devices: StartSessionPresentationMapper.buildDeviceSelectorItems(
+          devices: _devicesForDisplay(),
+        ),
+        selectedDeviceId: _selectedDeviceId,
+        onDeviceChanged: (value) {
+          setState(() {
+            _selectedDeviceId = value;
+            _lastImportHint = null;
+            _syncedPendingSessions.clear();
+            _syncedPendingDeviceId = null;
+          });
+          _saveSelectedDeviceId();
+        },
+        selectedDeviceCard: _buildSelectedDeviceCard(),
+        syncedPendingCard: _buildSyncedPendingCard(),
+        captureStatusCard: _buildSessionCaptureStatusCard(context),
+        onImportPressed: _importSessionFile,
+      ),
+    );
+  }
+
+  Future<void> _openMySessionDetail(
+    BuildContext context,
+    _RecordedSession session,
+    List<String> gearDetailLines,
+  ) async {
+    final action = await Navigator.of(context).push<SessionDetailAction>(
+      MaterialPageRoute(
+        builder: (_) => SessionDetailPage(
+          title: session.title,
+          deviceName: session.deviceName,
+          deviceKind:
+              _sessionInsightsForDetail(session).deviceKind ??
+              'Dispositivo Android',
+          deviceSensorKeys: _sessionInsightsForDetail(session).deviceSensorKeys,
+          endedAt: session.endedAt,
+          durationLabel: _formatDuration(session.duration),
+          summary: session.summary,
+          source: SessionDetailSource.mySessions,
+          gearSetupName: session.gearSetupName,
+          gearSetupDetailLines: gearDetailLines,
+          hasSessionPhoto: session.hasSessionPhoto,
+          sessionMediaLabel: session.sessionMediaLabel,
+          sessionPhotoLocalPath: session.sessionPhotoLocalPath,
+          spotBackgroundImagePath: _spotBackgroundForSession(session),
+          insights: _sessionInsightsForDetail(session),
+        ),
+      ),
+    );
+
+    if (!mounted || action == null) {
+      return;
+    }
+
+    if (action.type == SessionDetailActionType.delete) {
+      await _confirmAndDeleteSession(session.id);
+      return;
+    }
+
+    await _openEditSessionDialog(session.id);
+  }
+
+  Widget _buildMySessionCard(BuildContext context, _RecordedSession session) {
+    final gearSnapshot = _loadProfileGearSnapshot();
+    final cardData = _buildMySessionCardData(session);
+    final setup = SessionGearMapper.findGearSetup(gearSnapshot, session);
+    final gearDetailLines = setup == null
+        ? const <String>[]
+        : SessionGearMapper.buildGearSetupDetailLines(
+            kite: gearSnapshot.kitesById[setup.kiteId],
+            board: gearSnapshot.boardsById[setup.boardId],
+            bar: setup.barId == null ? null : gearSnapshot.barsById[setup.barId!],
+            harness: setup.harnessId == null
+                ? null
+                : gearSnapshot.harnessesById[setup.harnessId!],
+            wetsuit: setup.wetsuitId == null
+                ? null
+                : gearSnapshot.wetsuitsById[setup.wetsuitId!],
+            helmet: setup.helmetId == null
+                ? null
+                : gearSnapshot.helmetsById[setup.helmetId!],
+            vest: setup.vestId == null ? null : gearSnapshot.vestsById[setup.vestId!],
+          );
+    return MySessionCard(
+      data: cardData,
+      onDevicePressed: () {
+        final detailInsights = _sessionInsightsForDetail(session);
+        SessionDeviceDialog.show(
+          context,
+          deviceName: session.deviceName,
+          deviceKind: detailInsights.deviceKind ?? 'Dispositivo Android',
+          deviceSensorKeys: detailInsights.deviceSensorKeys,
+        );
+      },
+      onGearPressed: () {
+        final gearSetupName = session.gearSetupName;
+        if (gearSetupName == null || gearSetupName.isEmpty) {
+          return;
+        }
+        SessionGearDialog.show(
+          context,
+          gearSetupName: gearSetupName,
+          gearSetupDetailLines: gearDetailLines,
+        );
+      },
+      onTap: () => _openMySessionDetail(context, session, gearDetailLines),
+    );
+  }
+
+  Widget _buildMySessionsSection(TextTheme textTheme) {
+    final filteredSessions = _filteredSessions();
+    final sessionCards = filteredSessions
+        .map((session) => Builder(builder: (context) => _buildMySessionCard(context, session)))
+        .toList(growable: false);
+    return MySessionsPage(
+      searchController: _sessionSearchController,
+      data: MySessionsPresentationMapper.buildPageData(
+        hasActiveSearch: _sessionSearchController.text.trim().isNotEmpty,
+        hasSessions: filteredSessions.isNotEmpty,
+      ),
+      onSearchChanged: (_) {
+        setState(() {});
+      },
+      onClearSearchPressed: () {
+        _sessionSearchController.clear();
+        setState(() {});
+      },
+      sessionCards: sessionCards,
+      emptyStateTextStyle: textTheme.bodyMedium,
+    );
+  }
+
   String? _optionalLabel(String label) {
     if (label == '--') {
       return null;
@@ -2915,39 +1818,43 @@ class SessionsPageState extends State<SessionsPage> {
     return label;
   }
 
-  int _captureStepIndex() {
-    switch (_captureState) {
-      case _SessionCaptureState.ready:
-        return 0;
-      case _SessionCaptureState.recording:
-        return 1;
-      case _SessionCaptureState.finished:
-        return 2;
-      case _SessionCaptureState.syncing:
-        return 3;
-      case _SessionCaptureState.synced:
-        return 4;
-    }
+  SessionCapturePresentationInput _buildSessionCapturePresentationInput() {
+    final remainingAutoPause = _autoPauseDelay - _recordingLowSpeedCandidateDuration;
+    final autoPauseRemainingSeconds = remainingAutoPause.inSeconds.clamp(
+      0,
+      _autoPauseDelay.inSeconds,
+    );
+    final phase = switch (_captureState) {
+      _SessionCaptureState.ready => SessionCapturePhase.ready,
+      _SessionCaptureState.recording => SessionCapturePhase.recording,
+      _SessionCaptureState.finished => SessionCapturePhase.finished,
+      _SessionCaptureState.syncing => SessionCapturePhase.syncing,
+      _SessionCaptureState.synced => SessionCapturePhase.synced,
+    };
+    return SessionCapturePresentationInput(
+      phase: phase,
+      hasSelectedDevice: _selectedDevice != null,
+      isPhoneDeviceSelected: _selectedDevice?.id == _phoneDeviceId,
+      isAutoPaused: _isAutoPaused,
+      isAutoPausePending: _isAutoPausePending(),
+      autoPauseRemainingSeconds: autoPauseRemainingSeconds,
+      elapsedLabel: _recordingElapsedText(),
+      currentSpeedLabel: _recordingCurrentSpeedText(),
+      maxSpeedLabel: _recordingMaxSpeedText(),
+      activeLabel: _recordingActiveText(),
+      pausedLabel: _recordingPausedText(),
+      lastGpsAccuracyMeters: _lastGpsAccuracyMeters,
+      hasEnoughRecordedTrackForSave: _hasEnoughRecordedTrackForSave(),
+      saveReadinessSatisfiedRuleCount: _saveReadinessSatisfiedRuleCount(),
+    );
   }
 
-  Future<String?> _pickSessionMedia(_SessionMediaSelection selection) async {
-    if (selection == _SessionMediaSelection.none) {
-      return null;
-    }
-
+  Future<String?> _pickSessionMedia(SessionMediaSelection selection) async {
     try {
-      final picked = await _imagePicker.pickImage(
-        source: selection == _SessionMediaSelection.camera
-            ? ImageSource.camera
-            : ImageSource.gallery,
-        imageQuality: 88,
+      return await StartSessionMediaLogic.pickAndStoreSessionMedia(
+        selection,
+        imagePicker: _imagePicker,
       );
-
-      if (picked == null) {
-        return null;
-      }
-
-      return _storeSessionMedia(picked);
     } on MissingPluginException {
       if (!mounted) {
         return null;
@@ -2955,7 +1862,7 @@ class SessionsPageState extends State<SessionsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Seleccion de imagen no disponible en esta plataforma.',
+            'Selección de imagen no disponible en esta plataforma.',
           ),
         ),
       );
@@ -2971,31 +1878,11 @@ class SessionsPageState extends State<SessionsPage> {
     }
   }
 
-  Future<String> _storeSessionMedia(XFile file) async {
-    final appDir = await getApplicationDocumentsDirectory();
-    final mediaDir = Directory(
-      '${appDir.path}${Platform.pathSeparator}session_media',
-    );
-    if (!await mediaDir.exists()) {
-      await mediaDir.create(recursive: true);
-    }
-
-    final dot = file.path.lastIndexOf('.');
-    final extension = (dot < 0 || dot == file.path.length - 1)
-        ? ''
-        : file.path.substring(dot);
-    final output = File(
-      '${mediaDir.path}${Platform.pathSeparator}session_${DateTime.now().millisecondsSinceEpoch}$extension',
-    );
-    await output.writeAsBytes(await file.readAsBytes(), flush: true);
-    return output.path;
-  }
-
   Future<
     ({
       String spot,
       String notes,
-      _SessionMediaSelection mediaSelection,
+      SessionMediaSelection mediaSelection,
       String? sessionPhotoLocalPath,
       String? gearSetupId,
       String? gearSetupName,
@@ -3013,7 +1900,7 @@ class SessionsPageState extends State<SessionsPage> {
         ? _lastUsedUploadSpot
         : uploadSpotOptions.first;
     String notes = '';
-    _SessionMediaSelection mediaSelection = _SessionMediaSelection.none;
+    SessionMediaSelection mediaSelection = SessionMediaSelection.none;
     String? sessionPhotoLocalPath;
     final gearSnapshot = _loadProfileGearSnapshot();
     final gearSetups = gearSnapshot.setups;
@@ -3028,466 +1915,49 @@ class SessionsPageState extends State<SessionsPage> {
       return null;
     }
 
-    final result =
-        await showDialog<
-          ({
-            String spot,
-            String notes,
-            _SessionMediaSelection mediaSelection,
-            String? sessionPhotoLocalPath,
-            String? gearSetupId,
-            String? gearSetupName,
-          })
-        >(
-          context: context,
-          builder: (context) {
-            return StatefulBuilder(
-              builder: (context, setDialogState) {
-                return AlertDialog(
-                  title: const Text('Configurar sesion'),
-                  content: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        DropdownButtonFormField<String>(
-                          key: ValueKey(
-                            'upload-spot-$spot-${uploadSpotOptions.length}',
-                          ),
-                          initialValue: spot,
-                          isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Spot',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: uploadSpotOptions
-                              .map(
-                                (option) => DropdownMenuItem(
-                                  value: option,
-                                  child: Text(option),
-                                ),
-                              )
-                              .toList(growable: false),
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setDialogState(() {
-                              spot = value;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        TextField(
-                          minLines: 2,
-                          maxLines: 3,
-                          decoration: const InputDecoration(
-                            labelText: 'Resumen de sesion (opcional)',
-                            border: OutlineInputBorder(),
-                          ),
-                          onChanged: (value) {
-                            notes = value;
-                          },
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        DropdownButtonFormField<String>(
-                          key: ValueKey(
-                            'upload-gear-$selectedGearSetupId-${gearSetups.length}',
-                          ),
-                          initialValue: selectedGearSetupId,
-                          isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Equipo utilizado (opcional)',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: [
-                            const DropdownMenuItem<String>(
-                              value: noGearValue,
-                              child: Text('Sin equipacion'),
-                            ),
-                            ...gearSetups.map(
-                              (setup) => DropdownMenuItem<String>(
-                                value: setup.id,
-                                child: Text(setup.name),
-                              ),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            if (value == null) {
-                              return;
-                            }
-                            setDialogState(() {
-                              selectedGearSetupId = value;
-                            });
-                          },
-                        ),
-                        if (selectedGearSetupId != noGearValue) ...[
-                          const SizedBox(height: AppSpacing.xs),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(AppSpacing.sm),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainerHighest,
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.checkroom_rounded, size: 18),
-                                const SizedBox(width: AppSpacing.xs),
-                                Expanded(
-                                  child: Text(
-                                    gearSetups
-                                            .where(
-                                              (setup) =>
-                                                  setup.id ==
-                                                  selectedGearSetupId,
-                                            )
-                                            .map((setup) => setup.name)
-                                            .firstOrNull ??
-                                        'Equipacion seleccionada',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Builder(
-                            builder: (context) {
-                              final selectedSetup = gearSetups
-                                  .where(
-                                    (setup) => setup.id == selectedGearSetupId,
-                                  )
-                                  .firstOrNull;
-                              if (selectedSetup == null) {
-                                return const SizedBox.shrink();
-                              }
-
-                              final kite =
-                                  gearSnapshot.kitesById[selectedSetup.kiteId];
-                              final board = gearSnapshot
-                                  .boardsById[selectedSetup.boardId];
-                              final bar = selectedSetup.barId == null
-                                  ? null
-                                  : gearSnapshot.barsById[selectedSetup.barId!];
-                              final harness = selectedSetup.harnessId == null
-                                  ? null
-                                  : gearSnapshot.harnessesById[selectedSetup
-                                        .harnessId!];
-                              final wetsuit = selectedSetup.wetsuitId == null
-                                  ? null
-                                  : gearSnapshot.wetsuitsById[selectedSetup
-                                        .wetsuitId!];
-                              final helmet = selectedSetup.helmetId == null
-                                  ? null
-                                  : gearSnapshot.helmetsById[selectedSetup
-                                        .helmetId!];
-                              final vest = selectedSetup.vestId == null
-                                  ? null
-                                  : gearSnapshot.vestsById[selectedSetup
-                                        .vestId!];
-                              final detailLines = _buildGearSetupDetailLines(
-                                kite: kite,
-                                board: board,
-                                bar: bar,
-                                harness: harness,
-                                wetsuit: wetsuit,
-                                helmet: helmet,
-                                vest: vest,
-                              );
-
-                              if (detailLines.isEmpty) {
-                                return const SizedBox.shrink();
-                              }
-
-                              return Padding(
-                                padding: const EdgeInsets.only(
-                                  top: AppSpacing.xs,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: detailLines
-                                      .map(
-                                        (line) => Text(
-                                          line,
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.bodySmall,
-                                        ),
-                                      )
-                                      .toList(growable: false),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                        if (gearSetups.isEmpty) ...[
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            'No hay equipaciones personalizadas en Perfil > Mi equipo.',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                        const SizedBox(height: AppSpacing.sm),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(AppSpacing.sm),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainerHighest,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Imagen de sesion'),
-                              const SizedBox(height: AppSpacing.xs),
-                              Wrap(
-                                spacing: AppSpacing.xs,
-                                runSpacing: AppSpacing.xs,
-                                children: [
-                                  ChoiceChip(
-                                    label: const Text('Hacer foto'),
-                                    selected:
-                                        mediaSelection ==
-                                        _SessionMediaSelection.camera,
-                                    onSelected: (_) async {
-                                      final pickedPath =
-                                          await _pickSessionMedia(
-                                            _SessionMediaSelection.camera,
-                                          );
-                                      if (!context.mounted ||
-                                          pickedPath == null) {
-                                        return;
-                                      }
-                                      setDialogState(() {
-                                        mediaSelection =
-                                            _SessionMediaSelection.camera;
-                                        sessionPhotoLocalPath = pickedPath;
-                                      });
-                                    },
-                                  ),
-                                  ChoiceChip(
-                                    label: const Text('Galeria'),
-                                    selected:
-                                        mediaSelection ==
-                                        _SessionMediaSelection.gallery,
-                                    onSelected: (_) async {
-                                      final pickedPath =
-                                          await _pickSessionMedia(
-                                            _SessionMediaSelection.gallery,
-                                          );
-                                      if (!context.mounted ||
-                                          pickedPath == null) {
-                                        return;
-                                      }
-                                      setDialogState(() {
-                                        mediaSelection =
-                                            _SessionMediaSelection.gallery;
-                                        sessionPhotoLocalPath = pickedPath;
-                                      });
-                                    },
-                                  ),
-                                ],
-                              ),
-                              if (sessionPhotoLocalPath != null) ...[
-                                const SizedBox(height: AppSpacing.xs),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: SizedBox(
-                                    width: double.infinity,
-                                    height: 120,
-                                    child: Image.file(
-                                      File(sessionPhotoLocalPath!),
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return Container(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.surfaceContainerHighest,
-                                          alignment: Alignment.center,
-                                          child: const Text(
-                                            'No se pudo cargar la foto seleccionada.',
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: AppSpacing.xs),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.check_circle_rounded,
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: AppSpacing.xs),
-                                    Text(
-                                      'Foto seleccionada',
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.bodySmall,
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppSpacing.xs),
-                                Wrap(
-                                  spacing: AppSpacing.xs,
-                                  runSpacing: AppSpacing.xs,
-                                  children: [
-                                    TextButton.icon(
-                                      onPressed: () {
-                                        setDialogState(() {
-                                          mediaSelection =
-                                              _SessionMediaSelection.none;
-                                          sessionPhotoLocalPath = null;
-                                        });
-                                      },
-                                      icon: const Icon(
-                                        Icons.delete_outline_rounded,
-                                      ),
-                                      label: const Text('Quitar foto'),
-                                    ),
-                                    Text(
-                                      'Para cambiarla, pulsa Hacer foto o Galeria.',
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.bodySmall,
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancelar'),
-                    ),
-                    FilledButton(
-                      onPressed: () {
-                        final selectedGearName =
-                            selectedGearSetupId == noGearValue
-                            ? null
-                            : gearSetups
-                                  .where(
-                                    (setup) => setup.id == selectedGearSetupId,
-                                  )
-                                  .map((setup) => setup.name)
-                                  .firstOrNull;
-                        Navigator.of(context).pop((
-                          spot: spot,
-                          notes: notes.trim(),
-                          mediaSelection: mediaSelection,
-                          sessionPhotoLocalPath: sessionPhotoLocalPath,
-                          gearSetupId: selectedGearSetupId == noGearValue
-                              ? null
-                              : selectedGearSetupId,
-                          gearSetupName: selectedGearName,
-                        ));
-                      },
-                      child: const Text('Subir sesion'),
-                    ),
-                  ],
-                );
-              },
-            );
-          },
-        );
+    final result = await SessionUploadDialog.show(
+      context,
+      data: SessionUploadDialogData(
+        title: 'Configurar sesión',
+        submitLabel: 'Subir sesión',
+        showSpotField: true,
+        spotOptions: uploadSpotOptions,
+        initialSpot: spot,
+        notesLabel: 'Resumen de sesion (opcional)',
+        initialNotes: notes,
+        initialMediaSelection: mediaSelection,
+        initialSessionPhotoLocalPath: sessionPhotoLocalPath,
+        gearSetupOptions: SessionGearMapper.buildGearSetupOptions(gearSnapshot),
+        initialGearSetupId:
+            selectedGearSetupId == noGearValue ? null : selectedGearSetupId,
+      ),
+      onPickMedia: _pickSessionMedia,
+    );
 
     if (result == null) {
       return null;
     }
-    return result;
-  }
-
-  _ProfileGearSnapshot _loadProfileGearSnapshot() {
-    final items = _profileModule.gearController.savedGearSetups;
-    final deduplicated = <String, GearSetup>{
-      for (final setup in items) setup.id: setup,
-    };
-    return _ProfileGearSnapshot(
-      setups: deduplicated.values.toList(growable: false),
-      kitesById: {
-        for (final kite in _profileModule.gearController.savedKites)
-          kite.id: kite,
-      },
-      boardsById: {
-        for (final board in _profileModule.gearController.savedBoards)
-          board.id: board,
-      },
-      barsById: {
-        for (final bar in _profileModule.gearController.savedBars) bar.id: bar,
-      },
-      harnessesById: {
-        for (final harness in _profileModule.gearController.savedHarnesses)
-          harness.id: harness,
-      },
-      wetsuitsById: {
-        for (final wetsuit in _profileModule.gearController.savedWetsuits)
-          wetsuit.id: wetsuit,
-      },
-      helmetsById: {
-        for (final helmet in _profileModule.gearController.savedHelmets)
-          helmet.id: helmet,
-      },
-      vestsById: {
-        for (final vest in _profileModule.gearController.savedVests)
-          vest.id: vest,
-      },
+    return (
+      spot: result.spot,
+      notes: result.notes,
+      mediaSelection: result.mediaSelection,
+      sessionPhotoLocalPath: result.sessionPhotoLocalPath,
+      gearSetupId: result.gearSetupId,
+      gearSetupName: result.gearSetupName,
     );
   }
 
-  List<String> _buildGearSetupDetailLines({
-    KiteItem? kite,
-    BoardItem? board,
-    BarItem? bar,
-    HarnessItem? harness,
-    WetsuitItem? wetsuit,
-    HelmetItem? helmet,
-    VestItem? vest,
-  }) {
-    return [
-      if (kite != null)
-        'Cometa: ${kite.brand} ${kite.model} ${kite.sizeMeters}m',
-      if (board != null)
-        board.sizeCm.trim().isEmpty
-            ? 'Tabla: ${board.brand} ${board.model}'
-            : 'Tabla: ${board.brand} ${board.model} ${board.sizeCm}cm',
-      if (bar != null)
-        'Barra: ${bar.brand} ${bar.model} · ${bar.lineLengthMeters}m/${bar.widthCm}cm',
-      if (harness != null)
-        'Arnes: ${harness.brand} ${harness.model} · ${harness.size}',
-      if (wetsuit != null)
-        'Traje: ${wetsuit.brand} ${wetsuit.model} · ${wetsuit.thickness} · ${wetsuit.size}',
-      if (helmet != null)
-        'Casco: ${helmet.brand} ${helmet.model} (${helmet.year})',
-      if (vest != null)
-        'Chaleco: ${vest.brand} ${vest.model} · ${vest.size} (${vest.year})',
-    ];
-  }
-
-  GearSetup? _findGearSetup(
-    _ProfileGearSnapshot snapshot,
-    _RecordedSession session,
-  ) {
-    if (session.gearSetupId != null) {
-      for (final setup in snapshot.setups) {
-        if (setup.id == session.gearSetupId) {
-          return setup;
-        }
-      }
-    }
-    if (session.gearSetupName != null) {
-      for (final setup in snapshot.setups) {
-        if (setup.name == session.gearSetupName) {
-          return setup;
-        }
-      }
-    }
-    return null;
+  SessionProfileGearSnapshot _loadProfileGearSnapshot() {
+    return SessionGearMapper.buildSnapshot(
+      gearSetups: _profileModule.gearController.savedGearSetups,
+      kites: _profileModule.gearController.savedKites,
+      boards: _profileModule.gearController.savedBoards,
+      bars: _profileModule.gearController.savedBars,
+      harnesses: _profileModule.gearController.savedHarnesses,
+      wetsuits: _profileModule.gearController.savedWetsuits,
+      helmets: _profileModule.gearController.savedHelmets,
+      vests: _profileModule.gearController.savedVests,
+    );
   }
 
   _RecordedSession? _findSessionById(String sessionId) {
@@ -3509,7 +1979,7 @@ class SessionsPageState extends State<SessionsPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Eliminar sesion'),
+          title: const Text('Eliminar sesión'),
           content: Text('Seguro que quieres eliminar "${session.title}"?'),
           actions: [
             TextButton(
@@ -3538,7 +2008,7 @@ class SessionsPageState extends State<SessionsPage> {
     }
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Sesion eliminada.')));
+    ).showSnackBar(const SnackBar(content: Text('Sesión eliminada.')));
   }
 
   Future<void> _openEditSessionDialog(String sessionId) async {
@@ -3552,24 +2022,18 @@ class SessionsPageState extends State<SessionsPage> {
       return;
     }
 
-    final updated = _RecordedSession(
-      id: session.id,
-      title: session.title,
-      deviceName: session.deviceName,
-      endedAt: session.endedAt,
-      duration: session.duration,
-      summary: result.notes,
-      gearSetupId: result.gearSetupId,
-      gearSetupName: result.gearSetupName,
-      hasSessionPhoto: result.sessionPhotoLocalPath != null,
-      sessionMediaLabel: switch (result.mediaSelection) {
-        _SessionMediaSelection.none => 'Pantallazo del mapa del spot',
-        _SessionMediaSelection.camera => 'Foto tomada con camara',
-        _SessionMediaSelection.gallery => 'Foto elegida de galeria',
-      },
-      sessionPhotoLocalPath: result.sessionPhotoLocalPath,
-      spotName: session.spotName,
-      insights: session.insights,
+    final updated = StartSessionRecordedSessionBuilder.buildEditedSession(
+      EditedRecordedSessionBuilderInput(
+        baseSession: session,
+        notes: result.notes,
+        mediaSelection: result.mediaSelection,
+        sessionPhotoLocalPath: result.sessionPhotoLocalPath,
+        gearSetupId: result.gearSetupId,
+        gearSetupName: result.gearSetupName,
+        sessionMediaLabel: StartSessionMediaLogic.labelForSelection(
+          result.mediaSelection,
+        ),
+      ),
     );
 
     setState(() {
@@ -3586,7 +2050,7 @@ class SessionsPageState extends State<SessionsPage> {
     }
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Sesion actualizada.')));
+    ).showSnackBar(const SnackBar(content: Text('Sesión actualizada.')));
   }
 
   String _newSessionId() {
@@ -3602,7 +2066,7 @@ class SessionsPageState extends State<SessionsPage> {
   Future<
     ({
       String notes,
-      _SessionMediaSelection mediaSelection,
+      SessionMediaSelection mediaSelection,
       String? sessionPhotoLocalPath,
       String? gearSetupId,
       String? gearSetupName,
@@ -3613,191 +2077,51 @@ class SessionsPageState extends State<SessionsPage> {
     if (!mounted) {
       return null;
     }
-    const noGearValue = '__none__';
-    String notes = session.summary;
     final gearSnapshot = _loadProfileGearSnapshot();
-    final gearSetups = gearSnapshot.setups;
-    String selectedGearSetupId = noGearValue;
+    String? selectedGearSetupId;
     if (session.gearSetupName != null) {
-      final match = gearSetups
-          .where((setup) => setup.name == session.gearSetupName)
-          .firstOrNull;
-      if (match != null) {
-        selectedGearSetupId = match.id;
+      for (final setup in gearSnapshot.setups) {
+        if (setup.name == session.gearSetupName) {
+          selectedGearSetupId = setup.id;
+          break;
+        }
       }
     }
 
-    _SessionMediaSelection mediaSelection;
-    if (session.sessionPhotoLocalPath == null) {
-      mediaSelection = _SessionMediaSelection.none;
-    } else if (session.sessionMediaLabel.toLowerCase().contains('camara')) {
-      mediaSelection = _SessionMediaSelection.camera;
-    } else {
-      mediaSelection = _SessionMediaSelection.gallery;
+    final mediaSelection = StartSessionMediaLogic.selectionForStoredSession(
+      sessionMediaLabel: session.sessionMediaLabel,
+      sessionPhotoLocalPath: session.sessionPhotoLocalPath,
+    );
+
+    final result = await SessionUploadDialog.show(
+      context,
+      data: SessionUploadDialogData(
+        title: 'Editar sesion',
+        submitLabel: 'Guardar cambios',
+        showSpotField: false,
+        spotOptions: const <String>[],
+        initialSpot: session.spotName ?? '',
+        notesLabel: 'Comentario de sesión',
+        initialNotes: session.summary,
+        initialMediaSelection: mediaSelection,
+        initialSessionPhotoLocalPath: session.sessionPhotoLocalPath,
+        gearSetupOptions: SessionGearMapper.buildGearSetupOptions(gearSnapshot),
+        initialGearSetupId: selectedGearSetupId,
+      ),
+      onPickMedia: _pickSessionMedia,
+    );
+
+    if (result == null) {
+      return null;
     }
-    String? sessionPhotoLocalPath = session.sessionPhotoLocalPath;
 
-    final result =
-        await showDialog<
-          ({
-            String notes,
-            _SessionMediaSelection mediaSelection,
-            String? sessionPhotoLocalPath,
-            String? gearSetupId,
-            String? gearSetupName,
-          })
-        >(
-          context: context,
-          builder: (context) {
-            return StatefulBuilder(
-              builder: (context, setDialogState) {
-                return AlertDialog(
-                  title: const Text('Editar sesion'),
-                  content: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        DropdownButtonFormField<String>(
-                          key: ValueKey(
-                            'edit-gear-$selectedGearSetupId-${gearSetups.length}',
-                          ),
-                          initialValue: selectedGearSetupId,
-                          isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Equipo utilizado (opcional)',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: [
-                            const DropdownMenuItem(
-                              value: noGearValue,
-                              child: Text('Sin equipacion'),
-                            ),
-                            ...gearSetups.map(
-                              (setup) => DropdownMenuItem(
-                                value: setup.id,
-                                child: Text(setup.name),
-                              ),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            if (value == null) {
-                              return;
-                            }
-                            setDialogState(() {
-                              selectedGearSetupId = value;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        TextFormField(
-                          minLines: 2,
-                          maxLines: 3,
-                          initialValue: notes,
-                          decoration: const InputDecoration(
-                            labelText: 'Comentario de sesion',
-                            border: OutlineInputBorder(),
-                          ),
-                          onChanged: (value) {
-                            notes = value;
-                          },
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Wrap(
-                          spacing: AppSpacing.xs,
-                          runSpacing: AppSpacing.xs,
-                          children: [
-                            ChoiceChip(
-                              label: const Text('Hacer foto'),
-                              selected:
-                                  mediaSelection ==
-                                  _SessionMediaSelection.camera,
-                              onSelected: (_) async {
-                                final pickedPath = await _pickSessionMedia(
-                                  _SessionMediaSelection.camera,
-                                );
-                                if (!context.mounted || pickedPath == null) {
-                                  return;
-                                }
-                                setDialogState(() {
-                                  mediaSelection =
-                                      _SessionMediaSelection.camera;
-                                  sessionPhotoLocalPath = pickedPath;
-                                });
-                              },
-                            ),
-                            ChoiceChip(
-                              label: const Text('Galeria'),
-                              selected:
-                                  mediaSelection ==
-                                  _SessionMediaSelection.gallery,
-                              onSelected: (_) async {
-                                final pickedPath = await _pickSessionMedia(
-                                  _SessionMediaSelection.gallery,
-                                );
-                                if (!context.mounted || pickedPath == null) {
-                                  return;
-                                }
-                                setDialogState(() {
-                                  mediaSelection =
-                                      _SessionMediaSelection.gallery;
-                                  sessionPhotoLocalPath = pickedPath;
-                                });
-                              },
-                            ),
-                            if (sessionPhotoLocalPath != null)
-                              TextButton.icon(
-                                onPressed: () {
-                                  setDialogState(() {
-                                    mediaSelection =
-                                        _SessionMediaSelection.none;
-                                    sessionPhotoLocalPath = null;
-                                  });
-                                },
-                                icon: const Icon(Icons.delete_outline_rounded),
-                                label: const Text('Quitar foto'),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancelar'),
-                    ),
-                    FilledButton(
-                      onPressed: () {
-                        final selectedGearName =
-                            selectedGearSetupId == noGearValue
-                            ? null
-                            : gearSetups
-                                  .where(
-                                    (setup) => setup.id == selectedGearSetupId,
-                                  )
-                                  .map((setup) => setup.name)
-                                  .firstOrNull;
-                        Navigator.of(context).pop((
-                          notes: notes.trim(),
-                          mediaSelection: mediaSelection,
-                          sessionPhotoLocalPath: sessionPhotoLocalPath,
-                          gearSetupId: selectedGearSetupId == noGearValue
-                              ? null
-                              : selectedGearSetupId,
-                          gearSetupName: selectedGearName,
-                        ));
-                      },
-                      child: const Text('Guardar cambios'),
-                    ),
-                  ],
-                );
-              },
-            );
-          },
-        );
-
-    return result;
+    return (
+      notes: result.notes,
+      mediaSelection: result.mediaSelection,
+      sessionPhotoLocalPath: result.sessionPhotoLocalPath,
+      gearSetupId: result.gearSetupId,
+      gearSetupName: result.gearSetupName,
+    );
   }
 
   @override
@@ -3846,722 +2170,9 @@ class SessionsPageState extends State<SessionsPage> {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   if (_sessionTab == _SessionTab.start) ...[
-                    Text(
-                      'Aqui veras el dispositivo base de la app y los dispositivos compatibles que vincules para sesiones reales.',
-                      style: textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'Dispositivos vinculados',
-                      style: textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    if (_devices.isEmpty)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(AppSpacing.md),
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text(
-                          'No hay dispositivos vinculados todavia.',
-                        ),
-                      )
-                    else
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          DropdownButtonFormField<String>(
-                            initialValue: _selectedDeviceId,
-                            isExpanded: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Seleccionar dispositivo',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: _devicesForDisplay()
-                                .map(
-                                  (device) => DropdownMenuItem(
-                                    value: device.id,
-                                    child: Text(
-                                      '${device.name} · ${device.kind}',
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                )
-                                .toList(growable: false),
-                            onChanged: (value) {
-                              if (value == null) {
-                                return;
-                              }
-                              setState(() {
-                                _selectedDeviceId = value;
-                                _lastImportHint = null;
-                                _syncedPendingSessions.clear();
-                                _syncedPendingDeviceId = null;
-                              });
-                              _saveSelectedDeviceId();
-                            },
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          if (_selectedDevice != null)
-                            Card(
-                              margin: EdgeInsets.zero,
-                              elevation: 0,
-                              clipBehavior: Clip.antiAlias,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                side: BorderSide(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.primary.withValues(alpha: 0.45),
-                                ),
-                              ),
-                              child: Ink(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Theme.of(
-                                        context,
-                                      ).colorScheme.surfaceContainerHigh,
-                                      Theme.of(
-                                        context,
-                                      ).colorScheme.surfaceContainer,
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(AppSpacing.md),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Builder(
-                                        builder: (context) {
-                                          final isPhoneDeviceSelected =
-                                              _selectedDevice!.id ==
-                                              _phoneDeviceId;
-                                          return Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  IconButton.filledTonal(
-                                                    tooltip:
-                                                        'Ver capacidades del dispositivo',
-                                                    onPressed:
-                                                        _showDeviceCapabilitiesDialog,
-                                                    icon: Icon(
-                                                      _capabilitiesActionIcon(
-                                                        _selectedDevice!.kind,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(
-                                                    width: AppSpacing.sm,
-                                                  ),
-                                                  Expanded(
-                                                    child: Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        Text(
-                                                          _selectedDevice!.name,
-                                                          style: textTheme
-                                                              .titleMedium
-                                                              ?.copyWith(
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                              ),
-                                                        ),
-                                                        const SizedBox(
-                                                          height: 4,
-                                                        ),
-                                                        Text(
-                                                          _selectedDevice!.kind,
-                                                          style: textTheme
-                                                              .bodySmall,
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 6,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: _statusChipColor(
-                                                        _autoDetectedDeviceStatus(
-                                                          _selectedDevice!,
-                                                        ),
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            999,
-                                                          ),
-                                                    ),
-                                                    child: Text(
-                                                      _autoDetectedDeviceStatus(
-                                                        _selectedDevice!,
-                                                      ),
-                                                      style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(
-                                                height: AppSpacing.xs,
-                                              ),
-                                              Wrap(
-                                                spacing: AppSpacing.xs,
-                                                runSpacing: AppSpacing.xs,
-                                                children: [
-                                                  _buildDeviceMetaPill(
-                                                    context: context,
-                                                    icon: Icons
-                                                        .devices_rounded,
-                                                    text: _deviceAvailabilityLabel(
-                                                      _selectedDevice!,
-                                                    ),
-                                                  ),
-                                                  _buildDeviceMetaPill(
-                                                    context: context,
-                                                    icon:
-                                                        Icons.sensors_rounded,
-                                                    text:
-                                                        _selectedDeviceSensorCountLabel(),
-                                                  ),
-                                                ],
-                                              ),
-                                              if (!isPhoneDeviceSelected) ...[
-                                                const SizedBox(
-                                                  height: AppSpacing.sm,
-                                                ),
-                                                OutlinedButton.icon(
-                                                  onPressed:
-                                                      _syncSessionFromDevice,
-                                                  icon: const Icon(
-                                                    Icons.sync_rounded,
-                                                  ),
-                                                  label: const Text(
-                                                    'Sincronizar dispositivo',
-                                                  ),
-                                                ),
-                                              ],
-                                            ],
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          if (_selectedDeviceId != null &&
-                              _syncedPendingDeviceId == _selectedDeviceId &&
-                              _syncedPendingSessions.isNotEmpty) ...[
-                            const SizedBox(height: AppSpacing.xs),
-                            Card(
-                              margin: EdgeInsets.zero,
-                              child: Padding(
-                                padding: const EdgeInsets.all(AppSpacing.sm),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Sesiones sincronizadas del dispositivo',
-                                      style: textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Selecciona una sesion para revisarla y subirla a My Sessions.',
-                                      style: textTheme.bodySmall,
-                                    ),
-                                    const SizedBox(height: AppSpacing.xs),
-                                    ..._syncedPendingSessions.map((session) {
-                                      return Card(
-                                        margin: const EdgeInsets.only(
-                                          bottom: AppSpacing.xs,
-                                        ),
-                                        elevation: 0,
-                                        clipBehavior: Clip.antiAlias,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            14,
-                                          ),
-                                          side: BorderSide(
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.outlineVariant,
-                                          ),
-                                        ),
-                                        child: Ink(
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: [
-                                                Theme.of(context)
-                                                    .colorScheme
-                                                    .surfaceContainerLow,
-                                                Theme.of(
-                                                  context,
-                                                ).colorScheme.surface,
-                                              ],
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                            ),
-                                          ),
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(
-                                              AppSpacing.sm,
-                                            ),
-                                            child: Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Container(
-                                                  width: 38,
-                                                  height: 38,
-                                                  decoration: BoxDecoration(
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .tertiaryContainer,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          10,
-                                                        ),
-                                                  ),
-                                                  child: Icon(
-                                                    Icons
-                                                        .cloud_download_rounded,
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .onTertiaryContainer,
-                                                  ),
-                                                ),
-                                                const SizedBox(
-                                                  width: AppSpacing.sm,
-                                                ),
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    children: [
-                                                      Text(
-                                                        session.title,
-                                                        style: textTheme
-                                                            .titleSmall
-                                                            ?.copyWith(
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w700,
-                                                            ),
-                                                      ),
-                                                      const SizedBox(height: 3),
-                                                      Text(
-                                                        '${session.duration.inMinutes} min · ${_formatSessionDateTime(session.endedAt)}',
-                                                        style:
-                                                            textTheme.bodySmall,
-                                                      ),
-                                                      const SizedBox(
-                                                        height: AppSpacing.xs,
-                                                      ),
-                                                      Wrap(
-                                                        spacing: AppSpacing.xs,
-                                                        runSpacing:
-                                                            AppSpacing.xs,
-                                                        crossAxisAlignment:
-                                                            WrapCrossAlignment
-                                                                .center,
-                                                        children: [
-                                                          OutlinedButton.icon(
-                                                            onPressed: () {
-                                                              _configureSyncedSession(
-                                                                session,
-                                                              );
-                                                            },
-                                                            style: OutlinedButton.styleFrom(
-                                                              visualDensity:
-                                                                  VisualDensity
-                                                                      .compact,
-                                                              minimumSize:
-                                                                  const Size(
-                                                                    0,
-                                                                    34,
-                                                                  ),
-                                                            ),
-                                                            icon: const Icon(
-                                                              Icons
-                                                                  .settings_rounded,
-                                                              size: 16,
-                                                            ),
-                                                            label: const Text(
-                                                              'Configurar',
-                                                            ),
-                                                          ),
-                                                          Tooltip(
-                                                            message:
-                                                                'Eliminar sesion sincronizada',
-                                                            child: SizedBox(
-                                                              height: 34,
-                                                              width: 34,
-                                                              child: OutlinedButton(
-                                                                style: OutlinedButton.styleFrom(
-                                                                  padding:
-                                                                      EdgeInsets
-                                                                          .zero,
-                                                                  visualDensity:
-                                                                      VisualDensity
-                                                                          .compact,
-                                                                ),
-                                                                onPressed: () {
-                                                                  _removeSyncedPendingSession(
-                                                                    session,
-                                                                  );
-                                                                },
-                                                                child: const Icon(
-                                                                  Icons
-                                                                      .delete_outline_rounded,
-                                                                  size: 18,
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    }),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Card(
-                      margin: EdgeInsets.zero,
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpacing.md),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Captura de sesion',
-                              style: textTheme.headlineSmall,
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                            Text(
-                              _captureStatusText(),
-                              style: textTheme.titleMedium,
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                            SessionCaptureStatusCard(
-                              statusText: _captureStatusText(),
-                              stepProgress: (_captureStepIndex() + 1) / 5,
-                              elapsedLabel: _recordingElapsedText(),
-                              gpsLabel: _gpsSignalChipLabel(),
-                              gpsBackgroundColor: _gpsChipBackgroundColor(
-                                context,
-                              ),
-                              gpsForegroundColor: _gpsChipForegroundColor(
-                                context,
-                              ),
-                              gpsIcon: _gpsChipIcon(),
-                              autoPauseLabel: _autoPauseChipLabel(),
-                              autoPauseBackgroundColor:
-                                  _autoPauseChipBackgroundColor(context),
-                              autoPauseForegroundColor:
-                                  _autoPauseChipForegroundColor(context),
-                              autoPauseIcon: _autoPauseChipIcon(),
-                              currentSpeedLabel: _recordingCurrentSpeedText(),
-                              maxSpeedLabel: _recordingMaxSpeedText(),
-                              activeLabel: _recordingActiveText(),
-                              pausedLabel: _recordingPausedText(),
-                              saveReadinessLabel: _saveReadinessChipLabel(),
-                              saveReadinessBackgroundColor:
-                                  _saveReadinessChipBackgroundColor(context),
-                              saveReadinessForegroundColor:
-                                  _saveReadinessChipForegroundColor(context),
-                              saveReadinessIcon: _saveReadinessChipIcon(),
-                              actionLabel: _captureButtonLabel(),
-                              actionIcon: _captureButtonIcon(),
-                              actionTextStyle: textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                              onActionPressed: _onSessionControlPressed,
-                              actionEnabled:
-                                  _captureState != _SessionCaptureState.syncing,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Card(
-                      margin: EdgeInsets.zero,
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpacing.sm),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'O importar sesion de archivo',
-                              style: textTheme.titleSmall,
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                            OutlinedButton.icon(
-                              onPressed: _importSessionFile,
-                              icon: const Icon(Icons.file_upload_rounded),
-                              label: const Text('Importar sesion real'),
-                            ),
-                            if (_lastImportHint != null) ...[
-                              const SizedBox(height: AppSpacing.xs),
-                              Text(
-                                _lastImportHint!,
-                                style: textTheme.bodySmall,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
+                    _buildStartSessionSection(context, textTheme),
                   ] else ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    TextField(
-                      controller: _sessionSearchController,
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.search_rounded),
-                        hintText: 'Buscar por sesion, spot, equipo o dispositivo...',
-                        border: const OutlineInputBorder(),
-                        suffixIcon: _sessionSearchController.text.trim().isEmpty
-                            ? null
-                            : IconButton(
-                                tooltip: 'Limpiar busqueda',
-                                icon: const Icon(Icons.close_rounded),
-                                onPressed: () {
-                                  _sessionSearchController.clear();
-                                  setState(() {});
-                                },
-                              ),
-                      ),
-                      onChanged: (_) {
-                        setState(() {});
-                      },
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    if (_filteredSessions().isEmpty)
-                      Card(
-                        margin: EdgeInsets.zero,
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppSpacing.md),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                _sessionSearchController.text.trim().isNotEmpty
-                                    ? 'No hay sesiones que coincidan con esta busqueda.'
-                                    : 'Todavia no hay sesiones finalizadas. Al sincronizar una sesion en Start Session aparecera aqui.',
-                                style: textTheme.bodyMedium,
-                              ),
-                              if (_sessionSearchController.text.trim().isNotEmpty) ...[
-                                const SizedBox(height: AppSpacing.sm),
-                                TextButton.icon(
-                                  onPressed: () {
-                                    _sessionSearchController.clear();
-                                    setState(() {});
-                                  },
-                                  icon: const Icon(Icons.close_rounded),
-                                  label: const Text('Limpiar busqueda'),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      )
-                    else
-                      ..._filteredSessions().map(
-                        (session) => Builder(
-                          builder: (context) {
-                            final gearSnapshot = _loadProfileGearSnapshot();
-                            final insights = _sessionInsightsForDetail(session);
-                            final sessionDate = session.endedAt.day
-                                .toString()
-                                .padLeft(2, '0');
-                            final sessionMonth = session.endedAt.month
-                                .toString()
-                                .padLeft(2, '0');
-                            final sessionHour = session.endedAt.hour
-                                .toString()
-                                .padLeft(2, '0');
-                            final sessionMinute = session.endedAt.minute
-                                .toString()
-                                .padLeft(2, '0');
-                            final setup = _findGearSetup(gearSnapshot, session);
-                            final gearDetailLines = setup == null
-                                ? const <String>[]
-                                : _buildGearSetupDetailLines(
-                                    kite: gearSnapshot.kitesById[setup.kiteId],
-                                    board:
-                                        gearSnapshot.boardsById[setup.boardId],
-                                    bar: setup.barId == null
-                                        ? null
-                                        : gearSnapshot.barsById[setup.barId!],
-                                    harness: setup.harnessId == null
-                                        ? null
-                                        : gearSnapshot.harnessesById[
-                                            setup.harnessId!
-                                          ],
-                                    wetsuit: setup.wetsuitId == null
-                                        ? null
-                                        : gearSnapshot.wetsuitsById[
-                                            setup.wetsuitId!
-                                          ],
-                                    helmet: setup.helmetId == null
-                                        ? null
-                                        : gearSnapshot.helmetsById[
-                                            setup.helmetId!
-                                          ],
-                                    vest: setup.vestId == null
-                                        ? null
-                                        : gearSnapshot.vestsById[setup.vestId!],
-                                  );
-                            return MySessionCard(
-                              title: session.title,
-                              subtitle:
-                                  '$sessionDate/$sessionMonth · $sessionHour:$sessionMinute',
-                              summary:
-                                  session.summary.isNotEmpty &&
-                                      session.summary != _defaultSessionSummary
-                                  ? session.summary
-                                  : '',
-                              deviceName: session.deviceName,
-                              deviceKind:
-                                  _sessionInsightsForDetail(session).deviceKind ??
-                                  'Dispositivo Android',
-                              gearSetupName: session.gearSetupName,
-                              localPhotoPath: session.sessionPhotoLocalPath,
-                              durationLabel: _formatDuration(session.duration),
-                              jumpLabel: _optionalLabel(
-                                _formatJumpHeight(insights.maxJumpHeightMeters),
-                              ),
-                              hangtimeLabel: _optionalLabel(
-                                _formatHangtime(
-                                  insights.maxHangtimeSeconds,
-                                ),
-                              ),
-                              maxSpeedLabel: _optionalLabel(
-                                _formatSpeedKnots(insights.maxSpeedKnots),
-                              ),
-                              onDevicePressed: () {
-                                final detailInsights = _sessionInsightsForDetail(
-                                  session,
-                                );
-                                SessionDeviceDialog.show(
-                                  context,
-                                  deviceName: session.deviceName,
-                                  deviceKind:
-                                      detailInsights.deviceKind ??
-                                      'Dispositivo Android',
-                                  deviceSensorKeys: detailInsights
-                                      .deviceSensorKeys,
-                                );
-                              },
-                              onGearPressed: () {
-                                final gearSetupName = session.gearSetupName;
-                                if (gearSetupName == null ||
-                                    gearSetupName.isEmpty) {
-                                  return;
-                                }
-                                SessionGearDialog.show(
-                                  context,
-                                  gearSetupName: gearSetupName,
-                                  gearSetupDetailLines: gearDetailLines,
-                                );
-                              },
-                              onTap: () async {
-                                final action = await Navigator.of(context)
-                                    .push<SessionDetailAction>(
-                                      MaterialPageRoute(
-                                        builder: (_) => SessionDetailPage(
-                                          title: session.title,
-                                          deviceName: session.deviceName,
-                                          deviceKind:
-                                              _sessionInsightsForDetail(
-                                                session,
-                                              ).deviceKind ??
-                                              'Dispositivo Android',
-                                          deviceSensorKeys:
-                                              _sessionInsightsForDetail(
-                                                session,
-                                              ).deviceSensorKeys,
-                                          endedAt: session.endedAt,
-                                          durationLabel: _formatDuration(
-                                            session.duration,
-                                          ),
-                                          summary: session.summary,
-                                          source:
-                                              SessionDetailSource.mySessions,
-                                          gearSetupName: session.gearSetupName,
-                                          gearSetupDetailLines: gearDetailLines,
-                                          hasSessionPhoto:
-                                              session.hasSessionPhoto,
-                                          sessionMediaLabel:
-                                              session.sessionMediaLabel,
-                                          sessionPhotoLocalPath:
-                                              session.sessionPhotoLocalPath,
-                                          spotBackgroundImagePath:
-                                              _spotBackgroundForSession(session),
-                                          insights: _sessionInsightsForDetail(
-                                            session,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-
-                                if (!mounted || action == null) {
-                                  return;
-                                }
-
-                                if (action.type ==
-                                    SessionDetailActionType.delete) {
-                                  await _confirmAndDeleteSession(session.id);
-                                  return;
-                                }
-
-                                await _openEditSessionDialog(session.id);
-                              },
-                            );
-                          },
-                        ),
-                      ),
+                    _buildMySessionsSection(textTheme),
                   ],
                 ],
               ),
@@ -4573,145 +2184,9 @@ class SessionsPageState extends State<SessionsPage> {
   }
 }
 
-class _ImportedSessionResult {
-  const _ImportedSessionResult({
-    required this.title,
-    required this.fileName,
-    required this.fileExtension,
-    required this.endedAt,
-    required this.duration,
-    required this.summary,
-    required this.jumpHistory,
-  });
-
-  final String title;
-  final String fileName;
-  final String fileExtension;
-  final DateTime endedAt;
-  final Duration duration;
-  final String summary;
-  final List<SessionJumpRecord> jumpHistory;
-}
-
-class _DetectedCompatibleDevice {
-  const _DetectedCompatibleDevice({
-    required this.id,
-    required this.defaultName,
-    required this.kind,
-    required this.status,
-    required this.sensorSummary,
-    String? customName,
-  }) : customName = customName ?? defaultName;
-
-  final String id;
-  final String defaultName;
-  final String kind;
-  final String status;
-  final String sensorSummary;
-  final String customName;
-
-  _DetectedCompatibleDevice copyWith({String? customName}) {
-    return _DetectedCompatibleDevice(
-      id: id,
-      defaultName: defaultName,
-      kind: kind,
-      status: status,
-      sensorSummary: sensorSummary,
-      customName: customName ?? this.customName,
-    );
-  }
-}
-
-class _SessionLocationSample {
-  const _SessionLocationSample({
-    required this.latitude,
-    required this.longitude,
-    required this.speedKnots,
-    required this.timestamp,
-  });
-
-  final double latitude;
-  final double longitude;
-  final double speedKnots;
-  final DateTime timestamp;
-}
-
-class _TrackTransitionSummary {
-  const _TrackTransitionSummary({
-    required this.count,
-    required this.qualityPercent,
-    required this.avgSpeedLossKnots,
-    required this.avgRecoverySeconds,
-  });
-
-  const _TrackTransitionSummary.empty()
-      : count = 0,
-        qualityPercent = 0,
-        avgSpeedLossKnots = 0,
-        avgRecoverySeconds = 0;
-
-  final int count;
-  final double qualityPercent;
-  final double avgSpeedLossKnots;
-  final double avgRecoverySeconds;
-}
-
-class _PendingJumpCandidate {
-  const _PendingJumpCandidate({
-    required this.startedAt,
-    required this.takeoffSpeedKnots,
-    required this.maxManeuverG,
-    required this.maxRotationDegPerSec,
-  });
-
-  final DateTime startedAt;
-  final double takeoffSpeedKnots;
-  final double maxManeuverG;
-  final double maxRotationDegPerSec;
-
-  _PendingJumpCandidate copyWith({
-    DateTime? startedAt,
-    double? takeoffSpeedKnots,
-    double? maxManeuverG,
-    double? maxRotationDegPerSec,
-  }) {
-    return _PendingJumpCandidate(
-      startedAt: startedAt ?? this.startedAt,
-      takeoffSpeedKnots: takeoffSpeedKnots ?? this.takeoffSpeedKnots,
-      maxManeuverG: maxManeuverG ?? this.maxManeuverG,
-      maxRotationDegPerSec:
-          maxRotationDegPerSec ?? this.maxRotationDegPerSec,
-    );
-  }
-}
-
 enum _SessionCaptureState { ready, recording, finished, syncing, synced }
 
 enum _SessionTab { start, mySessions }
-
-enum _SessionMediaSelection { none, camera, gallery }
-
-class _ProfileGearSnapshot {
-  const _ProfileGearSnapshot({
-    required this.setups,
-    required this.kitesById,
-    required this.boardsById,
-    required this.barsById,
-    required this.harnessesById,
-    required this.wetsuitsById,
-    required this.helmetsById,
-    required this.vestsById,
-  });
-
-  final List<GearSetup> setups;
-  final Map<String, KiteItem> kitesById;
-  final Map<String, BoardItem> boardsById;
-  final Map<String, BarItem> barsById;
-  final Map<String, HarnessItem> harnessesById;
-  final Map<String, WetsuitItem> wetsuitsById;
-  final Map<String, HelmetItem> helmetsById;
-  final Map<String, VestItem> vestsById;
-}
 
 class _NoStretchScrollBehavior extends AppScrollBehavior {
   const _NoStretchScrollBehavior();

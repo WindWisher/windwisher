@@ -15159,3 +15159,94 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
         - `session_hero_card.dart`,
         - widgets compartidos de dispositivo y equipacion,
       - se mantiene solo el warning externo conocido de `webview_flutter:macos`.
+
+  - bloque nuevo `2026-04-06`:
+    - refactor de arquitectura de `Session` para dejar `presentation/` mas coherente y `sessions_page.dart` bastante mas descargado,
+    - duracion estimada del bloque: `7h`,
+    - acumulado reciente visible del bloque grande de `Session`:
+      - `2026-04-03`: `6h`
+      - `2026-04-05`: `5h`
+      - `2026-04-05`: `3h`
+      - `2026-04-06`: `7h`
+      - total reciente estimado de esta etapa: `21h`
+    - ordenacion de carpetas de presentation:
+      - separadas responsabilidades en:
+        - `presentation/mappers/` para mapeo de view data,
+        - `presentation/logic/` para logica operativa y coordinacion de captura,
+        - `presentation/builders/` para ensamblado de sesiones grabadas,
+      - movidos a `presentation/logic/`:
+        - `start_session_capture_logic.dart`,
+        - `start_session_location_logic.dart`,
+        - `start_session_device_detection_logic.dart`,
+        - `start_session_media_logic.dart`,
+        - `start_session_track_metrics_logic.dart`,
+      - movido a `presentation/builders/`:
+        - `start_session_recorded_session_builder.dart`,
+      - imports actualizados en toda la capa `presentation` para reflejar la nueva estructura,
+    - sessions / pages:
+      - consolidada la division de `sessions_page.dart` respecto a:
+        - `start_session_page.dart`,
+        - `my_sessions_page.dart`,
+      - reforzada la idea de pagina contenedora/orquestadora y no pagina con toda la UI inline,
+    - sessions / models y mappers:
+      - anadidos y consolidados modelos de presentacion propios para:
+        - `start_session_models.dart`,
+        - `my_sessions_models.dart`,
+        - `session_gear_models.dart`,
+      - consolidado el uso de mappers de presentacion para:
+        - `StartSession`,
+        - `My Sessions`,
+        - gear snapshot / opciones de equipo,
+    - start session / widgets y dialogos:
+      - extraidos widgets propios para el bloque `Start Session`:
+        - selector de dispositivo,
+        - tarjeta de dispositivo seleccionado,
+        - tarjeta de sesiones sincronizadas pendientes,
+        - tarjeta de importacion de archivo,
+        - panel contenedor de `Start Session`,
+        - dialogo de stop recording,
+        - dialogo de add device,
+        - dialogo de capacidades,
+        - dialogo reutilizable de upload/edit session,
+      - la pagina deja de construir inline varios `AlertDialog` y bloques largos de UI,
+    - start session / logica de captura:
+      - sacada de la pagina la logica de:
+        - auto-pausa,
+        - resolucion de velocidad GPS,
+        - validacion de muestras,
+        - acumulacion de track,
+        - cooldown de eventos de movimiento,
+        - actividad reciente inercial,
+        - evaluacion de acelerometro y giroscopio,
+        - deteccion y cierre de saltos,
+        - decision de rama barometrica vs inercial,
+        - aplicacion final del salto al estado local,
+      - `sessions_page.dart` queda bastante mas centrada en aplicar resultados y refrescar UI,
+    - start session / flujo de control:
+      - extraidas decisiones explicitas para:
+        - control principal de captura (`start / confirm stop / guardar / reset / mensaje`),
+        - acceso a localizacion,
+        - parada de captura (`discardAndReset / markFinished`),
+      - limpiados `_startRealSessionRecording()` y `_stopRealSessionRecording()` para que funcionen como secuencias de alto nivel,
+      - separados helpers privados para:
+        - activar captura,
+        - arrancar ticker,
+        - conectar streams,
+        - manejar muestra GPS rechazada/aceptada,
+    - start session / persistencia y guardado:
+      - unificado el guardado de sesion nueva y sesion importada/sincronizada con helpers comunes para:
+        - preparar sincronizacion,
+        - calcular timing final,
+        - insertar en feed,
+        - persistir y actualizar preferencias,
+    - my sessions:
+      - consolidado el uso de:
+        - `MySessionCardData`,
+        - `MySessionsEmptyStateData`,
+        - `MySessionsSearchFieldData`,
+      - extraidos widgets propios para buscador y estado vacio,
+      - la card y el listado quedan ya alineados con el nuevo reparto `models / mappers / widgets`,
+    - verificacion:
+      - `flutter analyze lib/features/sessions/presentation` limpio,
+      - multiples `flutter analyze` limpios durante el bloque sobre archivos tocados,
+      - se mantiene solo el warning externo conocido de `webview_flutter:macos`.
