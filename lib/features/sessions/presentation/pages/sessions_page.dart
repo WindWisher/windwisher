@@ -9,7 +9,6 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:sensors_plus/sensors_plus.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
@@ -313,21 +312,6 @@ class SessionsPageState extends State<SessionsPage> {
       ).toList(growable: false),
       events: events,
     );
-  }
-
-  bool get _hasSupabaseConfigured =>
-      EnvConfig.supabaseUrl.trim().isNotEmpty &&
-      EnvConfig.supabaseAnonKey.trim().isNotEmpty;
-
-  String? _supabaseAuthDebugLabel() {
-    if (!_hasSupabaseConfigured) {
-      return null;
-    }
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) {
-      return 'Supabase sin sesion iniciada.';
-    }
-    return 'Supabase user: ${user.id}';
   }
 
   @override
@@ -4524,26 +4508,9 @@ class SessionsPageState extends State<SessionsPage> {
                         margin: EdgeInsets.zero,
                         child: Padding(
                           padding: const EdgeInsets.all(AppSpacing.md),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Todavia no hay sesiones finalizadas. Al sincronizar una sesion en Start Session aparecera aqui.',
-                                style: textTheme.bodyMedium,
-                              ),
-                              if (_supabaseAuthDebugLabel()
-                                  case final authLabel?) ...[
-                                const SizedBox(height: AppSpacing.sm),
-                                Text(
-                                  authLabel,
-                                  style: textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ],
+                          child: Text(
+                            'Todavia no hay sesiones finalizadas. Al sincronizar una sesion en Start Session aparecera aqui.',
+                            style: textTheme.bodyMedium,
                           ),
                         ),
                       )
