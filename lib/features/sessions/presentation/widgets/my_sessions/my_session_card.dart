@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/features/sessions/presentation/widgets/shared/session_device_action_chip.dart';
+import 'package:windwisher/features/sessions/presentation/widgets/shared/session_gear_action_chip.dart';
 
 class MySessionCard extends StatelessWidget {
   const MySessionCard({
@@ -9,43 +11,64 @@ class MySessionCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.summary,
-    required this.gearSetupName,
-    required this.kiteLabel,
-    required this.boardLabel,
+    required this.deviceName,
+    required this.deviceKind,
+    this.gearSetupName,
     required this.localPhotoPath,
     required this.durationLabel,
     required this.jumpLabel,
     required this.hangtimeLabel,
-    required this.jumpDistanceLabel,
     required this.maxSpeedLabel,
-    required this.isNarrowPhone,
     required this.onTap,
-    required this.onEdit,
-    required this.onDelete,
+    required this.onDevicePressed,
+    required this.onGearPressed,
   });
 
   final String title;
   final String subtitle;
   final String summary;
-  final String gearSetupName;
-  final String kiteLabel;
-  final String boardLabel;
+  final String deviceName;
+  final String deviceKind;
+  final String? gearSetupName;
   final String? localPhotoPath;
   final String durationLabel;
-  final String jumpLabel;
-  final String hangtimeLabel;
-  final String jumpDistanceLabel;
-  final String maxSpeedLabel;
-  final bool isNarrowPhone;
+  final String? jumpLabel;
+  final String? hangtimeLabel;
+  final String? maxSpeedLabel;
   final VoidCallback onTap;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback onDevicePressed;
+  final VoidCallback onGearPressed;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final hasPhotoPreview =
         localPhotoPath != null && File(localPhotoPath!).existsSync();
+    final metricChips = <Widget>[
+      _buildChip(
+        context: context,
+        icon: Icons.timer_outlined,
+        label: durationLabel,
+      ),
+      if (maxSpeedLabel != null)
+        _buildChip(
+          context: context,
+          icon: Icons.speed_rounded,
+          label: maxSpeedLabel!,
+        ),
+      if (hangtimeLabel != null)
+        _buildChip(
+          context: context,
+          icon: Icons.air_rounded,
+          label: 'Hangtime $hangtimeLabel',
+        ),
+      if (jumpLabel != null)
+        _buildChip(
+          context: context,
+          icon: Icons.arrow_upward_rounded,
+          label: 'Salto $jumpLabel',
+        ),
+    ];
 
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.xs),
@@ -68,12 +91,25 @@ class MySessionCard extends StatelessWidget {
                     )
                   : Container(
                       width: double.infinity,
-                      height: 120,
+                      height: 88,
                       color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       alignment: Alignment.center,
-                      child: Icon(
-                        Icons.photo_camera_back_outlined,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.photo_camera_back_outlined,
+                            size: 18,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Sin foto',
+                            style: textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
             ),
@@ -107,74 +143,33 @@ class MySessionCard extends StatelessWidget {
                     ),
                   ],
                   const SizedBox(height: 8),
-                  Row(
+                  Wrap(
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
                     children: [
-                      const Icon(Icons.checkroom_rounded, size: 16),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          gearSetupName,
-                          style: textTheme.bodySmall,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                      SessionDeviceActionChip(
+                        deviceName: deviceName,
+                        deviceKind: deviceKind,
+                        onPressed: onDevicePressed,
                       ),
+                      if (gearSetupName != null && gearSetupName!.isNotEmpty)
+                        SessionGearActionChip(
+                          label: gearSetupName!,
+                          onPressed: onGearPressed,
+                        ),
                     ],
                   ),
-                  Text(kiteLabel, style: textTheme.bodySmall),
-                  Text(boardLabel, style: textTheme.bodySmall),
                   const SizedBox(height: 8),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        _buildChip(label: 'Duracion $durationLabel'),
-                        const SizedBox(width: AppSpacing.xs),
-                        _buildChip(label: 'Salto $jumpLabel'),
-                        const SizedBox(width: AppSpacing.xs),
-                        _buildChip(label: 'Hangtime $hangtimeLabel'),
-                        const SizedBox(width: AppSpacing.xs),
-                        _buildChip(label: 'Dist salto $jumpDistanceLabel'),
-                        const SizedBox(width: AppSpacing.xs),
-                        _buildChip(label: 'Vel max $maxSpeedLabel'),
+                        for (var i = 0; i < metricChips.length; i++) ...[
+                          if (i > 0) const SizedBox(width: AppSpacing.xs),
+                          metricChips[i],
+                        ],
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: onEdit,
-                          style: OutlinedButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
-                            minimumSize: const Size(0, 36),
-                          ),
-                          icon: isNarrowPhone
-                              ? const SizedBox.shrink()
-                              : const Icon(Icons.edit_rounded, size: 16),
-                          label: const Text('Editar'),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      Tooltip(
-                        message: 'Eliminar sesion',
-                        child: SizedBox(
-                          height: 36,
-                          width: 44,
-                          child: OutlinedButton(
-                            onPressed: onDelete,
-                            style: OutlinedButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              padding: EdgeInsets.zero,
-                            ),
-                            child: const Icon(
-                              Icons.delete_outline_rounded,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),
@@ -185,11 +180,32 @@ class MySessionCard extends StatelessWidget {
     );
   }
 
-  Widget _buildChip({required String label}) {
-    return Chip(
-      visualDensity: VisualDensity.compact,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      label: Text(label),
+  Widget _buildChip({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 14,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 6),
+          Text(label),
+        ],
+      ),
     );
   }
 }

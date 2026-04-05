@@ -21,6 +21,8 @@ import 'package:windwisher/features/sessions/domain/entities/session_view_prefer
 import 'package:windwisher/features/sessions/presentation/models/session_detail_models.dart';
 import 'package:windwisher/features/sessions/presentation/pages/session_detail_page.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/my_sessions/my_session_card.dart';
+import 'package:windwisher/features/sessions/presentation/widgets/shared/session_device_dialog.dart';
+import 'package:windwisher/features/sessions/presentation/widgets/shared/session_gear_dialog.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_capture_status_card.dart';
 import 'package:windwisher/features/spots/di/spots_module.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_item.dart';
@@ -150,7 +152,6 @@ class SessionsPageState extends State<SessionsPage> {
   final ImagePicker _imagePicker = ImagePicker();
 
   static const String _sortMostRecent = 'Mas recientes';
-  static const String _sortOldest = 'Mas antiguas';
   static const int _accelerationPeakWindowSize = 3;
   static const double _accelerationPeakConfirmationRatio = 0.85;
   static const int _accelerationPeakRequiredMatches = 2;
@@ -206,23 +207,16 @@ class SessionsPageState extends State<SessionsPage> {
     _sessionTab = value.selectedTabKey == 'mySessions'
         ? _SessionTab.mySessions
         : _SessionTab.start;
-    _sessionFilterDevice = value.filterDeviceName;
-    _sessionSort = value.sortOrder;
+    _sessionFilterDevice = 'Todos';
+    _sessionSort = _sortMostRecent;
     _lastUsedGearSetupId = value.lastUsedGearSetupId;
     _lastUsedUploadSpot = value.lastUsedUploadSpot;
   }
 
   void _sanitizeSessionViewPreferences() {
     final uploadSpotOptions = _availableUploadSpots();
-    final hasDeviceFilter =
-        _sessionFilterDevice == 'Todos' ||
-        _devices.any((device) => device.name == _sessionFilterDevice);
-    if (!hasDeviceFilter) {
-      _sessionFilterDevice = 'Todos';
-    }
-    if (_sessionSort != _sortMostRecent && _sessionSort != _sortOldest) {
-      _sessionSort = _sortMostRecent;
-    }
+    _sessionFilterDevice = 'Todos';
+    _sessionSort = _sortMostRecent;
     if (uploadSpotOptions.isNotEmpty &&
         !uploadSpotOptions.contains(_lastUsedUploadSpot)) {
       _lastUsedUploadSpot = uploadSpotOptions.first;
@@ -2869,22 +2863,18 @@ class SessionsPageState extends State<SessionsPage> {
 
   List<_RecordedSession> _filteredSessions() {
     final query = _sessionSearchController.text.trim().toLowerCase();
-    var items = _sessionFeed.where((session) {
-      final byDevice =
-          _sessionFilterDevice == 'Todos' ||
-          session.deviceName == _sessionFilterDevice;
+    return _sessionFeed.where((session) {
+      final gearSetupName = session.gearSetupName?.toLowerCase() ?? '';
+      final spotName = _spotNameForSession(session)?.toLowerCase() ?? '';
       final byQuery =
           query.isEmpty ||
           session.title.toLowerCase().contains(query) ||
           session.summary.toLowerCase().contains(query) ||
-          session.deviceName.toLowerCase().contains(query);
-      return byDevice && byQuery;
+          session.deviceName.toLowerCase().contains(query) ||
+          gearSetupName.contains(query) ||
+          spotName.contains(query);
+      return byQuery;
     }).toList();
-
-    if (_sessionSort == 'Mas antiguas') {
-      items = items.reversed.toList();
-    }
-    return items;
   }
 
   String _formatDuration(Duration duration) {
@@ -2918,21 +2908,11 @@ class SessionsPageState extends State<SessionsPage> {
     return '${knots.toStringAsFixed(1)} kt';
   }
 
-  String _formatDistanceMeters(double? meters) {
-    if (meters == null) {
-      return '--';
-    }
-    return '${meters.toStringAsFixed(0)} m';
-  }
-
-  double? _estimatedJumpDistanceMeters(SessionInsightData insights) {
-    final maxSpeedKnots = insights.maxSpeedKnots;
-    final maxHangtimeSeconds = insights.maxHangtimeSeconds;
-    if (maxSpeedKnots == null || maxHangtimeSeconds == null) {
+  String? _optionalLabel(String label) {
+    if (label == '--') {
       return null;
     }
-    const knotsToMetersPerSecond = 0.514444;
-    return maxSpeedKnots * knotsToMetersPerSecond * maxHangtimeSeconds;
+    return label;
   }
 
   int _captureStepIndex() {
@@ -3508,33 +3488,6 @@ class SessionsPageState extends State<SessionsPage> {
       }
     }
     return null;
-  }
-
-  String _sessionKiteLabel(
-    _ProfileGearSnapshot snapshot,
-    _RecordedSession session,
-  ) {
-    final setup = _findGearSetup(snapshot, session);
-    final kite = setup == null ? null : snapshot.kitesById[setup.kiteId];
-    if (kite == null) {
-      return 'Cometa --';
-    }
-    return 'Cometa ${kite.brand} ${kite.model} ${kite.sizeMeters}m';
-  }
-
-  String _sessionBoardLabel(
-    _ProfileGearSnapshot snapshot,
-    _RecordedSession session,
-  ) {
-    final setup = _findGearSetup(snapshot, session);
-    final board = setup == null ? null : snapshot.boardsById[setup.boardId];
-    if (board == null) {
-      return 'Tabla --';
-    }
-    if (board.sizeCm.trim().isEmpty) {
-      return 'Tabla ${board.brand} ${board.model}';
-    }
-    return 'Tabla ${board.brand} ${board.model} ${board.sizeCm}cm';
   }
 
   _RecordedSession? _findSessionById(String sessionId) {
@@ -4403,103 +4356,23 @@ class SessionsPageState extends State<SessionsPage> {
                     const SizedBox(height: AppSpacing.sm),
                     TextField(
                       controller: _sessionSearchController,
-                      decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.search_rounded),
-                        hintText: 'Buscar sesiones...',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        hintText: 'Buscar por sesion, spot, equipo o dispositivo...',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: _sessionSearchController.text.trim().isEmpty
+                            ? null
+                            : IconButton(
+                                tooltip: 'Limpiar busqueda',
+                                icon: const Icon(Icons.close_rounded),
+                                onPressed: () {
+                                  _sessionSearchController.clear();
+                                  setState(() {});
+                                },
+                              ),
                       ),
                       onChanged: (_) {
                         setState(() {});
-                      },
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final narrow = constraints.maxWidth < 700;
-
-                        final deviceFilter = DropdownButtonFormField<String>(
-                          initialValue: _sessionFilterDevice,
-                          isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Dispositivo',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: [
-                            const DropdownMenuItem(
-                              value: 'Todos',
-                              child: Text(
-                                'Todos',
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            ..._devices.map(
-                              (d) => DropdownMenuItem(
-                                value: d.name,
-                                child: Text(
-                                  d.name,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setState(() {
-                              _sessionFilterDevice = value;
-                            });
-                            _saveSessionViewPreferences();
-                          },
-                        );
-
-                        final sortFilter = DropdownButtonFormField<String>(
-                          initialValue: _sessionSort,
-                          isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Orden',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'Mas recientes',
-                              child: Text(
-                                'Mas recientes',
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Mas antiguas',
-                              child: Text(
-                                'Mas antiguas',
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setState(() {
-                              _sessionSort = value;
-                            });
-                            _saveSessionViewPreferences();
-                          },
-                        );
-
-                        if (narrow) {
-                          return Column(
-                            children: [
-                              deviceFilter,
-                              const SizedBox(height: AppSpacing.xs),
-                              sortFilter,
-                            ],
-                          );
-                        }
-
-                        return Row(
-                          children: [
-                            Expanded(child: deviceFilter),
-                            const SizedBox(width: AppSpacing.xs),
-                            Expanded(child: sortFilter),
-                          ],
-                        );
                       },
                     ),
                     const SizedBox(height: AppSpacing.sm),
@@ -4508,9 +4381,28 @@ class SessionsPageState extends State<SessionsPage> {
                         margin: EdgeInsets.zero,
                         child: Padding(
                           padding: const EdgeInsets.all(AppSpacing.md),
-                          child: Text(
-                            'Todavia no hay sesiones finalizadas. Al sincronizar una sesion en Start Session aparecera aqui.',
-                            style: textTheme.bodyMedium,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _sessionSearchController.text.trim().isNotEmpty
+                                    ? 'No hay sesiones que coincidan con esta busqueda.'
+                                    : 'Todavia no hay sesiones finalizadas. Al sincronizar una sesion en Start Session aparecera aqui.',
+                                style: textTheme.bodyMedium,
+                              ),
+                              if (_sessionSearchController.text.trim().isNotEmpty) ...[
+                                const SizedBox(height: AppSpacing.sm),
+                                TextButton.icon(
+                                  onPressed: () {
+                                    _sessionSearchController.clear();
+                                    setState(() {});
+                                  },
+                                  icon: const Icon(Icons.close_rounded),
+                                  label: const Text('Limpiar busqueda'),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       )
@@ -4518,12 +4410,8 @@ class SessionsPageState extends State<SessionsPage> {
                       ..._filteredSessions().map(
                         (session) => Builder(
                           builder: (context) {
-                            final isNarrowPhone =
-                                MediaQuery.sizeOf(context).width < 380;
                             final gearSnapshot = _loadProfileGearSnapshot();
                             final insights = _sessionInsightsForDetail(session);
-                            final jumpDistanceEstimateMeters =
-                                _estimatedJumpDistanceMeters(insights);
                             final sessionDate = session.endedAt.day
                                 .toString()
                                 .padLeft(2, '0');
@@ -4536,14 +4424,6 @@ class SessionsPageState extends State<SessionsPage> {
                             final sessionMinute = session.endedAt.minute
                                 .toString()
                                 .padLeft(2, '0');
-                            final kiteLabel = _sessionKiteLabel(
-                              gearSnapshot,
-                              session,
-                            );
-                            final boardLabel = _sessionBoardLabel(
-                              gearSnapshot,
-                              session,
-                            );
                             final setup = _findGearSetup(gearSnapshot, session);
                             final gearDetailLines = setup == null
                                 ? const <String>[]
@@ -4573,35 +4453,59 @@ class SessionsPageState extends State<SessionsPage> {
                                         ? null
                                         : gearSnapshot.vestsById[setup.vestId!],
                                   );
-
                             return MySessionCard(
                               title: session.title,
                               subtitle:
-                                  '${session.deviceName} · $sessionDate/$sessionMonth · $sessionHour:$sessionMinute',
+                                  '$sessionDate/$sessionMonth · $sessionHour:$sessionMinute',
                               summary:
                                   session.summary.isNotEmpty &&
                                       session.summary != _defaultSessionSummary
                                   ? session.summary
                                   : '',
-                              gearSetupName:
-                                  session.gearSetupName ?? 'Sin equipacion',
-                              kiteLabel: kiteLabel,
-                              boardLabel: boardLabel,
+                              deviceName: session.deviceName,
+                              deviceKind:
+                                  _sessionInsightsForDetail(session).deviceKind ??
+                                  'Dispositivo Android',
+                              gearSetupName: session.gearSetupName,
                               localPhotoPath: session.sessionPhotoLocalPath,
                               durationLabel: _formatDuration(session.duration),
-                              jumpLabel: _formatJumpHeight(
-                                insights.maxJumpHeightMeters,
+                              jumpLabel: _optionalLabel(
+                                _formatJumpHeight(insights.maxJumpHeightMeters),
                               ),
-                              hangtimeLabel: _formatHangtime(
-                                insights.maxHangtimeSeconds,
+                              hangtimeLabel: _optionalLabel(
+                                _formatHangtime(
+                                  insights.maxHangtimeSeconds,
+                                ),
                               ),
-                              jumpDistanceLabel: _formatDistanceMeters(
-                                jumpDistanceEstimateMeters,
+                              maxSpeedLabel: _optionalLabel(
+                                _formatSpeedKnots(insights.maxSpeedKnots),
                               ),
-                              maxSpeedLabel: _formatSpeedKnots(
-                                insights.maxSpeedKnots,
-                              ),
-                              isNarrowPhone: isNarrowPhone,
+                              onDevicePressed: () {
+                                final detailInsights = _sessionInsightsForDetail(
+                                  session,
+                                );
+                                SessionDeviceDialog.show(
+                                  context,
+                                  deviceName: session.deviceName,
+                                  deviceKind:
+                                      detailInsights.deviceKind ??
+                                      'Dispositivo Android',
+                                  deviceSensorKeys: detailInsights
+                                      .deviceSensorKeys,
+                                );
+                              },
+                              onGearPressed: () {
+                                final gearSetupName = session.gearSetupName;
+                                if (gearSetupName == null ||
+                                    gearSetupName.isEmpty) {
+                                  return;
+                                }
+                                SessionGearDialog.show(
+                                  context,
+                                  gearSetupName: gearSetupName,
+                                  gearSetupDetailLines: gearDetailLines,
+                                );
+                              },
                               onTap: () async {
                                 final action = await Navigator.of(context)
                                     .push<SessionDetailAction>(
@@ -4653,12 +4557,6 @@ class SessionsPageState extends State<SessionsPage> {
                                 }
 
                                 await _openEditSessionDialog(session.id);
-                              },
-                              onEdit: () {
-                                _openEditSessionDialog(session.id);
-                              },
-                              onDelete: () {
-                                _confirmAndDeleteSession(session.id);
                               },
                             );
                           },

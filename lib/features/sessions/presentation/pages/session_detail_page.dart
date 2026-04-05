@@ -6,6 +6,8 @@ import 'package:windwisher/features/sessions/presentation/widgets/session_detail
 import 'package:windwisher/features/sessions/presentation/widgets/session_detail/session_hero_card.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/session_detail/session_summary_card.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/session_detail/session_track_card.dart';
+import 'package:windwisher/features/sessions/presentation/widgets/shared/session_device_dialog.dart';
+import 'package:windwisher/features/sessions/presentation/widgets/shared/session_gear_dialog.dart';
 
 enum SessionDetailSource { mySessions, community }
 
@@ -150,41 +152,10 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
     if (widget.gearSetupName == null || widget.gearSetupName!.isEmpty) {
       return;
     }
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Equipo utilizado'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                widget.gearSetupName!,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              if (widget.gearSetupDetailLines.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.sm),
-                ...widget.gearSetupDetailLines.map(
-                  (line) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                    child: Text(line),
-                  ),
-                ),
-              ] else ...[
-                const SizedBox(height: AppSpacing.sm),
-                const Text('No hay mas detalle disponible para este equipo.'),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cerrar'),
-            ),
-          ],
-        );
-      },
+    await SessionGearDialog.show(
+      context,
+      gearSetupName: widget.gearSetupName!,
+      gearSetupDetailLines: widget.gearSetupDetailLines,
     );
   }
 
@@ -242,9 +213,7 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
                 _jumpDetectionModeChipLabel(widget.insights.jumpDetectionMode),
               ),
             ),
-            Chip(
-              label: Text('${widget.insights.jumpHistory.length} saltos'),
-            ),
+            Chip(label: Text('${widget.insights.jumpHistory.length} saltos')),
           ],
         ),
         const SizedBox(height: AppSpacing.xs),
@@ -269,9 +238,7 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
             ),
             if (_avgManeuverRotationLabel(widget.insights.jumpHistory)
                 case final rotationLabel?)
-              Chip(
-                label: Text('Rotacion: $rotationLabel'),
-              ),
+              Chip(label: Text('Rotacion: $rotationLabel')),
             Chip(
               label: Text(
                 'Recepcion: ${_avgLandingGLabel(widget.insights.jumpHistory)}',
@@ -384,83 +351,15 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
   }
 
   Future<void> _showDeviceCapabilitiesDialog() async {
-    final sensorKeys = widget.deviceSensorKeys.isNotEmpty
-        ? widget.deviceSensorKeys
-        : SessionInsightData.physicalSensorsForDeviceKind(
-            widget.deviceKind,
-          ).toList(growable: false);
-    final orderedKeys = SessionInsightData.physicalSensorOrder
-        .where(sensorKeys.contains)
-        .toList(growable: false);
-
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Capacidades del dispositivo'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.deviceName,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  widget.deviceKind,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  orderedKeys.length == 1
-                      ? '1 sensor disponible'
-                      : '${orderedKeys.length} sensores disponibles',
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Aquí solo mostramos sensores físicos reales del dispositivo.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                if (orderedKeys.isEmpty)
-                  Text(
-                    'Aun no hemos detectado capacidades utilizables para este dispositivo.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  )
-                else
-                  Wrap(
-                    spacing: AppSpacing.xs,
-                    runSpacing: AppSpacing.xs,
-                    children: orderedKeys
-                        .map(
-                          (key) => Chip(
-                            avatar: const Icon(
-                              Icons.check_circle_rounded,
-                              size: 16,
-                              color: Color(0xFF2E7D32),
-                            ),
-                            label: Text(
-                              SessionInsightData.physicalSensorLabels[key] ??
-                                  key,
-                            ),
-                            backgroundColor: const Color(0x1F2E7D32),
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cerrar'),
-            ),
-          ],
-        );
-      },
+    await SessionDeviceDialog.show(
+      context,
+      deviceName: widget.deviceName,
+      deviceKind: widget.deviceKind,
+      deviceSensorKeys: widget.deviceSensorKeys.isNotEmpty
+          ? widget.deviceSensorKeys
+          : SessionInsightData.physicalSensorsForDeviceKind(
+              widget.deviceKind,
+            ).toList(growable: false),
     );
   }
 }
@@ -522,7 +421,7 @@ class _JumpHistoryTable extends StatelessWidget {
             h: jumpDetectionMode == 'barometric' ? 'Altura' : 'Altura est.',
             t: 'Hangtime',
             maneuver: 'Maniobra',
-            landing: 'Recepcion',
+            landing: 'Recepción',
             when: 'Min:Seg',
             header: true,
           ),

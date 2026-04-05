@@ -15108,3 +15108,54 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
         - `test/features/sessions/presentation/pages/session_detail_page_test.dart`,
         - `test/features/sessions/infrastructure/adapters/local/local_file_session_records_adapter_test.dart`,
       - se mantiene solo el warning externo conocido de `webview_flutter:macos`.
+
+  - bloque nuevo `2026-04-05`:
+    - pulido de `My Sessions` como listado diario y limpieza de acciones redundantes,
+    - duracion estimada del bloque: `3h`,
+    - my sessions / ux del listado:
+      - simplificada la card de sesion para dejarla como acceso ligero al detalle,
+      - eliminadas de la card las acciones `Editar` y `Eliminar` porque ya existen en `Detalle de sesion`,
+      - reducido el placeholder sin foto para que pese menos visualmente en la lista,
+      - mantenida la fila de KPIs cortos en una sola linea horizontal,
+      - afinado el orden de KPIs a:
+        - duracion,
+        - velocidad maxima,
+        - hangtime,
+        - salto,
+      - simplificados los chips de duracion y velocidad maxima a icono + valor,
+      - eliminado el texto redundante debajo del chip de equipacion porque ese detalle ya vive en el dialogo,
+    - widgets compartidos de session:
+      - extraidos widgets reutilizables para chip y dialogo de equipacion:
+        - `session_gear_action_chip.dart`,
+        - `session_gear_dialog.dart`,
+      - extraidos widgets reutilizables para chip y dialogo de dispositivo:
+        - `session_device_action_chip.dart`,
+        - `session_device_dialog.dart`,
+      - reutilizados tanto en `MySessionCard` como en `SessionHeroCard`,
+      - `session_detail_page.dart` deja de construir inline ambos dialogos y pasa a delegar en widgets compartidos,
+    - my sessions / filtros y busqueda:
+      - eliminados de la UI el filtro por dispositivo y el selector de orden,
+      - `My Sessions` queda siempre ordenado por `Mas recientes`,
+      - el buscador pasa a ser el unico control visible para sesiones,
+      - ampliada la busqueda para encontrar por:
+        - titulo,
+        - resumen,
+        - dispositivo,
+        - spot,
+        - equipacion (`gearSetupName`),
+      - anadido boton para limpiar la busqueda desde el `TextField`,
+      - mejorado el estado vacio para distinguir entre:
+        - no hay sesiones finalizadas,
+        - no hay resultados para la busqueda actual,
+    - limpieza tecnica:
+      - descartada la extraccion intermedia de `my_session_summary_section.dart` al no aportar suficiente claridad real en una card tan pequena,
+      - eliminados helpers y props ya no usados en `sessions_page.dart` y `my_session_card.dart`,
+      - incluidos cambios generados de `macos/` asociados al estado actual de CocoaPods/workspace para mantener el arbol consistente,
+    - verificacion:
+      - multiples `flutter analyze` limpios sobre:
+        - `sessions_page.dart`,
+        - `my_session_card.dart`,
+        - `session_detail_page.dart`,
+        - `session_hero_card.dart`,
+        - widgets compartidos de dispositivo y equipacion,
+      - se mantiene solo el warning externo conocido de `webview_flutter:macos`.

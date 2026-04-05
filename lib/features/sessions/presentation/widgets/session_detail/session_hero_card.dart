@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/features/sessions/presentation/widgets/shared/session_device_action_chip.dart';
+import 'package:windwisher/features/sessions/presentation/widgets/shared/session_gear_action_chip.dart';
 
 class SessionHeroCard extends StatelessWidget {
   const SessionHeroCard({
@@ -84,15 +86,14 @@ class SessionHeroCard extends StatelessWidget {
             spacing: AppSpacing.xs,
             runSpacing: AppSpacing.xs,
             children: [
-              ActionChip(
-                avatar: Icon(_deviceChipIcon(deviceKind), size: 16),
-                label: Text(deviceName),
+              SessionDeviceActionChip(
+                deviceName: deviceName,
+                deviceKind: deviceKind,
                 onPressed: onDevicePressed,
               ),
               if (gearSetupName != null && gearSetupName!.isNotEmpty)
-                ActionChip(
-                  avatar: const Icon(Icons.checkroom_rounded, size: 16),
-                  label: Text(gearSetupName!),
+                SessionGearActionChip(
+                  label: gearSetupName!,
                   onPressed: onGearPressed,
                 ),
             ],
@@ -135,16 +136,4 @@ class SessionHeroCard extends StatelessWidget {
     );
   }
 
-  static IconData _deviceChipIcon(String kind) {
-    final normalized = kind.toLowerCase();
-    if (normalized.contains('watch') || normalized.contains('smartwatch')) {
-      return Icons.watch_rounded;
-    }
-    if (normalized.contains('android') ||
-        normalized.contains('iphone') ||
-        normalized.contains('telefono')) {
-      return Icons.phone_android_rounded;
-    }
-    return Icons.memory_rounded;
-  }
 }
