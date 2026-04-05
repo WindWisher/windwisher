@@ -103,6 +103,17 @@ class InMemoryProfileGearRepositoryAdapter
       ..addAll(setups);
   }
 
+  void clearAll() {
+    _kites.clear();
+    _bars.clear();
+    _boards.clear();
+    _harnesses.clear();
+    _wetsuits.clear();
+    _helmets.clear();
+    _vests.clear();
+    _gearSetups.clear();
+  }
+
   void _saveById<T>(List<T> list, T item, String Function(T value) idOf) {
     final index = list.indexWhere((value) => idOf(value) == idOf(item));
     if (index >= 0) {

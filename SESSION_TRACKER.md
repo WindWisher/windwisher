@@ -15061,3 +15061,50 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - multiples `flutter analyze` limpios sobre `sessions_page.dart` y `session_detail_page.dart`,
       - pruebas orientadas a iteracion con `hot reload / hot restart`,
       - sin tocar ya `Meteokite`; todo el trabajo queda consolidado solo en `WindWisher`.
+
+  - bloque nuevo `2026-04-05`:
+    - consolidacion de `Session` sobre datos reales y limpieza de residuos sinteticos,
+    - duracion estimada del bloque: `5h`,
+    - persistencia / my sessions:
+      - verificado que en Supabase existen sesiones reales del usuario (`c3f2da51-bdcb-4e68-9475-f381c93ad5b2`) y que el vacio en app no venia de una tabla remota vacia,
+      - reforzado `SupabaseSessionRecordsAdapter` para usar persistencia local solo como respaldo temporal:
+        - si Supabase falla o no hay sesion autenticada, la sesion queda en local como pendiente,
+        - si Supabase guarda bien, la copia local se elimina,
+        - al cargar, se mezclan solo las sesiones locales pendientes de subir y se limpian las ya presentes en remoto,
+      - `SessionsModule.auto()` queda cableado con fallback local explicito para sesiones,
+      - eliminados `unawaited(...)` en guardado/borrado principal de `My Sessions` para evitar falsos positivos de persistencia en UI,
+      - anadido debug visual en estado vacio de `My Sessions` para mostrar si Supabase tiene sesion iniciada y con que `user id`,
+    - modelos / datos honestos:
+      - eliminado `SessionInsightData.fromSession(...)` y con ello el ultimo generador sintético de metricas de sesion,
+      - anadido `SessionInsightData.empty(...)` como factory honesto para estados vacios,
+      - alineados `Session`, `Community` y tests para construir `insights` solo con datos reales o vacio explicito,
+      - actualizados tests de detalle de sesion y persistencia local para trabajar ya sin fallbacks sinteticos,
+    - detalle de sesion / UX:
+      - compactado `Historial de saltos` cuando no hay saltos detectados, reduciendo altura y ruido visual,
+      - compactada `Mediciones avanzadas` cuando no hay ningun KPI real, ocultando selector y contenedor interior innecesarios,
+      - `Resumen post-sesion` pasa a mostrar solo tiles con datos reales:
+        - mantiene siempre `Duracion sesion`,
+        - el resto de KPIs solo aparecen si existen de verdad,
+      - corregido el chip horario `inicio-fin` de `Ruta GPS real` para usar hora local (`toLocal()`) en vez de mostrar UTC,
+    - advanced metrics / community:
+      - mejorado el copy de `Mediciones avanzadas` para distinguir entre:
+        - sesion sin KPIs reales,
+        - categoria concreta sin datos,
+      - alineado `Community` con el catalogo actual de KPIs reales de `Session`:
+        - fuera `racha_max` y `racha_10s`,
+        - `Freestyle` pasa a `Maniobras`,
+        - `Velocidad P95` pasa a `Velocidad alta sostenida`,
+        - `Smoothness score` pasa a `Suavidad de navegacion`,
+        - `Score de maniobras` se mantiene como label final para esa familia,
+    - saltos / deteccion:
+      - mantenida la bifurcacion `inertial_fallback` / `barometric`,
+      - convertidos avisos `TODO` del pipeline barometrico en comentarios normales para limpiar el analizador sin perder la intencion tecnica,
+    - estructura / mantenimiento:
+      - consolidado el trabajo de extraccion de widgets y modelos de detalle ya movidos a `presentation/widgets/session_detail` y `presentation/models`,
+      - el detalle queda mas mantenible y con menos logica inflada en pagina,
+    - verificacion:
+      - `flutter analyze` limpio en los archivos tocados,
+      - `flutter test` limpio en:
+        - `test/features/sessions/presentation/pages/session_detail_page_test.dart`,
+        - `test/features/sessions/infrastructure/adapters/local/local_file_session_records_adapter_test.dart`,
+      - se mantiene solo el warning externo conocido de `webview_flutter:macos`.

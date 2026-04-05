@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:windwisher/core/persistence/app_storage_paths.dart';
 import 'package:windwisher/features/sessions/domain/entities/recorded_session.dart';
 import 'package:windwisher/features/sessions/infrastructure/adapters/local/local_file_session_records_adapter.dart';
-import 'package:windwisher/features/sessions/presentation/pages/session_detail_page.dart';
+import 'package:windwisher/features/sessions/presentation/models/session_detail_models.dart';
 
 void main() {
   test('persists recorded sessions across adapter instances', () async {
@@ -27,17 +27,25 @@ void main() {
       endedAt: DateTime(2026, 3, 4, 20, 30),
       duration: const Duration(minutes: 55),
       summary: 'Resumen test',
+      gearSetupId: 'setup-1',
       gearSetupName: 'Big Air 30kt',
       hasSessionPhoto: false,
       sessionMediaLabel: 'Pantallazo del mapa del spot',
       sessionPhotoLocalPath: null,
       spotName: 'Tarifa',
-      insights: SessionInsightData.fromSession(
-        title: 'Sesion test',
-        deviceName: 'Woo Sports',
+      insights: SessionInsightData.empty(
         deviceKind: 'Woo Sports',
-        endedAt: DateTime(2026, 3, 4, 20, 30),
-        durationLabel: '55:00',
+      ).copyWith(
+        deviceSensorKeys: const ['gps', 'accelerometer', 'gyroscope'],
+        maxSpeedKnots: 22.4,
+        distanceKm: 18.6,
+        groups: SessionInsightData.buildGroupsForRecordedSession(
+          values: const <String, String>{
+            'duracion_total': '55 min',
+            'distancia_total': '18.6 km',
+            'velocidad_max': '22.4 kt',
+          },
+        ),
       ),
     );
     await adapter.saveRecordedSession(session);
@@ -79,11 +87,5 @@ Object _decodeInsights(Object? value) {
   if (value is Map<String, dynamic>) {
     return SessionInsightData.fromJson(value);
   }
-  return SessionInsightData.fromSession(
-    title: 'Sesion',
-    deviceName: 'Dispositivo',
-    deviceKind: 'Dispositivo Android',
-    endedAt: DateTime(2026, 3, 4, 20, 0),
-    durationLabel: '45:00',
-  );
+  return SessionInsightData.empty(deviceKind: 'Dispositivo Android');
 }

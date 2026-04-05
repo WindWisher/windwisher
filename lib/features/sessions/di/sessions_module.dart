@@ -114,18 +114,22 @@ class SessionsModule {
         : LocalFileSessionViewPreferencesAdapter(
             fileName: viewPreferencesFileName,
           );
-    final recordsPort = hasSupabase
-        ? SupabaseSessionRecordsAdapter(
-            encodeInsights: encodeInsights,
-            decodeInsights: decodeInsights,
-          )
-        : kIsWeb
+    final localRecordsFallback = kIsWeb
         ? InMemorySessionRecordsAdapter()
         : LocalFileSessionRecordsAdapter(
             encodeInsights: encodeInsights,
             decodeInsights: decodeInsights,
             fileName: recordsFileName,
           );
+    final recordsPort = hasSupabase
+        ? SupabaseSessionRecordsAdapter(
+            encodeInsights: encodeInsights,
+            decodeInsights: decodeInsights,
+            localFallback: localRecordsFallback,
+          )
+        : kIsWeb
+        ? InMemorySessionRecordsAdapter()
+        : localRecordsFallback;
 
     return SessionsModule(
       getLinkedDevices: GetLinkedDevicesUseCase(devicesPort),

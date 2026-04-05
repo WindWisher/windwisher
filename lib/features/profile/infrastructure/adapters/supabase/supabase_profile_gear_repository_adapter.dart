@@ -10,6 +10,15 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
   SupabaseProfileGearRepositoryAdapter({SupabaseClient? client})
     : _client = client ?? Supabase.instance.client;
 
+  static const _kitesTable = 'user_kites';
+  static const _barsTable = 'user_bars';
+  static const _boardsTable = 'user_boards';
+  static const _harnessesTable = 'user_harnesses';
+  static const _wetsuitsTable = 'user_wetsuits';
+  static const _helmetsTable = 'user_helmets';
+  static const _vestsTable = 'user_vests';
+  static const _setupsTable = 'user_gear_setups';
+
   final SupabaseClient _client;
   final InMemoryProfileGearRepositoryAdapter _memory =
       InMemoryProfileGearRepositoryAdapter();
@@ -21,71 +30,140 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       return;
     }
 
-    final rows = await _client
-        .from('user_gear_setups')
-        .select('id, name, board, kite, bar, wetsuit, notes, created_at')
-        .eq('user_id', user.id)
-        .order('created_at', ascending: false);
+    _memory.clearAll();
 
-    final kites = <String, KiteItem>{};
-    final bars = <String, BarItem>{};
-    final boards = <String, BoardItem>{};
-    final harnesses = <String, HarnessItem>{};
-    final wetsuits = <String, WetsuitItem>{};
-    final helmets = <String, HelmetItem>{};
-    final vests = <String, VestItem>{};
+    final kiteRows = await _selectUserRows(
+      _kitesTable,
+      user.id,
+      'id, brand, model, size_meters, year',
+    );
+    for (final row in kiteRows) {
+      final item = _hydrateKiteRow(row);
+      if (item != null) {
+        _memory.saveKite(item);
+      }
+    }
+
+    final barRows = await _selectUserRows(
+      _barsTable,
+      user.id,
+      'id, brand, model, line_length_meters, width_cm, year',
+    );
+    for (final row in barRows) {
+      final item = _hydrateBarRow(row);
+      if (item != null) {
+        _memory.saveBar(item);
+      }
+    }
+
+    final boardRows = await _selectUserRows(
+      _boardsTable,
+      user.id,
+      'id, brand, model, type, size_cm, year',
+    );
+    for (final row in boardRows) {
+      final item = _hydrateBoardRow(row);
+      if (item != null) {
+        _memory.saveBoard(item);
+      }
+    }
+
+    final harnessRows = await _selectUserRows(
+      _harnessesTable,
+      user.id,
+      'id, brand, model, size, year',
+    );
+    for (final row in harnessRows) {
+      final item = _hydrateHarnessRow(row);
+      if (item != null) {
+        _memory.saveHarness(item);
+      }
+    }
+
+    final wetsuitRows = await _selectUserRows(
+      _wetsuitsTable,
+      user.id,
+      'id, brand, model, thickness, size, year',
+    );
+    for (final row in wetsuitRows) {
+      final item = _hydrateWetsuitRow(row);
+      if (item != null) {
+        _memory.saveWetsuit(item);
+      }
+    }
+
+    final helmetRows = await _selectUserRows(
+      _helmetsTable,
+      user.id,
+      'id, brand, model, year',
+    );
+    for (final row in helmetRows) {
+      final item = _hydrateHelmetRow(row);
+      if (item != null) {
+        _memory.saveHelmet(item);
+      }
+    }
+
+    final vestRows = await _selectUserRows(
+      _vestsTable,
+      user.id,
+      'id, brand, model, size, year',
+    );
+    for (final row in vestRows) {
+      final item = _hydrateVestRow(row);
+      if (item != null) {
+        _memory.saveVest(item);
+      }
+    }
+
+    final setupRows = await _selectUserRows(
+      _setupsTable,
+      user.id,
+      'id, name, board, kite, bar, wetsuit, notes, created_at',
+    );
+
     final setups = <GearSetup>[];
-
-    for (final row in (rows as List<dynamic>).whereType<Map<String, dynamic>>()) {
+    for (final row in setupRows) {
       final hydrated = _hydrateSetupRow(row);
       if (hydrated == null) {
         continue;
       }
       final snapshot = hydrated.snapshot;
-      if (snapshot.kite != null) {
-        kites[snapshot.kite!.id] = snapshot.kite!;
+      if (snapshot.kite != null &&
+          !_memory.getKites().any((item) => item.id == snapshot.kite!.id)) {
+        _memory.saveKite(snapshot.kite!);
       }
-      if (snapshot.bar != null) {
-        bars[snapshot.bar!.id] = snapshot.bar!;
+      if (snapshot.bar != null &&
+          !_memory.getBars().any((item) => item.id == snapshot.bar!.id)) {
+        _memory.saveBar(snapshot.bar!);
       }
-      if (snapshot.board != null) {
-        boards[snapshot.board!.id] = snapshot.board!;
+      if (snapshot.board != null &&
+          !_memory.getBoards().any((item) => item.id == snapshot.board!.id)) {
+        _memory.saveBoard(snapshot.board!);
       }
-      if (snapshot.harness != null) {
-        harnesses[snapshot.harness!.id] = snapshot.harness!;
+      if (snapshot.harness != null &&
+          !_memory.getHarnesses().any(
+            (item) => item.id == snapshot.harness!.id,
+          )) {
+        _memory.saveHarness(snapshot.harness!);
       }
-      if (snapshot.wetsuit != null) {
-        wetsuits[snapshot.wetsuit!.id] = snapshot.wetsuit!;
+      if (snapshot.wetsuit != null &&
+          !_memory.getWetsuits().any(
+            (item) => item.id == snapshot.wetsuit!.id,
+          )) {
+        _memory.saveWetsuit(snapshot.wetsuit!);
       }
-      if (snapshot.helmet != null) {
-        helmets[snapshot.helmet!.id] = snapshot.helmet!;
+      if (snapshot.helmet != null &&
+          !_memory.getHelmets().any(
+            (item) => item.id == snapshot.helmet!.id,
+          )) {
+        _memory.saveHelmet(snapshot.helmet!);
       }
-      if (snapshot.vest != null) {
-        vests[snapshot.vest!.id] = snapshot.vest!;
+      if (snapshot.vest != null &&
+          !_memory.getVests().any((item) => item.id == snapshot.vest!.id)) {
+        _memory.saveVest(snapshot.vest!);
       }
       setups.add(hydrated.setup);
-    }
-
-    for (final item in kites.values) {
-      _memory.saveKite(item);
-    }
-    for (final item in bars.values) {
-      _memory.saveBar(item);
-    }
-    for (final item in boards.values) {
-      _memory.saveBoard(item);
-    }
-    for (final item in harnesses.values) {
-      _memory.saveHarness(item);
-    }
-    for (final item in wetsuits.values) {
-      _memory.saveWetsuit(item);
-    }
-    for (final item in helmets.values) {
-      _memory.saveHelmet(item);
-    }
-    for (final item in vests.values) {
-      _memory.saveVest(item);
     }
     _memory.replaceGearSetups(setups);
   }
@@ -115,25 +193,46 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
   List<GearSetup> getGearSetups() => _memory.getGearSetups();
 
   @override
-  void saveKite(KiteItem item) => _memory.saveKite(item);
+  void saveKite(KiteItem item) {
+    _memory.saveKite(item);
+    unawaited(_upsertRemoteKite(item));
+  }
 
   @override
-  void saveBar(BarItem item) => _memory.saveBar(item);
+  void saveBar(BarItem item) {
+    _memory.saveBar(item);
+    unawaited(_upsertRemoteBar(item));
+  }
 
   @override
-  void saveBoard(BoardItem item) => _memory.saveBoard(item);
+  void saveBoard(BoardItem item) {
+    _memory.saveBoard(item);
+    unawaited(_upsertRemoteBoard(item));
+  }
 
   @override
-  void saveHarness(HarnessItem item) => _memory.saveHarness(item);
+  void saveHarness(HarnessItem item) {
+    _memory.saveHarness(item);
+    unawaited(_upsertRemoteHarness(item));
+  }
 
   @override
-  void saveWetsuit(WetsuitItem item) => _memory.saveWetsuit(item);
+  void saveWetsuit(WetsuitItem item) {
+    _memory.saveWetsuit(item);
+    unawaited(_upsertRemoteWetsuit(item));
+  }
 
   @override
-  void saveHelmet(HelmetItem item) => _memory.saveHelmet(item);
+  void saveHelmet(HelmetItem item) {
+    _memory.saveHelmet(item);
+    unawaited(_upsertRemoteHelmet(item));
+  }
 
   @override
-  void saveVest(VestItem item) => _memory.saveVest(item);
+  void saveVest(VestItem item) {
+    _memory.saveVest(item);
+    unawaited(_upsertRemoteVest(item));
+  }
 
   @override
   void saveGearSetup(GearSetup setup) {
@@ -142,25 +241,46 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
   }
 
   @override
-  void deleteKite(String id) => _memory.deleteKite(id);
+  void deleteKite(String id) {
+    _memory.deleteKite(id);
+    unawaited(_deleteRemoteRow(_kitesTable, id));
+  }
 
   @override
-  void deleteBar(String id) => _memory.deleteBar(id);
+  void deleteBar(String id) {
+    _memory.deleteBar(id);
+    unawaited(_deleteRemoteRow(_barsTable, id));
+  }
 
   @override
-  void deleteBoard(String id) => _memory.deleteBoard(id);
+  void deleteBoard(String id) {
+    _memory.deleteBoard(id);
+    unawaited(_deleteRemoteRow(_boardsTable, id));
+  }
 
   @override
-  void deleteHarness(String id) => _memory.deleteHarness(id);
+  void deleteHarness(String id) {
+    _memory.deleteHarness(id);
+    unawaited(_deleteRemoteRow(_harnessesTable, id));
+  }
 
   @override
-  void deleteWetsuit(String id) => _memory.deleteWetsuit(id);
+  void deleteWetsuit(String id) {
+    _memory.deleteWetsuit(id);
+    unawaited(_deleteRemoteRow(_wetsuitsTable, id));
+  }
 
   @override
-  void deleteHelmet(String id) => _memory.deleteHelmet(id);
+  void deleteHelmet(String id) {
+    _memory.deleteHelmet(id);
+    unawaited(_deleteRemoteRow(_helmetsTable, id));
+  }
 
   @override
-  void deleteVest(String id) => _memory.deleteVest(id);
+  void deleteVest(String id) {
+    _memory.deleteVest(id);
+    unawaited(_deleteRemoteRow(_vestsTable, id));
+  }
 
   @override
   void deleteGearSetup(String id) {
@@ -180,7 +300,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       return;
     }
     final snapshot = _buildSnapshot(setup);
-    await _client.from('user_gear_setups').upsert(<String, dynamic>{
+    await _client.from(_setupsTable).upsert(<String, dynamic>{
       'id': setup.id,
       'user_id': user.id,
       'name': setup.name,
@@ -198,11 +318,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
     if (user == null) {
       return;
     }
-    await _client
-        .from('user_gear_setups')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('id', id);
+    await _deleteRemoteRow(_setupsTable, id);
   }
 
   Future<void> _replaceRemoteSetups(List<GearSetup> setups) async {
@@ -210,10 +326,239 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
     if (user == null) {
       return;
     }
-    await _client.from('user_gear_setups').delete().eq('user_id', user.id);
+    await _client.from(_setupsTable).delete().eq('user_id', user.id);
     for (final setup in setups) {
       await _upsertRemoteSetup(setup);
     }
+  }
+
+  Future<List<Map<String, dynamic>>> _selectUserRows(
+    String table,
+    String userId,
+    String columns,
+  ) async {
+    final rows = await _client
+        .from(table)
+        .select(columns)
+        .eq('user_id', userId);
+    return (rows as List<dynamic>).whereType<Map<String, dynamic>>().toList(
+      growable: false,
+    );
+  }
+
+  Future<void> _deleteRemoteRow(String table, String id) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return;
+    }
+    await _client.from(table).delete().eq('user_id', user.id).eq('id', id);
+  }
+
+  Future<void> _upsertRemoteKite(KiteItem item) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return;
+    }
+    await _client.from(_kitesTable).upsert(<String, dynamic>{
+      'id': item.id,
+      'user_id': user.id,
+      'brand': item.brand,
+      'model': item.model,
+      'size_meters': item.sizeMeters,
+      'year': item.year,
+    });
+  }
+
+  Future<void> _upsertRemoteBar(BarItem item) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return;
+    }
+    await _client.from(_barsTable).upsert(<String, dynamic>{
+      'id': item.id,
+      'user_id': user.id,
+      'brand': item.brand,
+      'model': item.model,
+      'line_length_meters': item.lineLengthMeters,
+      'width_cm': item.widthCm,
+      'year': item.year,
+    });
+  }
+
+  Future<void> _upsertRemoteBoard(BoardItem item) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return;
+    }
+    await _client.from(_boardsTable).upsert(<String, dynamic>{
+      'id': item.id,
+      'user_id': user.id,
+      'brand': item.brand,
+      'model': item.model,
+      'type': item.type,
+      'size_cm': item.sizeCm,
+      'year': item.year,
+    });
+  }
+
+  Future<void> _upsertRemoteHarness(HarnessItem item) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return;
+    }
+    await _client.from(_harnessesTable).upsert(<String, dynamic>{
+      'id': item.id,
+      'user_id': user.id,
+      'brand': item.brand,
+      'model': item.model,
+      'size': item.size,
+      'year': item.year,
+    });
+  }
+
+  Future<void> _upsertRemoteWetsuit(WetsuitItem item) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return;
+    }
+    await _client.from(_wetsuitsTable).upsert(<String, dynamic>{
+      'id': item.id,
+      'user_id': user.id,
+      'brand': item.brand,
+      'model': item.model,
+      'thickness': item.thickness,
+      'size': item.size,
+      'year': item.year,
+    });
+  }
+
+  Future<void> _upsertRemoteHelmet(HelmetItem item) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return;
+    }
+    await _client.from(_helmetsTable).upsert(<String, dynamic>{
+      'id': item.id,
+      'user_id': user.id,
+      'brand': item.brand,
+      'model': item.model,
+      'year': item.year,
+    });
+  }
+
+  Future<void> _upsertRemoteVest(VestItem item) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return;
+    }
+    await _client.from(_vestsTable).upsert(<String, dynamic>{
+      'id': item.id,
+      'user_id': user.id,
+      'brand': item.brand,
+      'model': item.model,
+      'size': item.size,
+      'year': item.year,
+    });
+  }
+
+  KiteItem? _hydrateKiteRow(Map<String, dynamic> row) {
+    final id = row['id'] as String?;
+    if (id == null || id.isEmpty) {
+      return null;
+    }
+    return KiteItem(
+      id: id,
+      brand: row['brand'] as String? ?? '',
+      model: row['model'] as String? ?? '',
+      sizeMeters: row['size_meters'] as String? ?? '',
+      year: row['year'] as String? ?? '',
+    );
+  }
+
+  BarItem? _hydrateBarRow(Map<String, dynamic> row) {
+    final id = row['id'] as String?;
+    if (id == null || id.isEmpty) {
+      return null;
+    }
+    return BarItem(
+      id: id,
+      brand: row['brand'] as String? ?? '',
+      model: row['model'] as String? ?? '',
+      lineLengthMeters: row['line_length_meters'] as String? ?? '',
+      widthCm: row['width_cm'] as String? ?? '',
+      year: row['year'] as String? ?? '',
+    );
+  }
+
+  BoardItem? _hydrateBoardRow(Map<String, dynamic> row) {
+    final id = row['id'] as String?;
+    if (id == null || id.isEmpty) {
+      return null;
+    }
+    return BoardItem(
+      id: id,
+      brand: row['brand'] as String? ?? '',
+      model: row['model'] as String? ?? '',
+      type: row['type'] as String? ?? '',
+      sizeCm: row['size_cm'] as String? ?? '',
+      year: row['year'] as String? ?? '',
+    );
+  }
+
+  HarnessItem? _hydrateHarnessRow(Map<String, dynamic> row) {
+    final id = row['id'] as String?;
+    if (id == null || id.isEmpty) {
+      return null;
+    }
+    return HarnessItem(
+      id: id,
+      brand: row['brand'] as String? ?? '',
+      model: row['model'] as String? ?? '',
+      size: row['size'] as String? ?? '',
+      year: row['year'] as String? ?? '',
+    );
+  }
+
+  WetsuitItem? _hydrateWetsuitRow(Map<String, dynamic> row) {
+    final id = row['id'] as String?;
+    if (id == null || id.isEmpty) {
+      return null;
+    }
+    return WetsuitItem(
+      id: id,
+      brand: row['brand'] as String? ?? '',
+      model: row['model'] as String? ?? '',
+      thickness: row['thickness'] as String? ?? '',
+      size: row['size'] as String? ?? '',
+      year: row['year'] as String? ?? '',
+    );
+  }
+
+  HelmetItem? _hydrateHelmetRow(Map<String, dynamic> row) {
+    final id = row['id'] as String?;
+    if (id == null || id.isEmpty) {
+      return null;
+    }
+    return HelmetItem(
+      id: id,
+      brand: row['brand'] as String? ?? '',
+      model: row['model'] as String? ?? '',
+      year: row['year'] as String? ?? '',
+    );
+  }
+
+  VestItem? _hydrateVestRow(Map<String, dynamic> row) {
+    final id = row['id'] as String?;
+    if (id == null || id.isEmpty) {
+      return null;
+    }
+    return VestItem(
+      id: id,
+      brand: row['brand'] as String? ?? '',
+      model: row['model'] as String? ?? '',
+      size: row['size'] as String? ?? '',
+      year: row['year'] as String? ?? '',
+    );
   }
 
   _HydratedSetup? _hydrateSetupRow(Map<String, dynamic> row) {

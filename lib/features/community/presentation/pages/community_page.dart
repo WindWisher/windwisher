@@ -20,6 +20,7 @@ import 'package:windwisher/features/community/presentation/pages/community_user_
 import 'package:windwisher/features/community/presentation/support/community_identity_mapper.dart';
 import 'package:windwisher/features/profile/di/profile_module.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
+import 'package:windwisher/features/sessions/presentation/models/session_detail_models.dart';
 import 'package:windwisher/features/sessions/presentation/pages/session_detail_page.dart';
 
 typedef _CommunityUser = CommunityUserSummary;
@@ -55,9 +56,11 @@ class _CommunityPageState extends State<CommunityPage> {
     _KpiFilterOption.metric('distancia_downwind', 'Distancia downwind', 'km'),
     _KpiFilterOption.metric('velocidad_media', 'Velocidad media', 'kt'),
     _KpiFilterOption.metric('velocidad_max', 'Velocidad maxima', 'kt'),
-    _KpiFilterOption.metric('velocidad_p95', 'Top velocidad estable', 'kt'),
-    _KpiFilterOption.metric('racha_max', 'Racha maxima', 'kt'),
-    _KpiFilterOption.metric('racha_10s', 'Racha sostenida (10s)', 'kt'),
+    _KpiFilterOption.metric(
+      'velocidad_p95',
+      'Velocidad alta sostenida',
+      'kt',
+    ),
     _KpiFilterOption.metric('transiciones', 'Transiciones', 'count'),
     _KpiFilterOption.metric(
       'transiciones_hora',
@@ -88,13 +91,29 @@ class _CommunityPageState extends State<CommunityPage> {
       'Variacion de alturas',
       '%',
     ),
-    _KpiFilterOption.group('Freestyle'),
-    _KpiFilterOption.metric('intentos_truco', 'Intentos por trick', 'count'),
-    _KpiFilterOption.metric('exito_truco', 'Tasa de exito por trick', '%'),
-    _KpiFilterOption.metric('combo_rate', 'Combo rate', '%'),
-    _KpiFilterOption.metric('dificultad_media', 'Dificultad media', '/10'),
-    _KpiFilterOption.metric('caidas_intento', 'Caidas por intento', 'count'),
-    _KpiFilterOption.metric('progresion_truco', 'Progresion por trick', '%'),
+    _KpiFilterOption.group('Maniobras'),
+    _KpiFilterOption.metric(
+      'intentos_truco',
+      'Intentos de maniobra',
+      'count',
+    ),
+    _KpiFilterOption.metric('exito_truco', 'Exito de maniobra', '%'),
+    _KpiFilterOption.metric('combo_rate', 'Secuencia de maniobras', '%'),
+    _KpiFilterOption.metric(
+      'dificultad_media',
+      'Intensidad de maniobra',
+      '/10',
+    ),
+    _KpiFilterOption.metric(
+      'caidas_intento',
+      'Caidas por maniobra',
+      'count',
+    ),
+    _KpiFilterOption.metric(
+      'progresion_truco',
+      'Progresion de maniobra',
+      '%',
+    ),
     _KpiFilterOption.group('Freeride / Navegacion'),
     _KpiFilterOption.metric('vmg_upwind', 'Velocidad efectiva upwind', 'kt'),
     _KpiFilterOption.metric(
@@ -108,8 +127,12 @@ class _CommunityPageState extends State<CommunityPage> {
     _KpiFilterOption.metric('deriva_neta', 'Deriva neta', 'km'),
     _KpiFilterOption.metric('cobertura_area', 'Cobertura de area', 'km2'),
     _KpiFilterOption.group('Saltos'),
-    _KpiFilterOption.metric('takeoff_speed', 'Takeoff speed', 'kt'),
-    _KpiFilterOption.metric('landing_speed', 'Fuerza G al aterrizar', 'G'),
+    _KpiFilterOption.metric('takeoff_speed', 'Velocidad de despegue', 'kt'),
+    _KpiFilterOption.metric(
+      'landing_speed',
+      'Velocidad de aterrizaje',
+      'kt',
+    ),
     _KpiFilterOption.metric('clean_landing_rate', 'Clean landing rate', '%'),
     _KpiFilterOption.metric('impact_score', 'Impact score', '/10'),
     _KpiFilterOption.group('Control tecnico'),
@@ -134,7 +157,11 @@ class _CommunityPageState extends State<CommunityPage> {
       'Recuperacion de planeo',
       's',
     ),
-    _KpiFilterOption.metric('smoothness_score', 'Smoothness score', '/10'),
+    _KpiFilterOption.metric(
+      'smoothness_score',
+      'Suavidad de navegacion',
+      '/10',
+    ),
     _KpiFilterOption.group('Condiciones meteo-contexto'),
     _KpiFilterOption.metric('viento_medio', 'Viento medio', 'kt'),
     _KpiFilterOption.metric('viento_rango', 'Rango de viento', 'kt'),
@@ -174,7 +201,11 @@ class _CommunityPageState extends State<CommunityPage> {
     _KpiFilterOption.metric('health_dataset', 'Health score del dataset', '%'),
     _KpiFilterOption.group('KPIs compuestos'),
     _KpiFilterOption.metric('session_score', 'Session score', 'pts'),
-    _KpiFilterOption.metric('freestyle_score', 'Freestyle score', 'pts'),
+    _KpiFilterOption.metric(
+      'freestyle_score',
+      'Score de maniobras',
+      'pts',
+    ),
     _KpiFilterOption.metric('freeride_score', 'Freeride score', 'pts'),
     _KpiFilterOption.metric('safety_score', 'Safety score', 'pts'),
     _KpiFilterOption.metric('progress_score', 'Progress score', 'pts'),
@@ -695,12 +726,31 @@ class _CommunityPageState extends State<CommunityPage> {
   }
 
   void _openFriendSessionDetail(_FollowingSession session) {
-    final insights = SessionInsightData.fromSession(
-      title: session.title,
-      deviceName: 'Woo Sports',
-      deviceKind: 'Woo Sports',
-      endedAt: session.endedAt,
-      durationLabel: session.durationLabel,
+    final deviceKind = 'Woo Sports';
+    final deviceSensorKeys = SessionInsightData.physicalSensorsForDeviceKind(
+      deviceKind,
+    ).toList(growable: false);
+    final measuredValues = <String, String>{
+      'distancia_total': '${session.distanceKm.toStringAsFixed(1)} km',
+      if (session.highestJumpMeters > 0)
+        'salto_mas_alto': '${session.highestJumpMeters.toStringAsFixed(1)} m',
+      if (session.bigAirScore > 0) 'big_air_score': '${session.bigAirScore}/100',
+    };
+    final insights = SessionInsightData.empty(
+      deviceKind: deviceKind,
+      deviceSensorKeys: deviceSensorKeys,
+      events: <String>[
+        'Sesion compartida por ${_displayNameForUser(session.username)}',
+      ],
+    ).copyWith(
+      distanceKm: session.distanceKm > 0 ? session.distanceKm : null,
+      jumpsCount: session.highestJumpMeters > 0 ? 1 : null,
+      maxJumpHeightMeters: session.highestJumpMeters > 0
+          ? session.highestJumpMeters
+          : null,
+      groups: SessionInsightData.buildGroupsForRecordedSession(
+        values: measuredValues,
+      ),
     );
 
     final summary =
@@ -711,6 +761,8 @@ class _CommunityPageState extends State<CommunityPage> {
         builder: (_) => SessionDetailPage(
           title: session.title,
           deviceName: 'Woo Sports',
+          deviceKind: deviceKind,
+          deviceSensorKeys: insights.deviceSensorKeys,
           endedAt: session.endedAt,
           durationLabel: session.durationLabel,
           summary: summary,

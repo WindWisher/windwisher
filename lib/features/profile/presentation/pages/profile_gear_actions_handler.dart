@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 import 'package:windwisher/features/profile/domain/entities/profile_gear_entities.dart';
 import 'package:windwisher/features/profile/presentation/state/profile_gear_controller.dart';
 
@@ -94,6 +95,10 @@ class ProfileGearActionsHandler {
   final String? Function() selectedWetsuitForSetupId;
   final String? Function() selectedHelmetForSetupId;
   final String? Function() selectedVestForSetupId;
+  static final RegExp _uuidPattern = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+  );
+  static const Uuid _uuid = Uuid();
 
   bool get canSaveGearSetup {
     return gearSetupNameController.text.trim().isNotEmpty &&
@@ -233,8 +238,9 @@ class ProfileGearActionsHandler {
 
   void saveGearSetup({String? editingId}) {
     if (!canSaveGearSetup) return;
+    final normalizedSetupId = _normalizedGearSetupId(editingId);
     final setup = GearSetup(
-      id: editingId ?? DateTime.now().microsecondsSinceEpoch.toString(),
+      id: normalizedSetupId,
       name: gearSetupNameController.text.trim(),
       kiteId: selectedKiteForSetupId()!,
       barId: selectedBarForSetupId(),
@@ -247,6 +253,9 @@ class ProfileGearActionsHandler {
     );
     mutateState(() {
       gearController.saveGearSetup(setup);
+      if (editingId != null && editingId != normalizedSetupId) {
+        gearController.deleteGearSetup(editingId);
+      }
       gearSetupNameController.clear();
       publishGearSetupsForSessions();
     });
@@ -256,6 +265,13 @@ class ProfileGearActionsHandler {
         SnackBar(content: Text('Equipacion "${setup.name}" guardada')),
       );
     }
+  }
+
+  String _normalizedGearSetupId(String? currentId) {
+    if (currentId != null && _uuidPattern.hasMatch(currentId)) {
+      return currentId;
+    }
+    return _uuid.v4();
   }
 
   void deleteKite(String kiteId) {

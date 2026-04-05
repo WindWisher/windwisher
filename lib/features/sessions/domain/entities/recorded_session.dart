@@ -6,6 +6,7 @@ class RecordedSession {
     required this.endedAt,
     required this.duration,
     required this.summary,
+    required this.gearSetupId,
     required this.gearSetupName,
     required this.hasSessionPhoto,
     required this.sessionMediaLabel,
@@ -20,6 +21,7 @@ class RecordedSession {
   final DateTime endedAt;
   final Duration duration;
   final String summary;
+  final String? gearSetupId;
   final String? gearSetupName;
   final bool hasSessionPhoto;
   final String sessionMediaLabel;
@@ -37,6 +39,7 @@ class RecordedSession {
       'endedAt': endedAt.toIso8601String(),
       'durationSeconds': duration.inSeconds,
       'summary': summary,
+      'gearSetupId': gearSetupId,
       'gearSetupName': gearSetupName,
       'hasSessionPhoto': hasSessionPhoto,
       'sessionMediaLabel': sessionMediaLabel,
@@ -59,6 +62,7 @@ class RecordedSession {
         seconds: (json['durationSeconds'] as num?)?.toInt() ?? 0,
       ),
       summary: json['summary'] as String? ?? '',
+      gearSetupId: json['gearSetupId'] as String?,
       gearSetupName: json['gearSetupName'] as String?,
       hasSessionPhoto: json['hasSessionPhoto'] as bool? ?? false,
       sessionMediaLabel:

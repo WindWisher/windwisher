@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:sensors_plus/sensors_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
@@ -17,7 +19,10 @@ import 'package:windwisher/features/sessions/di/sessions_module.dart';
 import 'package:windwisher/features/sessions/domain/entities/linked_device.dart';
 import 'package:windwisher/features/sessions/domain/entities/recorded_session.dart';
 import 'package:windwisher/features/sessions/domain/entities/session_view_preferences.dart';
+import 'package:windwisher/features/sessions/presentation/models/session_detail_models.dart';
 import 'package:windwisher/features/sessions/presentation/pages/session_detail_page.dart';
+import 'package:windwisher/features/sessions/presentation/widgets/my_sessions/my_session_card.dart';
+import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_capture_status_card.dart';
 import 'package:windwisher/features/spots/di/spots_module.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_item.dart';
 import 'package:path_provider/path_provider.dart';
@@ -43,10 +48,26 @@ class SessionsPageState extends State<SessionsPage> {
   static const String _phoneDeviceId = 'phone-1';
   static const double _gpsSampleMaxAccuracyMeters = 25;
   static const double _gpsMaxPlausibleSpeedKnots = 65;
+  static const int _minRecordedTrackPoints = 2;
+  static const Duration _minRecordedTrackDuration = Duration(minutes: 1);
+  static const double _minRecordedTrackDistanceMeters = 20;
   static const double _autoPauseSpeedKnots = 1.5;
   static const double _autoResumeSpeedKnots = 4;
-  static const Duration _autoPauseDelay = Duration(seconds: 20);
+  static const Duration _autoPauseDelay = Duration(minutes: 1);
   static const Duration _autoResumeDelay = Duration(seconds: 6);
+  static const double _accelerationEventThresholdG = 1.8;
+  static const double _rotationEventThresholdDegPerSec = 320;
+  static const double _motionEventMinSpeedKnots = 6;
+  static const double _movingAverageMinSpeedKnots = 4;
+  static const Duration _motionEventCooldown = Duration(seconds: 20);
+  static const double _jumpMinTakeoffSpeedKnots = 10;
+  static const double _jumpMinManeuverG = 1.35;
+  static const double _jumpMinManeuverRotationDegPerSec = 220;
+  static const double _jumpLandingThresholdG = 1.7;
+  static const double _jumpLandingMinSpeedKnots = 6;
+  static const Duration _jumpMinAirTime = Duration(milliseconds: 800);
+  static const Duration _jumpMaxAirTime = Duration(seconds: 8);
+  static const Duration _jumpCooldown = Duration(seconds: 8);
   static const String _defaultSessionSummary =
       'Track sincronizado con sensores de velocidad, GPS y eventos.';
   static const Set<String> _templateDeviceIds = {'woo-1', 'watch-1'};
@@ -100,6 +121,8 @@ class SessionsPageState extends State<SessionsPage> {
   DateTime? _recordingStartedAt;
   Timer? _recordingTicker;
   StreamSubscription<Position>? _positionSubscription;
+  StreamSubscription<UserAccelerometerEvent>? _userAccelerometerSubscription;
+  StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
   final List<_SessionLocationSample> _recordingSamples =
       <_SessionLocationSample>[];
   final List<double> _recordingTimelineKnots = <double>[];
@@ -111,11 +134,27 @@ class SessionsPageState extends State<SessionsPage> {
   Duration _recordingLowSpeedCandidateDuration = Duration.zero;
   Duration _recordingResumeCandidateDuration = Duration.zero;
   int _recordingAutoPauseCount = 0;
+  int _recordingRawPositionCount = 0;
+  int _recordingRejectedAccuracyCount = 0;
+  int _recordingRejectedPlausibilityCount = 0;
+  int _recordingAccelerationEventCount = 0;
+  int _recordingRotationEventCount = 0;
+  double _recordingMaxAccelerationG = 0;
+  double _recordingMaxRotationDegPerSec = 0;
+  final List<double> _recentAccelerationGs = <double>[];
+  final List<SessionJumpRecord> _recordingJumpHistory = <SessionJumpRecord>[];
+  DateTime? _lastAccelerationEventAt;
+  DateTime? _lastRotationEventAt;
+  DateTime? _lastJumpRecordedAt;
+  _PendingJumpCandidate? _pendingJumpCandidate;
   bool _isAutoPaused = false;
   final ImagePicker _imagePicker = ImagePicker();
 
   static const String _sortMostRecent = 'Mas recientes';
   static const String _sortOldest = 'Mas antiguas';
+  static const int _accelerationPeakWindowSize = 3;
+  static const double _accelerationPeakConfirmationRatio = 0.85;
+  static const int _accelerationPeakRequiredMatches = 2;
 
   @override
   void initState() {
@@ -154,13 +193,6 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   ProfileModule _resolveProfileModule() {
-    final useLocalPersistence = widget.useLocalPersistence;
-    if (useLocalPersistence == false) {
-      return ProfileModule.inMemory();
-    }
-    if (useLocalPersistence == true) {
-      return ProfileModule.localFile();
-    }
     return EnvConfig.profileLocalPersistenceEnabled
         ? ProfileModule.auto()
         : ProfileModule.inMemory();
@@ -253,14 +285,7 @@ class SessionsPageState extends State<SessionsPage> {
     if (value is Map<String, dynamic>) {
       return SessionInsightData.fromJson(value);
     }
-    return value ??
-        SessionInsightData.fromSession(
-          title: 'Sesion',
-          deviceName: 'Dispositivo',
-          deviceKind: 'Dispositivo Android',
-          endedAt: DateTime.now(),
-          durationLabel: '45:00',
-        );
+    return value ?? _emptySessionInsights(deviceKind: 'Dispositivo Android');
   }
 
   SessionInsightData _sessionInsightsForDetail(_RecordedSession session) {
@@ -271,19 +296,46 @@ class SessionsPageState extends State<SessionsPage> {
     if (insights is Map<String, dynamic>) {
       return SessionInsightData.fromJson(insights);
     }
-    return SessionInsightData.fromSession(
-      title: session.title,
-      deviceName: session.deviceName,
-      deviceKind: session.deviceName,
-      endedAt: session.endedAt,
-      durationLabel: _formatDuration(session.duration),
+    return _emptySessionInsights(
+      deviceKind: 'Dispositivo Android',
+      events: const <String>[],
     );
+  }
+
+  SessionInsightData _emptySessionInsights({
+    required String deviceKind,
+    List<String> events = const <String>[],
+  }) {
+    return SessionInsightData.empty(
+      deviceKind: deviceKind,
+      deviceSensorKeys: _physicalSensorsForDeviceKind(
+        deviceKind,
+      ).toList(growable: false),
+      events: events,
+    );
+  }
+
+  bool get _hasSupabaseConfigured =>
+      EnvConfig.supabaseUrl.trim().isNotEmpty &&
+      EnvConfig.supabaseAnonKey.trim().isNotEmpty;
+
+  String? _supabaseAuthDebugLabel() {
+    if (!_hasSupabaseConfigured) {
+      return null;
+    }
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      return 'Supabase sin sesion iniciada.';
+    }
+    return 'Supabase user: ${user.id}';
   }
 
   @override
   void dispose() {
     _recordingTicker?.cancel();
     _positionSubscription?.cancel();
+    _userAccelerometerSubscription?.cancel();
+    _gyroscopeSubscription?.cancel();
     _sessionSearchController.dispose();
     super.dispose();
   }
@@ -859,7 +911,7 @@ class SessionsPageState extends State<SessionsPage> {
       }
     });
     _saveSessionViewPreferences();
-    unawaited(_sessionsModule.saveRecordedSession(session));
+    await _sessionsModule.saveRecordedSession(session);
   }
 
   Future<void> _removeSyncedPendingSession(
@@ -913,12 +965,11 @@ class SessionsPageState extends State<SessionsPage> {
     })
     config,
   }) {
-    final baseInsights = SessionInsightData.fromSession(
-      title: imported.title,
-      deviceName: device.name,
+    final baseInsights = _emptySessionInsights(
       deviceKind: device.kind,
-      endedAt: imported.endedAt,
-      durationLabel: _formatDuration(imported.duration),
+      events: [
+        'Sesion sincronizada desde dispositivo ${device.name}',
+      ],
     );
     final highestJump = imported.jumpHistory
         .map((jump) => jump.heightMeters)
@@ -932,10 +983,6 @@ class SessionsPageState extends State<SessionsPage> {
       maxJumpHeightMeters: highestJump,
       maxHangtimeSeconds: highestHangtime,
       jumpHistory: imported.jumpHistory,
-      events: [
-        ...baseInsights.events,
-        'Sesion sincronizada desde dispositivo ${device.name}',
-      ],
     );
 
     return _RecordedSession(
@@ -945,6 +992,7 @@ class SessionsPageState extends State<SessionsPage> {
       endedAt: imported.endedAt,
       duration: imported.duration,
       summary: config.notes.isEmpty ? imported.summary : config.notes,
+      gearSetupId: config.gearSetupId,
       gearSetupName: config.gearSetupName,
       hasSessionPhoto: config.sessionPhotoLocalPath != null,
       sessionMediaLabel: switch (config.mediaSelection) {
@@ -1066,6 +1114,8 @@ class SessionsPageState extends State<SessionsPage> {
       case _SessionCaptureState.recording:
         return _isAutoPaused
             ? 'Sesion en pausa automatica. Esperando que vuelvas a moverte.'
+            : _isAutoPausePending()
+            ? 'Auto-pausa pendiente. Detectamos baja velocidad y sin actividad reciente.'
             : 'Sesion real en curso. Grabando recorrido y velocidad por GPS.';
       case _SessionCaptureState.finished:
         return 'Sesion finalizada. Revisa los datos y guardala.';
@@ -1119,6 +1169,13 @@ class SessionsPageState extends State<SessionsPage> {
     return '${_recordingMaxSpeedKnots.toStringAsFixed(1)} kt';
   }
 
+  double _currentTrackSpeedKnots() {
+    if (_recordingSamples.isEmpty) {
+      return 0;
+    }
+    return _recordingSamples.last.speedKnots;
+  }
+
   String _gpsSignalChipLabel() {
     if (_captureState != _SessionCaptureState.recording) {
       return 'GPS pendiente';
@@ -1138,7 +1195,15 @@ class SessionsPageState extends State<SessionsPage> {
     if (_captureState != _SessionCaptureState.recording) {
       return 'Auto-pausa lista';
     }
-    return _isAutoPaused ? 'Auto-pausa ON' : 'Auto-pausa OFF';
+    if (_isAutoPaused) {
+      return 'Auto-pausa ON';
+    }
+    if (_isAutoPausePending()) {
+      final remaining = _autoPauseDelay - _recordingLowSpeedCandidateDuration;
+      final seconds = remaining.inSeconds.clamp(0, _autoPauseDelay.inSeconds);
+      return 'Auto-pausa pendiente · ${seconds}s';
+    }
+    return 'Auto-pausa OFF';
   }
 
   Color _autoPauseChipBackgroundColor(BuildContext context) {
@@ -1148,6 +1213,8 @@ class SessionsPageState extends State<SessionsPage> {
     }
     return _isAutoPaused
         ? const Color(0x1F1565C0)
+        : _isAutoPausePending()
+        ? const Color(0x1FF57C00)
         : colorScheme.surfaceContainerHighest;
   }
 
@@ -1158,13 +1225,24 @@ class SessionsPageState extends State<SessionsPage> {
     }
     return _isAutoPaused
         ? const Color(0xFF1565C0)
+        : _isAutoPausePending()
+        ? const Color(0xFFEF6C00)
         : colorScheme.onSurfaceVariant;
   }
 
   IconData _autoPauseChipIcon() {
     return _isAutoPaused
         ? Icons.pause_circle_filled_rounded
+        : _isAutoPausePending()
+        ? Icons.hourglass_bottom_rounded
         : Icons.play_circle_outline_rounded;
+  }
+
+  bool _isAutoPausePending() {
+    if (_captureState != _SessionCaptureState.recording || _isAutoPaused) {
+      return false;
+    }
+    return _recordingLowSpeedCandidateDuration > Duration.zero;
   }
 
   Color _gpsChipBackgroundColor(BuildContext context) {
@@ -1216,35 +1294,136 @@ class SessionsPageState extends State<SessionsPage> {
     return accuracy != null && accuracy <= 5;
   }
 
+  bool _hasEnoughRecordedTrackForSave() {
+    if (_recordingStartedAt == null || _recordingSamples.isEmpty) {
+      return false;
+    }
+    final endedAt = _recordingSamples.last.timestamp;
+    final duration = endedAt.difference(_recordingStartedAt!);
+    final hasEnoughPoints = _recordingSamples.length >= _minRecordedTrackPoints;
+    final hasEnoughDuration = duration >= _minRecordedTrackDuration;
+    final hasEnoughDistance =
+        _recordingDistanceMeters >= _minRecordedTrackDistanceMeters;
+    return hasEnoughPoints && hasEnoughDuration && hasEnoughDistance;
+  }
+
+  int _saveReadinessSatisfiedRuleCount() {
+    if (_recordingStartedAt == null || _recordingSamples.isEmpty) {
+      return 0;
+    }
+    final endedAt = _recordingSamples.last.timestamp;
+    final duration = endedAt.difference(_recordingStartedAt!);
+    var count = 0;
+    if (_recordingSamples.length >= _minRecordedTrackPoints) {
+      count += 1;
+    }
+    if (duration >= _minRecordedTrackDuration) {
+      count += 1;
+    }
+    if (_recordingDistanceMeters >= _minRecordedTrackDistanceMeters) {
+      count += 1;
+    }
+    return count;
+  }
+
+  String _saveReadinessChipLabel() {
+    if (_captureState != _SessionCaptureState.recording &&
+        _captureState != _SessionCaptureState.finished) {
+      return 'Guardado pendiente';
+    }
+    final count = _saveReadinessSatisfiedRuleCount();
+    if (_hasEnoughRecordedTrackForSave()) {
+      return 'Guardable · 3/3';
+    }
+    return 'Guardable · $count/3';
+  }
+
+  Color _saveReadinessChipBackgroundColor(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    if (_captureState != _SessionCaptureState.recording &&
+        _captureState != _SessionCaptureState.finished) {
+      return colorScheme.surfaceContainerHighest;
+    }
+    if (_hasEnoughRecordedTrackForSave()) {
+      return const Color(0x1F2E7D32);
+    }
+    if (_saveReadinessSatisfiedRuleCount() > 0) {
+      return const Color(0x1FFF8F00);
+    }
+    return colorScheme.surfaceContainerHighest;
+  }
+
+  Color _saveReadinessChipForegroundColor(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    if (_captureState != _SessionCaptureState.recording &&
+        _captureState != _SessionCaptureState.finished) {
+      return colorScheme.onSurfaceVariant;
+    }
+    if (_hasEnoughRecordedTrackForSave()) {
+      return const Color(0xFF2E7D32);
+    }
+    if (_saveReadinessSatisfiedRuleCount() > 0) {
+      return const Color(0xFFEF6C00);
+    }
+    return colorScheme.onSurfaceVariant;
+  }
+
+  IconData _saveReadinessChipIcon() {
+    if (_captureState != _SessionCaptureState.recording &&
+        _captureState != _SessionCaptureState.finished) {
+      return Icons.save_outlined;
+    }
+    if (_hasEnoughRecordedTrackForSave()) {
+      return Icons.check_circle_rounded;
+    }
+    if (_saveReadinessSatisfiedRuleCount() > 0) {
+      return Icons.timelapse_rounded;
+    }
+    return Icons.hourglass_empty_rounded;
+  }
+
   Future<bool> _confirmStopRealSessionRecording() async {
+    final hasEnoughTrack = _hasEnoughRecordedTrackForSave();
     final hasGoodSignal = _hasGoodGpsSignal();
     final result = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Text(
-            hasGoodSignal
+            hasEnoughTrack
                 ? 'Detener y revisar sesion'
-                : 'Detener sin GPS OK',
+                : 'Detener sin track suficiente',
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                hasGoodSignal
+                hasEnoughTrack
                     ? 'La sesion dejará de grabarse ahora.'
-                    : 'El GPS todavia no ha llegado a GPS OK.',
+                    : 'Todavia no hemos registrado suficiente track GPS para guardar esta sesion.',
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                hasGoodSignal
+                hasEnoughTrack
                     ? 'Podras revisar los datos y decidir si quieres guardarlos.'
-                    : 'Si detienes ahora, esta sesion no se podra guardar.',
+                    : 'Si detienes ahora, esta sesion se descartara.',
               ),
+              if (!hasEnoughTrack) ...[
+                const SizedBox(height: AppSpacing.xs),
+                const Text(
+                  'Necesitamos al menos 2 puntos GPS validos, 1 minuto de duracion y 20 metros de distancia.',
+                ),
+              ],
+              if (hasEnoughTrack && !hasGoodSignal) ...[
+                const SizedBox(height: AppSpacing.xs),
+                const Text(
+                  'Aunque el GPS no este en OK ahora mismo, la sesion ya tiene track suficiente para revisarse y guardarse.',
+                ),
+              ],
               const SizedBox(height: AppSpacing.xs),
               Text(
-                hasGoodSignal
+                hasEnoughTrack
                     ? 'Si sales sin guardar, se perderan los datos recogidos.'
                     : 'Los datos recogidos hasta ahora se perderan.',
                 style: Theme.of(context).textTheme.bodySmall,
@@ -1259,7 +1438,7 @@ class SessionsPageState extends State<SessionsPage> {
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
               child: Text(
-                hasGoodSignal ? 'Detener y revisar' : 'Detener y descartar',
+                hasEnoughTrack ? 'Detener y revisar' : 'Detener y descartar',
               ),
             ),
           ],
@@ -1283,6 +1462,19 @@ class SessionsPageState extends State<SessionsPage> {
       _recordingLowSpeedCandidateDuration = Duration.zero;
       _recordingResumeCandidateDuration = Duration.zero;
       _recordingAutoPauseCount = 0;
+      _recordingRawPositionCount = 0;
+      _recordingRejectedAccuracyCount = 0;
+      _recordingRejectedPlausibilityCount = 0;
+      _recordingAccelerationEventCount = 0;
+      _recordingRotationEventCount = 0;
+      _recordingMaxAccelerationG = 0;
+      _recordingMaxRotationDegPerSec = 0;
+      _recentAccelerationGs.clear();
+      _recordingJumpHistory.clear();
+      _lastAccelerationEventAt = null;
+      _lastRotationEventAt = null;
+      _lastJumpRecordedAt = null;
+      _pendingJumpCandidate = null;
       _isAutoPaused = false;
     });
   }
@@ -1388,7 +1580,7 @@ class SessionsPageState extends State<SessionsPage> {
       if (!mounted || !confirm) {
         return;
       }
-      await _stopRealSessionRecording(discardIfGpsInvalid: !_hasGoodGpsSignal());
+      await _stopRealSessionRecording();
       return;
     }
 
@@ -1424,7 +1616,7 @@ class SessionsPageState extends State<SessionsPage> {
         _sessionFeed.insert(0, session);
         _captureState = _SessionCaptureState.synced;
       });
-      unawaited(_sessionsModule.saveRecordedSession(session));
+      await _sessionsModule.saveRecordedSession(session);
       return;
     }
 
@@ -1466,6 +1658,8 @@ class SessionsPageState extends State<SessionsPage> {
 
     _recordingTicker?.cancel();
     await _positionSubscription?.cancel();
+    await _userAccelerometerSubscription?.cancel();
+    await _gyroscopeSubscription?.cancel();
 
       setState(() {
         _captureState = _SessionCaptureState.recording;
@@ -1481,6 +1675,19 @@ class SessionsPageState extends State<SessionsPage> {
         _recordingLowSpeedCandidateDuration = Duration.zero;
         _recordingResumeCandidateDuration = Duration.zero;
         _recordingAutoPauseCount = 0;
+        _recordingRawPositionCount = 0;
+        _recordingRejectedAccuracyCount = 0;
+        _recordingRejectedPlausibilityCount = 0;
+        _recordingAccelerationEventCount = 0;
+        _recordingRotationEventCount = 0;
+        _recordingMaxAccelerationG = 0;
+        _recordingMaxRotationDegPerSec = 0;
+        _recentAccelerationGs.clear();
+        _recordingJumpHistory.clear();
+        _lastAccelerationEventAt = null;
+        _lastRotationEventAt = null;
+        _lastJumpRecordedAt = null;
+        _pendingJumpCandidate = null;
         _isAutoPaused = false;
       });
 
@@ -1498,6 +1705,12 @@ class SessionsPageState extends State<SessionsPage> {
     _positionSubscription = Geolocator.getPositionStream(
       locationSettings: settings,
     ).listen(_onPositionSample);
+    _userAccelerometerSubscription = userAccelerometerEventStream().listen(
+      _onUserAccelerometerSample,
+    );
+    _gyroscopeSubscription = gyroscopeEventStream().listen(
+      _onGyroscopeSample,
+    );
   }
 
   void _onPositionSample(Position position) {
@@ -1505,8 +1718,10 @@ class SessionsPageState extends State<SessionsPage> {
       return;
     }
 
+    _recordingRawPositionCount += 1;
     _lastGpsAccuracyMeters = position.accuracy;
     if (!_isUsableRecordingPosition(position)) {
+      _recordingRejectedAccuracyCount += 1;
       if (mounted) {
         setState(() {});
       }
@@ -1524,6 +1739,7 @@ class SessionsPageState extends State<SessionsPage> {
 
     final previous = _recordingSamples.isEmpty ? null : _recordingSamples.last;
     if (!_isPlausibleTrackStep(previous: previous, current: sample)) {
+      _recordingRejectedPlausibilityCount += 1;
       if (mounted) {
         setState(() {});
       }
@@ -1560,6 +1776,268 @@ class SessionsPageState extends State<SessionsPage> {
     }
   }
 
+  void _onUserAccelerometerSample(UserAccelerometerEvent event) {
+    if (_captureState != _SessionCaptureState.recording) {
+      return;
+    }
+    const gravityMetersPerSecond2 = 9.80665;
+    final metersPerSecond2 = math.sqrt(
+      event.x * event.x + event.y * event.y + event.z * event.z,
+    );
+    final accelerationG = metersPerSecond2 / gravityMetersPerSecond2;
+    if (accelerationG.isFinite) {
+      _recentAccelerationGs.add(accelerationG);
+      if (_recentAccelerationGs.length > _accelerationPeakWindowSize) {
+        _recentAccelerationGs.removeAt(0);
+      }
+      final confirmationThreshold =
+          accelerationG * _accelerationPeakConfirmationRatio;
+      final confirmationMatches = _recentAccelerationGs
+          .where((value) => value >= confirmationThreshold)
+          .length;
+      final hasConfirmedPeak =
+          confirmationMatches >= _accelerationPeakRequiredMatches;
+      if (hasConfirmedPeak && accelerationG > _recordingMaxAccelerationG) {
+        _recordingMaxAccelerationG = accelerationG;
+      }
+      _updateJumpDetectionFromAcceleration(accelerationG);
+      if (mounted) {
+        setState(() {});
+      }
+    }
+    if (accelerationG.isFinite &&
+        accelerationG >= _accelerationEventThresholdG &&
+        _currentTrackSpeedKnots() >= _motionEventMinSpeedKnots &&
+        _canRegisterMotionEvent(_lastAccelerationEventAt)) {
+      _recordingAccelerationEventCount += 1;
+      _lastAccelerationEventAt = DateTime.now();
+      if (mounted) {
+        setState(() {});
+      }
+    }
+  }
+
+  void _onGyroscopeSample(GyroscopeEvent event) {
+    if (_captureState != _SessionCaptureState.recording) {
+      return;
+    }
+    const radiansToDegrees = 57.295779513;
+    final rotationDegPerSec =
+        math.sqrt(event.x * event.x + event.y * event.y + event.z * event.z) *
+        radiansToDegrees;
+    if (rotationDegPerSec.isFinite &&
+        rotationDegPerSec > _recordingMaxRotationDegPerSec) {
+      _recordingMaxRotationDegPerSec = rotationDegPerSec;
+      if (mounted) {
+        setState(() {});
+      }
+    }
+    if (rotationDegPerSec.isFinite) {
+      _updateJumpDetectionFromRotation(rotationDegPerSec);
+    }
+    if (rotationDegPerSec.isFinite &&
+        rotationDegPerSec >= _rotationEventThresholdDegPerSec &&
+        _currentTrackSpeedKnots() >= _motionEventMinSpeedKnots &&
+        _canRegisterMotionEvent(_lastRotationEventAt)) {
+      _recordingRotationEventCount += 1;
+      _lastRotationEventAt = DateTime.now();
+      if (mounted) {
+        setState(() {});
+      }
+    }
+  }
+
+  void _updateJumpDetectionFromAcceleration(double accelerationG) {
+    switch (_activeJumpDetectionMode()) {
+      case 'barometric':
+        _updateBarometricJumpDetectionFromAcceleration(accelerationG);
+        return;
+      case 'inertial_fallback':
+        _updateInertialJumpDetectionFromAcceleration(accelerationG);
+        return;
+    }
+  }
+
+  void _updateInertialJumpDetectionFromAcceleration(double accelerationG) {
+    final now = DateTime.now();
+    final currentSpeedKnots = _currentTrackSpeedKnots();
+    _expirePendingJumpIfNeeded(now);
+    _maybeStartJumpCandidate(
+      now: now,
+      currentSpeedKnots: currentSpeedKnots,
+      accelerationG: accelerationG,
+    );
+
+    final candidate = _pendingJumpCandidate;
+    if (candidate == null) {
+      return;
+    }
+
+    _pendingJumpCandidate = candidate.copyWith(
+      maxManeuverG: math.max(candidate.maxManeuverG, accelerationG),
+    );
+
+    final airborneTime = now.difference(candidate.startedAt);
+    if (airborneTime >= _jumpMinAirTime &&
+        airborneTime <= _jumpMaxAirTime &&
+        accelerationG >= _jumpLandingThresholdG &&
+        currentSpeedKnots >= _jumpLandingMinSpeedKnots) {
+      _finalizeJumpCandidate(
+        landedAt: now,
+        landingG: accelerationG,
+        landingSpeedKnots: currentSpeedKnots,
+      );
+    }
+  }
+
+  void _updateJumpDetectionFromRotation(double rotationDegPerSec) {
+    switch (_activeJumpDetectionMode()) {
+      case 'barometric':
+        _updateBarometricJumpDetectionFromRotation(rotationDegPerSec);
+        return;
+      case 'inertial_fallback':
+        _updateInertialJumpDetectionFromRotation(rotationDegPerSec);
+        return;
+    }
+  }
+
+  void _updateInertialJumpDetectionFromRotation(double rotationDegPerSec) {
+    final now = DateTime.now();
+    final currentSpeedKnots = _currentTrackSpeedKnots();
+    _expirePendingJumpIfNeeded(now);
+    _maybeStartJumpCandidate(
+      now: now,
+      currentSpeedKnots: currentSpeedKnots,
+      rotationDegPerSec: rotationDegPerSec,
+    );
+
+    final candidate = _pendingJumpCandidate;
+    if (candidate == null) {
+      return;
+    }
+
+    _pendingJumpCandidate = candidate.copyWith(
+      maxRotationDegPerSec: math.max(
+        candidate.maxRotationDegPerSec,
+        rotationDegPerSec,
+      ),
+    );
+  }
+
+  void _updateBarometricJumpDetectionFromAcceleration(double accelerationG) {
+    // Ruta provisional hasta que conectemos deteccion real por altitud relativa.
+    _updateInertialJumpDetectionFromAcceleration(accelerationG);
+  }
+
+  void _updateBarometricJumpDetectionFromRotation(double rotationDegPerSec) {
+    // Ruta provisional hasta que conectemos perfil vertical barometrico real.
+    _updateInertialJumpDetectionFromRotation(rotationDegPerSec);
+  }
+
+  String _activeJumpDetectionMode() {
+    final deviceKind = _selectedDevice?.kind ?? 'Dispositivo Android';
+    return SessionInsightData.jumpDetectionModeForSensors(
+      _physicalSensorsForDeviceKind(deviceKind),
+    );
+  }
+
+  void _maybeStartJumpCandidate({
+    required DateTime now,
+    required double currentSpeedKnots,
+    double? accelerationG,
+    double? rotationDegPerSec,
+  }) {
+    if (_pendingJumpCandidate != null ||
+        currentSpeedKnots < _jumpMinTakeoffSpeedKnots) {
+      return;
+    }
+    if (_lastJumpRecordedAt != null &&
+        now.difference(_lastJumpRecordedAt!) < _jumpCooldown) {
+      return;
+    }
+
+    final hasAccelerationTrigger =
+        accelerationG != null && accelerationG >= _jumpMinManeuverG;
+    final hasRotationTrigger =
+        rotationDegPerSec != null &&
+        rotationDegPerSec >= _jumpMinManeuverRotationDegPerSec;
+    if (!hasAccelerationTrigger && !hasRotationTrigger) {
+      return;
+    }
+
+    _pendingJumpCandidate = _PendingJumpCandidate(
+      startedAt: now,
+      takeoffSpeedKnots: currentSpeedKnots,
+      maxManeuverG: accelerationG ?? 0,
+      maxRotationDegPerSec: rotationDegPerSec ?? 0,
+    );
+  }
+
+  void _expirePendingJumpIfNeeded(DateTime now) {
+    final candidate = _pendingJumpCandidate;
+    if (candidate == null) {
+      return;
+    }
+    if (now.difference(candidate.startedAt) > _jumpMaxAirTime) {
+      _pendingJumpCandidate = null;
+    }
+  }
+
+  void _finalizeJumpCandidate({
+    required DateTime landedAt,
+    required double landingG,
+    required double landingSpeedKnots,
+  }) {
+    final candidate = _pendingJumpCandidate;
+    final startedAt = _recordingStartedAt;
+    if (candidate == null || startedAt == null) {
+      _pendingJumpCandidate = null;
+      return;
+    }
+
+    final hangtime = landedAt.difference(candidate.startedAt);
+    final hangtimeSeconds = hangtime.inMilliseconds / 1000;
+    if (hangtimeSeconds < (_jumpMinAirTime.inMilliseconds / 1000)) {
+      _pendingJumpCandidate = null;
+      return;
+    }
+
+    const gravityMetersPerSecond2 = 9.80665;
+    final estimatedHeightMeters =
+        gravityMetersPerSecond2 *
+        hangtimeSeconds *
+        hangtimeSeconds /
+        8;
+    final estimatedFallSpeedMetersPerSecond =
+        gravityMetersPerSecond2 * hangtimeSeconds / 2;
+
+    _recordingJumpHistory.add(
+      SessionJumpRecord(
+        index: _recordingJumpHistory.length + 1,
+        heightMeters: estimatedHeightMeters,
+        hangtimeSeconds: hangtimeSeconds,
+        maneuverG: candidate.maxManeuverG > 0 ? candidate.maxManeuverG : null,
+        maneuverRotationDegPerSec: candidate.maxRotationDegPerSec > 0
+            ? candidate.maxRotationDegPerSec
+            : null,
+        fallSpeedMetersPerSecond: estimatedFallSpeedMetersPerSecond,
+        takeoffSpeedKnots: candidate.takeoffSpeedKnots,
+        landingSpeedKnots: landingSpeedKnots,
+        landingG: landingG,
+        recordedAt: candidate.startedAt.difference(startedAt),
+      ),
+    );
+    _lastJumpRecordedAt = landedAt;
+    _pendingJumpCandidate = null;
+  }
+
+  bool _canRegisterMotionEvent(DateTime? lastEventAt) {
+    if (lastEventAt == null) {
+      return true;
+    }
+    return DateTime.now().difference(lastEventAt) >= _motionEventCooldown;
+  }
+
   void _updateAutoPauseState({
     required Duration delta,
     required double speedKnots,
@@ -1579,7 +2057,11 @@ class SessionsPageState extends State<SessionsPage> {
       return;
     }
 
-    if (speedKnots <= _autoPauseSpeedKnots) {
+    final hasLowSpeed = speedKnots <= _autoPauseSpeedKnots;
+    final hasNoRecentMotion = !_hasRecentMotionActivity(
+      window: _autoPauseDelay,
+    );
+    if (hasLowSpeed && hasNoRecentMotion) {
       _recordingLowSpeedCandidateDuration += delta;
       _recordingResumeCandidateDuration = Duration.zero;
       if (_recordingLowSpeedCandidateDuration >= _autoPauseDelay) {
@@ -1593,6 +2075,21 @@ class SessionsPageState extends State<SessionsPage> {
 
     _recordingLowSpeedCandidateDuration = Duration.zero;
     _recordingResumeCandidateDuration = Duration.zero;
+  }
+
+  bool _hasRecentMotionActivity({required Duration window}) {
+    final now = DateTime.now();
+    final lastMotionAt = <DateTime?>[
+      _lastAccelerationEventAt,
+      _lastRotationEventAt,
+    ].whereType<DateTime>().fold<DateTime?>(
+      null,
+      (latest, value) => latest == null || value.isAfter(latest) ? value : latest,
+    );
+    if (lastMotionAt == null) {
+      return false;
+    }
+    return now.difference(lastMotionAt) < window;
   }
 
   bool _isUsableRecordingPosition(Position position) {
@@ -1663,15 +2160,306 @@ class SessionsPageState extends State<SessionsPage> {
     return 0;
   }
 
-  Future<void> _stopRealSessionRecording({
-    required bool discardIfGpsInvalid,
-  }) async {
+  double _computeNetDisplacementKm() {
+    if (_recordingSamples.length < 2) {
+      return 0;
+    }
+    final first = _recordingSamples.first;
+    final last = _recordingSamples.last;
+    return Geolocator.distanceBetween(
+          first.latitude,
+          first.longitude,
+          last.latitude,
+          last.longitude,
+        ) /
+        1000;
+  }
+
+  double _computeCoverageAreaKm2() {
+    if (_recordingSamples.length < 2) {
+      return 0;
+    }
+    var minLat = _recordingSamples.first.latitude;
+    var maxLat = _recordingSamples.first.latitude;
+    var minLon = _recordingSamples.first.longitude;
+    var maxLon = _recordingSamples.first.longitude;
+
+    for (final sample in _recordingSamples.skip(1)) {
+      minLat = math.min(minLat, sample.latitude);
+      maxLat = math.max(maxLat, sample.latitude);
+      minLon = math.min(minLon, sample.longitude);
+      maxLon = math.max(maxLon, sample.longitude);
+    }
+
+    final midLatRadians = ((minLat + maxLat) / 2) * math.pi / 180;
+    final latKm = (maxLat - minLat) * 111.32;
+    final lonKm = (maxLon - minLon) * 111.32 * math.cos(midLatRadians);
+    final area = latKm * lonKm;
+    return area.isFinite ? area.abs() : 0;
+  }
+
+  double _computeMaxDistanceFromStartKm() {
+    if (_recordingSamples.length < 2) {
+      return 0;
+    }
+    final first = _recordingSamples.first;
+    var maxDistanceMeters = 0.0;
+    for (final sample in _recordingSamples.skip(1)) {
+      final distanceMeters = Geolocator.distanceBetween(
+        first.latitude,
+        first.longitude,
+        sample.latitude,
+        sample.longitude,
+      );
+      if (!distanceMeters.isFinite || distanceMeters < 0) {
+        continue;
+      }
+      if (distanceMeters > maxDistanceMeters) {
+        maxDistanceMeters = distanceMeters;
+      }
+    }
+    return maxDistanceMeters / 1000;
+  }
+
+  Duration _computeTimeInRiskZone() {
+    if (_recordingSamples.length < 2) {
+      return Duration.zero;
+    }
+    const riskDistanceMeters = 500.0;
+    final first = _recordingSamples.first;
+    var total = Duration.zero;
+
+    for (var i = 1; i < _recordingSamples.length; i++) {
+      final previous = _recordingSamples[i - 1];
+      final current = _recordingSamples[i];
+      final distanceFromStartMeters = Geolocator.distanceBetween(
+        first.latitude,
+        first.longitude,
+        current.latitude,
+        current.longitude,
+      );
+      if (!distanceFromStartMeters.isFinite ||
+          distanceFromStartMeters < riskDistanceMeters) {
+        continue;
+      }
+      final delta = current.timestamp.difference(previous.timestamp);
+      if (delta.isNegative || delta.inMilliseconds <= 0) {
+        continue;
+      }
+      total += delta;
+    }
+
+    return total;
+  }
+
+  double _computeSweetspotPercent() {
+    if (_recordingSamples.isEmpty || _recordingMaxSpeedKnots <= 0) {
+      return 0;
+    }
+    final minSweetspot = _recordingMaxSpeedKnots * 0.7;
+    final maxSweetspot = _recordingMaxSpeedKnots * 0.9;
+    final matchingCount = _recordingSamples
+        .where(
+          (sample) =>
+              sample.speedKnots >= minSweetspot &&
+              sample.speedKnots <= maxSweetspot,
+        )
+        .length;
+    return (matchingCount / _recordingSamples.length) * 100;
+  }
+
+  double _computeDirectionalStabilityPercent() {
+    final bearings = <double>[];
+    for (var i = 1; i < _recordingSamples.length; i++) {
+      final previous = _recordingSamples[i - 1];
+      final current = _recordingSamples[i];
+      final distance = Geolocator.distanceBetween(
+        previous.latitude,
+        previous.longitude,
+        current.latitude,
+        current.longitude,
+      );
+      if (!distance.isFinite || distance < 3) {
+        continue;
+      }
+      bearings.add(
+        Geolocator.bearingBetween(
+          previous.latitude,
+          previous.longitude,
+          current.latitude,
+          current.longitude,
+        ),
+      );
+    }
+    if (bearings.length < 2) {
+      return 0;
+    }
+    var totalDelta = 0.0;
+    for (var i = 1; i < bearings.length; i++) {
+      final delta = (bearings[i] - bearings[i - 1]).abs();
+      totalDelta += math.min(delta, 360 - delta);
+    }
+    final averageDelta = totalDelta / (bearings.length - 1);
+    return (100 - (averageDelta / 180) * 100).clamp(0, 100);
+  }
+
+  double _computeRouteEfficiencyPercent() {
+    if (_recordingDistanceMeters <= 0) {
+      return 0;
+    }
+    final netDistanceMeters = _computeNetDisplacementKm() * 1000;
+    return ((netDistanceMeters / _recordingDistanceMeters) * 100).clamp(
+      0,
+      100,
+    );
+  }
+
+  double _computeAverageSampleIntervalSeconds() {
+    if (_recordingSamples.length < 2) {
+      return 0;
+    }
+    var totalSeconds = 0.0;
+    var segmentCount = 0;
+    for (var i = 1; i < _recordingSamples.length; i++) {
+      final delta = _recordingSamples[i].timestamp
+          .difference(_recordingSamples[i - 1].timestamp)
+          .inMilliseconds /
+          1000;
+      if (!delta.isFinite || delta <= 0) {
+        continue;
+      }
+      totalSeconds += delta;
+      segmentCount += 1;
+    }
+    if (segmentCount == 0) {
+      return 0;
+    }
+    return totalSeconds / segmentCount;
+  }
+
+  double _computeBoundedScore(List<double> components) {
+    final normalized = components
+        .where((value) => value.isFinite)
+        .map((value) => value.clamp(0, 100).toDouble())
+        .toList(growable: false);
+    if (normalized.isEmpty) {
+      return 0;
+    }
+    final total = normalized.reduce((a, b) => a + b);
+    return total / normalized.length;
+  }
+
+  _TrackTransitionSummary _analyzeTrackTransitions() {
+    if (_recordingSamples.length < 3) {
+      return const _TrackTransitionSummary.empty();
+    }
+
+    var transitionCount = 0;
+    var cleanCount = 0;
+    var totalSpeedLossKnots = 0.0;
+    var totalRecoverySeconds = 0.0;
+    var recoveryCount = 0;
+
+    for (var i = 1; i < _recordingSamples.length - 1; i++) {
+      final previous = _recordingSamples[i - 1];
+      final current = _recordingSamples[i];
+      final next = _recordingSamples[i + 1];
+
+      final previousDistance = Geolocator.distanceBetween(
+        previous.latitude,
+        previous.longitude,
+        current.latitude,
+        current.longitude,
+      );
+      final nextDistance = Geolocator.distanceBetween(
+        current.latitude,
+        current.longitude,
+        next.latitude,
+        next.longitude,
+      );
+      if (!previousDistance.isFinite ||
+          !nextDistance.isFinite ||
+          previousDistance < 3 ||
+          nextDistance < 3) {
+        continue;
+      }
+
+      final previousBearing = Geolocator.bearingBetween(
+        previous.latitude,
+        previous.longitude,
+        current.latitude,
+        current.longitude,
+      );
+      final nextBearing = Geolocator.bearingBetween(
+        current.latitude,
+        current.longitude,
+        next.latitude,
+        next.longitude,
+      );
+      final rawDelta = (nextBearing - previousBearing).abs();
+      final bearingDelta = math.min(rawDelta, 360 - rawDelta);
+      if (bearingDelta < 35 || bearingDelta > 170) {
+        continue;
+      }
+
+      final beforeSpeed = ((previous.speedKnots + current.speedKnots) / 2);
+      final afterSpeed = ((current.speedKnots + next.speedKnots) / 2);
+      if (beforeSpeed < _movingAverageMinSpeedKnots &&
+          afterSpeed < _movingAverageMinSpeedKnots) {
+        continue;
+      }
+
+      transitionCount += 1;
+      final speedLoss = math.max(0.0, beforeSpeed - afterSpeed);
+      totalSpeedLossKnots += speedLoss;
+
+      if (afterSpeed >= beforeSpeed * 0.7) {
+        cleanCount += 1;
+      }
+
+      final recoveryThreshold = math.max(_movingAverageMinSpeedKnots, beforeSpeed * 0.8);
+      for (var j = i + 1; j < _recordingSamples.length; j++) {
+        final recoverySample = _recordingSamples[j];
+        if (recoverySample.speedKnots < recoveryThreshold) {
+          continue;
+        }
+        final recoverySeconds = recoverySample.timestamp
+            .difference(current.timestamp)
+            .inMilliseconds /
+            1000;
+        if (recoverySeconds.isFinite && recoverySeconds >= 0) {
+          totalRecoverySeconds += recoverySeconds;
+          recoveryCount += 1;
+        }
+        break;
+      }
+    }
+
+    if (transitionCount == 0) {
+      return const _TrackTransitionSummary.empty();
+    }
+
+    return _TrackTransitionSummary(
+      count: transitionCount,
+      qualityPercent: (cleanCount / transitionCount) * 100,
+      avgSpeedLossKnots: totalSpeedLossKnots / transitionCount,
+      avgRecoverySeconds: recoveryCount == 0
+          ? 0
+          : totalRecoverySeconds / recoveryCount,
+    );
+  }
+
+  Future<void> _stopRealSessionRecording() async {
     _recordingTicker?.cancel();
     await _positionSubscription?.cancel();
     _positionSubscription = null;
+    await _userAccelerometerSubscription?.cancel();
+    _userAccelerometerSubscription = null;
+    await _gyroscopeSubscription?.cancel();
+    _gyroscopeSubscription = null;
 
-    final hasEnoughSamples = _recordingSamples.length >= 2;
-    if (discardIfGpsInvalid || !hasEnoughSamples) {
+    final hasEnoughSamples = _hasEnoughRecordedTrackForSave();
+    if (!hasEnoughSamples) {
       if (!mounted) {
         return;
       }
@@ -1679,9 +2467,7 @@ class SessionsPageState extends State<SessionsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            discardIfGpsInvalid
-                ? 'Sesion detenida sin GPS OK. Los datos recogidos no se han guardado.'
-                : 'No hemos podido registrar suficientes puntos GPS. La sesion no se ha guardado.',
+            'No hemos podido registrar suficiente track GPS. Necesitamos 2 puntos validos, 1 minuto y 20 metros.',
           ),
         ),
       );
@@ -1712,21 +2498,300 @@ class SessionsPageState extends State<SessionsPage> {
     final title = 'Sesion en ${config.spot}';
     final selectedDevice = _selectedDevice;
     final deviceName = selectedDevice?.name ?? 'Desconocido';
+    final deviceKind = selectedDevice?.kind ?? 'Dispositivo Android';
+    final deviceSensorKeys = _physicalSensorsForDeviceKind(deviceKind)
+        .toList(growable: false);
+    final jumpDetectionMode = SessionInsightData.jumpDetectionModeForSensors(
+      deviceSensorKeys,
+    );
     final distanceKm = _recordingDistanceMeters / 1000;
-    final avgSpeedKnots = duration.inSeconds <= 0
+    final avgSpeedKnots = _recordingSamples.isEmpty
         ? 0.0
-        : ((_recordingDistanceMeters / duration.inSeconds) * 1.943844)
-              .toDouble();
+        : _recordingSamples
+                  .map((sample) => sample.speedKnots)
+                  .reduce((a, b) => a + b) /
+              _recordingSamples.length;
     final activeDuration = duration - _recordingAutoPausedDuration;
-    final movingAvgSpeedKnots = activeDuration.inSeconds <= 0
+    final movingSpeedSamples = _recordingSamples
+        .where((sample) => sample.speedKnots >= _movingAverageMinSpeedKnots)
+        .map((sample) => sample.speedKnots)
+        .toList(growable: false);
+    final movingAvgSpeedKnots = movingSpeedSamples.isEmpty
         ? 0.0
-        : ((_recordingDistanceMeters / activeDuration.inSeconds) * 1.943844)
-              .toDouble();
+        : movingSpeedSamples.reduce((a, b) => a + b) / movingSpeedSamples.length;
     final planingMinutes = _recordingMovingDuration.inMinutes > 0
         ? _recordingMovingDuration.inMinutes
         : null;
     final pausedDuration = _recordingAutoPausedDuration;
+    final safeActiveDuration = activeDuration.isNegative
+        ? Duration.zero
+        : activeDuration;
+    final safePausedDuration = pausedDuration.isNegative
+        ? Duration.zero
+        : pausedDuration;
+    final timelineSamples = List<double>.from(_recordingTimelineKnots)
+      ..sort();
+    final speedP95Knots = timelineSamples.isEmpty
+        ? 0.0
+        : timelineSamples[((timelineSamples.length - 1) * 0.95).floor()];
+    final netDisplacementKm = _computeNetDisplacementKm();
+    final maxDistanceFromStartKm = _computeMaxDistanceFromStartKm();
+    final timeInRiskZone = _computeTimeInRiskZone();
+    final coverageAreaKm2 = _computeCoverageAreaKm2();
+    final sweetspotPercent = _computeSweetspotPercent();
+    final directionalStabilityPercent = _computeDirectionalStabilityPercent();
+    final routeEfficiencyPercent = _computeRouteEfficiencyPercent();
+    final transitionSummary = _analyzeTrackTransitions();
+    final rawPositionCount = _recordingRawPositionCount;
+    final rejectedCount =
+        _recordingRejectedAccuracyCount + _recordingRejectedPlausibilityCount;
+    final lostSamplesPercent = rawPositionCount <= 0
+        ? 0.0
+        : (rejectedCount / rawPositionCount) * 100;
+    final datasetHealthPercent = rawPositionCount <= 0
+        ? 0.0
+        : ((_recordingSamples.length / rawPositionCount) * 100)
+              .clamp(0, 100)
+              .toDouble();
+    final averageSampleIntervalSeconds = _computeAverageSampleIntervalSeconds();
+    final sessionScore = _computeBoundedScore([
+      datasetHealthPercent,
+      (100 - lostSamplesPercent).toDouble(),
+      sweetspotPercent,
+      routeEfficiencyPercent,
+      directionalStabilityPercent,
+    ]);
+    final freerideScore = _computeBoundedScore([
+      routeEfficiencyPercent,
+      sweetspotPercent,
+      directionalStabilityPercent,
+      timelineSamples.isEmpty
+          ? 0.0
+          : (10 - (timelineSamples.last - timelineSamples.first).clamp(0, 10)) *
+                10.0,
+    ]);
+    final safetyScore = _computeBoundedScore([
+      datasetHealthPercent,
+      _lastGpsAccuracyMeters == null
+          ? 0.0
+          : (100 - (_lastGpsAccuracyMeters!.clamp(0, 25) / 25) * 100)
+                .toDouble(),
+      math.max(
+        0.0,
+        100 -
+            ((duration.inSeconds <= 0
+                        ? 0.0
+                        : (_recordingAccelerationEventCount /
+                              (duration.inSeconds / 3600))) *
+                    18),
+      ),
+      math.max(0.0, 100 - (_recordingRotationEventCount * 10)),
+    ]);
+    final distancePlaningKm = movingAvgSpeedKnots > 0 && _recordingMovingDuration > Duration.zero
+        ? ((movingAvgSpeedKnots * 0.514444) *
+                  _recordingMovingDuration.inMilliseconds /
+                  1000) /
+              1000
+        : 0.0;
+    final transitionsCount = transitionSummary.count > 0
+        ? transitionSummary.count
+        : _recordingAccelerationEventCount + _recordingRotationEventCount;
+    final transitionsPerHour = duration.inSeconds <= 0
+        ? 0.0
+        : transitionsCount / (duration.inSeconds / 3600);
+    final jumpHistory = List<SessionJumpRecord>.unmodifiable(
+      _recordingJumpHistory,
+    );
+    final jumpsCount = jumpHistory.length;
+    final maxJumpHeightMeters = jumpHistory.isEmpty
+        ? null
+        : jumpHistory
+            .map((jump) => jump.heightMeters)
+            .reduce(math.max);
+    final maxHangtimeSeconds = jumpHistory.isEmpty
+        ? null
+        : jumpHistory
+            .map((jump) => jump.hangtimeSeconds)
+            .reduce(math.max);
+    final avgJumpHeightMeters = jumpHistory.isEmpty
+        ? null
+        : jumpHistory
+                  .map((jump) => jump.heightMeters)
+                  .reduce((a, b) => a + b) /
+              jumpHistory.length;
+    final top5AverageJumpMeters = jumpHistory.isEmpty
+        ? null
+        : (List<SessionJumpRecord>.from(jumpHistory)
+                  ..sort((a, b) => b.heightMeters.compareTo(a.heightMeters)))
+                .take(5)
+                .map((jump) => jump.heightMeters)
+                .reduce((a, b) => a + b) /
+            math.min(5, jumpHistory.length);
+    final hangtimeP95Seconds = jumpHistory.isEmpty
+        ? null
+        : (() {
+            final values = jumpHistory
+                .map((jump) => jump.hangtimeSeconds)
+                .toList(growable: false)
+              ..sort();
+            return values[((values.length - 1) * 0.95).floor()];
+          })();
+    final takeoffSpeedKnots = jumpHistory
+        .map((jump) => jump.takeoffSpeedKnots)
+        .whereType<double>()
+        .toList(growable: false);
+    final landingSpeedKnots = jumpHistory
+        .map((jump) => jump.landingSpeedKnots)
+        .whereType<double>()
+        .toList(growable: false);
+    final landingGs = jumpHistory
+        .map((jump) => jump.landingG)
+        .toList(growable: false);
+    final cleanLandingRate = landingGs.isEmpty
+        ? null
+        : (landingGs.where((value) => value <= 2.4).length / landingGs.length) *
+              100;
+    final impactScore = landingGs.isEmpty
+        ? null
+        : landingGs.reduce((a, b) => a + b) / landingGs.length;
+    final jumpCadencePerHour = jumpsCount == 0 || duration.inSeconds <= 0
+        ? null
+        : jumpsCount / (duration.inSeconds / 3600);
+    final jumpHeights = jumpHistory
+        .map((jump) => jump.heightMeters)
+        .toList(growable: false);
+    final jumpHeightSpread = jumpHeights.length < 2
+        ? null
+        : jumpHeights.reduce(math.max) - jumpHeights.reduce(math.min);
+    final jumpHeightConsistency = jumpHeightSpread == null || avgJumpHeightMeters == null
+        ? null
+        : math.max(
+            0.0,
+            100 -
+                ((jumpHeightSpread /
+                            math.max(avgJumpHeightMeters, 0.1)) *
+                        100)
+                    .clamp(0, 100),
+          ).toDouble();
+    final averageTakeoffSpeedKnots = takeoffSpeedKnots.isEmpty
+        ? null
+        : takeoffSpeedKnots.reduce((a, b) => a + b) / takeoffSpeedKnots.length;
+    final jumpWindEfficiency = maxJumpHeightMeters == null ||
+            averageTakeoffSpeedKnots == null ||
+            averageTakeoffSpeedKnots <= 0
+        ? null
+        : (maxJumpHeightMeters / averageTakeoffSpeedKnots) * 10;
+    final jumpHeightDistribution = jumpHeights.isEmpty
+        ? null
+        : '${jumpHeights.where((value) => value < 3).length}/'
+            '${jumpHeights.where((value) => value >= 3 && value < 6).length}/'
+            '${jumpHeights.where((value) => value >= 6).length}';
+    final bigAirScore = jumpsCount == 0
+        ? null
+        : _computeBoundedScore([
+            maxJumpHeightMeters == null
+                ? 0
+                : (maxJumpHeightMeters * 12).clamp(0, 100).toDouble(),
+            maxHangtimeSeconds == null
+                ? 0
+                : (maxHangtimeSeconds * 20).clamp(0, 100).toDouble(),
+            cleanLandingRate ?? 0,
+            jumpHeightConsistency ?? 0,
+          ]);
+    final measuredValues = <String, String>{
+      'duracion_total': _formatDuration(duration),
+      'tiempo_activo': _formatDuration(safeActiveDuration),
+      'tiempo_parado': _formatDuration(safePausedDuration),
+      'ratio_activo_parado': safePausedDuration.inSeconds <= 0
+          ? '${safeActiveDuration.inMinutes}:0'
+          : '${(safeActiveDuration.inSeconds / safePausedDuration.inSeconds).toStringAsFixed(1)}:1',
+      'distancia_total': '${distanceKm.toStringAsFixed(2)} km',
+      'distancia_planeo': '${distancePlaningKm.toStringAsFixed(2)} km',
+      'velocidad_media': '${avgSpeedKnots.toStringAsFixed(1)} kt',
+      'velocidad_max': '${_recordingMaxSpeedKnots.toStringAsFixed(1)} kt',
+      'velocidad_p95': '${speedP95Knots.toStringAsFixed(1)} kt',
+      'transiciones': '$transitionsCount',
+      'transiciones_hora': transitionsPerHour.toStringAsFixed(1),
+      if (top5AverageJumpMeters != null)
+        'top5_saltos': '${top5AverageJumpMeters.toStringAsFixed(1)} m',
+      if (avgJumpHeightMeters != null)
+        'altura_media_saltos': '${avgJumpHeightMeters.toStringAsFixed(1)} m',
+      if (maxHangtimeSeconds != null)
+        'hangtime_max': '${maxHangtimeSeconds.toStringAsFixed(1)} s',
+      if (hangtimeP95Seconds != null)
+        'hangtime_p95': '${hangtimeP95Seconds.toStringAsFixed(1)} s',
+      if (jumpWindEfficiency != null)
+        'eficiencia_salto_viento': jumpWindEfficiency.toStringAsFixed(2),
+      if (jumpCadencePerHour != null)
+        'cadencia_saltos': '${jumpCadencePerHour.toStringAsFixed(1)}/h',
+      if (jumpHeightConsistency != null)
+        'consistencia_alturas':
+            '${jumpHeightConsistency.toStringAsFixed(0)}%',
+      'eficiencia_bordos': '${routeEfficiencyPercent.toStringAsFixed(0)}%',
+      'tiempo_sweetspot': '${sweetspotPercent.toStringAsFixed(0)}%',
+      'deriva_neta': '${netDisplacementKm.toStringAsFixed(2)} km',
+      'cobertura_area': '${coverageAreaKm2.toStringAsFixed(2)} km2',
+      if (maxJumpHeightMeters != null)
+        'salto_mas_alto': '${maxJumpHeightMeters.toStringAsFixed(1)} m',
+      if (maxJumpHeightMeters != null)
+        'distancia_salto_estimada':
+            '${(maxJumpHeightMeters * 4.5).toStringAsFixed(0)} m',
+      ...?jumpHeightDistribution == null
+          ? null
+          : <String, String>{
+              'distribucion_alturas': jumpHeightDistribution,
+            },
+      if (takeoffSpeedKnots.isNotEmpty)
+        'takeoff_speed':
+            '${(takeoffSpeedKnots.reduce((a, b) => a + b) / takeoffSpeedKnots.length).toStringAsFixed(1)} kt',
+      if (landingSpeedKnots.isNotEmpty)
+        'landing_speed':
+            '${(landingSpeedKnots.reduce((a, b) => a + b) / landingSpeedKnots.length).toStringAsFixed(1)} kt',
+      if (cleanLandingRate != null)
+        'clean_landing_rate': '${cleanLandingRate.toStringAsFixed(0)}%',
+      if (impactScore != null)
+        'impact_score': '${impactScore.toStringAsFixed(1)} G',
+      'variabilidad_velocidad': timelineSamples.length >= 2
+          ? '${(timelineSamples.last - timelineSamples.first).toStringAsFixed(1)} kt'
+          : '0.0 kt',
+      'estabilidad_direccional': '${directionalStabilityPercent.toStringAsFixed(0)}%',
+      'calidad_jibe': transitionSummary.count > 0
+          ? '${transitionSummary.qualityPercent.toStringAsFixed(0)}%'
+          : '0%',
+      'perdida_vel_transiciones': transitionSummary.avgSpeedLossKnots > 0
+          ? '${transitionSummary.avgSpeedLossKnots.toStringAsFixed(1)} kt'
+          : '0.0 kt',
+      'recuperacion_planeo': transitionSummary.avgRecoverySeconds > 0
+          ? '${transitionSummary.avgRecoverySeconds.toStringAsFixed(1)} s'
+          : '0.0 s',
+      'smoothness_score': timelineSamples.length >= 2
+          ? '${(10 - (timelineSamples.last - timelineSamples.first).clamp(0, 10) / 2).toStringAsFixed(1)}/10'
+          : '10.0/10',
+      'caidas_hora': duration.inSeconds <= 0
+          ? '0.0'
+          : (_recordingAccelerationEventCount / (duration.inSeconds / 3600))
+                .toStringAsFixed(1),
+      'eventos_sobrepotencia': '$_recordingRotationEventCount',
+      'distancia_max_costa': '${maxDistanceFromStartKm.toStringAsFixed(2)} km',
+      'tiempo_zona_riesgo': _formatDuration(timeInRiskZone),
+      'calidad_gps': _lastGpsAccuracyMeters == null
+          ? '--'
+          : '${_lastGpsAccuracyMeters!.toStringAsFixed(1)} m',
+      'samples_perdidos': '${lostSamplesPercent.toStringAsFixed(0)}%',
+      'latencia_sync': averageSampleIntervalSeconds > 0
+          ? '${averageSampleIntervalSeconds.toStringAsFixed(1)} s'
+          : '--',
+      'health_dataset': '${datasetHealthPercent.toStringAsFixed(0)}%',
+      'session_score': '${sessionScore.toStringAsFixed(0)}/100',
+      if (bigAirScore != null)
+        'big_air_score': '${bigAirScore.toStringAsFixed(0)}/100',
+      'freeride_score': '${freerideScore.toStringAsFixed(0)}/100',
+      'safety_score': '${safetyScore.toStringAsFixed(0)}/100',
+    };
     final insights = SessionInsightData(
+      deviceKind: deviceKind,
+      deviceSensorKeys: deviceSensorKeys,
+      jumpDetectionMode: jumpDetectionMode,
       distanceKm: distanceKm > 0 ? distanceKm : null,
       maxSpeedKnots: _recordingMaxSpeedKnots > 0 ? _recordingMaxSpeedKnots : null,
       avgSpeedKnots: avgSpeedKnots > 0 ? avgSpeedKnots : null,
@@ -1734,12 +2799,18 @@ class SessionsPageState extends State<SessionsPage> {
       planingMinutes: planingMinutes,
       recordedPointCount: _recordingSamples.length,
       autoPauseCount: _recordingAutoPauseCount,
+      accelerationEventCount: _recordingAccelerationEventCount,
+      rotationEventCount: _recordingRotationEventCount,
+      maxAccelerationG: null,
+      maxRotationDegPerSec: _recordingMaxRotationDegPerSec > 0
+          ? _recordingMaxRotationDegPerSec
+          : null,
       batteryStart: null,
       batteryEnd: null,
-      jumpsCount: null,
-      maxJumpHeightMeters: null,
-      maxHangtimeSeconds: null,
-      jumpHistory: const <SessionJumpRecord>[],
+      jumpsCount: jumpsCount > 0 ? jumpsCount : null,
+      maxJumpHeightMeters: maxJumpHeightMeters,
+      maxHangtimeSeconds: maxHangtimeSeconds,
+      jumpHistory: jumpHistory,
       timelineKnots: List<double>.unmodifiable(_recordingTimelineKnots),
       routePoints: List<SessionTrackPoint>.unmodifiable(
         _recordingSamples
@@ -1753,56 +2824,13 @@ class SessionsPageState extends State<SessionsPage> {
             )
             .toList(growable: false),
       ),
-      events: <String>[
-        'Sesion real grabada con el GPS del telefono',
-        '${_recordingSamples.length} puntos registrados',
-      ],
-      groups: <SessionKpiGroup>[
-        SessionKpiGroup(
-          title: 'Resumen real',
-          items: <SessionKpiItem>[
-            SessionKpiItem(
-              label: 'Duracion total',
-              value: _formatDuration(duration),
-              available: true,
-            ),
-            SessionKpiItem(
-              label: 'Tiempo activo',
-              value: _formatDuration(
-                activeDuration.isNegative ? Duration.zero : activeDuration,
-              ),
-              available: true,
-            ),
-            SessionKpiItem(
-              label: 'Tiempo parado',
-              value: _formatDuration(
-                pausedDuration.isNegative ? Duration.zero : pausedDuration,
-              ),
-              available: true,
-            ),
-            SessionKpiItem(
-              label: 'Auto-pausas',
-              value: '$_recordingAutoPauseCount',
-              available: true,
-            ),
-            SessionKpiItem(
-              label: 'Distancia total',
-              value: '${distanceKm.toStringAsFixed(2)} km',
-              available: distanceKm > 0,
-            ),
-            SessionKpiItem(
-              label: 'Velocidad media',
-              value: '${avgSpeedKnots.toStringAsFixed(1)} kt',
-              available: avgSpeedKnots > 0,
-            ),
-            SessionKpiItem(
-              label: 'Velocidad maxima',
-              value: '${_recordingMaxSpeedKnots.toStringAsFixed(1)} kt',
-              available: _recordingMaxSpeedKnots > 0,
-            ),
-          ],
-        ),
-      ],
+      events: _buildDetectedEvents(
+        pointCount: _recordingSamples.length,
+        maxSpeedKnots: _recordingMaxSpeedKnots,
+      ),
+      groups: SessionInsightData.buildGroupsForRecordedSession(
+        values: measuredValues,
+      ),
     );
 
     return _RecordedSession(
@@ -1814,6 +2842,7 @@ class SessionsPageState extends State<SessionsPage> {
       summary: config.notes.isEmpty
           ? 'Sesion real grabada con el telefono.'
           : config.notes,
+      gearSetupId: config.gearSetupId,
       gearSetupName: config.gearSetupName,
       hasSessionPhoto: config.sessionPhotoLocalPath != null,
       sessionMediaLabel: switch (config.mediaSelection) {
@@ -1825,6 +2854,33 @@ class SessionsPageState extends State<SessionsPage> {
       spotName: config.spot,
       insights: insights,
     );
+  }
+
+  List<String> _buildDetectedEvents({
+    required int pointCount,
+    required double maxSpeedKnots,
+  }) {
+    final events = <String>[
+      'Sesion real grabada con el GPS del telefono',
+      'Track validado con $pointCount puntos GPS',
+    ];
+    if (_recordingAutoPauseCount > 0) {
+      events.add('$_recordingAutoPauseCount auto-pausas detectadas');
+    }
+    if (_recordingAccelerationEventCount > 0) {
+      events.add(
+        '$_recordingAccelerationEventCount aceleraciones bruscas detectadas',
+      );
+    }
+    if (_recordingRotationEventCount > 0) {
+      events.add('$_recordingRotationEventCount giros bruscos detectados');
+    }
+    if (maxSpeedKnots > 0) {
+      events.add(
+        'Punta maxima registrada: ${maxSpeedKnots.toStringAsFixed(1)} kt',
+      );
+    }
+    return events;
   }
 
   List<_RecordedSession> _filteredSessions() {
@@ -1982,6 +3038,7 @@ class SessionsPageState extends State<SessionsPage> {
     })?
   >
   _showUploadSessionDialog() async {
+    await _profileModule.gearController.hydrate();
     final uploadSpotOptions = _availableUploadSpots();
     if (uploadSpotOptions.isEmpty) {
       return null;
@@ -2029,7 +3086,11 @@ class SessionsPageState extends State<SessionsPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         DropdownButtonFormField<String>(
+                          key: ValueKey(
+                            'upload-spot-$spot-${uploadSpotOptions.length}',
+                          ),
                           initialValue: spot,
+                          isExpanded: true,
                           decoration: const InputDecoration(
                             labelText: 'Spot',
                             border: OutlineInputBorder(),
@@ -2067,6 +3128,7 @@ class SessionsPageState extends State<SessionsPage> {
                             'upload-gear-$selectedGearSetupId-${gearSetups.length}',
                           ),
                           initialValue: selectedGearSetupId,
+                          isExpanded: true,
                           decoration: const InputDecoration(
                             labelText: 'Equipo utilizado (opcional)',
                             border: OutlineInputBorder(),
@@ -2443,16 +3505,22 @@ class SessionsPageState extends State<SessionsPage> {
     ];
   }
 
-  GearSetup? _findGearSetupByName(
+  GearSetup? _findGearSetup(
     _ProfileGearSnapshot snapshot,
-    String? setupName,
+    _RecordedSession session,
   ) {
-    if (setupName == null) {
-      return null;
+    if (session.gearSetupId != null) {
+      for (final setup in snapshot.setups) {
+        if (setup.id == session.gearSetupId) {
+          return setup;
+        }
+      }
     }
-    for (final setup in snapshot.setups) {
-      if (setup.name == setupName) {
-        return setup;
+    if (session.gearSetupName != null) {
+      for (final setup in snapshot.setups) {
+        if (setup.name == session.gearSetupName) {
+          return setup;
+        }
       }
     }
     return null;
@@ -2462,7 +3530,7 @@ class SessionsPageState extends State<SessionsPage> {
     _ProfileGearSnapshot snapshot,
     _RecordedSession session,
   ) {
-    final setup = _findGearSetupByName(snapshot, session.gearSetupName);
+    final setup = _findGearSetup(snapshot, session);
     final kite = setup == null ? null : snapshot.kitesById[setup.kiteId];
     if (kite == null) {
       return 'Cometa --';
@@ -2474,7 +3542,7 @@ class SessionsPageState extends State<SessionsPage> {
     _ProfileGearSnapshot snapshot,
     _RecordedSession session,
   ) {
-    final setup = _findGearSetupByName(snapshot, session.gearSetupName);
+    final setup = _findGearSetup(snapshot, session);
     final board = setup == null ? null : snapshot.boardsById[setup.boardId];
     if (board == null) {
       return 'Tabla --';
@@ -2527,7 +3595,10 @@ class SessionsPageState extends State<SessionsPage> {
     setState(() {
       _sessionFeed.removeWhere((item) => item.id == sessionId);
     });
-    unawaited(_sessionsModule.deleteRecordedSession(sessionId));
+    await _sessionsModule.deleteRecordedSession(sessionId);
+    if (!mounted) {
+      return;
+    }
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Sesion eliminada.')));
@@ -2551,6 +3622,7 @@ class SessionsPageState extends State<SessionsPage> {
       endedAt: session.endedAt,
       duration: session.duration,
       summary: result.notes,
+      gearSetupId: result.gearSetupId,
       gearSetupName: result.gearSetupName,
       hasSessionPhoto: result.sessionPhotoLocalPath != null,
       sessionMediaLabel: switch (result.mediaSelection) {
@@ -2571,7 +3643,10 @@ class SessionsPageState extends State<SessionsPage> {
       _lastUsedGearSetupId = result.gearSetupId;
     });
     _saveSessionViewPreferences();
-    unawaited(_sessionsModule.saveRecordedSession(updated));
+    await _sessionsModule.saveRecordedSession(updated);
+    if (!mounted) {
+      return;
+    }
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Sesion actualizada.')));
@@ -2597,6 +3672,10 @@ class SessionsPageState extends State<SessionsPage> {
     })?
   >
   _showEditSessionDialog(_RecordedSession session) async {
+    await _profileModule.gearController.hydrate();
+    if (!mounted) {
+      return null;
+    }
     const noGearValue = '__none__';
     String notes = session.summary;
     final gearSnapshot = _loadProfileGearSnapshot();
@@ -2643,7 +3722,11 @@ class SessionsPageState extends State<SessionsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         DropdownButtonFormField<String>(
+                          key: ValueKey(
+                            'edit-gear-$selectedGearSetupId-${gearSetups.length}',
+                          ),
                           initialValue: selectedGearSetupId,
+                          isExpanded: true,
                           decoration: const InputDecoration(
                             labelText: 'Equipo utilizado (opcional)',
                             border: OutlineInputBorder(),
@@ -3262,119 +4345,42 @@ class SessionsPageState extends State<SessionsPage> {
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: AppSpacing.xs),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: LinearProgressIndicator(
-                                minHeight: 8,
-                                value: (_captureStepIndex() + 1) / 5,
+                            SessionCaptureStatusCard(
+                              statusText: _captureStatusText(),
+                              stepProgress: (_captureStepIndex() + 1) / 5,
+                              elapsedLabel: _recordingElapsedText(),
+                              gpsLabel: _gpsSignalChipLabel(),
+                              gpsBackgroundColor: _gpsChipBackgroundColor(
+                                context,
                               ),
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                            Wrap(
-                              alignment: WrapAlignment.center,
-                              spacing: AppSpacing.xs,
-                              runSpacing: AppSpacing.xs,
-                              children: [
-                                Chip(
-                                  avatar: const Icon(
-                                    Icons.timer_outlined,
-                                    size: 18,
-                                  ),
-                                  label: Text(
-                                    'Tiempo: ${_recordingElapsedText()}',
-                                    style: textTheme.bodyMedium,
-                                  ),
-                                ),
-                                Chip(
-                                  backgroundColor:
-                                      _gpsChipBackgroundColor(context),
-                                  avatar: Icon(
-                                    _gpsChipIcon(),
-                                    size: 18,
-                                    color: _gpsChipForegroundColor(context),
-                                  ),
-                                  label: Text(
-                                    _gpsSignalChipLabel(),
-                                    style: textTheme.bodyMedium?.copyWith(
-                                      color: _gpsChipForegroundColor(context),
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                                Chip(
-                                  backgroundColor:
-                                      _autoPauseChipBackgroundColor(context),
-                                  avatar: Icon(
-                                    _autoPauseChipIcon(),
-                                    size: 18,
-                                    color:
-                                        _autoPauseChipForegroundColor(context),
-                                  ),
-                                  label: Text(
-                                    _autoPauseChipLabel(),
-                                    style: textTheme.bodyMedium?.copyWith(
-                                      color:
-                                          _autoPauseChipForegroundColor(context),
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                                Chip(
-                                  avatar: const Icon(
-                                    Icons.speed_rounded,
-                                    size: 18,
-                                  ),
-                                  label: Text(
-                                    'Actual: ${_recordingCurrentSpeedText()}',
-                                  ),
-                                ),
-                                Chip(
-                                  avatar: const Icon(
-                                    Icons.bolt_rounded,
-                                    size: 18,
-                                  ),
-                                  label: Text(
-                                    'Max: ${_recordingMaxSpeedText()}',
-                                  ),
-                                ),
-                                Chip(
-                                  avatar: const Icon(
-                                    Icons.kayaking_rounded,
-                                    size: 18,
-                                  ),
-                                  label: Text(
-                                    'Activo: ${_recordingActiveText()}',
-                                  ),
-                                ),
-                                Chip(
-                                  avatar: const Icon(
-                                    Icons.pause_circle_outline_rounded,
-                                    size: 18,
-                                  ),
-                                  label: Text(
-                                    'Parado: ${_recordingPausedText()}',
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            SizedBox(
-                              width: double.infinity,
-                              child: FilledButton.icon(
-                                style: FilledButton.styleFrom(
-                                  minimumSize: const Size.fromHeight(64),
-                                  textStyle: textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                onPressed:
-                                    _captureState ==
-                                        _SessionCaptureState.syncing
-                                    ? null
-                                    : _onSessionControlPressed,
-                                icon: Icon(_captureButtonIcon(), size: 28),
-                                label: Text(_captureButtonLabel()),
+                              gpsForegroundColor: _gpsChipForegroundColor(
+                                context,
                               ),
+                              gpsIcon: _gpsChipIcon(),
+                              autoPauseLabel: _autoPauseChipLabel(),
+                              autoPauseBackgroundColor:
+                                  _autoPauseChipBackgroundColor(context),
+                              autoPauseForegroundColor:
+                                  _autoPauseChipForegroundColor(context),
+                              autoPauseIcon: _autoPauseChipIcon(),
+                              currentSpeedLabel: _recordingCurrentSpeedText(),
+                              maxSpeedLabel: _recordingMaxSpeedText(),
+                              activeLabel: _recordingActiveText(),
+                              pausedLabel: _recordingPausedText(),
+                              saveReadinessLabel: _saveReadinessChipLabel(),
+                              saveReadinessBackgroundColor:
+                                  _saveReadinessChipBackgroundColor(context),
+                              saveReadinessForegroundColor:
+                                  _saveReadinessChipForegroundColor(context),
+                              saveReadinessIcon: _saveReadinessChipIcon(),
+                              actionLabel: _captureButtonLabel(),
+                              actionIcon: _captureButtonIcon(),
+                              actionTextStyle: textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                              onActionPressed: _onSessionControlPressed,
+                              actionEnabled:
+                                  _captureState != _SessionCaptureState.syncing,
                             ),
                           ],
                         ),
@@ -3518,336 +4524,177 @@ class SessionsPageState extends State<SessionsPage> {
                         margin: EdgeInsets.zero,
                         child: Padding(
                           padding: const EdgeInsets.all(AppSpacing.md),
-                          child: Text(
-                            'Todavia no hay sesiones finalizadas. Al sincronizar una sesion en Start Session aparecera aqui.',
-                            style: textTheme.bodyMedium,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Todavia no hay sesiones finalizadas. Al sincronizar una sesion en Start Session aparecera aqui.',
+                                style: textTheme.bodyMedium,
+                              ),
+                              if (_supabaseAuthDebugLabel()
+                                  case final authLabel?) ...[
+                                const SizedBox(height: AppSpacing.sm),
+                                Text(
+                                  authLabel,
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       )
                     else
                       ..._filteredSessions().map(
-                        (session) => Card(
-                          margin: const EdgeInsets.only(bottom: AppSpacing.xs),
-                          child: Builder(
-                            builder: (context) {
-                              final isNarrowPhone =
-                                  MediaQuery.sizeOf(context).width < 380;
-                              final gearSnapshot = _loadProfileGearSnapshot();
-                              final localPhotoPath =
-                                  session.sessionPhotoLocalPath;
-                              final hasPhotoPreview =
-                                  localPhotoPath != null &&
-                                  File(localPhotoPath).existsSync();
-                              final insights = _sessionInsightsForDetail(
-                                session,
-                              );
-                              final jumpDistanceEstimateMeters =
-                                  _estimatedJumpDistanceMeters(insights);
-                              final sessionDate = session.endedAt.day
-                                  .toString()
-                                  .padLeft(2, '0');
-                              final sessionMonth = session.endedAt.month
-                                  .toString()
-                                  .padLeft(2, '0');
-                              final sessionHour = session.endedAt.hour
-                                  .toString()
-                                  .padLeft(2, '0');
-                              final sessionMinute = session.endedAt.minute
-                                  .toString()
-                                  .padLeft(2, '0');
-                              final kiteLabel = _sessionKiteLabel(
-                                gearSnapshot,
-                                session,
-                              );
-                              final boardLabel = _sessionBoardLabel(
-                                gearSnapshot,
-                                session,
-                              );
+                        (session) => Builder(
+                          builder: (context) {
+                            final isNarrowPhone =
+                                MediaQuery.sizeOf(context).width < 380;
+                            final gearSnapshot = _loadProfileGearSnapshot();
+                            final insights = _sessionInsightsForDetail(session);
+                            final jumpDistanceEstimateMeters =
+                                _estimatedJumpDistanceMeters(insights);
+                            final sessionDate = session.endedAt.day
+                                .toString()
+                                .padLeft(2, '0');
+                            final sessionMonth = session.endedAt.month
+                                .toString()
+                                .padLeft(2, '0');
+                            final sessionHour = session.endedAt.hour
+                                .toString()
+                                .padLeft(2, '0');
+                            final sessionMinute = session.endedAt.minute
+                                .toString()
+                                .padLeft(2, '0');
+                            final kiteLabel = _sessionKiteLabel(
+                              gearSnapshot,
+                              session,
+                            );
+                            final boardLabel = _sessionBoardLabel(
+                              gearSnapshot,
+                              session,
+                            );
+                            final setup = _findGearSetup(gearSnapshot, session);
+                            final gearDetailLines = setup == null
+                                ? const <String>[]
+                                : _buildGearSetupDetailLines(
+                                    kite: gearSnapshot.kitesById[setup.kiteId],
+                                    board:
+                                        gearSnapshot.boardsById[setup.boardId],
+                                    bar: setup.barId == null
+                                        ? null
+                                        : gearSnapshot.barsById[setup.barId!],
+                                    harness: setup.harnessId == null
+                                        ? null
+                                        : gearSnapshot.harnessesById[
+                                            setup.harnessId!
+                                          ],
+                                    wetsuit: setup.wetsuitId == null
+                                        ? null
+                                        : gearSnapshot.wetsuitsById[
+                                            setup.wetsuitId!
+                                          ],
+                                    helmet: setup.helmetId == null
+                                        ? null
+                                        : gearSnapshot.helmetsById[
+                                            setup.helmetId!
+                                          ],
+                                    vest: setup.vestId == null
+                                        ? null
+                                        : gearSnapshot.vestsById[setup.vestId!],
+                                  );
 
-                              return InkWell(
-                                borderRadius: BorderRadius.circular(12),
-                                onTap: () async {
-                                  final action = await Navigator.of(context)
-                                      .push<SessionDetailAction>(
-                                        MaterialPageRoute(
-                                          builder: (_) => SessionDetailPage(
-                                            title: session.title,
-                                            deviceName: session.deviceName,
-                                            endedAt: session.endedAt,
-                                            durationLabel: _formatDuration(
-                                              session.duration,
-                                            ),
-                                            summary: session.summary,
-                                            source:
-                                                SessionDetailSource.mySessions,
-                                            gearSetupName:
-                                                session.gearSetupName,
-                                            hasSessionPhoto:
-                                                session.hasSessionPhoto,
-                                            sessionMediaLabel:
-                                                session.sessionMediaLabel,
-                                            sessionPhotoLocalPath:
-                                                session.sessionPhotoLocalPath,
-                                            spotBackgroundImagePath:
-                                                _spotBackgroundForSession(
-                                                  session,
-                                                ),
-                                            insights: _sessionInsightsForDetail(
-                                              session,
-                                            ),
+                            return MySessionCard(
+                              title: session.title,
+                              subtitle:
+                                  '${session.deviceName} · $sessionDate/$sessionMonth · $sessionHour:$sessionMinute',
+                              summary:
+                                  session.summary.isNotEmpty &&
+                                      session.summary != _defaultSessionSummary
+                                  ? session.summary
+                                  : '',
+                              gearSetupName:
+                                  session.gearSetupName ?? 'Sin equipacion',
+                              kiteLabel: kiteLabel,
+                              boardLabel: boardLabel,
+                              localPhotoPath: session.sessionPhotoLocalPath,
+                              durationLabel: _formatDuration(session.duration),
+                              jumpLabel: _formatJumpHeight(
+                                insights.maxJumpHeightMeters,
+                              ),
+                              hangtimeLabel: _formatHangtime(
+                                insights.maxHangtimeSeconds,
+                              ),
+                              jumpDistanceLabel: _formatDistanceMeters(
+                                jumpDistanceEstimateMeters,
+                              ),
+                              maxSpeedLabel: _formatSpeedKnots(
+                                insights.maxSpeedKnots,
+                              ),
+                              isNarrowPhone: isNarrowPhone,
+                              onTap: () async {
+                                final action = await Navigator.of(context)
+                                    .push<SessionDetailAction>(
+                                      MaterialPageRoute(
+                                        builder: (_) => SessionDetailPage(
+                                          title: session.title,
+                                          deviceName: session.deviceName,
+                                          deviceKind:
+                                              _sessionInsightsForDetail(
+                                                session,
+                                              ).deviceKind ??
+                                              'Dispositivo Android',
+                                          deviceSensorKeys:
+                                              _sessionInsightsForDetail(
+                                                session,
+                                              ).deviceSensorKeys,
+                                          endedAt: session.endedAt,
+                                          durationLabel: _formatDuration(
+                                            session.duration,
+                                          ),
+                                          summary: session.summary,
+                                          source:
+                                              SessionDetailSource.mySessions,
+                                          gearSetupName: session.gearSetupName,
+                                          gearSetupDetailLines: gearDetailLines,
+                                          hasSessionPhoto:
+                                              session.hasSessionPhoto,
+                                          sessionMediaLabel:
+                                              session.sessionMediaLabel,
+                                          sessionPhotoLocalPath:
+                                              session.sessionPhotoLocalPath,
+                                          spotBackgroundImagePath:
+                                              _spotBackgroundForSession(session),
+                                          insights: _sessionInsightsForDetail(
+                                            session,
                                           ),
                                         ),
-                                      );
-
-                                  if (!mounted || action == null) {
-                                    return;
-                                  }
-
-                                  if (action.type ==
-                                      SessionDetailActionType.delete) {
-                                    await _confirmAndDeleteSession(session.id);
-                                    return;
-                                  }
-
-                                  await _openEditSessionDialog(session.id);
-                                },
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: const BorderRadius.vertical(
-                                        top: Radius.circular(12),
                                       ),
-                                      child: hasPhotoPreview
-                                          ? Image.file(
-                                              File(localPhotoPath),
-                                              fit: BoxFit.cover,
-                                              width: double.infinity,
-                                              height: 170,
-                                            )
-                                          : Container(
-                                              width: double.infinity,
-                                              height: 120,
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .surfaceContainerHighest,
-                                              alignment: Alignment.center,
-                                              child: Icon(
-                                                Icons
-                                                    .photo_camera_back_outlined,
-                                                color: Theme.of(
-                                                  context,
-                                                ).colorScheme.onSurfaceVariant,
-                                              ),
-                                            ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.all(
-                                        AppSpacing.sm,
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            session.title,
-                                            style: textTheme.titleMedium
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            '${session.deviceName} · $sessionDate/$sessionMonth · $sessionHour:$sessionMinute',
-                                            style: textTheme.bodySmall
-                                                ?.copyWith(
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .onSurfaceVariant,
-                                                ),
-                                          ),
-                                          if (session.summary.isNotEmpty &&
-                                              session.summary !=
-                                                  _defaultSessionSummary) ...[
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              session.summary,
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: textTheme.bodyMedium
-                                                  ?.copyWith(
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .onSurfaceVariant,
-                                                  ),
-                                            ),
-                                          ],
-                                          const SizedBox(height: 8),
-                                          Row(
-                                            children: [
-                                              const Icon(
-                                                Icons.checkroom_rounded,
-                                                size: 16,
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Expanded(
-                                                child: Text(
-                                                  session.gearSetupName ??
-                                                      'Sin equipacion',
-                                                  style: textTheme.bodySmall,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          Text(
-                                            kiteLabel,
-                                            style: textTheme.bodySmall,
-                                          ),
-                                          Text(
-                                            boardLabel,
-                                            style: textTheme.bodySmall,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          SingleChildScrollView(
-                                            scrollDirection: Axis.horizontal,
-                                            child: Row(
-                                              children: [
-                                                Chip(
-                                                  visualDensity:
-                                                      VisualDensity.compact,
-                                                  materialTapTargetSize:
-                                                      MaterialTapTargetSize
-                                                          .shrinkWrap,
-                                                  label: Text(
-                                                    'Duracion ${_formatDuration(session.duration)}',
-                                                  ),
-                                                ),
-                                                const SizedBox(
-                                                  width: AppSpacing.xs,
-                                                ),
-                                                Chip(
-                                                  visualDensity:
-                                                      VisualDensity.compact,
-                                                  materialTapTargetSize:
-                                                      MaterialTapTargetSize
-                                                          .shrinkWrap,
-                                                  label: Text(
-                                                    'Salto ${_formatJumpHeight(insights.maxJumpHeightMeters)}',
-                                                  ),
-                                                ),
-                                                const SizedBox(
-                                                  width: AppSpacing.xs,
-                                                ),
-                                                Chip(
-                                                  visualDensity:
-                                                      VisualDensity.compact,
-                                                  materialTapTargetSize:
-                                                      MaterialTapTargetSize
-                                                          .shrinkWrap,
-                                                  label: Text(
-                                                    'Hangtime ${_formatHangtime(insights.maxHangtimeSeconds)}',
-                                                  ),
-                                                ),
-                                                const SizedBox(
-                                                  width: AppSpacing.xs,
-                                                ),
-                                                Chip(
-                                                  visualDensity:
-                                                      VisualDensity.compact,
-                                                  materialTapTargetSize:
-                                                      MaterialTapTargetSize
-                                                          .shrinkWrap,
-                                                  label: Text(
-                                                    'Dist salto ${_formatDistanceMeters(jumpDistanceEstimateMeters)}',
-                                                  ),
-                                                ),
-                                                const SizedBox(
-                                                  width: AppSpacing.xs,
-                                                ),
-                                                Chip(
-                                                  visualDensity:
-                                                      VisualDensity.compact,
-                                                  materialTapTargetSize:
-                                                      MaterialTapTargetSize
-                                                          .shrinkWrap,
-                                                  label: Text(
-                                                    'Vel max ${_formatSpeedKnots(insights.maxSpeedKnots)}',
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: OutlinedButton.icon(
-                                                  onPressed: () {
-                                                    _openEditSessionDialog(
-                                                      session.id,
-                                                    );
-                                                  },
-                                                  style:
-                                                      OutlinedButton.styleFrom(
-                                                        visualDensity:
-                                                            VisualDensity
-                                                                .compact,
-                                                        minimumSize: const Size(
-                                                          0,
-                                                          36,
-                                                        ),
-                                                      ),
-                                                  icon: isNarrowPhone
-                                                      ? const SizedBox.shrink()
-                                                      : const Icon(
-                                                          Icons.edit_rounded,
-                                                          size: 16,
-                                                        ),
-                                                  label: const Text('Editar'),
-                                                ),
-                                              ),
-                                              const SizedBox(
-                                                width: AppSpacing.xs,
-                                              ),
-                                              Tooltip(
-                                                message: 'Eliminar sesion',
-                                                child: SizedBox(
-                                                  width: 36,
-                                                  height: 36,
-                                                  child: OutlinedButton(
-                                                    onPressed: () {
-                                                      _confirmAndDeleteSession(
-                                                        session.id,
-                                                      );
-                                                    },
-                                                    style:
-                                                        OutlinedButton.styleFrom(
-                                                          visualDensity:
-                                                              VisualDensity
-                                                                  .compact,
-                                                          padding:
-                                                              EdgeInsets.zero,
-                                                        ),
-                                                    child: const Icon(
-                                                      Icons
-                                                          .delete_outline_rounded,
-                                                      size: 18,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
+                                    );
+
+                                if (!mounted || action == null) {
+                                  return;
+                                }
+
+                                if (action.type ==
+                                    SessionDetailActionType.delete) {
+                                  await _confirmAndDeleteSession(session.id);
+                                  return;
+                                }
+
+                                await _openEditSessionDialog(session.id);
+                              },
+                              onEdit: () {
+                                _openEditSessionDialog(session.id);
+                              },
+                              onDelete: () {
+                                _confirmAndDeleteSession(session.id);
+                              },
+                            );
+                          },
                         ),
                       ),
                   ],
@@ -3922,6 +4769,55 @@ class _SessionLocationSample {
   final double longitude;
   final double speedKnots;
   final DateTime timestamp;
+}
+
+class _TrackTransitionSummary {
+  const _TrackTransitionSummary({
+    required this.count,
+    required this.qualityPercent,
+    required this.avgSpeedLossKnots,
+    required this.avgRecoverySeconds,
+  });
+
+  const _TrackTransitionSummary.empty()
+      : count = 0,
+        qualityPercent = 0,
+        avgSpeedLossKnots = 0,
+        avgRecoverySeconds = 0;
+
+  final int count;
+  final double qualityPercent;
+  final double avgSpeedLossKnots;
+  final double avgRecoverySeconds;
+}
+
+class _PendingJumpCandidate {
+  const _PendingJumpCandidate({
+    required this.startedAt,
+    required this.takeoffSpeedKnots,
+    required this.maxManeuverG,
+    required this.maxRotationDegPerSec,
+  });
+
+  final DateTime startedAt;
+  final double takeoffSpeedKnots;
+  final double maxManeuverG;
+  final double maxRotationDegPerSec;
+
+  _PendingJumpCandidate copyWith({
+    DateTime? startedAt,
+    double? takeoffSpeedKnots,
+    double? maxManeuverG,
+    double? maxRotationDegPerSec,
+  }) {
+    return _PendingJumpCandidate(
+      startedAt: startedAt ?? this.startedAt,
+      takeoffSpeedKnots: takeoffSpeedKnots ?? this.takeoffSpeedKnots,
+      maxManeuverG: maxManeuverG ?? this.maxManeuverG,
+      maxRotationDegPerSec:
+          maxRotationDegPerSec ?? this.maxRotationDegPerSec,
+    );
+  }
 }
 
 enum _SessionCaptureState { ready, recording, finished, syncing, synced }
