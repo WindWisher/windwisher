@@ -68,23 +68,6 @@ class SessionSelectedDeviceCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: data.statusColor,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      data.statusLabel,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
                 ],
               ),
               const SizedBox(height: AppSpacing.xs),
@@ -92,10 +75,6 @@ class SessionSelectedDeviceCard extends StatelessWidget {
                 spacing: AppSpacing.xs,
                 runSpacing: AppSpacing.xs,
                 children: [
-                  _DeviceMetaPill(
-                    icon: Icons.devices_rounded,
-                    text: data.availabilityLabel,
-                  ),
                   _DeviceMetaPill(
                     icon: Icons.sensors_rounded,
                     text: data.sensorCountLabel,

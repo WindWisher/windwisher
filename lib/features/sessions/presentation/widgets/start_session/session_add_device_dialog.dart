@@ -56,7 +56,7 @@ class _SessionAddDeviceDialogState extends State<SessionAddDeviceDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Aqui solo aparecen dispositivos compatibles detectados y aun no vinculados.',
+            'Aqui aparecen dispositivos detectados y aun no vinculados. Al elegir uno comprobaremos si realmente sirve para grabar sesiones.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -69,14 +69,14 @@ class _SessionAddDeviceDialogState extends State<SessionAddDeviceDialog> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Text(
-                'No se han detectado mas dispositivos compatibles por ahora. El teléfono del usuario ya queda disponible automaticamente.',
+                'No se han detectado mas dispositivos por ahora. El teléfono del usuario ya queda disponible automaticamente.',
               ),
             )
           else ...[
             DropdownButtonFormField<String>(
               initialValue: _selectedDevice?.id,
               decoration: const InputDecoration(
-                labelText: 'Dispositivo compatible disponible',
+                labelText: 'Dispositivo detectado',
                 border: OutlineInputBorder(),
               ),
               items: widget.availableDevices

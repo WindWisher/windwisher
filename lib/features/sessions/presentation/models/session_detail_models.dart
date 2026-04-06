@@ -214,7 +214,6 @@ class SessionInsightData {
     'accelerometer',
     'gyroscope',
     'magnetometer',
-    'orientation',
     'heart_rate',
     'barometer',
   ];
@@ -224,10 +223,54 @@ class SessionInsightData {
     'accelerometer': 'Acelerómetro',
     'gyroscope': 'Giroscopio',
     'magnetometer': 'Magnetómetro',
-    'orientation': 'Orientación',
     'heart_rate': 'Ritmo cardíaco',
     'barometer': 'Barómetro',
   };
+
+  static const List<String> derivedCapabilityOrder = [
+    'speed',
+    'altitude',
+    'orientation',
+    'motion_analysis',
+    'jump_detection_inertial',
+    'jump_detection_barometric',
+  ];
+
+  static const Map<String, String> derivedCapabilityLabels = {
+    'speed': 'Velocidad derivada',
+    'altitude': 'Altitud derivada',
+    'orientation': 'Orientación calculada',
+    'motion_analysis': 'Análisis de movimiento',
+    'jump_detection_inertial': 'Detección de saltos inercial',
+    'jump_detection_barometric': 'Detección de saltos barométrica',
+  };
+
+  static Set<String> derivedCapabilitiesForPhysicalSensors(
+    Iterable<String> sensorKeys,
+  ) {
+    final sensors = sensorKeys.toSet();
+    final capabilities = <String>{};
+
+    if (sensors.contains('gps')) {
+      capabilities.add('speed');
+      capabilities.add('altitude');
+    }
+    if (sensors.contains('barometer')) {
+      capabilities.add('altitude');
+      capabilities.add('jump_detection_barometric');
+    }
+    if (sensors.contains('accelerometer') && sensors.contains('gyroscope')) {
+      capabilities.add('motion_analysis');
+      capabilities.add('jump_detection_inertial');
+    }
+    if (sensors.contains('accelerometer') &&
+        sensors.contains('gyroscope') &&
+        sensors.contains('magnetometer')) {
+      capabilities.add('orientation');
+    }
+
+    return capabilities;
+  }
 
   static String jumpDetectionModeForSensors(Iterable<String> sensorKeys) {
     final sensors = sensorKeys.toSet();
@@ -323,7 +366,6 @@ class SessionInsightData {
           'accelerometer',
           'gyroscope',
           'magnetometer',
-          'orientation',
         };
       case 'iPhone':
         return {
@@ -331,7 +373,6 @@ class SessionInsightData {
           'accelerometer',
           'gyroscope',
           'magnetometer',
-          'orientation',
         };
       case 'Apple Watch':
       case 'Smartwatch':
@@ -339,13 +380,12 @@ class SessionInsightData {
           'gps',
           'accelerometer',
           'gyroscope',
-          'orientation',
           'heart_rate',
           'barometer',
         };
       case 'Woo Sports':
       case 'SurfR':
-        return {'gps', 'accelerometer', 'gyroscope', 'orientation'};
+        return {'gps', 'accelerometer', 'gyroscope'};
       default:
         return {'gps', 'accelerometer', 'gyroscope'};
     }

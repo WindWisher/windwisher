@@ -75,34 +75,35 @@ class SessionsPageState extends State<SessionsPage> {
   static const Duration _autoResumeDelay = Duration(seconds: 6);
   static const double _accelerationEventThresholdG = 1.8;
   static const double _rotationEventThresholdDegPerSec = 320;
-  static const double _motionEventMinSpeedKnots = 6;
   static const double _movingAverageMinSpeedKnots = 4;
   static const Duration _motionEventCooldown = Duration(seconds: 20);
-  static const double _jumpMinTakeoffSpeedKnots = 10;
   static const double _jumpMinManeuverG = 1.35;
   static const double _jumpMinManeuverRotationDegPerSec = 220;
   static const double _jumpLandingThresholdG = 1.7;
-  static const double _jumpLandingMinSpeedKnots = 6;
   static const Duration _jumpMinAirTime = Duration(milliseconds: 800);
   static const Duration _jumpMaxAirTime = Duration(seconds: 8);
   static const Duration _jumpCooldown = Duration(seconds: 8);
   static const String _defaultSessionSummary =
       'Track sincronizado con sensores de velocidad, GPS y eventos.';
   static const Set<String> _templateDeviceIds = {'woo-1', 'watch-1'};
-  static const List<SessionDetectedCompatibleDeviceData>
-  _supportedDetectedDevices = <SessionDetectedCompatibleDeviceData>[];
   static const _LinkedDevice _defaultPhoneDevice = _LinkedDevice(
     id: _phoneDeviceId,
     name: 'Telefono del usuario',
     kind: 'Dispositivo Android',
     status: 'Listo',
     lastSync: 'Disponible en este dispositivo',
+    family: 'phone',
+    placement: 'local',
+    physicalSensorKeys: <String>['gps', 'accelerometer', 'gyroscope', 'magnetometer'],
+    isSessionEligible: true,
   );
   late final SessionsModule _sessionsModule;
   late final SpotsModule _spotsModule;
   late final ProfileModule _profileModule;
   List<SpotItem> _spotsCatalog = const <SpotItem>[];
   final List<_LinkedDevice> _devices = [];
+  final List<SessionDetectedCompatibleDeviceData> _supportedDetectedDevices =
+      <SessionDetectedCompatibleDeviceData>[];
 
   String? _selectedDeviceId;
   _SessionTab _sessionTab = _SessionTab.start;
@@ -179,6 +180,7 @@ class SessionsPageState extends State<SessionsPage> {
     _ensureSelectedDevice();
     _sanitizeSessionViewPreferences();
     unawaited(_hydratePhoneDeviceInfo());
+    unawaited(_hydrateDetectedExternalDevices());
     _hydrateRecordedSessions();
     _hydrateSpotsCatalog();
     _hydrateProfileGear();
@@ -473,6 +475,20 @@ class SessionsPageState extends State<SessionsPage> {
     _saveSelectedDeviceId();
   }
 
+
+  Future<void> _hydrateDetectedExternalDevices() async {
+    final detected =
+        await StartSessionDeviceDetectionLogic.detectExternalSessionDevices();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _supportedDetectedDevices
+        ..clear()
+        ..addAll(detected);
+    });
+  }
+
   void _pruneTemplateDevices() {
     final templateDevices = _devices
         .where((device) => _templateDeviceIds.contains(device.id))
@@ -512,14 +528,16 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   void _ensureSelectedDevice() {
-    final exists = _devices.any((device) => device.id == _selectedDeviceId);
+    final eligibleDevices = _devices.where((device) => device.isSessionEligible);
+    final exists = eligibleDevices.any((device) => device.id == _selectedDeviceId);
     if (exists) {
       _saveSelectedDeviceId();
       return;
     }
-    _selectedDeviceId = _devices.any((d) => d.id == _phoneDeviceId)
+    final displayDevices = _devicesForDisplay();
+    _selectedDeviceId = displayDevices.any((d) => d.id == _phoneDeviceId)
         ? _phoneDeviceId
-        : (_devices.isEmpty ? null : _devices.first.id);
+        : (displayDevices.isEmpty ? null : displayDevices.first.id);
     _saveSelectedDeviceId();
   }
 
@@ -550,7 +568,9 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   List<_LinkedDevice> _devicesForDisplay() {
-    final devices = List<_LinkedDevice>.from(_devices);
+    final devices = List<_LinkedDevice>.from(
+      _devices.where((device) => device.isSessionEligible),
+    );
     devices.sort((a, b) {
       if (a.id == _phoneDeviceId) return -1;
       if (b.id == _phoneDeviceId) return 1;
@@ -584,14 +604,34 @@ class SessionsPageState extends State<SessionsPage> {
     if (linked == null || !mounted) {
       return;
     }
+    if (!linked.isSessionEligible) {
+      final reason = switch (linked.family) {
+        'watch' => 'Este reloj no tiene barómetro/altímetro y no sirve para grabar sesiones.',
+        'board_sensor' => 'Este sensor de tabla no expone una fuente vertical válida.',
+        _ => 'Este dispositivo detectado no es válido para grabar sesiones.',
+      };
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(reason)));
+      }
+      return;
+    }
 
     setState(() {
       final linkedDevice = _LinkedDevice(
         id: linked.id,
         name: linked.customName,
         kind: linked.kind,
-        status: 'Vinculado',
-        lastSync: 'recién vinculado',
+        status: linked.connectionState.isEmpty ? 'Vinculado' : linked.connectionState,
+        lastSync: linked.firmwareVersion == null || linked.firmwareVersion!.isEmpty
+            ? 'recién vinculado'
+            : 'firmware ${linked.firmwareVersion}',
+        family: linked.family,
+        placement: linked.placement,
+        physicalSensorKeys: linked.physicalSensorKeys,
+        isSessionEligible: _LinkedDevice.isSessionEligibleForDetectedDevice(
+          family: linked.family,
+          physicalSensorKeys: linked.physicalSensorKeys,
+        ),
       );
       _devices.insert(0, linkedDevice);
       _sessionsModule.saveLinkedDevice(linkedDevice);
@@ -713,7 +753,21 @@ class SessionsPageState extends State<SessionsPage> {
     if (selected == null) {
       return const <String>{};
     }
+    if (selected.physicalSensorKeys.isNotEmpty) {
+      return selected.physicalSensorKeys.toSet();
+    }
     return SessionInsightData.physicalSensorsForDeviceKind(selected.kind);
+  }
+
+  ({
+    double motionEventMinSpeedKnots,
+    double jumpMinTakeoffSpeedKnots,
+    double jumpLandingMinSpeedKnots,
+    String jumpDetectionMode,
+  }) _captureMeasurementPolicy() {
+    return StartSessionCaptureLogic.captureMeasurementPolicyForDeviceKind(
+      _selectedDevice?.kind,
+    );
   }
 
   String _selectedDeviceSensorCountLabel() {
@@ -1212,7 +1266,7 @@ class SessionsPageState extends State<SessionsPage> {
         accelerationPeakRequiredMatches: _accelerationPeakRequiredMatches,
         accelerationEventThresholdG: _accelerationEventThresholdG,
         currentTrackSpeedKnots: _currentTrackSpeedKnots(),
-        motionEventMinSpeedKnots: _motionEventMinSpeedKnots,
+        motionEventMinSpeedKnots: _captureMeasurementPolicy().motionEventMinSpeedKnots,
         canRegisterMotionEvent: StartSessionCaptureLogic.canRegisterMotionEvent(
           SessionMotionEventCooldownInput(
             now: now,
@@ -1259,7 +1313,7 @@ class SessionsPageState extends State<SessionsPage> {
         currentMaxRotationDegPerSec: _recordingMaxRotationDegPerSec,
         rotationEventThresholdDegPerSec: _rotationEventThresholdDegPerSec,
         currentTrackSpeedKnots: _currentTrackSpeedKnots(),
-        motionEventMinSpeedKnots: _motionEventMinSpeedKnots,
+        motionEventMinSpeedKnots: _captureMeasurementPolicy().motionEventMinSpeedKnots,
         canRegisterMotionEvent: StartSessionCaptureLogic.canRegisterMotionEvent(
           SessionMotionEventCooldownInput(
             now: now,
@@ -1294,23 +1348,20 @@ class SessionsPageState extends State<SessionsPage> {
     final currentSpeedKnots = _currentTrackSpeedKnots();
     final result = StartSessionCaptureLogic.updateJumpDetectionFromAcceleration(
       SessionJumpDetectionAccelerationInput(
-        jumpDetectionMode:
-            StartSessionCaptureLogic.activeJumpDetectionModeForDeviceKind(
-              _selectedDevice?.kind,
-            ),
+        jumpDetectionMode: _captureMeasurementPolicy().jumpDetectionMode,
         pendingCandidate: _pendingJumpCandidate,
         lastJumpRecordedAt: _lastJumpRecordedAt,
         now: now,
         currentSpeedKnots: currentSpeedKnots,
         accelerationG: accelerationG,
-        jumpMinTakeoffSpeedKnots: _jumpMinTakeoffSpeedKnots,
+        jumpMinTakeoffSpeedKnots: _captureMeasurementPolicy().jumpMinTakeoffSpeedKnots,
         jumpMinManeuverG: _jumpMinManeuverG,
         jumpMinManeuverRotationDegPerSec: _jumpMinManeuverRotationDegPerSec,
         jumpCooldown: _jumpCooldown,
         jumpMinAirTime: _jumpMinAirTime,
         jumpMaxAirTime: _jumpMaxAirTime,
         jumpLandingThresholdG: _jumpLandingThresholdG,
-        jumpLandingMinSpeedKnots: _jumpLandingMinSpeedKnots,
+        jumpLandingMinSpeedKnots: _captureMeasurementPolicy().jumpLandingMinSpeedKnots,
       ),
     );
     _pendingJumpCandidate = result.pendingCandidate;
@@ -1331,16 +1382,13 @@ class SessionsPageState extends State<SessionsPage> {
     final currentSpeedKnots = _currentTrackSpeedKnots();
     final result = StartSessionCaptureLogic.updateJumpDetectionFromRotation(
       SessionJumpDetectionRotationInput(
-        jumpDetectionMode:
-            StartSessionCaptureLogic.activeJumpDetectionModeForDeviceKind(
-              _selectedDevice?.kind,
-            ),
+        jumpDetectionMode: _captureMeasurementPolicy().jumpDetectionMode,
         pendingCandidate: _pendingJumpCandidate,
         lastJumpRecordedAt: _lastJumpRecordedAt,
         now: now,
         currentSpeedKnots: currentSpeedKnots,
         rotationDegPerSec: rotationDegPerSec,
-        jumpMinTakeoffSpeedKnots: _jumpMinTakeoffSpeedKnots,
+        jumpMinTakeoffSpeedKnots: _captureMeasurementPolicy().jumpMinTakeoffSpeedKnots,
         jumpMinManeuverG: _jumpMinManeuverG,
         jumpMinManeuverRotationDegPerSec: _jumpMinManeuverRotationDegPerSec,
         jumpCooldown: _jumpCooldown,
@@ -1364,6 +1412,9 @@ class SessionsPageState extends State<SessionsPage> {
         landingSpeedKnots: landingSpeedKnots,
         nextJumpIndex: _recordingJumpHistory.length + 1,
         jumpMinAirTime: _jumpMinAirTime,
+        jumpMinManeuverG: _jumpMinManeuverG,
+        jumpMinManeuverRotationDegPerSec:
+            _jumpMinManeuverRotationDegPerSec,
         currentJumpHistory: _recordingJumpHistory,
       ),
     );
@@ -1453,9 +1504,11 @@ class SessionsPageState extends State<SessionsPage> {
     final selectedDevice = _selectedDevice;
     final deviceName = selectedDevice?.name ?? 'Desconocido';
     final deviceKind = selectedDevice?.kind ?? 'Dispositivo Android';
-    final deviceSensorKeys = SessionInsightData.physicalSensorsForDeviceKind(
-      deviceKind,
-    ).toList(growable: false);
+    final deviceSensorKeys = selectedDevice?.physicalSensorKeys.isNotEmpty == true
+        ? List<String>.from(selectedDevice!.physicalSensorKeys)
+        : SessionInsightData.physicalSensorsForDeviceKind(
+            deviceKind,
+          ).toList(growable: false);
     final jumpDetectionMode = SessionInsightData.jumpDetectionModeForSensors(
       deviceSensorKeys,
     );

@@ -140,6 +140,14 @@ class SessionDetectedCompatibleDeviceData {
     required this.kind,
     required this.status,
     required this.sensorSummary,
+    required this.family,
+    required this.placement,
+    required this.connectionState,
+    required this.manufacturer,
+    required this.model,
+    required this.physicalSensorKeys,
+    required this.isSessionEligible,
+    this.firmwareVersion,
     String? customName,
   }) : customName = customName ?? defaultName;
 
@@ -148,7 +156,18 @@ class SessionDetectedCompatibleDeviceData {
   final String kind;
   final String status;
   final String sensorSummary;
+  final String family;
+  final String placement;
+  final String connectionState;
+  final String manufacturer;
+  final String model;
+  final String? firmwareVersion;
+  final List<String> physicalSensorKeys;
+  final bool isSessionEligible;
   final String customName;
+
+  bool get hasBarometer => physicalSensorKeys.contains('barometer');
+  bool get hasAltimeter => physicalSensorKeys.contains('altimeter');
 
   SessionDetectedCompatibleDeviceData copyWith({String? customName}) {
     return SessionDetectedCompatibleDeviceData(
@@ -157,6 +176,14 @@ class SessionDetectedCompatibleDeviceData {
       kind: kind,
       status: status,
       sensorSummary: sensorSummary,
+      family: family,
+      placement: placement,
+      connectionState: connectionState,
+      manufacturer: manufacturer,
+      model: model,
+      firmwareVersion: firmwareVersion,
+      physicalSensorKeys: physicalSensorKeys,
+      isSessionEligible: isSessionEligible,
       customName: customName ?? this.customName,
     );
   }
@@ -701,6 +728,8 @@ class SessionJumpCandidateFinalizeInput {
     required this.landingSpeedKnots,
     required this.nextJumpIndex,
     required this.jumpMinAirTime,
+    required this.jumpMinManeuverG,
+    required this.jumpMinManeuverRotationDegPerSec,
   });
 
   final SessionPendingJumpCandidate? pendingCandidate;
@@ -710,6 +739,8 @@ class SessionJumpCandidateFinalizeInput {
   final double landingSpeedKnots;
   final int nextJumpIndex;
   final Duration jumpMinAirTime;
+  final double jumpMinManeuverG;
+  final double jumpMinManeuverRotationDegPerSec;
 }
 
 class SessionJumpCandidateFinalizeResult {
@@ -867,6 +898,8 @@ class SessionApplyJumpFinalizeInput {
     required this.landingSpeedKnots,
     required this.nextJumpIndex,
     required this.jumpMinAirTime,
+    required this.jumpMinManeuverG,
+    required this.jumpMinManeuverRotationDegPerSec,
     required this.currentJumpHistory,
   });
 
@@ -877,6 +910,8 @@ class SessionApplyJumpFinalizeInput {
   final double landingSpeedKnots;
   final int nextJumpIndex;
   final Duration jumpMinAirTime;
+  final double jumpMinManeuverG;
+  final double jumpMinManeuverRotationDegPerSec;
   final List<SessionJumpRecord> currentJumpHistory;
 }
 

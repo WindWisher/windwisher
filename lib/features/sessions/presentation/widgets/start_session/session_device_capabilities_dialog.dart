@@ -24,9 +24,15 @@ class SessionDeviceCapabilitiesDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final available = capabilities.length;
-    final availableCapabilities = SessionInsightData.physicalSensorOrder
+    final physicalSensors = SessionInsightData.physicalSensorOrder
         .where((key) => capabilities.contains(key))
+        .toList(growable: false);
+    final derivedCapabilities = SessionInsightData.derivedCapabilityOrder
+        .where(
+          (key) => SessionInsightData.derivedCapabilitiesForPhysicalSensors(
+            capabilities,
+          ).contains(key),
+        )
         .toList(growable: false);
 
     return AlertDialog(
@@ -37,26 +43,31 @@ class SessionDeviceCapabilitiesDialog extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              available == 1
-                  ? '1 sensor disponible'
-                  : '$available sensores disponibles',
+              physicalSensors.length == 1
+                  ? '1 sensor físico disponible'
+                  : '${physicalSensors.length} sensores físicos disponibles',
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Aquí solo mostramos sensores físicos reales del dispositivo.',
+              'Primero mostramos hardware real del dispositivo y después las capacidades calculadas a partir de esos sensores.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Sensores físicos',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: AppSpacing.xs),
-            if (availableCapabilities.isEmpty)
+            if (physicalSensors.isEmpty)
               Text(
-                'Aun no hemos detectado capacidades utilizables para este dispositivo.',
+                'Aún no hemos detectado sensores físicos utilizables para este dispositivo.',
                 style: Theme.of(context).textTheme.bodySmall,
               )
             else
               Wrap(
                 spacing: AppSpacing.xs,
                 runSpacing: AppSpacing.xs,
-                children: availableCapabilities.map((key) {
+                children: physicalSensors.map((key) {
                   final label =
                       SessionInsightData.physicalSensorLabels[key] ?? key;
                   return Chip(
@@ -67,6 +78,35 @@ class SessionDeviceCapabilitiesDialog extends StatelessWidget {
                     ),
                     label: Text(label),
                     backgroundColor: const Color(0x1F2E7D32),
+                  );
+                }).toList(growable: false),
+              ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Capacidades derivadas',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            if (derivedCapabilities.isEmpty)
+              Text(
+                'No hay capacidades derivadas calculables con este conjunto de sensores.',
+                style: Theme.of(context).textTheme.bodySmall,
+              )
+            else
+              Wrap(
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
+                children: derivedCapabilities.map((key) {
+                  final label =
+                      SessionInsightData.derivedCapabilityLabels[key] ?? key;
+                  return Chip(
+                    avatar: const Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 16,
+                      color: Color(0xFF1565C0),
+                    ),
+                    label: Text(label),
+                    backgroundColor: const Color(0x1F1565C0),
                   );
                 }).toList(growable: false),
               ),

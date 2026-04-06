@@ -296,9 +296,14 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
   }
 
   String _maxJumpHeightLabel(List<SessionJumpRecord> records) {
-    final value = records
+    final heightValues = records
         .map((record) => record.heightMeters)
-        .reduce((a, b) => a > b ? a : b);
+        .where((value) => value > 0)
+        .toList(growable: false);
+    if (heightValues.isEmpty) {
+      return 'No disponible';
+    }
+    final value = heightValues.reduce((a, b) => a > b ? a : b);
     return '${value.toStringAsFixed(1)} m';
   }
 
@@ -429,7 +434,7 @@ class _JumpHistoryTable extends StatelessWidget {
           ...records.map(
             (record) => buildRow(
               left: '${record.jumpNumber}',
-              h: '${record.heightMeters.toStringAsFixed(1)} m',
+              h: record.heightMeters > 0 ? '${record.heightMeters.toStringAsFixed(1)} m' : '--',
               t: '${record.hangtimeSeconds.toStringAsFixed(1)} s',
               maneuver: record.maneuverG == null
                   ? '--'

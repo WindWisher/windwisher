@@ -25,6 +25,10 @@ class LocalFileSessionDevicesAdapter implements SessionDevicesPort {
       kind: 'Dispositivo Android',
       status: 'Listo',
       lastSync: 'Disponible en este dispositivo',
+      family: 'phone',
+      placement: 'local',
+      physicalSensorKeys: <String>['gps', 'accelerometer', 'gyroscope', 'magnetometer'],
+      isSessionEligible: true,
     ),
   ];
 

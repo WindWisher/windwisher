@@ -15275,3 +15275,34 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
         - `session_hero_card.dart`,
         - `supabase_session_records_adapter.dart`,
       - se mantiene solo el warning externo conocido de `webview_flutter:macos`.
+
+
+  - bloque nuevo `2026-04-06`:
+    - fiabilidad de `Session` y vinculacion real de dispositivos reencauzadas sobre hardware fisico,
+    - duracion estimada del bloque: `4h`,
+    - sensores y capacidades:
+      - eliminada `orientation` como sensor fisico del catalogo,
+      - separadas en modelo las nociones de `sensores fisicos` y `capacidades derivadas`,
+      - los dialogos de capacidades muestran ya ambos bloques por separado,
+    - saltos / honestidad de medicion:
+      - `inertial_fallback` deja de registrar saltos por si solo,
+      - la rotacion deja de contar como requisito universal de confirmacion,
+      - la heuristica pasa a orientarse por tipo de dispositivo en vez de asumir el mismo comportamiento para movil, reloj y sensor de tabla,
+      - la altura de salto deja de inferirse desde `hangtime`,
+      - `hangtime` se conserva como metrica propia y la altura queda `No disponible` cuando no existe fuente vertical fiable,
+    - dispositivos / vinculacion:
+      - `LinkedDevice` se amplia con `family`, `placement`, `physicalSensorKeys` e `isSessionEligible`,
+      - la elegibilidad queda centralizada en `LinkedDevice.isSessionEligibleForDetectedDevice(...)`,
+      - telefono local sigue entrando por deteccion interna,
+      - `watch` y `board_sensor` solo son elegibles si exponen `barometer` o `altimeter`,
+      - la seleccion de `Start Session` trabaja ya con dispositivos elegibles y con inventario de sensores fisicos reales,
+    - discovery externo real:
+      - anadida base BLE real con `flutter_reactive_ble`,
+      - creado adapter `ble_session_device_discovery_adapter.dart`,
+      - `detectExternalSessionDevices()` deja de ser placeholder vacio y pasa a lanzar escaneo BLE real,
+      - el dialogo de vincular muestra dispositivos detectados y la comprobacion de elegibilidad ocurre despues de que el usuario seleccione uno,
+      - primera base de identificacion para sensores de tabla tipo `WOO` a partir de anuncios BLE, lista para endurecerse luego con `manufacturer data` / `service UUIDs`,
+    - verificacion:
+      - `flutter pub get` correcto,
+      - multiples `flutter analyze` limpios sobre modelos, logica, adapters BLE, dialogo de vinculacion y `sessions_page.dart`,
+      - se mantiene solo el warning externo conocido de `webview_flutter:macos`.

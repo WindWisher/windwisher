@@ -7,11 +7,49 @@ import 'package:windwisher/features/sessions/presentation/models/start_session_m
 class StartSessionCaptureLogic {
   const StartSessionCaptureLogic._();
 
-  static String activeJumpDetectionModeForDeviceKind(String? deviceKind) {
+  static ({
+    double motionEventMinSpeedKnots,
+    double jumpMinTakeoffSpeedKnots,
+    double jumpLandingMinSpeedKnots,
+    String jumpDetectionMode,
+  }) captureMeasurementPolicyForDeviceKind(String? deviceKind) {
     final resolvedDeviceKind = deviceKind ?? 'Dispositivo Android';
-    return SessionInsightData.jumpDetectionModeForSensors(
+    final jumpDetectionMode = SessionInsightData.jumpDetectionModeForSensors(
       SessionInsightData.physicalSensorsForDeviceKind(resolvedDeviceKind),
     );
+
+    switch (resolvedDeviceKind) {
+      case 'Apple Watch':
+      case 'Smartwatch':
+        return (
+          motionEventMinSpeedKnots: 8.0,
+          jumpMinTakeoffSpeedKnots: 12.0,
+          jumpLandingMinSpeedKnots: 7.0,
+          jumpDetectionMode: jumpDetectionMode,
+        );
+      case 'Woo Sports':
+      case 'SurfR':
+        return (
+          motionEventMinSpeedKnots: 4.0,
+          jumpMinTakeoffSpeedKnots: 8.0,
+          jumpLandingMinSpeedKnots: 5.0,
+          jumpDetectionMode: jumpDetectionMode,
+        );
+      case 'Android':
+      case 'Dispositivo Android':
+      case 'iPhone':
+      default:
+        return (
+          motionEventMinSpeedKnots: 6.0,
+          jumpMinTakeoffSpeedKnots: 10.0,
+          jumpLandingMinSpeedKnots: 6.0,
+          jumpDetectionMode: jumpDetectionMode,
+        );
+    }
+  }
+
+  static String activeJumpDetectionModeForDeviceKind(String? deviceKind) {
+    return captureMeasurementPolicyForDeviceKind(deviceKind).jumpDetectionMode;
   }
 
   static bool canRegisterMotionEvent(SessionMotionEventCooldownInput input) {
@@ -231,10 +269,7 @@ class StartSessionCaptureLogic {
     final hasAccelerationTrigger =
         input.accelerationG != null &&
         input.accelerationG! >= input.jumpMinManeuverG;
-    final hasRotationTrigger =
-        input.rotationDegPerSec != null &&
-        input.rotationDegPerSec! >= input.jumpMinManeuverRotationDegPerSec;
-    if (!hasAccelerationTrigger && !hasRotationTrigger) {
+    if (!hasAccelerationTrigger) {
       return null;
     }
 
@@ -258,6 +293,15 @@ class StartSessionCaptureLogic {
       );
     }
 
+    final hasConfirmedManeuver =
+        candidate.maxManeuverG >= input.jumpMinManeuverG;
+    if (!hasConfirmedManeuver) {
+      return const SessionJumpCandidateFinalizeResult(
+        recordedJump: null,
+        lastJumpRecordedAt: null,
+      );
+    }
+
     final hangtime = input.landedAt.difference(candidate.startedAt);
     final hangtimeSeconds = hangtime.inMilliseconds / 1000;
     if (hangtimeSeconds < (input.jumpMinAirTime.inMilliseconds / 1000)) {
@@ -267,22 +311,16 @@ class StartSessionCaptureLogic {
       );
     }
 
-    const gravityMetersPerSecond2 = 9.80665;
-    final estimatedHeightMeters =
-        gravityMetersPerSecond2 * hangtimeSeconds * hangtimeSeconds / 8;
-    final estimatedFallSpeedMetersPerSecond =
-        gravityMetersPerSecond2 * hangtimeSeconds / 2;
-
     return SessionJumpCandidateFinalizeResult(
       recordedJump: SessionJumpRecord(
         index: input.nextJumpIndex,
-        heightMeters: estimatedHeightMeters,
+        heightMeters: 0,
         hangtimeSeconds: hangtimeSeconds,
         maneuverG: candidate.maxManeuverG > 0 ? candidate.maxManeuverG : null,
         maneuverRotationDegPerSec: candidate.maxRotationDegPerSec > 0
             ? candidate.maxRotationDegPerSec
             : null,
-        fallSpeedMetersPerSecond: estimatedFallSpeedMetersPerSecond,
+        fallSpeedMetersPerSecond: null,
         takeoffSpeedKnots: candidate.takeoffSpeedKnots,
         landingSpeedKnots: input.landingSpeedKnots,
         landingG: input.landingG,
@@ -304,6 +342,9 @@ class StartSessionCaptureLogic {
         landingSpeedKnots: input.landingSpeedKnots,
         nextJumpIndex: input.nextJumpIndex,
         jumpMinAirTime: input.jumpMinAirTime,
+        jumpMinManeuverG: input.jumpMinManeuverG,
+        jumpMinManeuverRotationDegPerSec:
+            input.jumpMinManeuverRotationDegPerSec,
       ),
     );
 
@@ -401,7 +442,7 @@ class StartSessionCaptureLogic {
           ),
         );
       case 'inertial_fallback':
-        return updateInertialJumpFromAcceleration(
+        final assistiveResult = updateInertialJumpFromAcceleration(
           SessionInertialJumpAccelerationUpdateInput(
             pendingCandidate: input.pendingCandidate,
             lastJumpRecordedAt: input.lastJumpRecordedAt,
@@ -418,6 +459,13 @@ class StartSessionCaptureLogic {
             jumpLandingThresholdG: input.jumpLandingThresholdG,
             jumpLandingMinSpeedKnots: input.jumpLandingMinSpeedKnots,
           ),
+        );
+        return SessionInertialJumpUpdateResult(
+          pendingCandidate: assistiveResult.pendingCandidate,
+          shouldFinalize: false,
+          landedAt: null,
+          landingG: null,
+          landingSpeedKnots: null,
         );
     }
     return const SessionInertialJumpUpdateResult(

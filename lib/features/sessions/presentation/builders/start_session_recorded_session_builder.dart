@@ -278,6 +278,7 @@ class StartSessionRecordedSessionBuilder {
   ) {
     final highestJump = input.imported.jumpHistory
         .map((jump) => jump.heightMeters)
+        .where((height) => height > 0)
         .fold<double?>(null, (prev, h) => prev == null ? h : math.max(prev, h));
     final highestHangtime = input.imported.jumpHistory
         .map((jump) => jump.hangtimeSeconds)
@@ -370,21 +371,25 @@ class StartSessionRecordedSessionBuilder {
     if (jumpHistory.isEmpty) {
       return const _JumpMetrics();
     }
-    final maxJumpHeightMeters = jumpHistory
+    final heightSamples = jumpHistory
         .map((jump) => jump.heightMeters)
-        .reduce(math.max);
+        .where((height) => height > 0)
+        .toList(growable: false);
+    final maxJumpHeightMeters = heightSamples.isEmpty
+        ? null
+        : heightSamples.reduce(math.max);
     final maxHangtimeSeconds = jumpHistory
         .map((jump) => jump.hangtimeSeconds)
         .reduce(math.max);
-    final avgJumpHeightMeters =
-        jumpHistory.map((jump) => jump.heightMeters).reduce((a, b) => a + b) /
-        jumpHistory.length;
-    final top5AverageJumpMeters = (List<SessionJumpRecord>.from(jumpHistory)
-              ..sort((a, b) => b.heightMeters.compareTo(a.heightMeters)))
-            .take(5)
-            .map((jump) => jump.heightMeters)
-            .reduce((a, b) => a + b) /
-        math.min(5, jumpHistory.length);
+    final avgJumpHeightMeters = heightSamples.isEmpty
+        ? null
+        : heightSamples.reduce((a, b) => a + b) / heightSamples.length;
+    final top5AverageJumpMeters = heightSamples.isEmpty
+        ? null
+        : ((List<double>.from(heightSamples)..sort((a, b) => b.compareTo(a)))
+                  .take(5)
+                  .reduce((a, b) => a + b) /
+              math.min(5, heightSamples.length));
     final hangtimeValues = jumpHistory
         .map((jump) => jump.hangtimeSeconds)
         .toList(growable: false)
@@ -406,12 +411,11 @@ class StartSessionRecordedSessionBuilder {
     final jumpCadencePerHour = duration.inSeconds <= 0
         ? null
         : jumpHistory.length / (duration.inSeconds / 3600);
-    final jumpHeights = jumpHistory.map((jump) => jump.heightMeters).toList(growable: false);
-    final jumpHeightSpread = jumpHeights.length < 2
+    final jumpHeightSpread = heightSamples.length < 2
         ? null
-        : jumpHeights.reduce(math.max) - jumpHeights.reduce(math.min);
+        : heightSamples.reduce(math.max) - heightSamples.reduce(math.min);
     final jumpHeightConsistency =
-        jumpHeightSpread == null
+        jumpHeightSpread == null || avgJumpHeightMeters == null
         ? null
         : math
               .max(
@@ -428,13 +432,16 @@ class StartSessionRecordedSessionBuilder {
         ? null
         : landingSpeedKnots.reduce((a, b) => a + b) / landingSpeedKnots.length;
     final jumpWindEfficiency =
-        averageTakeoffSpeedKnots == null || averageTakeoffSpeedKnots <= 0
+        maxJumpHeightMeters == null ||
+            averageTakeoffSpeedKnots == null ||
+            averageTakeoffSpeedKnots <= 0
         ? null
         : (maxJumpHeightMeters / averageTakeoffSpeedKnots) * 10;
-    final jumpHeightDistribution =
-        '${jumpHeights.where((value) => value < 3).length}/'
-        '${jumpHeights.where((value) => value >= 3 && value < 6).length}/'
-        '${jumpHeights.where((value) => value >= 6).length}';
+    final jumpHeightDistribution = heightSamples.isEmpty
+        ? null
+        : '${heightSamples.where((value) => value < 3).length}/'
+            '${heightSamples.where((value) => value >= 3 && value < 6).length}/'
+            '${heightSamples.where((value) => value >= 6).length}';
 
     return _JumpMetrics(
       maxJumpHeightMeters: maxJumpHeightMeters,
