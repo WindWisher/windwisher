@@ -2,17 +2,18 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 81h 24m`.
+- `Total historico minimo consolidado del proyecto: 107h 24m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
   - bloque consolidado adicional en `2026-03-26`: `+8h` estimadas
   - bloque consolidado adicional en `2026-03-27`: `+4h` estimadas
   - bloque consolidado adicional en `2026-03-28`: `+6h` estimadas
+  - bloque consolidado adicional en `2026-04-06`: `+26h` estimadas
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-03-28`: `+6h` estimadas.
+  - ultima consolidacion manual anadida el `2026-04-06`: `+26h` estimadas.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
 
