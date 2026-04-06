@@ -37,8 +37,13 @@ class SessionHeroCard extends StatelessWidget {
     final hasBackground =
         spotBackgroundImagePath != null && spotBackgroundImagePath!.isNotEmpty;
     final localPhotoPath = sessionPhotoLocalPath;
+    final hasRemotePhoto =
+        localPhotoPath != null &&
+        (localPhotoPath.startsWith('http://') ||
+            localPhotoPath.startsWith('https://'));
     final hasLocalPhoto =
-        localPhotoPath != null && File(localPhotoPath).existsSync();
+        hasRemotePhoto ||
+        (localPhotoPath != null && File(localPhotoPath).existsSync());
 
     final header = Padding(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -65,10 +70,15 @@ class SessionHeroCard extends StatelessWidget {
               child: SizedBox(
                 width: double.infinity,
                 height: 190,
-                child: Image.file(
-                  File(localPhotoPath),
-                  fit: BoxFit.cover,
-                ),
+                child: hasRemotePhoto
+                    ? Image.network(
+                        localPhotoPath,
+                        fit: BoxFit.cover,
+                      )
+                    : Image.file(
+                        File(localPhotoPath),
+                        fit: BoxFit.cover,
+                      ),
               ),
             ),
           ],

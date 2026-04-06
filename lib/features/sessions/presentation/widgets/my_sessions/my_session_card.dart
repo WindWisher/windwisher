@@ -23,8 +23,13 @@ class MySessionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final photoPath = data.localPhotoPath;
+    final hasRemotePhoto =
+        photoPath != null &&
+        (photoPath.startsWith('http://') || photoPath.startsWith('https://'));
     final hasPhotoPreview =
-        data.localPhotoPath != null && File(data.localPhotoPath!).existsSync();
+        hasRemotePhoto ||
+        (photoPath != null && File(photoPath).existsSync());
     final metricChips = <Widget>[
       _buildChip(
         context: context,
@@ -64,12 +69,19 @@ class MySessionCard extends StatelessWidget {
                 top: Radius.circular(12),
               ),
               child: hasPhotoPreview
-                  ? Image.file(
-                      File(data.localPhotoPath!),
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: 170,
-                    )
+                  ? (hasRemotePhoto
+                      ? Image.network(
+                          photoPath,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: 170,
+                        )
+                      : Image.file(
+                          File(photoPath),
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: 170,
+                        ))
                   : Container(
                       width: double.infinity,
                       height: 88,

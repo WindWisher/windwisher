@@ -15250,3 +15250,28 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - `flutter analyze lib/features/sessions/presentation` limpio,
       - multiples `flutter analyze` limpios durante el bloque sobre archivos tocados,
       - se mantiene solo el warning externo conocido de `webview_flutter:macos`.
+
+  - bloque nuevo `2026-04-06`:
+    - fix real de fotos de `Session` compartidas entre dispositivos,
+    - duracion estimada del bloque: `1h`,
+    - almacenamiento remoto de foto:
+      - al crear, importar o editar una sesion con foto, la imagen se sube primero a Supabase Storage (`session-media`),
+      - la sesion ya no persiste la ruta local del dispositivo como `session_photo_path`,
+      - la ruta remota generada incluye sufijo temporal para evitar cache visual al cambiar la foto,
+    - persistencia / adapter:
+      - `SupabaseSessionRecordsAdapter` deja de enviar rutas locales a la tabla `sessions`,
+      - `has_session_photo` en remoto queda alineado con la existencia real de URL remota,
+    - render de `My Sessions` y detalle:
+      - `MySessionCard` y `SessionHeroCard` aceptan URL remota y la muestran con `Image.network`,
+      - se mantiene compatibilidad visual con path local solo como tolerancia, no como fuente de verdad remota,
+    - resultado funcional validado:
+      - cambiada la foto de una sesion en Xiaomi,
+      - la misma sesion muestra ya la foto correcta en el emulador,
+      - confirmado que el problema de base era guardar path local en vez de URL remota compartible,
+    - verificacion:
+      - `flutter analyze` limpio en:
+        - `sessions_page.dart`,
+        - `my_session_card.dart`,
+        - `session_hero_card.dart`,
+        - `supabase_session_records_adapter.dart`,
+      - se mantiene solo el warning externo conocido de `webview_flutter:macos`.

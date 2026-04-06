@@ -101,6 +101,10 @@ class SupabaseSessionRecordsAdapter implements SessionRecordsPort {
     }
 
     try {
+      final remoteSessionPhotoPath =
+          _isRemoteSessionPhotoPath(session.sessionPhotoLocalPath)
+          ? session.sessionPhotoLocalPath
+          : null;
       await _client.from('sessions').upsert(<String, dynamic>{
         'id': session.id,
         'user_id': user.id,
@@ -112,8 +116,8 @@ class SupabaseSessionRecordsAdapter implements SessionRecordsPort {
         'gear_setup_id': session.gearSetupId,
         'gear_setup_name': session.gearSetupName,
         'session_media_label': session.sessionMediaLabel,
-        'session_photo_path': session.sessionPhotoLocalPath,
-        'has_session_photo': session.hasSessionPhoto,
+        'session_photo_path': remoteSessionPhotoPath,
+        'has_session_photo': remoteSessionPhotoPath != null,
         'spot_name': session.spotName,
         'insights': _encodeInsights(session.insights),
         'highest_jump_m': _doubleFromInsights(
@@ -218,5 +222,13 @@ class SupabaseSessionRecordsAdapter implements SessionRecordsPort {
       return (encoded[key] as num?)?.toInt() ?? 0;
     }
     return 0;
+  }
+
+  bool _isRemoteSessionPhotoPath(String? path) {
+    if (path == null) {
+      return false;
+    }
+    final normalized = path.trim().toLowerCase();
+    return normalized.startsWith('http://') || normalized.startsWith('https://');
   }
 }

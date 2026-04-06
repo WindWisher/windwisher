@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
@@ -620,9 +622,18 @@ class SessionsPageState extends State<SessionsPage> {
       return;
     }
 
+    final sessionId = _newSessionId();
+    final uploadedSessionPhotoPath = await _resolvePersistedSessionPhotoPath(
+      sessionId: sessionId,
+      candidatePath: config.sessionPhotoLocalPath,
+    );
+    if (!mounted) {
+      return;
+    }
+
     final session = StartSessionRecordedSessionBuilder.buildImportedSession(
       ImportedRecordedSessionBuilderInput(
-        id: _newSessionId(),
+        id: sessionId,
         deviceName: device.name,
         deviceKind: device.kind,
         imported: imported,
@@ -632,7 +643,7 @@ class SessionsPageState extends State<SessionsPage> {
           sessionMediaLabel: StartSessionMediaLogic.labelForSelection(
             config.mediaSelection,
           ),
-          sessionPhotoLocalPath: config.sessionPhotoLocalPath,
+          sessionPhotoLocalPath: uploadedSessionPhotoPath,
           gearSetupId: config.gearSetupId,
           gearSetupName: config.gearSetupName,
         ),
@@ -978,8 +989,19 @@ class SessionsPageState extends State<SessionsPage> {
     _beginCaptureSyncing(config);
 
     final sessionTiming = _buildCaptureSessionTiming();
+    final sessionId = _newSessionId();
+    final uploadedSessionPhotoPath = await _resolvePersistedSessionPhotoPath(
+      sessionId: sessionId,
+      candidatePath: config.sessionPhotoLocalPath,
+    );
+    if (!mounted) {
+      return;
+    }
+
     final session = _buildRecordedSessionFromCapture(
+      id: sessionId,
       config: config,
+      uploadedSessionPhotoPath: uploadedSessionPhotoPath,
       endedAt: sessionTiming.endedAt,
       duration: sessionTiming.duration,
     );
@@ -1413,6 +1435,7 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   _RecordedSession _buildRecordedSessionFromCapture({
+    required String id,
     required ({
       String spot,
       String notes,
@@ -1422,6 +1445,7 @@ class SessionsPageState extends State<SessionsPage> {
       String? gearSetupName,
     })
     config,
+    required String? uploadedSessionPhotoPath,
     required DateTime endedAt,
     required Duration duration,
   }) {
@@ -1460,7 +1484,7 @@ class SessionsPageState extends State<SessionsPage> {
     );
     return StartSessionRecordedSessionBuilder.build(
       RecordedSessionBuilderInput(
-        id: _newSessionId(),
+        id: id,
         title: title,
         deviceName: deviceName,
         deviceKind: deviceKind,
@@ -1474,7 +1498,7 @@ class SessionsPageState extends State<SessionsPage> {
           sessionMediaLabel: StartSessionMediaLogic.labelForSelection(
             config.mediaSelection,
           ),
-          sessionPhotoLocalPath: config.sessionPhotoLocalPath,
+          sessionPhotoLocalPath: uploadedSessionPhotoPath,
           gearSetupId: config.gearSetupId,
           gearSetupName: config.gearSetupName,
         ),
@@ -1878,6 +1902,97 @@ class SessionsPageState extends State<SessionsPage> {
     }
   }
 
+
+  bool _isRemoteSessionPhotoPath(String? path) {
+    if (path == null) {
+      return false;
+    }
+    final normalized = path.trim().toLowerCase();
+    return normalized.startsWith('http://') || normalized.startsWith('https://');
+  }
+
+  String _sessionPhotoContentType(String path) {
+    final normalized = path.toLowerCase();
+    if (normalized.endsWith('.png')) {
+      return 'image/png';
+    }
+    if (normalized.endsWith('.webp')) {
+      return 'image/webp';
+    }
+    if (normalized.endsWith('.heic')) {
+      return 'image/heic';
+    }
+    if (normalized.endsWith('.heif')) {
+      return 'image/heif';
+    }
+    return 'image/jpeg';
+  }
+
+  String _sessionPhotoExtension(String path) {
+    final dotIndex = path.lastIndexOf('.');
+    if (dotIndex < 0 || dotIndex == path.length - 1) {
+      return 'jpg';
+    }
+    return path.substring(dotIndex + 1).toLowerCase();
+  }
+
+  Future<String?> _resolvePersistedSessionPhotoPath({
+    required String sessionId,
+    required String? candidatePath,
+    String? previousPath,
+  }) async {
+    if (candidatePath == null || candidatePath.trim().isEmpty) {
+      return null;
+    }
+    if (_isRemoteSessionPhotoPath(candidatePath)) {
+      return candidatePath;
+    }
+
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Debes iniciar sesión para subir la foto de la sesión.',
+            ),
+          ),
+        );
+      }
+      throw StateError('Cannot upload session photo without authenticated user.');
+    }
+
+    try {
+      final file = File(candidatePath);
+      if (!await file.exists()) {
+        return previousPath;
+      }
+      final extension = _sessionPhotoExtension(candidatePath);
+      final storagePath =
+          '${user.id}/sessions/${sessionId}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+      await Supabase.instance.client.storage.from('session-media').upload(
+        storagePath,
+        file,
+        fileOptions: FileOptions(
+          contentType: _sessionPhotoContentType(candidatePath),
+          upsert: false,
+        ),
+      );
+      return Supabase.instance.client.storage
+          .from('session-media')
+          .getPublicUrl(storagePath);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No se pudo subir la foto de la sesión: $error'),
+          ),
+        );
+      }
+      throw StateError('Session photo upload failed: $error');
+    }
+  }
+
   Future<
     ({
       String spot,
@@ -2022,12 +2137,23 @@ class SessionsPageState extends State<SessionsPage> {
       return;
     }
 
+    final uploadedSessionPhotoPath = await _resolvePersistedSessionPhotoPath(
+      sessionId: session.id,
+      candidatePath: result.sessionPhotoLocalPath,
+      previousPath: _isRemoteSessionPhotoPath(session.sessionPhotoLocalPath)
+          ? session.sessionPhotoLocalPath
+          : null,
+    );
+    if (!mounted) {
+      return;
+    }
+
     final updated = StartSessionRecordedSessionBuilder.buildEditedSession(
       EditedRecordedSessionBuilderInput(
         baseSession: session,
         notes: result.notes,
         mediaSelection: result.mediaSelection,
-        sessionPhotoLocalPath: result.sessionPhotoLocalPath,
+        sessionPhotoLocalPath: uploadedSessionPhotoPath,
         gearSetupId: result.gearSetupId,
         gearSetupName: result.gearSetupName,
         sessionMediaLabel: StartSessionMediaLogic.labelForSelection(
