@@ -693,6 +693,13 @@ class SessionsPageState extends State<SessionsPage> {
       _selectedDeviceId = linked.id;
     });
     _saveSelectedDeviceId();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '${linked.customName} ya esta vinculado y seleccionado para Start Session.',
+        ),
+      ),
+    );
   }
 
   Future<void> _showDetectedDeviceNotEligibleDialog({
@@ -703,7 +710,7 @@ class SessionsPageState extends State<SessionsPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Dispositivo no compatible'),
+          title: const Text('Este dispositivo no sirve para grabar sesiones'),
           content: SizedBox(
             width: double.maxFinite,
             child: SingleChildScrollView(
@@ -711,16 +718,26 @@ class SessionsPageState extends State<SessionsPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(reason),
-                  if (device.diagnosticSummary != null) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    SelectableText(
-                      device.diagnosticSummary!,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
+                  Text(
+                    device.customName,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
-                  ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${device.kind} · ${device.connectionState}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(reason),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    device.sensorSummary,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -892,10 +909,6 @@ class SessionsPageState extends State<SessionsPage> {
         .toList(growable: false);
   }
 
-  Future<void> _syncSessionFromDevice() async {
-    _showRealIntegrationPendingMessage('La sincronización de sesiones');
-  }
-
   Future<void> _configureSyncedSession(
     SessionImportedPendingResult imported,
   ) async {
@@ -1019,11 +1032,32 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   String _selectedDeviceSensorCountLabel() {
-    final count = _selectedDeviceCapabilities().length;
-    if (count == 1) {
-      return '1 sensor relevante';
+    final sensors = _selectedDeviceCapabilities().toList(growable: false)
+      ..sort();
+    if (sensors.isEmpty) {
+      return 'Sensores aun no detectados';
     }
-    return '$count sensores relevantes';
+
+    final labels = sensors.map(_sensorDisplayLabel).toList(growable: false);
+    if (labels.length <= 2) {
+      return labels.join(' · ');
+    }
+    return '${labels.take(2).join(' · ')} +${labels.length - 2}';
+  }
+
+  String _sensorDisplayLabel(String sensorKey) {
+    return switch (sensorKey) {
+      'gps' => 'GPS',
+      'accelerometer' => 'Acelerometro',
+      'gyroscope' => 'Giroscopio',
+      'magnetometer' => 'Magnetometro',
+      'barometer' => 'Barometro',
+      'altimeter' => 'Altimetro',
+      'heart_rate' => 'Pulso',
+      'temperature' => 'Temperatura',
+      'humidity' => 'Humedad',
+      _ => sensorKey,
+    };
   }
 
   String _recordingElapsedText() {
@@ -1942,7 +1976,6 @@ class SessionsPageState extends State<SessionsPage> {
         isPhoneDeviceSelected: selectedDevice.id == _phoneDeviceId,
       ),
       onCapabilitiesPressed: _showDeviceCapabilitiesDialog,
-      onSyncPressed: _syncSessionFromDevice,
     );
   }
 

@@ -272,6 +272,37 @@ class SessionInsightData {
     return capabilities;
   }
 
+  static List<String> practicalUseCasesForPhysicalSensors(
+    Iterable<String> sensorKeys,
+  ) {
+    final sensors = sensorKeys.toSet();
+    final items = <String>[];
+
+    if (sensors.contains('gps')) {
+      items.add('Puede registrar track y velocidad por GPS.');
+    }
+    if (sensors.contains('heart_rate')) {
+      items.add(
+        'Puede registrar pulso si el dispositivo lo expone durante la sesion.',
+      );
+    }
+    if (sensors.contains('barometer')) {
+      items.add(
+        'Tiene fuente vertical valida para medir altura y mejorar deteccion de saltos.',
+      );
+    }
+    if (sensors.contains('accelerometer') && sensors.contains('gyroscope')) {
+      items.add(
+        'Puede analizar movimiento y maniobras con sensores inerciales.',
+      );
+    }
+    if (items.isEmpty) {
+      items.add('Todavia no sabemos que puede aportar a la sesion.');
+    }
+
+    return items;
+  }
+
   static String jumpDetectionModeForSensors(Iterable<String> sensorKeys) {
     final sensors = sensorKeys.toSet();
     if (sensors.contains('barometer')) {
@@ -340,49 +371,39 @@ class SessionInsightData {
 
   static List<SessionKpiGroup> _buildKpiGroups({
     required Map<String, String> values,
-    required bool Function(String key, Set<String> required)
-    availabilityForKey,
+    required bool Function(String key, Set<String> required) availabilityForKey,
   }) {
-    return _kpiGroupDefinitions.entries.map((entry) {
-      return SessionKpiGroup(
-        title: entry.key,
-        items: entry.value.map((definition) {
-          return _item(
-            values,
-            definition.key,
-            availabilityForKey(definition.key, definition.requiredCapabilities),
+    return _kpiGroupDefinitions.entries
+        .map((entry) {
+          return SessionKpiGroup(
+            title: entry.key,
+            items: entry.value
+                .map((definition) {
+                  return _item(
+                    values,
+                    definition.key,
+                    availabilityForKey(
+                      definition.key,
+                      definition.requiredCapabilities,
+                    ),
+                  );
+                })
+                .toList(growable: false),
           );
-        }).toList(growable: false),
-      );
-    }).toList(growable: false);
+        })
+        .toList(growable: false);
   }
 
   static Set<String> physicalSensorsForDeviceKind(String kind) {
     switch (kind) {
       case 'Android':
       case 'Dispositivo Android':
-        return {
-          'gps',
-          'accelerometer',
-          'gyroscope',
-          'magnetometer',
-        };
+        return {'gps', 'accelerometer', 'gyroscope', 'magnetometer'};
       case 'iPhone':
-        return {
-          'gps',
-          'accelerometer',
-          'gyroscope',
-          'magnetometer',
-        };
+        return {'gps', 'accelerometer', 'gyroscope', 'magnetometer'};
       case 'Apple Watch':
       case 'Smartwatch':
-        return {
-          'gps',
-          'accelerometer',
-          'gyroscope',
-          'heart_rate',
-          'barometer',
-        };
+        return {'gps', 'accelerometer', 'gyroscope', 'heart_rate', 'barometer'};
       case 'Woo Sports':
       case 'SurfR':
         return {'gps', 'accelerometer', 'gyroscope'};
@@ -508,7 +529,11 @@ class SessionInsightData {
     ],
     'Saltos': [
       _KpiDefinition('salto_mas_alto', {'altitude', 'motion'}),
-      _KpiDefinition('distancia_salto_estimada', {'speed', 'altitude', 'motion'}),
+      _KpiDefinition('distancia_salto_estimada', {
+        'speed',
+        'altitude',
+        'motion',
+      }),
       _KpiDefinition('distribucion_alturas', {'altitude'}),
       _KpiDefinition('takeoff_speed', {'speed', 'altitude'}),
       _KpiDefinition('landing_speed', {'speed', 'altitude'}),
@@ -556,7 +581,6 @@ class SessionInsightData {
       _KpiDefinition('progress_score', {'network'}),
     ],
   };
-
 }
 
 class _KpiDefinition {
@@ -661,10 +685,10 @@ class SessionJumpRecord {
       hangtimeSeconds: (json['hangtimeSeconds'] as num?)?.toDouble() ?? 0,
       landingG: (json['landingG'] as num?)?.toDouble() ?? 0,
       maneuverG: (json['maneuverG'] as num?)?.toDouble(),
-      maneuverRotationDegPerSec:
-          (json['maneuverRotationDegPerSec'] as num?)?.toDouble(),
-      fallSpeedMetersPerSecond:
-          (json['fallSpeedMetersPerSecond'] as num?)?.toDouble(),
+      maneuverRotationDegPerSec: (json['maneuverRotationDegPerSec'] as num?)
+          ?.toDouble(),
+      fallSpeedMetersPerSecond: (json['fallSpeedMetersPerSecond'] as num?)
+          ?.toDouble(),
       takeoffSpeedKnots: (json['takeoffSpeedKnots'] as num?)?.toDouble(),
       landingSpeedKnots: (json['landingSpeedKnots'] as num?)?.toDouble(),
       recordedAt: Duration(

@@ -7,12 +7,10 @@ class SessionSelectedDeviceCard extends StatelessWidget {
     super.key,
     required this.data,
     required this.onCapabilitiesPressed,
-    required this.onSyncPressed,
   });
 
   final SessionSelectedDeviceCardData data;
   final VoidCallback onCapabilitiesPressed;
-  final VoidCallback onSyncPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -83,10 +81,11 @@ class SessionSelectedDeviceCard extends StatelessWidget {
               ),
               if (!data.isPhoneDeviceSelected) ...[
                 const SizedBox(height: AppSpacing.sm),
-                OutlinedButton.icon(
-                  onPressed: onSyncPressed,
-                  icon: const Icon(Icons.sync_rounded),
-                  label: const Text('Sincronizar dispositivo'),
+                Text(
+                  'La sincronizacion directa de sesiones aun no esta disponible para este dispositivo.',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
                 ),
               ],
             ],
@@ -98,10 +97,7 @@ class SessionSelectedDeviceCard extends StatelessWidget {
 }
 
 class _DeviceMetaPill extends StatelessWidget {
-  const _DeviceMetaPill({
-    required this.icon,
-    required this.text,
-  });
+  const _DeviceMetaPill({required this.icon, required this.text});
 
   final IconData icon;
   final String text;
@@ -120,11 +116,7 @@ class _DeviceMetaPill extends StatelessWidget {
           Icon(icon, size: 14),
           const SizedBox(width: 6),
           Flexible(
-            child: Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+            child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
         ],
       ),

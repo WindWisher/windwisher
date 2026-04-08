@@ -141,7 +141,8 @@ class BleSessionDeviceDiscoveryAdapter {
         family: device.family,
         placement: device.placement,
         physicalSensorKeys: device.physicalSensorKeys,
-        sensorSummary: 'El anuncio BLE no acepta conexión GATT',
+        sensorSummary:
+            'No ha sido posible abrir una conexion BLE con este dispositivo',
         diagnosticSummary:
             '${device.diagnosticSummary ?? 'Advertisement sin detalle'}; probe omitido: connectable=unavailable',
       );
@@ -204,7 +205,7 @@ class BleSessionDeviceDiscoveryAdapter {
         family: device.family,
         placement: device.placement,
         physicalSensorKeys: device.physicalSensorKeys,
-        sensorSummary: 'No se han podido comprobar sensores compatibles',
+        sensorSummary: 'No se han podido comprobar sus sensores',
         diagnosticSummary: 'Probe BLE fallido: ${error.runtimeType}',
       );
     } finally {
@@ -232,11 +233,11 @@ class BleSessionDeviceDiscoveryAdapter {
       id: id,
       defaultName: exposedName,
       kind: _kindForFamily(family, model),
-      status: 'Detectado',
+      status: 'Disponible',
       sensorSummary: _sensorSummary(physicalSensorKeys),
       family: family,
       placement: placement,
-      connectionState: 'Detectado',
+      connectionState: 'Disponible',
       manufacturer: manufacturer,
       model: model,
       firmwareVersion: null,
@@ -693,11 +694,11 @@ class BleSessionDeviceDiscoveryAdapter {
       id: device.id,
       defaultName: device.defaultName,
       kind: _kindForFamily(family, device.model),
-      status: 'Comprobado',
+      status: 'Listo para revisar',
       sensorSummary: sensorSummary ?? _sensorSummary(physicalSensorKeys),
       family: family,
       placement: placement,
-      connectionState: 'Comprobado',
+      connectionState: 'Sensores revisados',
       manufacturer: device.manufacturer,
       model: device.model,
       firmwareVersion: device.firmwareVersion,
@@ -714,7 +715,7 @@ class BleSessionDeviceDiscoveryAdapter {
 
   String _sensorSummary(List<String> physicalSensorKeys) {
     if (physicalSensorKeys.isEmpty) {
-      return 'Sensores físicos aún no identificados';
+      return 'Sensores aun no detectados';
     }
     return physicalSensorKeys.join(', ');
   }

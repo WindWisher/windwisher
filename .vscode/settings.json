@@ -3,5 +3,7 @@
   "dart.flutterHotReloadOnSave": "always",
   "dart.previewFlutterUiGuides": true,
   "dart.openDevTools": "flutter",
-  "chatgpt.openOnStartup": true
+  "chatgpt.openOnStartup": true,
+  "java.jdt.ls.java.home": "/Applications/Android Studio.app/Contents/jbr/Contents/Home",
+  "gradle.java.home": "/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 }

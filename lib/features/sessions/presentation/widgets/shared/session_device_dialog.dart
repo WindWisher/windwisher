@@ -50,6 +50,8 @@ class SessionDeviceDialog extends StatelessWidget {
           ).contains(key),
         )
         .toList(growable: false);
+    final practicalUseCases =
+        SessionInsightData.practicalUseCasesForPhysicalSensors(orderedKeys);
 
     return AlertDialog(
       title: const Text('Capacidades del dispositivo'),
@@ -58,15 +60,9 @@ class SessionDeviceDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              deviceName,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text(deviceName, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: AppSpacing.xs),
-            Text(
-              deviceKind,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            Text(deviceKind, style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: AppSpacing.sm),
             Text(
               orderedKeys.length == 1
@@ -77,6 +73,21 @@ class SessionDeviceDialog extends StatelessWidget {
             Text(
               'Primero mostramos hardware real del dispositivo y después las capacidades calculadas a partir de esos sensores.',
               style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Que puede aportar',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            ...practicalUseCases.map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  '• $item',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
@@ -133,7 +144,8 @@ class SessionDeviceDialog extends StatelessWidget {
                           color: Color(0xFF1565C0),
                         ),
                         label: Text(
-                          SessionInsightData.derivedCapabilityLabels[key] ?? key,
+                          SessionInsightData.derivedCapabilityLabels[key] ??
+                              key,
                         ),
                         backgroundColor: const Color(0x1F1565C0),
                       ),

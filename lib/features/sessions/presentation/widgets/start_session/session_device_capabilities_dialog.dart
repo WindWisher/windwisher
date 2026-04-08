@@ -34,6 +34,8 @@ class SessionDeviceCapabilitiesDialog extends StatelessWidget {
           ).contains(key),
         )
         .toList(growable: false);
+    final practicalUseCases =
+        SessionInsightData.practicalUseCasesForPhysicalSensors(capabilities);
 
     return AlertDialog(
       title: const Text('Capacidades del dispositivo'),
@@ -54,6 +56,21 @@ class SessionDeviceCapabilitiesDialog extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
+              'Que puede aportar',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            ...practicalUseCases.map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  '• $item',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
               'Sensores físicos',
               style: Theme.of(context).textTheme.titleSmall,
             ),
@@ -67,19 +84,21 @@ class SessionDeviceCapabilitiesDialog extends StatelessWidget {
               Wrap(
                 spacing: AppSpacing.xs,
                 runSpacing: AppSpacing.xs,
-                children: physicalSensors.map((key) {
-                  final label =
-                      SessionInsightData.physicalSensorLabels[key] ?? key;
-                  return Chip(
-                    avatar: const Icon(
-                      Icons.check_circle_rounded,
-                      size: 16,
-                      color: Color(0xFF2E7D32),
-                    ),
-                    label: Text(label),
-                    backgroundColor: const Color(0x1F2E7D32),
-                  );
-                }).toList(growable: false),
+                children: physicalSensors
+                    .map((key) {
+                      final label =
+                          SessionInsightData.physicalSensorLabels[key] ?? key;
+                      return Chip(
+                        avatar: const Icon(
+                          Icons.check_circle_rounded,
+                          size: 16,
+                          color: Color(0xFF2E7D32),
+                        ),
+                        label: Text(label),
+                        backgroundColor: const Color(0x1F2E7D32),
+                      );
+                    })
+                    .toList(growable: false),
               ),
             const SizedBox(height: AppSpacing.sm),
             Text(
@@ -96,19 +115,22 @@ class SessionDeviceCapabilitiesDialog extends StatelessWidget {
               Wrap(
                 spacing: AppSpacing.xs,
                 runSpacing: AppSpacing.xs,
-                children: derivedCapabilities.map((key) {
-                  final label =
-                      SessionInsightData.derivedCapabilityLabels[key] ?? key;
-                  return Chip(
-                    avatar: const Icon(
-                      Icons.auto_awesome_rounded,
-                      size: 16,
-                      color: Color(0xFF1565C0),
-                    ),
-                    label: Text(label),
-                    backgroundColor: const Color(0x1F1565C0),
-                  );
-                }).toList(growable: false),
+                children: derivedCapabilities
+                    .map((key) {
+                      final label =
+                          SessionInsightData.derivedCapabilityLabels[key] ??
+                          key;
+                      return Chip(
+                        avatar: const Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 16,
+                          color: Color(0xFF1565C0),
+                        ),
+                        label: Text(label),
+                        backgroundColor: const Color(0x1F1565C0),
+                      );
+                    })
+                    .toList(growable: false),
               ),
           ],
         ),

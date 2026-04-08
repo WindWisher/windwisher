@@ -56,7 +56,7 @@ class _SessionAddDeviceDialogState extends State<SessionAddDeviceDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Aqui aparecen dispositivos detectados y aun no vinculados. Al elegir uno comprobaremos si realmente sirve para grabar sesiones.',
+                'Aqui aparecen los dispositivos detectados que todavia no has vinculado. Al elegir uno comprobaremos que sensores tiene y si puede usarse para grabar sesiones.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -71,7 +71,7 @@ class _SessionAddDeviceDialogState extends State<SessionAddDeviceDialog> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Text(
-                    'No se han detectado mas dispositivos por ahora. El teléfono del usuario ya queda disponible automaticamente.',
+                    'Ahora mismo no se han detectado mas dispositivos. El telefono del usuario ya queda disponible automaticamente.',
                   ),
                 )
               else ...[
@@ -194,18 +194,6 @@ class _SessionAddDeviceDialogState extends State<SessionAddDeviceDialog> {
                           _selectedDevice!.sensorSummary,
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
-                        if (_selectedDevice!.diagnosticSummary != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            _selectedDevice!.diagnosticSummary!,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: Theme.of(context).colorScheme.outline,
-                                ),
-                          ),
-                        ],
                       ],
                     ),
                   ),
@@ -248,68 +236,14 @@ class _SessionAddDeviceDialogState extends State<SessionAddDeviceDialog> {
   }
 
   String _deviceDiscoveryHint(SessionDetectedCompatibleDeviceData device) {
-    final diagnostic = device.diagnosticSummary ?? '';
-    final serviceHint = _extractDiagnosticValue(
-      diagnostic,
-      'services=',
-      ', manufacturerBytes=',
-    );
-    final manufacturerData = _extractDiagnosticValue(
-      diagnostic,
-      'manufacturerData=',
-      ', rssi=',
-    );
-    final rssi = _extractDiagnosticValue(diagnostic, 'rssi=', ', connectable=');
-    final serviceLabel = serviceHint == null || serviceHint == 'none'
-        ? 'services: none'
-        : 'services: ${_compactUuidList(serviceHint)}';
-    final manufacturerLabel =
-        manufacturerData == null || manufacturerData == 'none'
-        ? 'mfg: none'
-        : 'mfg: ${_compactHex(manufacturerData)}';
-    final rssiLabel = rssi == null ? null : 'rssi: $rssi';
+    final sensorHint = device.physicalSensorKeys.isEmpty
+        ? 'Sensores por comprobar'
+        : 'Sensores detectados: ${device.sensorSummary}';
     return [
-      'id: ${_shortDeviceId(device.id)}',
-      serviceLabel,
-      manufacturerLabel,
-      ?rssiLabel,
+      device.connectionState,
+      sensorHint,
+      'ID ${_shortDeviceId(device.id)}',
     ].join(' · ');
-  }
-
-  String? _extractDiagnosticValue(
-    String diagnostic,
-    String startToken,
-    String endToken,
-  ) {
-    final start = diagnostic.indexOf(startToken);
-    if (start < 0) {
-      return null;
-    }
-    final valueStart = start + startToken.length;
-    final end = diagnostic.indexOf(endToken, valueStart);
-    if (end < 0) {
-      return diagnostic.substring(valueStart).trim();
-    }
-    return diagnostic.substring(valueStart, end).trim();
-  }
-
-  String _compactUuidList(String value) {
-    final items = value
-        .split(',')
-        .map((item) => item.trim())
-        .where((item) => item.isNotEmpty);
-    return items.map(_compactUuid).take(2).join(', ');
-  }
-
-  String _compactUuid(String value) {
-    if (value.startsWith('0000') && value.length >= 8) {
-      return value.substring(4, 8).toUpperCase();
-    }
-    return value.length <= 8 ? value : value.substring(0, 8);
-  }
-
-  String _compactHex(String value) {
-    return value.length <= 23 ? value : '${value.substring(0, 23)}...';
   }
 
   String _shortDeviceId(String id) {
