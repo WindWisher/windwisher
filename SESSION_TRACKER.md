@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 107h 24m`.
+- `Total historico minimo consolidado del proyecto: 110h 24m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -10,10 +10,11 @@
   - bloque consolidado adicional en `2026-03-27`: `+4h` estimadas
   - bloque consolidado adicional en `2026-03-28`: `+6h` estimadas
   - bloque consolidado adicional en `2026-04-06`: `+26h` estimadas
+  - bloque consolidado adicional en `2026-04-08`: `+3h` estimadas
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-04-06`: `+26h` estimadas.
+  - ultima consolidacion manual anadida el `2026-04-08`: `+3h` estimadas.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
 
@@ -15275,6 +15276,36 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
         - `my_session_card.dart`,
         - `session_hero_card.dart`,
         - `supabase_session_records_adapter.dart`,
+      - se mantiene solo el warning externo conocido de `webview_flutter:macos`.
+
+
+  - bloque nuevo `2026-04-08`:
+    - discovery BLE real y probe propietario FitCloud para smartwatch `HT17`,
+    - duracion estimada del bloque: `3h`,
+    - permisos y experiencia de usuario:
+      - anadidos permisos BLE reales en Android (`BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`) y textos de privacidad Bluetooth en iOS/macOS,
+      - el dialogo pasa a llamarse `Anadir dispositivo`,
+      - el flujo pide permisos Bluetooth, maneja Bluetooth apagado y abre el prompt/ajustes cuando el sistema lo requiere,
+      - corregidos overflows horizontal y vertical del dialogo al mostrar nombres/diagnosticos BLE largos,
+    - discovery de dispositivos:
+      - el adapter BLE muestra dispositivos detectados aunque aun no sean elegibles,
+      - el selector ensena datos de diagnostico utiles (`id`, `services`, `manufacturerData`, `rssi`, `connectable`),
+      - anadido canal nativo Android `windwisher/bluetooth_devices` para leer dispositivos ya vinculados con el telefono (`bondedDevices`) y mezclar esa fuente real con el scan BLE,
+      - esto permite seleccionar el reloj real `HT17 / C1:A1:B2:2F:E0:A9` aunque el anuncio BLE activo no siempre sea suficiente,
+    - GATT y sensores:
+      - el probe lee el GATT completo visible y lista servicios/caracteristicas con propiedades (`read`, `write`, `notify`, `indicate`),
+      - se confirma que el reloj no expone Heart Rate estandar `180D`, Environmental Sensing `181A` ni Location and Navigation `1819`,
+      - se conserva la regla de producto: sin `barometer`/`altimeter`, el reloj no es elegible para grabar sesion de kitesurf,
+    - protocolo FitCloud:
+      - decompilada FitCloudPro con `jadx` para identificar el flujo de heart rate,
+      - localizado protocolo propietario sobre servicio `000001ff-3c17-d293-8e48-14fe2e4da212`, write `ff02` y notify `ff03`,
+      - probado comando diagnostico de inicio/parada de pulso contra el `HT17`,
+      - recibidas notificaciones reales de pulso y parseadas lecturas plausibles (`82`, `80`, `76`, `73`, `68`, `66`, `67` bpm),
+      - el probe marca `heart_rate` como sensor fisico solo cuando llegan BPM validos,
+    - verificacion:
+      - rebuild completo en Xiaomi tras cambio nativo de Android,
+      - hot reload posterior tras cambios Dart,
+      - `flutter analyze` limpio en adapter BLE y logica de deteccion,
       - se mantiene solo el warning externo conocido de `webview_flutter:macos`.
 
 

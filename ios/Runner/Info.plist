@@ -85,6 +85,8 @@
 		<string>La app necesita acceso a la camara para tomar fotos de la sesion.</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>La app necesita tu ubicacion para grabar sesiones reales con el telefono.</string>
+		<key>NSBluetoothAlwaysUsageDescription</key>
+		<string>La app necesita Bluetooth para detectar relojes y sensores de sesion cercanos.</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
 	</dict>

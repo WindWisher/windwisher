@@ -21,6 +21,10 @@ void main() {
         kind: 'Smartwatch',
         status: 'Listo',
         lastSync: 'hace 1 min',
+        family: 'watch',
+        placement: 'wrist',
+        physicalSensorKeys: <String>['barometer', 'accelerometer'],
+        isSessionEligible: true,
       ),
     );
     adapter.saveSelectedDeviceId('custom-1');

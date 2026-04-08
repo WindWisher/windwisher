@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart' as app_permissions;
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
@@ -94,7 +96,12 @@ class SessionsPageState extends State<SessionsPage> {
     lastSync: 'Disponible en este dispositivo',
     family: 'phone',
     placement: 'local',
-    physicalSensorKeys: <String>['gps', 'accelerometer', 'gyroscope', 'magnetometer'],
+    physicalSensorKeys: <String>[
+      'gps',
+      'accelerometer',
+      'gyroscope',
+      'magnetometer',
+    ],
     isSessionEligible: true,
   );
   late final SessionsModule _sessionsModule;
@@ -123,8 +130,7 @@ class SessionsPageState extends State<SessionsPage> {
   StreamSubscription<Position>? _positionSubscription;
   StreamSubscription<UserAccelerometerEvent>? _userAccelerometerSubscription;
   StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
-  final List<SessionCaptureSample> _recordingSamples =
-      <SessionCaptureSample>[];
+  final List<SessionCaptureSample> _recordingSamples = <SessionCaptureSample>[];
   final List<double> _recordingTimelineKnots = <double>[];
   double _recordingDistanceMeters = 0;
   double _recordingMaxSpeedKnots = 0;
@@ -475,7 +481,6 @@ class SessionsPageState extends State<SessionsPage> {
     _saveSelectedDeviceId();
   }
 
-
   Future<void> _hydrateDetectedExternalDevices() async {
     final detected =
         await StartSessionDeviceDetectionLogic.detectExternalSessionDevices();
@@ -528,8 +533,12 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   void _ensureSelectedDevice() {
-    final eligibleDevices = _devices.where((device) => device.isSessionEligible);
-    final exists = eligibleDevices.any((device) => device.id == _selectedDeviceId);
+    final eligibleDevices = _devices.where(
+      (device) => device.isSessionEligible,
+    );
+    final exists = eligibleDevices.any(
+      (device) => device.id == _selectedDeviceId,
+    );
     if (exists) {
       _saveSelectedDeviceId();
       return;
@@ -595,24 +604,67 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   Future<void> _showAddDeviceSheet() async {
+    await _showAddDeviceSheetInternal(retryAfterBluetoothActivation: true);
+  }
+
+  Future<void> _showAddDeviceSheetInternal({
+    required bool retryAfterBluetoothActivation,
+  }) async {
+    final permissionsReady = await _requestExternalDeviceDiscoveryPermissions();
+    if (!mounted) {
+      return;
+    }
+    if (!permissionsReady) {
+      await _showExternalDeviceDiscoveryUnavailableDialog(
+        SessionExternalDeviceDiscoveryAvailability.unauthorized,
+        retryAfterBluetoothActivation: retryAfterBluetoothActivation,
+      );
+      return;
+    }
+
+    final availability =
+        await StartSessionDeviceDetectionLogic.externalDeviceDiscoveryAvailability();
+    if (!mounted) {
+      return;
+    }
+    if (availability != SessionExternalDeviceDiscoveryAvailability.ready) {
+      await _showExternalDeviceDiscoveryUnavailableDialog(
+        availability,
+        retryAfterBluetoothActivation: retryAfterBluetoothActivation,
+      );
+      return;
+    }
+
+    await _hydrateDetectedExternalDevices();
+    if (!mounted) {
+      return;
+    }
+
     final availableDevices = _detectedCompatibleDevices();
-    final linked = await SessionAddDeviceDialog.show(
+    final selectedDevice = await SessionAddDeviceDialog.show(
       context,
       availableDevices: availableDevices,
     );
 
-    if (linked == null || !mounted) {
+    if (selectedDevice == null || !mounted) {
+      return;
+    }
+    final linked = await _probeDetectedDeviceCapabilities(selectedDevice);
+    if (!mounted) {
       return;
     }
     if (!linked.isSessionEligible) {
       final reason = switch (linked.family) {
-        'watch' => 'Este reloj no tiene barómetro/altímetro y no sirve para grabar sesiones.',
-        'board_sensor' => 'Este sensor de tabla no expone una fuente vertical válida.',
+        'watch' =>
+          'Este reloj no tiene barómetro/altímetro y no sirve para grabar sesiones.',
+        'board_sensor' =>
+          'Este sensor de tabla no expone una fuente vertical válida.',
         _ => 'Este dispositivo detectado no es válido para grabar sesiones.',
       };
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(reason)));
-      }
+      await _showDetectedDeviceNotEligibleDialog(
+        reason: reason,
+        device: linked,
+      );
       return;
     }
 
@@ -621,8 +673,11 @@ class SessionsPageState extends State<SessionsPage> {
         id: linked.id,
         name: linked.customName,
         kind: linked.kind,
-        status: linked.connectionState.isEmpty ? 'Vinculado' : linked.connectionState,
-        lastSync: linked.firmwareVersion == null || linked.firmwareVersion!.isEmpty
+        status: linked.connectionState.isEmpty
+            ? 'Vinculado'
+            : linked.connectionState,
+        lastSync:
+            linked.firmwareVersion == null || linked.firmwareVersion!.isEmpty
             ? 'recién vinculado'
             : 'firmware ${linked.firmwareVersion}',
         family: linked.family,
@@ -640,6 +695,196 @@ class SessionsPageState extends State<SessionsPage> {
     _saveSelectedDeviceId();
   }
 
+  Future<void> _showDetectedDeviceNotEligibleDialog({
+    required String reason,
+    required SessionDetectedCompatibleDeviceData device,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Dispositivo no compatible'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(reason),
+                  if (device.diagnosticSummary != null) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    SelectableText(
+                      device.diagnosticSummary!,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Entendido'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<SessionDetectedCompatibleDeviceData> _probeDetectedDeviceCapabilities(
+    SessionDetectedCompatibleDeviceData device,
+  ) async {
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          return const AlertDialog(
+            title: Text('Comprobando sensores'),
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                ),
+                SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text('Conectando al dispositivo para leer servicios.'),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    try {
+      return await StartSessionDeviceDetectionLogic.probeExternalSessionDevice(
+        device,
+      );
+    } finally {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+    }
+  }
+
+  Future<bool> _requestExternalDeviceDiscoveryPermissions() async {
+    if (Platform.isAndroid) {
+      final statuses = await <app_permissions.Permission>[
+        app_permissions.Permission.bluetoothScan,
+        app_permissions.Permission.bluetoothConnect,
+      ].request();
+      return statuses.values.every(_isPermissionUsable);
+    }
+
+    if (Platform.isIOS) {
+      final status = await app_permissions.Permission.bluetooth.request();
+      return _isPermissionUsable(status);
+    }
+
+    return true;
+  }
+
+  bool _isPermissionUsable(app_permissions.PermissionStatus status) {
+    return status.isGranted || status.isLimited;
+  }
+
+  Future<void> _showExternalDeviceDiscoveryUnavailableDialog(
+    SessionExternalDeviceDiscoveryAvailability availability, {
+    required bool retryAfterBluetoothActivation,
+  }) async {
+    final isBluetoothOff =
+        availability == SessionExternalDeviceDiscoveryAvailability.bluetoothOff;
+    final allowSettings =
+        availability ==
+            SessionExternalDeviceDiscoveryAvailability.unauthorized ||
+        availability ==
+            SessionExternalDeviceDiscoveryAvailability.locationServicesDisabled;
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Añadir dispositivo'),
+          content: Text(
+            _externalDeviceDiscoveryUnavailableMessage(availability),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Entendido'),
+            ),
+            if (allowSettings)
+              FilledButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await Geolocator.openAppSettings();
+                },
+                child: const Text('Abrir ajustes'),
+              ),
+            if (isBluetoothOff)
+              FilledButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await _requestExternalDeviceBluetoothActivation();
+                  if (mounted && retryAfterBluetoothActivation) {
+                    await _showAddDeviceSheetInternal(
+                      retryAfterBluetoothActivation: false,
+                    );
+                  }
+                },
+                child: const Text('Activar Bluetooth'),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _requestExternalDeviceBluetoothActivation() async {
+    if (Platform.isAndroid) {
+      try {
+        await const AndroidIntent(
+          action: 'android.bluetooth.adapter.action.REQUEST_ENABLE',
+        ).launch();
+        return;
+      } catch (_) {
+        await const AndroidIntent(
+          action: 'android.settings.BLUETOOTH_SETTINGS',
+        ).launch();
+        return;
+      }
+    }
+
+    await app_permissions.openAppSettings();
+  }
+
+  String _externalDeviceDiscoveryUnavailableMessage(
+    SessionExternalDeviceDiscoveryAvailability availability,
+  ) {
+    return switch (availability) {
+      SessionExternalDeviceDiscoveryAvailability.bluetoothOff =>
+        'Para buscar relojes o sensores cercanos, primero activa Bluetooth. Te abriré el aviso del sistema y después volveré a intentar la búsqueda.',
+      SessionExternalDeviceDiscoveryAvailability.unauthorized =>
+        'WindWisher necesita permiso de Bluetooth para detectar relojes y sensores cercanos. Actívalo en los ajustes de la app y vuelve a intentar añadir el dispositivo.',
+      SessionExternalDeviceDiscoveryAvailability.unsupported =>
+        'Este dispositivo no permite buscar dispositivos Bluetooth LE desde la app.',
+      SessionExternalDeviceDiscoveryAvailability.locationServicesDisabled =>
+        'Android necesita los servicios de ubicación activos para algunos escaneos Bluetooth LE. Actívalos y vuelve a intentar añadir el dispositivo.',
+      SessionExternalDeviceDiscoveryAvailability.ready =>
+        'Bluetooth está listo para detectar dispositivos.',
+      SessionExternalDeviceDiscoveryAvailability.unknown =>
+        'No se ha podido comprobar el estado de Bluetooth. Revisa que esté activo y vuelve a intentar añadir el dispositivo.',
+    };
+  }
+
   List<SessionDetectedCompatibleDeviceData> _detectedCompatibleDevices() {
     final linkedIds = _devices.map((device) => device.id).toSet();
     return _supportedDetectedDevices
@@ -651,7 +896,9 @@ class SessionsPageState extends State<SessionsPage> {
     _showRealIntegrationPendingMessage('La sincronización de sesiones');
   }
 
-  Future<void> _configureSyncedSession(SessionImportedPendingResult imported) async {
+  Future<void> _configureSyncedSession(
+    SessionImportedPendingResult imported,
+  ) async {
     final device = _selectedDevice;
     if (device == null) {
       return;
@@ -764,7 +1011,8 @@ class SessionsPageState extends State<SessionsPage> {
     double jumpMinTakeoffSpeedKnots,
     double jumpLandingMinSpeedKnots,
     String jumpDetectionMode,
-  }) _captureMeasurementPolicy() {
+  })
+  _captureMeasurementPolicy() {
     return StartSessionCaptureLogic.captureMeasurementPolicyForDeviceKind(
       _selectedDevice?.kind,
     );
@@ -974,24 +1222,25 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   Future<void> _onSessionControlPressed() async {
-    final decision = StartSessionPresentationMapper.resolveCaptureControlDecision(
-      phase: switch (_captureState) {
-        _SessionCaptureState.ready => SessionCapturePhase.ready,
-        _SessionCaptureState.recording => SessionCapturePhase.recording,
-        _SessionCaptureState.finished => SessionCapturePhase.finished,
-        _SessionCaptureState.syncing => SessionCapturePhase.syncing,
-        _SessionCaptureState.synced => SessionCapturePhase.synced,
-      },
-      hasSelectedDevice: _selectedDevice != null,
-      isPhoneDeviceSelected: _selectedDevice?.id == _phoneDeviceId,
-    );
+    final decision =
+        StartSessionPresentationMapper.resolveCaptureControlDecision(
+          phase: switch (_captureState) {
+            _SessionCaptureState.ready => SessionCapturePhase.ready,
+            _SessionCaptureState.recording => SessionCapturePhase.recording,
+            _SessionCaptureState.finished => SessionCapturePhase.finished,
+            _SessionCaptureState.syncing => SessionCapturePhase.syncing,
+            _SessionCaptureState.synced => SessionCapturePhase.synced,
+          },
+          hasSelectedDevice: _selectedDevice != null,
+          isPhoneDeviceSelected: _selectedDevice?.id == _phoneDeviceId,
+        );
 
     switch (decision.action) {
       case SessionCaptureControlAction.showMessage:
         if (decision.message != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(decision.message!)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(decision.message!)));
         }
         return;
       case SessionCaptureControlAction.startRecording:
@@ -1022,9 +1271,9 @@ class SessionsPageState extends State<SessionsPage> {
       if (!mounted || locationDecision.message == null) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(locationDecision.message!)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(locationDecision.message!)));
       return;
     }
 
@@ -1086,7 +1335,8 @@ class SessionsPageState extends State<SessionsPage> {
       String? sessionPhotoLocalPath,
       String? gearSetupId,
       String? gearSetupName,
-    }) config,
+    })
+    config,
   ) {
     setState(() {
       _captureState = _SessionCaptureState.syncing;
@@ -1266,7 +1516,8 @@ class SessionsPageState extends State<SessionsPage> {
         accelerationPeakRequiredMatches: _accelerationPeakRequiredMatches,
         accelerationEventThresholdG: _accelerationEventThresholdG,
         currentTrackSpeedKnots: _currentTrackSpeedKnots(),
-        motionEventMinSpeedKnots: _captureMeasurementPolicy().motionEventMinSpeedKnots,
+        motionEventMinSpeedKnots:
+            _captureMeasurementPolicy().motionEventMinSpeedKnots,
         canRegisterMotionEvent: StartSessionCaptureLogic.canRegisterMotionEvent(
           SessionMotionEventCooldownInput(
             now: now,
@@ -1313,7 +1564,8 @@ class SessionsPageState extends State<SessionsPage> {
         currentMaxRotationDegPerSec: _recordingMaxRotationDegPerSec,
         rotationEventThresholdDegPerSec: _rotationEventThresholdDegPerSec,
         currentTrackSpeedKnots: _currentTrackSpeedKnots(),
-        motionEventMinSpeedKnots: _captureMeasurementPolicy().motionEventMinSpeedKnots,
+        motionEventMinSpeedKnots:
+            _captureMeasurementPolicy().motionEventMinSpeedKnots,
         canRegisterMotionEvent: StartSessionCaptureLogic.canRegisterMotionEvent(
           SessionMotionEventCooldownInput(
             now: now,
@@ -1354,14 +1606,16 @@ class SessionsPageState extends State<SessionsPage> {
         now: now,
         currentSpeedKnots: currentSpeedKnots,
         accelerationG: accelerationG,
-        jumpMinTakeoffSpeedKnots: _captureMeasurementPolicy().jumpMinTakeoffSpeedKnots,
+        jumpMinTakeoffSpeedKnots:
+            _captureMeasurementPolicy().jumpMinTakeoffSpeedKnots,
         jumpMinManeuverG: _jumpMinManeuverG,
         jumpMinManeuverRotationDegPerSec: _jumpMinManeuverRotationDegPerSec,
         jumpCooldown: _jumpCooldown,
         jumpMinAirTime: _jumpMinAirTime,
         jumpMaxAirTime: _jumpMaxAirTime,
         jumpLandingThresholdG: _jumpLandingThresholdG,
-        jumpLandingMinSpeedKnots: _captureMeasurementPolicy().jumpLandingMinSpeedKnots,
+        jumpLandingMinSpeedKnots:
+            _captureMeasurementPolicy().jumpLandingMinSpeedKnots,
       ),
     );
     _pendingJumpCandidate = result.pendingCandidate;
@@ -1388,7 +1642,8 @@ class SessionsPageState extends State<SessionsPage> {
         now: now,
         currentSpeedKnots: currentSpeedKnots,
         rotationDegPerSec: rotationDegPerSec,
-        jumpMinTakeoffSpeedKnots: _captureMeasurementPolicy().jumpMinTakeoffSpeedKnots,
+        jumpMinTakeoffSpeedKnots:
+            _captureMeasurementPolicy().jumpMinTakeoffSpeedKnots,
         jumpMinManeuverG: _jumpMinManeuverG,
         jumpMinManeuverRotationDegPerSec: _jumpMinManeuverRotationDegPerSec,
         jumpCooldown: _jumpCooldown,
@@ -1413,8 +1668,7 @@ class SessionsPageState extends State<SessionsPage> {
         nextJumpIndex: _recordingJumpHistory.length + 1,
         jumpMinAirTime: _jumpMinAirTime,
         jumpMinManeuverG: _jumpMinManeuverG,
-        jumpMinManeuverRotationDegPerSec:
-            _jumpMinManeuverRotationDegPerSec,
+        jumpMinManeuverRotationDegPerSec: _jumpMinManeuverRotationDegPerSec,
         currentJumpHistory: _recordingJumpHistory,
       ),
     );
@@ -1434,14 +1688,15 @@ class SessionsPageState extends State<SessionsPage> {
         isAutoPaused: _isAutoPaused,
         delta: delta,
         speedKnots: speedKnots,
-        hasRecentMotionActivity: StartSessionCaptureLogic.hasRecentMotionActivity(
-          SessionRecentMotionActivityInput(
-            now: DateTime.now(),
-            lastAccelerationEventAt: _lastAccelerationEventAt,
-            lastRotationEventAt: _lastRotationEventAt,
-            window: _autoPauseDelay,
-          ),
-        ),
+        hasRecentMotionActivity:
+            StartSessionCaptureLogic.hasRecentMotionActivity(
+              SessionRecentMotionActivityInput(
+                now: DateTime.now(),
+                lastAccelerationEventAt: _lastAccelerationEventAt,
+                lastRotationEventAt: _lastRotationEventAt,
+                window: _autoPauseDelay,
+              ),
+            ),
         lowSpeedCandidateDuration: _recordingLowSpeedCandidateDuration,
         resumeCandidateDuration: _recordingResumeCandidateDuration,
         autoPausedDuration: _recordingAutoPausedDuration,
@@ -1472,9 +1727,9 @@ class SessionsPageState extends State<SessionsPage> {
       case SessionStopCaptureAction.discardAndReset:
         _resetRecordingState();
         if (decision.message != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(decision.message!)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(decision.message!)));
         }
         return;
       case SessionStopCaptureAction.markFinished:
@@ -1504,7 +1759,8 @@ class SessionsPageState extends State<SessionsPage> {
     final selectedDevice = _selectedDevice;
     final deviceName = selectedDevice?.name ?? 'Desconocido';
     final deviceKind = selectedDevice?.kind ?? 'Dispositivo Android';
-    final deviceSensorKeys = selectedDevice?.physicalSensorKeys.isNotEmpty == true
+    final deviceSensorKeys =
+        selectedDevice?.physicalSensorKeys.isNotEmpty == true
         ? List<String>.from(selectedDevice!.physicalSensorKeys)
         : SessionInsightData.physicalSensorsForDeviceKind(
             deviceKind,
@@ -1515,26 +1771,27 @@ class SessionsPageState extends State<SessionsPage> {
     final jumpHistory = List<SessionJumpRecord>.unmodifiable(
       _recordingJumpHistory,
     );
-    final metricsSummary = StartSessionRecordedSessionBuilder.buildMetricsSummary(
-      SessionRecordedMetricsSummaryInput(
-        samples: _recordingSamples,
-        timelineKnots: _recordingTimelineKnots,
-        jumpHistory: jumpHistory,
-        duration: duration,
-        autoPausedDuration: _recordingAutoPausedDuration,
-        movingDuration: _recordingMovingDuration,
-        recordingDistanceMeters: _recordingDistanceMeters,
-        recordingMaxSpeedKnots: _recordingMaxSpeedKnots,
-        rawPositionCount: _recordingRawPositionCount,
-        rejectedAccuracyCount: _recordingRejectedAccuracyCount,
-        rejectedPlausibilityCount: _recordingRejectedPlausibilityCount,
-        lastGpsAccuracyMeters: _lastGpsAccuracyMeters,
-        accelerationEventCount: _recordingAccelerationEventCount,
-        rotationEventCount: _recordingRotationEventCount,
-        autoPauseCount: _recordingAutoPauseCount,
-        movingAverageMinSpeedKnots: _movingAverageMinSpeedKnots,
-      ),
-    );
+    final metricsSummary =
+        StartSessionRecordedSessionBuilder.buildMetricsSummary(
+          SessionRecordedMetricsSummaryInput(
+            samples: _recordingSamples,
+            timelineKnots: _recordingTimelineKnots,
+            jumpHistory: jumpHistory,
+            duration: duration,
+            autoPausedDuration: _recordingAutoPausedDuration,
+            movingDuration: _recordingMovingDuration,
+            recordingDistanceMeters: _recordingDistanceMeters,
+            recordingMaxSpeedKnots: _recordingMaxSpeedKnots,
+            rawPositionCount: _recordingRawPositionCount,
+            rejectedAccuracyCount: _recordingRejectedAccuracyCount,
+            rejectedPlausibilityCount: _recordingRejectedPlausibilityCount,
+            lastGpsAccuracyMeters: _lastGpsAccuracyMeters,
+            accelerationEventCount: _recordingAccelerationEventCount,
+            rotationEventCount: _recordingRotationEventCount,
+            autoPauseCount: _recordingAutoPauseCount,
+            movingAverageMinSpeedKnots: _movingAverageMinSpeedKnots,
+          ),
+        );
     return StartSessionRecordedSessionBuilder.build(
       RecordedSessionBuilderInput(
         id: id,
@@ -1555,7 +1812,9 @@ class SessionsPageState extends State<SessionsPage> {
           gearSetupId: config.gearSetupId,
           gearSetupName: config.gearSetupName,
         ),
-        distanceKm: metricsSummary.distanceKm > 0 ? metricsSummary.distanceKm : null,
+        distanceKm: metricsSummary.distanceKm > 0
+            ? metricsSummary.distanceKm
+            : null,
         maxSpeedKnots: _recordingMaxSpeedKnots > 0
             ? _recordingMaxSpeedKnots
             : null,
@@ -1573,7 +1832,9 @@ class SessionsPageState extends State<SessionsPage> {
         maxRotationDegPerSec: _recordingMaxRotationDegPerSec > 0
             ? _recordingMaxRotationDegPerSec
             : null,
-        jumpsCount: metricsSummary.jumpsCount > 0 ? metricsSummary.jumpsCount : null,
+        jumpsCount: metricsSummary.jumpsCount > 0
+            ? metricsSummary.jumpsCount
+            : null,
         maxJumpHeightMeters: metricsSummary.maxJumpHeightMeters,
         maxHangtimeSeconds: metricsSummary.maxHangtimeSeconds,
         jumpHistory: jumpHistory,
@@ -1731,7 +1992,9 @@ class SessionsPageState extends State<SessionsPage> {
     );
   }
 
-  SessionCaptureStatusCard _buildSessionCaptureStatusCard(BuildContext context) {
+  SessionCaptureStatusCard _buildSessionCaptureStatusCard(
+    BuildContext context,
+  ) {
     final captureInput = _buildSessionCapturePresentationInput();
     final data = StartSessionPresentationMapper.buildCaptureStatusCardData(
       input: captureInput,
@@ -1827,7 +2090,9 @@ class SessionsPageState extends State<SessionsPage> {
         : SessionGearMapper.buildGearSetupDetailLines(
             kite: gearSnapshot.kitesById[setup.kiteId],
             board: gearSnapshot.boardsById[setup.boardId],
-            bar: setup.barId == null ? null : gearSnapshot.barsById[setup.barId!],
+            bar: setup.barId == null
+                ? null
+                : gearSnapshot.barsById[setup.barId!],
             harness: setup.harnessId == null
                 ? null
                 : gearSnapshot.harnessesById[setup.harnessId!],
@@ -1837,7 +2102,9 @@ class SessionsPageState extends State<SessionsPage> {
             helmet: setup.helmetId == null
                 ? null
                 : gearSnapshot.helmetsById[setup.helmetId!],
-            vest: setup.vestId == null ? null : gearSnapshot.vestsById[setup.vestId!],
+            vest: setup.vestId == null
+                ? null
+                : gearSnapshot.vestsById[setup.vestId!],
           );
     return MySessionCard(
       data: cardData,
@@ -1868,7 +2135,11 @@ class SessionsPageState extends State<SessionsPage> {
   Widget _buildMySessionsSection(TextTheme textTheme) {
     final filteredSessions = _filteredSessions();
     final sessionCards = filteredSessions
-        .map((session) => Builder(builder: (context) => _buildMySessionCard(context, session)))
+        .map(
+          (session) => Builder(
+            builder: (context) => _buildMySessionCard(context, session),
+          ),
+        )
         .toList(growable: false);
     return MySessionsPage(
       searchController: _sessionSearchController,
@@ -1896,7 +2167,8 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   SessionCapturePresentationInput _buildSessionCapturePresentationInput() {
-    final remainingAutoPause = _autoPauseDelay - _recordingLowSpeedCandidateDuration;
+    final remainingAutoPause =
+        _autoPauseDelay - _recordingLowSpeedCandidateDuration;
     final autoPauseRemainingSeconds = remainingAutoPause.inSeconds.clamp(
       0,
       _autoPauseDelay.inSeconds,
@@ -1955,13 +2227,13 @@ class SessionsPageState extends State<SessionsPage> {
     }
   }
 
-
   bool _isRemoteSessionPhotoPath(String? path) {
     if (path == null) {
       return false;
     }
     final normalized = path.trim().toLowerCase();
-    return normalized.startsWith('http://') || normalized.startsWith('https://');
+    return normalized.startsWith('http://') ||
+        normalized.startsWith('https://');
   }
 
   String _sessionPhotoContentType(String path) {
@@ -2012,7 +2284,9 @@ class SessionsPageState extends State<SessionsPage> {
           ),
         );
       }
-      throw StateError('Cannot upload session photo without authenticated user.');
+      throw StateError(
+        'Cannot upload session photo without authenticated user.',
+      );
     }
 
     try {
@@ -2023,14 +2297,16 @@ class SessionsPageState extends State<SessionsPage> {
       final extension = _sessionPhotoExtension(candidatePath);
       final storagePath =
           '${user.id}/sessions/${sessionId}_${DateTime.now().millisecondsSinceEpoch}.$extension';
-      await Supabase.instance.client.storage.from('session-media').upload(
-        storagePath,
-        file,
-        fileOptions: FileOptions(
-          contentType: _sessionPhotoContentType(candidatePath),
-          upsert: false,
-        ),
-      );
+      await Supabase.instance.client.storage
+          .from('session-media')
+          .upload(
+            storagePath,
+            file,
+            fileOptions: FileOptions(
+              contentType: _sessionPhotoContentType(candidatePath),
+              upsert: false,
+            ),
+          );
       return Supabase.instance.client.storage
           .from('session-media')
           .getPublicUrl(storagePath);
@@ -2096,8 +2372,9 @@ class SessionsPageState extends State<SessionsPage> {
         initialMediaSelection: mediaSelection,
         initialSessionPhotoLocalPath: sessionPhotoLocalPath,
         gearSetupOptions: SessionGearMapper.buildGearSetupOptions(gearSnapshot),
-        initialGearSetupId:
-            selectedGearSetupId == noGearValue ? null : selectedGearSetupId,
+        initialGearSetupId: selectedGearSetupId == noGearValue
+            ? null
+            : selectedGearSetupId,
       ),
       onPickMedia: _pickSessionMedia,
     );

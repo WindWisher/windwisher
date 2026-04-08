@@ -26,6 +26,8 @@
 	<string>$(PRODUCT_COPYRIGHT)</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>La app necesita Bluetooth para detectar relojes y sensores de sesion cercanos.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

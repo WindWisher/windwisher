@@ -16,10 +16,7 @@ enum SessionCaptureControlAction {
 }
 
 class SessionCaptureControlDecision {
-  const SessionCaptureControlDecision({
-    required this.action,
-    this.message,
-  });
+  const SessionCaptureControlDecision({required this.action, this.message});
 
   final SessionCaptureControlAction action;
   final String? message;
@@ -28,10 +25,7 @@ class SessionCaptureControlDecision {
 enum SessionLocationAccessAction { startCapture, showMessage }
 
 class SessionLocationAccessDecision {
-  const SessionLocationAccessDecision({
-    required this.action,
-    this.message,
-  });
+  const SessionLocationAccessDecision({required this.action, this.message});
 
   final SessionLocationAccessAction action;
   final String? message;
@@ -40,10 +34,7 @@ class SessionLocationAccessDecision {
 enum SessionStopCaptureAction { discardAndReset, markFinished }
 
 class SessionStopCaptureDecision {
-  const SessionStopCaptureDecision({
-    required this.action,
-    this.message,
-  });
+  const SessionStopCaptureDecision({required this.action, this.message});
 
   final SessionStopCaptureAction action;
   final String? message;
@@ -124,13 +115,19 @@ class SessionUploadDialogResult {
 }
 
 class SessionDeviceSelectorItemData {
-  const SessionDeviceSelectorItemData({
-    required this.id,
-    required this.label,
-  });
+  const SessionDeviceSelectorItemData({required this.id, required this.label});
 
   final String id;
   final String label;
+}
+
+enum SessionExternalDeviceDiscoveryAvailability {
+  ready,
+  bluetoothOff,
+  unauthorized,
+  unsupported,
+  locationServicesDisabled,
+  unknown,
 }
 
 class SessionDetectedCompatibleDeviceData {
@@ -147,7 +144,9 @@ class SessionDetectedCompatibleDeviceData {
     required this.model,
     required this.physicalSensorKeys,
     required this.isSessionEligible,
+    required this.canConnect,
     this.firmwareVersion,
+    this.diagnosticSummary,
     String? customName,
   }) : customName = customName ?? defaultName;
 
@@ -164,6 +163,8 @@ class SessionDetectedCompatibleDeviceData {
   final String? firmwareVersion;
   final List<String> physicalSensorKeys;
   final bool isSessionEligible;
+  final bool canConnect;
+  final String? diagnosticSummary;
   final String customName;
 
   bool get hasBarometer => physicalSensorKeys.contains('barometer');
@@ -184,6 +185,8 @@ class SessionDetectedCompatibleDeviceData {
       firmwareVersion: firmwareVersion,
       physicalSensorKeys: physicalSensorKeys,
       isSessionEligible: isSessionEligible,
+      canConnect: canConnect,
+      diagnosticSummary: diagnosticSummary,
       customName: customName ?? this.customName,
     );
   }
