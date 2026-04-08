@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 110h 24m`.
+- `Total historico minimo consolidado del proyecto: 112h 24m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -11,10 +11,11 @@
   - bloque consolidado adicional en `2026-03-28`: `+6h` estimadas
   - bloque consolidado adicional en `2026-04-06`: `+26h` estimadas
   - bloque consolidado adicional en `2026-04-08`: `+3h` estimadas
+  - bloque consolidado adicional en `2026-04-09`: `+2h` estimadas
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-04-08`: `+3h` estimadas.
+  - ultima consolidacion manual anadida el `2026-04-09`: `+2h` estimadas.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
 
@@ -15276,6 +15277,30 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
         - `my_session_card.dart`,
         - `session_hero_card.dart`,
         - `supabase_session_records_adapter.dart`,
+      - se mantiene solo el warning externo conocido de `webview_flutter:macos`.
+
+
+  - bloque nuevo `2026-04-09`:
+    - simplificacion visual de `Start Session` para dejar la tarjeta de captura en modo minimo y mas honesto,
+    - duracion estimada del bloque: `2h`,
+    - tarjeta de captura:
+      - recortado el copy redundante del bloque `Captura de sesion`,
+      - eliminada la barra de progreso por no aportar valor real en este flujo,
+      - eliminada la nube de chips secundarios para reducir ruido visual,
+      - mantenida solo la chip de `guardado` por ser la unica señal operativa realmente util,
+      - el resumen pasa a mostrar solo `tiempo`, `ultimo salto` y `velocidad`,
+      - la velocidad visible queda reducida a la velocidad actual,
+      - el estado GPS deja de ocupar espacio en la tarjeta,
+      - el `ultimo salto` pasa a salir del `jumpHistory` real de la captura activa,
+    - copy / panel:
+      - simplificado el copy general de `Start Session` para evitar repeticiones de `sesion real`,
+      - eliminada la linea duplicada de estado bajo el titulo `Captura de sesion`,
+      - mensajes de estado mas cortos al empezar, grabar y guardar,
+    - cierre del bloque:
+      - commit realizado: `c8a90cf` `Simplify start session capture card`,
+      - push correcto a `origin/WindWisher-v1.0`,
+    - verificacion:
+      - `flutter analyze` limpio en modelos, mapper, `sessions_page.dart`, `session_capture_status_card.dart` y `session_start_panel.dart`,
       - se mantiene solo el warning externo conocido de `webview_flutter:macos`.
 
 
