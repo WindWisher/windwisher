@@ -2213,6 +2213,9 @@ class SessionsPageState extends State<SessionsPage> {
       _SessionCaptureState.syncing => SessionCapturePhase.syncing,
       _SessionCaptureState.synced => SessionCapturePhase.synced,
     };
+    final lastJump = _recordingJumpHistory.isEmpty
+        ? null
+        : _recordingJumpHistory.last;
     return SessionCapturePresentationInput(
       phase: phase,
       hasSelectedDevice: _selectedDevice != null,
@@ -2223,12 +2226,26 @@ class SessionsPageState extends State<SessionsPage> {
       elapsedLabel: _recordingElapsedText(),
       currentSpeedLabel: _recordingCurrentSpeedText(),
       maxSpeedLabel: _recordingMaxSpeedText(),
+      lastJumpLabel: _lastJumpSummaryLabel(lastJump),
       activeLabel: _recordingActiveText(),
       pausedLabel: _recordingPausedText(),
       lastGpsAccuracyMeters: _lastGpsAccuracyMeters,
       hasEnoughRecordedTrackForSave: _hasEnoughRecordedTrackForSave(),
       saveReadinessSatisfiedRuleCount: _saveReadinessSatisfiedRuleCount(),
     );
+  }
+
+  String _lastJumpSummaryLabel(SessionJumpRecord? jump) {
+    if (jump == null) {
+      return 'Aun no hay saltos';
+    }
+    final hasHeight = jump.heightMeters > 0;
+    final heightLabel = hasHeight ? _formatJumpHeight(jump.heightMeters) : null;
+    final hangtimeLabel = _formatHangtime(jump.hangtimeSeconds);
+    if (heightLabel != null && heightLabel != '--') {
+      return '$heightLabel · $hangtimeLabel';
+    }
+    return hangtimeLabel;
   }
 
   Future<String?> _pickSessionMedia(SessionMediaSelection selection) async {

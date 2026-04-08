@@ -37,10 +37,7 @@ class SessionStartPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: AppSpacing.sm),
-        Text(
-          'Dispositivos vinculados',
-          style: textTheme.titleMedium,
-        ),
+        Text('Dispositivos vinculados', style: textTheme.titleMedium),
         const SizedBox(height: AppSpacing.xs),
         if (devices.isEmpty)
           Container(
@@ -82,12 +79,6 @@ class SessionStartPanel extends StatelessWidget {
                 Text(
                   'Captura de sesion',
                   style: textTheme.headlineSmall,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  data.captureStatusText,
-                  style: textTheme.titleMedium,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AppSpacing.xs),

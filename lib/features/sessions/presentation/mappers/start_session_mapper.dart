@@ -7,7 +7,7 @@ class StartSessionPresentationMapper {
 
   static const StartSessionPageData pageData = StartSessionPageData(
     description:
-        'Aqui veras el dispositivo base de la app y los dispositivos compatibles que vincules para sesiones reales.',
+        'Elige el dispositivo con el que quieres grabar y prepara la sesion.',
   );
 
   static StartSessionPanelData buildPanelData({
@@ -36,8 +36,7 @@ class StartSessionPresentationMapper {
         if (!isPhoneDeviceSelected) {
           return const SessionCaptureControlDecision(
             action: SessionCaptureControlAction.showMessage,
-            message:
-                'La captura real externa aun no esta conectada. Usa el teléfono del usuario.',
+            message: 'Este dispositivo aun no puede grabar sesiones.',
           );
         }
         return const SessionCaptureControlDecision(
@@ -82,25 +81,25 @@ class StartSessionPresentationMapper {
     switch (input.phase) {
       case SessionCapturePhase.ready:
         if (!input.hasSelectedDevice) {
-          return 'Selecciona un dispositivo para iniciar una sesión real.';
+          return 'Selecciona un dispositivo para empezar.';
         }
         return input.isPhoneDeviceSelected
-            ? 'Listo para grabar una sesión real con GPS del teléfono.'
-            : 'La captura real de dispositivos externos aun no esta conectada. Usa el teléfono.';
+            ? 'Listo para grabar con el telefono.'
+            : 'Este dispositivo aun no puede grabar sesiones.';
       case SessionCapturePhase.recording:
         if (input.isAutoPaused) {
-          return 'Sesión en pausa automatica. Esperando que vuelvas a moverte.';
+          return 'Sesion en pausa automatica. Esperando movimiento.';
         }
         if (input.isAutoPausePending) {
-          return 'Auto-pausa pendiente. Detectamos baja velocidad y sin actividad reciente.';
+          return 'Auto-pausa pendiente por baja actividad.';
         }
-        return 'Sesión real en curso. Grabando recorrido y velocidad por GPS.';
+        return 'Grabando recorrido y velocidad por GPS.';
       case SessionCapturePhase.finished:
-        return 'Sesión finalizada. Revisa los datos y guárdala.';
+        return 'Sesion finalizada. Revisa los datos y guardala.';
       case SessionCapturePhase.syncing:
-        return 'Guardando track y resumen real de la sesion...';
+        return 'Guardando sesion...';
       case SessionCapturePhase.synced:
-        return 'Sesion guardada correctamente.';
+        return 'Sesion guardada.';
     }
   }
 
@@ -135,46 +134,17 @@ class StartSessionPresentationMapper {
       availabilityLabel: availabilityLabel,
       sensorCountLabel: sensorCountLabel,
       isPhoneDeviceSelected: isPhoneDeviceSelected,
-      );
+    );
   }
 
   static SessionCaptureStatusCardData buildCaptureStatusCardData({
     required SessionCapturePresentationInput input,
     required ColorScheme colorScheme,
   }) {
-    final gpsAccuracy = input.lastGpsAccuracyMeters;
     final isRecording = input.phase == SessionCapturePhase.recording;
     final isRecordingOrFinished =
         input.phase == SessionCapturePhase.recording ||
         input.phase == SessionCapturePhase.finished;
-    final gpsLabel = !isRecording
-        ? 'GPS pendiente'
-        : gpsAccuracy == null
-        ? 'Buscando GPS...'
-        : gpsAccuracy <= 5
-        ? 'GPS OK · ${gpsAccuracy.toStringAsFixed(1)} m'
-        : 'GPS señal débil · ${gpsAccuracy.toStringAsFixed(1)} m';
-    final gpsBackgroundColor = !isRecording
-        ? colorScheme.surfaceContainerHighest
-        : gpsAccuracy == null
-        ? colorScheme.secondaryContainer
-        : gpsAccuracy <= 5
-        ? const Color(0x1F2E7D32)
-        : const Color(0x1FFF8F00);
-    final gpsForegroundColor = !isRecording
-        ? colorScheme.onSurfaceVariant
-        : gpsAccuracy == null
-        ? colorScheme.onSecondaryContainer
-        : gpsAccuracy <= 5
-        ? const Color(0xFF2E7D32)
-        : const Color(0xFF8D6E00);
-    final gpsIcon = !isRecording
-        ? Icons.gps_not_fixed_rounded
-        : gpsAccuracy == null
-        ? Icons.gps_not_fixed_rounded
-        : gpsAccuracy <= 5
-        ? Icons.gps_fixed_rounded
-        : Icons.gps_off_rounded;
     final autoPauseLabel = !isRecording
         ? 'Auto-pausa lista'
         : input.isAutoPaused
@@ -228,7 +198,7 @@ class StartSessionPresentationMapper {
         ? Icons.timelapse_rounded
         : Icons.hourglass_empty_rounded;
     final actionLabel = switch (input.phase) {
-      SessionCapturePhase.ready => 'Iniciar sesion real',
+      SessionCapturePhase.ready => 'Iniciar sesion',
       SessionCapturePhase.recording => 'Detener sesion',
       SessionCapturePhase.finished => 'Guardar sesion',
       SessionCapturePhase.syncing => 'Guardando...',
@@ -243,20 +213,18 @@ class StartSessionPresentationMapper {
     };
     return SessionCaptureStatusCardData(
       statusText: buildCaptureStatusText(input),
-      stepProgress: (switch (input.phase) {
-            SessionCapturePhase.ready => 0,
-            SessionCapturePhase.recording => 1,
-            SessionCapturePhase.finished => 2,
-            SessionCapturePhase.syncing => 3,
-            SessionCapturePhase.synced => 4,
-          } +
-          1) /
+      stepProgress:
+          (switch (input.phase) {
+                SessionCapturePhase.ready => 0,
+                SessionCapturePhase.recording => 1,
+                SessionCapturePhase.finished => 2,
+                SessionCapturePhase.syncing => 3,
+                SessionCapturePhase.synced => 4,
+              } +
+              1) /
           5,
       elapsedLabel: input.elapsedLabel,
-      gpsLabel: gpsLabel,
-      gpsBackgroundColor: gpsBackgroundColor,
-      gpsForegroundColor: gpsForegroundColor,
-      gpsIcon: gpsIcon,
+      lastJumpLabel: input.lastJumpLabel,
       autoPauseLabel: autoPauseLabel,
       autoPauseBackgroundColor: autoPauseBackgroundColor,
       autoPauseForegroundColor: autoPauseForegroundColor,

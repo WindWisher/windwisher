@@ -265,10 +265,7 @@ class SessionCaptureStatusCardData {
     required this.statusText,
     required this.stepProgress,
     required this.elapsedLabel,
-    required this.gpsLabel,
-    required this.gpsBackgroundColor,
-    required this.gpsForegroundColor,
-    required this.gpsIcon,
+    required this.lastJumpLabel,
     required this.autoPauseLabel,
     required this.autoPauseBackgroundColor,
     required this.autoPauseForegroundColor,
@@ -289,10 +286,7 @@ class SessionCaptureStatusCardData {
   final String statusText;
   final double stepProgress;
   final String elapsedLabel;
-  final String gpsLabel;
-  final Color gpsBackgroundColor;
-  final Color gpsForegroundColor;
-  final IconData gpsIcon;
+  final String lastJumpLabel;
   final String autoPauseLabel;
   final Color autoPauseBackgroundColor;
   final Color autoPauseForegroundColor;
@@ -341,6 +335,7 @@ class SessionCapturePresentationInput {
     required this.elapsedLabel,
     required this.currentSpeedLabel,
     required this.maxSpeedLabel,
+    required this.lastJumpLabel,
     required this.activeLabel,
     required this.pausedLabel,
     required this.lastGpsAccuracyMeters,
@@ -357,6 +352,7 @@ class SessionCapturePresentationInput {
   final String elapsedLabel;
   final String currentSpeedLabel;
   final String maxSpeedLabel;
+  final String lastJumpLabel;
   final String activeLabel;
   final String pausedLabel;
   final double? lastGpsAccuracyMeters;
