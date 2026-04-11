@@ -10,55 +10,63 @@ void main() {
         title: 'Sesion en Oliva Norte',
         deviceName: 'Woo Sports 3',
         deviceKind: 'Woo Sports',
-        deviceSensorKeys: const ['gps', 'accelerometer', 'gyroscope', 'orientation'],
+        deviceSensorKeys: const [
+          'gps',
+          'accelerometer',
+          'gyroscope',
+          'orientation',
+        ],
         endedAt: DateTime(2026, 2, 22, 18, 40),
         durationLabel: '1:12:30',
         summary: 'Viento estable de side-on con buenas rachas al final.',
         source: SessionDetailSource.mySessions,
-        insights: SessionInsightData.empty(
-          deviceKind: 'Woo Sports',
-          deviceSensorKeys: const [
-            'gps',
-            'accelerometer',
-            'gyroscope',
-            'orientation',
-          ],
-        ).copyWith(
-          maxSpeedKnots: 24.3,
-          jumpsCount: 2,
-          maxJumpHeightMeters: 5.8,
-          maxHangtimeSeconds: 2.7,
-          jumpHistory: const [
-            SessionJumpRecord(
-              index: 1,
-              heightMeters: 4.9,
-              hangtimeSeconds: 2.4,
-              landingG: 1.8,
-              maneuverG: 1.5,
-              maneuverRotationDegPerSec: 260,
-              recordedAt: Duration(minutes: 8, seconds: 12),
+        insights:
+            SessionInsightData.empty(
+              deviceKind: 'Woo Sports',
+              deviceSensorKeys: const [
+                'gps',
+                'accelerometer',
+                'gyroscope',
+                'orientation',
+              ],
+            ).copyWith(
+              maxSpeedKnots: 24.3,
+              jumpsCount: 2,
+              maxJumpHeightMeters: 5.8,
+              maxHangtimeSeconds: 2.7,
+              jumpHistory: const [
+                SessionJumpRecord(
+                  index: 1,
+                  heightMeters: 4.9,
+                  hangtimeSeconds: 2.4,
+                  landingG: 1.8,
+                  maneuverG: 1.5,
+                  maneuverRotationDegPerSec: 260,
+                  recordedAt: Duration(minutes: 8, seconds: 12),
+                ),
+                SessionJumpRecord(
+                  index: 2,
+                  heightMeters: 5.8,
+                  hangtimeSeconds: 2.7,
+                  landingG: 2.0,
+                  maneuverG: 1.7,
+                  maneuverRotationDegPerSec: 310,
+                  recordedAt: Duration(minutes: 14, seconds: 5),
+                ),
+              ],
+              advancedMetrics: SessionAdvancedMetrics(
+                groups: SessionInsightData.buildGroupsForRecordedSession(
+                  values: const <String, String>{
+                    'duracion_total': '72 min',
+                    'distancia_total': '21.4 km',
+                    'velocidad_max': '24.3 kt',
+                    'velocidad_p95': '21.8 kt',
+                    'salto_mas_alto': '5.8 m',
+                    'hangtime_max': '2.7 s',
+                  },
+                ),
+              ),
             ),
-            SessionJumpRecord(
-              index: 2,
-              heightMeters: 5.8,
-              hangtimeSeconds: 2.7,
-              landingG: 2.0,
-              maneuverG: 1.7,
-              maneuverRotationDegPerSec: 310,
-              recordedAt: Duration(minutes: 14, seconds: 5),
-            ),
-          ],
-          groups: SessionInsightData.buildGroupsForRecordedSession(
-            values: const <String, String>{
-              'duracion_total': '72 min',
-              'distancia_total': '21.4 km',
-              'velocidad_max': '24.3 kt',
-              'velocidad_p95': '21.8 kt',
-              'salto_mas_alto': '5.8 m',
-              'hangtime_max': '2.7 s',
-            },
-          ),
-        ),
       ),
     );
   }

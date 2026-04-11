@@ -33,18 +33,18 @@ void main() {
       sessionMediaLabel: 'Pantallazo del mapa del spot',
       sessionPhotoLocalPath: null,
       spotName: 'Tarifa',
-      insights: SessionInsightData.empty(
-        deviceKind: 'Woo Sports',
-      ).copyWith(
+      insights: SessionInsightData.empty(deviceKind: 'Woo Sports').copyWith(
         deviceSensorKeys: const ['gps', 'accelerometer', 'gyroscope'],
         maxSpeedKnots: 22.4,
         distanceKm: 18.6,
-        groups: SessionInsightData.buildGroupsForRecordedSession(
-          values: const <String, String>{
-            'duracion_total': '55 min',
-            'distancia_total': '18.6 km',
-            'velocidad_max': '22.4 kt',
-          },
+        advancedMetrics: SessionAdvancedMetrics(
+          groups: SessionInsightData.buildGroupsForRecordedSession(
+            values: const <String, String>{
+              'duracion_total': '55 min',
+              'distancia_total': '18.6 km',
+              'velocidad_max': '22.4 kt',
+            },
+          ),
         ),
       ),
     );
