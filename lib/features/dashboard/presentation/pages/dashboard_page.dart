@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:windwisher/app/router/app_routes.dart';
 import 'package:windwisher/features/dashboard/application/services/dashboard_toolbar_service.dart';
 import 'package:windwisher/features/community/presentation/pages/community_page.dart';
-import 'package:windwisher/features/profile/presentation/pages/profile_page.dart';
+import 'package:windwisher/features/profile/presentation/pages/profile/profile_page.dart';
 import 'package:windwisher/features/sessions/presentation/pages/sessions_page.dart';
 import 'package:windwisher/features/spots/presentation/pages/spots_page.dart';
 

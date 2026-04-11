@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:windwisher/features/profile/presentation/pages/profile_page.dart';
+import 'package:windwisher/features/profile/presentation/pages/profile/profile_page.dart';
 
 void main() {
   testWidgets('profile shows three tabs', (tester) async {

@@ -58,10 +58,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
                           style: textTheme.titleMedium,
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          '${snapshot.error}',
-                          style: textTheme.bodyMedium,
-                        ),
+                        Text('${snapshot.error}', style: textTheme.bodyMedium),
                       ],
                     ),
                   ),
@@ -135,12 +132,16 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
       child: ListTile(
         leading: const Icon(Icons.verified_user_outlined),
         title: Text(
-          displayName?.isNotEmpty == true ? displayName! : (handle ?? 'Usuario'),
+          displayName?.isNotEmpty == true
+              ? displayName!
+              : (handle ?? 'Usuario'),
         ),
-        subtitle: Text([
-          if (handle != null && handle.isNotEmpty) '@$handle',
-          if (createdAt != null) _formatDateTime(createdAt),
-        ].join(' · ')),
+        subtitle: Text(
+          [
+            if (handle != null && handle.isNotEmpty) '@$handle',
+            if (createdAt != null) _formatDateTime(createdAt),
+          ].join(' · '),
+        ),
         trailing: Chip(label: Text(role)),
       ),
     );
@@ -174,7 +175,9 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
               ],
             ),
             const SizedBox(height: AppSpacing.xs),
-            Text('Actor: ${actorHandle?.isNotEmpty == true ? '@$actorHandle' : 'desconocido'}'),
+            Text(
+              'Actor: ${actorHandle?.isNotEmpty == true ? '@$actorHandle' : 'desconocido'}',
+            ),
             if (targetHandle != null && targetHandle.isNotEmpty)
               Text('Objetivo: @$targetHandle'),
             if (targetResource != null && targetResource.isNotEmpty)

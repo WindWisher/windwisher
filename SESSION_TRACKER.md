@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 126h 24m`.
+- `Total historico minimo consolidado del proyecto: 134h 24m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -14,10 +14,11 @@
   - bloque consolidado adicional en `2026-04-09`: `+2h` estimadas
   - bloque consolidado adicional en `2026-04-11`: `+8h` estimadas
   - bloque consolidado adicional en `2026-04-11`: `+6h` estimadas
+  - bloque consolidado adicional en `2026-04-12`: `+8h` estimadas
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-04-11`: `+6h` estimadas.
+  - ultima consolidacion manual anadida el `2026-04-12`: `+8h` estimadas.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
 
@@ -15415,3 +15416,42 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - `flutter pub get` correcto,
       - multiples `flutter analyze` limpios sobre modelos, logica, adapters BLE, dialogo de vinculacion y `sessions_page.dart`,
       - se mantiene solo el warning externo conocido de `webview_flutter:macos`.
+
+  - bloque nuevo `2026-04-12`:
+    - reorganizacion profunda de `profile` para alinear arquitectura de presentacion con la UI real de `Perfil`,
+    - duracion estimada del bloque: `8h`,
+    - estructura de presentacion:
+      - separado `presentation/pages` en ramas explicitas `alarms`, `messages` y `profile`,
+      - dentro de `profile` se consolidan `user` y `gear` como subdominios propios,
+      - eliminada la vieja carpeta `presentation/pages/widgets` al quedar ya sin uso real,
+    - perfil / user:
+      - consolidada la division `Usuario / Equipo` dentro de `Perfil`,
+      - `Usuario` muestra `summary` + `stats`,
+      - `Equipo` muestra las tres tarjetas de material,
+      - la capa `user` queda organizada con `widgets` y `dialogs` propios,
+      - la tarjeta de resumen estadistico pasa a reutilizarse tambien en la vista publica sin boton de detalle,
+    - kpis y dialogo de estadisticas:
+      - consolidado el motor `Profile KPIs` con agregacion desde sesiones y comunidad,
+      - el dialogo de detalle se refactoriza a widgets internos para selector, seccion y contexto,
+      - el catalogo de KPIs filtra ya los no hidratados para no ensenar placeholders vacios,
+      - simplificada la UI del dialogo para usuario final quitando textos tecnicos como `Dato disponible` o `Pendiente desde ...`,
+    - gear / arquitectura:
+      - `gear` queda separado en `dialogs`, `management`, `usage` y `widgets`,
+      - `profile_gear_section.dart` pasa a consumir bloques de datos agrupados en vez de muchos parametros sueltos,
+      - los coordinadores de dialogos se trocean en `profile_gear_dialogs_coordinator.dart`, `profile_gear_item_dialogs.dart`, `profile_gear_setup_dialogs.dart` y `profile_gear_dialogs_dependencies.dart`,
+    - gear / widgets:
+      - extraidas como widgets las tres tarjetas de `Equipo`: `Tu material`, `Mis equipaciones` y `Estadisticas de uso`,
+      - `Mis equipaciones` deja el patron de cards y pasa a lista de pastillas/filas interactivas con detalle en dialogo y menu `...` propio,
+      - `Tu material` se divide en header, selector y seccion de configuracion,
+      - `Estadisticas de uso` se divide en header, filas y accion de detalle,
+    - gear / detalle de uso:
+      - enriquecida la tarjeta de uso con resumen real: `equipacion mas usada`, `cometa mas usada` y `tabla mas usada`,
+      - el detalle de uso deja de navegar a una pagina y pasa a abrirse en dialogo modal reutilizable,
+      - corregidos overflows horizontales del dialogo haciendo flexibles las filas `label / value` y los bloques con accion `Detalles`,
+      - eliminado el boton inferior redundante de cierre para dejar solo la `X` del encabezado,
+    - cierre del bloque:
+      - actualizado `SESSION_TRACKER.md` con consolidacion de horas y resumen del trabajo,
+    - verificacion:
+      - multiples `flutter analyze` limpios durante el bloque y al cierre,
+      - se mantiene solo el warning externo conocido de `webview_flutter:macos`.
+
