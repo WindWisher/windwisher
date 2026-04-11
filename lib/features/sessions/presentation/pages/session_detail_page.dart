@@ -140,7 +140,7 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
             const SizedBox(height: AppSpacing.sm),
             AdvancedMetricsCard(
               key: _advancedSectionKey,
-              groups: widget.insights.groups,
+              groups: widget.insights.advancedMetrics.groups,
             ),
           ],
         ),
@@ -434,7 +434,9 @@ class _JumpHistoryTable extends StatelessWidget {
           ...records.map(
             (record) => buildRow(
               left: '${record.jumpNumber}',
-              h: record.heightMeters > 0 ? '${record.heightMeters.toStringAsFixed(1)} m' : '--',
+              h: record.heightMeters > 0
+                  ? '${record.heightMeters.toStringAsFixed(1)} m'
+                  : '--',
               t: '${record.hangtimeSeconds.toStringAsFixed(1)} s',
               maneuver: record.maneuverG == null
                   ? '--'

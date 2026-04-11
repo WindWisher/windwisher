@@ -14,15 +14,20 @@ class StartSessionRecordedSessionBuilder {
     final distanceKm = input.recordingDistanceMeters / 1000;
     final avgSpeedKnots = input.samples.isEmpty
         ? 0.0
-        : input.samples.map((sample) => sample.speedKnots).reduce((a, b) => a + b) /
+        : input.samples
+                  .map((sample) => sample.speedKnots)
+                  .reduce((a, b) => a + b) /
               input.samples.length;
     final movingSpeedSamples = input.samples
-        .where((sample) => sample.speedKnots >= input.movingAverageMinSpeedKnots)
+        .where(
+          (sample) => sample.speedKnots >= input.movingAverageMinSpeedKnots,
+        )
         .map((sample) => sample.speedKnots)
         .toList(growable: false);
     final movingAvgSpeedKnots = movingSpeedSamples.isEmpty
         ? 0.0
-        : movingSpeedSamples.reduce((a, b) => a + b) / movingSpeedSamples.length;
+        : movingSpeedSamples.reduce((a, b) => a + b) /
+              movingSpeedSamples.length;
     final planingMinutes = input.movingDuration.inMinutes > 0
         ? input.movingDuration.inMinutes
         : null;
@@ -47,8 +52,8 @@ class StartSessionRecordedSessionBuilder {
         rejectedPlausibilityCount: input.rejectedPlausibilityCount,
       ),
     );
-    final transitionSummary = StartSessionTrackMetricsLogic
-        .analyzeTrackTransitions(
+    final transitionSummary =
+        StartSessionTrackMetricsLogic.analyzeTrackTransitions(
           input.samples,
           movingAverageMinSpeedKnots: input.movingAverageMinSpeedKnots,
         );
@@ -108,7 +113,9 @@ class StartSessionRecordedSessionBuilder {
         : StartSessionTrackMetricsLogic.computeBoundedScore([
             jumpMetrics.maxJumpHeightMeters == null
                 ? 0
-                : (jumpMetrics.maxJumpHeightMeters! * 12).clamp(0, 100).toDouble(),
+                : (jumpMetrics.maxJumpHeightMeters! * 12)
+                      .clamp(0, 100)
+                      .toDouble(),
             jumpMetrics.maxHangtimeSeconds == null
                 ? 0
                 : (jumpMetrics.maxHangtimeSeconds! * 20)
@@ -131,27 +138,38 @@ class StartSessionRecordedSessionBuilder {
       'velocidad_p95': '${speedP95Knots.toStringAsFixed(1)} kt',
       'transiciones': '$transitionsCount',
       'transiciones_hora': transitionsPerHour.toStringAsFixed(1),
+      'saltos_totales': '$jumpsCount',
       if (jumpMetrics.top5AverageJumpMeters != null)
-        'top5_saltos': '${jumpMetrics.top5AverageJumpMeters!.toStringAsFixed(1)} m',
+        'top5_saltos':
+            '${jumpMetrics.top5AverageJumpMeters!.toStringAsFixed(1)} m',
       if (jumpMetrics.avgJumpHeightMeters != null)
-        'altura_media_saltos': '${jumpMetrics.avgJumpHeightMeters!.toStringAsFixed(1)} m',
+        'altura_media_saltos':
+            '${jumpMetrics.avgJumpHeightMeters!.toStringAsFixed(1)} m',
       if (jumpMetrics.maxHangtimeSeconds != null)
-        'hangtime_max': '${jumpMetrics.maxHangtimeSeconds!.toStringAsFixed(1)} s',
+        'hangtime_max':
+            '${jumpMetrics.maxHangtimeSeconds!.toStringAsFixed(1)} s',
       if (jumpMetrics.hangtimeP95Seconds != null)
-        'hangtime_p95': '${jumpMetrics.hangtimeP95Seconds!.toStringAsFixed(1)} s',
+        'hangtime_p95':
+            '${jumpMetrics.hangtimeP95Seconds!.toStringAsFixed(1)} s',
       if (jumpMetrics.jumpWindEfficiency != null)
-        'eficiencia_salto_viento': jumpMetrics.jumpWindEfficiency!.toStringAsFixed(2),
+        'eficiencia_salto_viento': jumpMetrics.jumpWindEfficiency!
+            .toStringAsFixed(2),
       if (jumpMetrics.jumpCadencePerHour != null)
-        'cadencia_saltos': '${jumpMetrics.jumpCadencePerHour!.toStringAsFixed(1)}/h',
+        'cadencia_saltos':
+            '${jumpMetrics.jumpCadencePerHour!.toStringAsFixed(1)}/h',
       if (jumpMetrics.jumpHeightConsistency != null)
-        'consistencia_alturas': '${jumpMetrics.jumpHeightConsistency!.toStringAsFixed(0)}%',
+        'consistencia_alturas':
+            '${jumpMetrics.jumpHeightConsistency!.toStringAsFixed(0)}%',
       'eficiencia_bordos':
           '${trackMetrics.routeEfficiencyPercent.toStringAsFixed(0)}%',
-      'tiempo_sweetspot': '${trackMetrics.sweetspotPercent.toStringAsFixed(0)}%',
+      'tiempo_sweetspot':
+          '${trackMetrics.sweetspotPercent.toStringAsFixed(0)}%',
       'deriva_neta': '${trackMetrics.netDisplacementKm.toStringAsFixed(2)} km',
-      'cobertura_area': '${trackMetrics.coverageAreaKm2.toStringAsFixed(2)} km2',
+      'cobertura_area':
+          '${trackMetrics.coverageAreaKm2.toStringAsFixed(2)} km2',
       if (jumpMetrics.maxJumpHeightMeters != null)
-        'salto_mas_alto': '${jumpMetrics.maxJumpHeightMeters!.toStringAsFixed(1)} m',
+        'salto_mas_alto':
+            '${jumpMetrics.maxJumpHeightMeters!.toStringAsFixed(1)} m',
       if (jumpMetrics.maxJumpHeightMeters != null)
         'distancia_salto_estimada':
             '${(jumpMetrics.maxJumpHeightMeters! * 4.5).toStringAsFixed(0)} m',
@@ -164,7 +182,8 @@ class StartSessionRecordedSessionBuilder {
         'landing_speed':
             '${jumpMetrics.averageLandingSpeedKnots!.toStringAsFixed(1)} kt',
       if (jumpMetrics.cleanLandingRate != null)
-        'clean_landing_rate': '${jumpMetrics.cleanLandingRate!.toStringAsFixed(0)}%',
+        'clean_landing_rate':
+            '${jumpMetrics.cleanLandingRate!.toStringAsFixed(0)}%',
       if (jumpMetrics.impactScore != null)
         'impact_score': '${jumpMetrics.impactScore!.toStringAsFixed(1)} G',
       'variabilidad_velocidad': timelineSamples.length >= 2
@@ -195,13 +214,16 @@ class StartSessionRecordedSessionBuilder {
       'calidad_gps': input.lastGpsAccuracyMeters == null
           ? '--'
           : '${input.lastGpsAccuracyMeters!.toStringAsFixed(1)} m',
-      'samples_perdidos': '${trackMetrics.lostSamplesPercent.toStringAsFixed(0)}%',
+      'samples_perdidos':
+          '${trackMetrics.lostSamplesPercent.toStringAsFixed(0)}%',
       'latencia_sync': trackMetrics.averageSampleIntervalSeconds > 0
           ? '${trackMetrics.averageSampleIntervalSeconds.toStringAsFixed(1)} s'
           : '--',
-      'health_dataset': '${trackMetrics.datasetHealthPercent.toStringAsFixed(0)}%',
+      'health_dataset':
+          '${trackMetrics.datasetHealthPercent.toStringAsFixed(0)}%',
       'session_score': '${sessionScore.toStringAsFixed(0)}/100',
-      if (bigAirScore != null) 'big_air_score': '${bigAirScore.toStringAsFixed(0)}/100',
+      if (bigAirScore != null)
+        'big_air_score': '${bigAirScore.toStringAsFixed(0)}/100',
       'freeride_score': '${freerideScore.toStringAsFixed(0)}/100',
       'safety_score': '${safetyScore.toStringAsFixed(0)}/100',
     };
@@ -223,11 +245,11 @@ class StartSessionRecordedSessionBuilder {
       deviceKind: input.deviceKind,
       deviceSensorKeys: input.deviceSensorKeys,
       jumpDetectionMode: input.jumpDetectionMode,
-      distanceKm: input.distanceKm,
-      maxSpeedKnots: input.maxSpeedKnots,
-      avgSpeedKnots: input.avgSpeedKnots,
-      movingAvgSpeedKnots: input.movingAvgSpeedKnots,
-      planingMinutes: input.planingMinutes,
+      distanceKm: null,
+      maxSpeedKnots: null,
+      avgSpeedKnots: null,
+      movingAvgSpeedKnots: null,
+      planingMinutes: null,
       recordedPointCount: input.recordedPointCount,
       autoPauseCount: input.autoPauseCount,
       accelerationEventCount: input.accelerationEventCount,
@@ -236,9 +258,9 @@ class StartSessionRecordedSessionBuilder {
       maxRotationDegPerSec: input.maxRotationDegPerSec,
       batteryStart: null,
       batteryEnd: null,
-      jumpsCount: input.jumpsCount,
-      maxJumpHeightMeters: input.maxJumpHeightMeters,
-      maxHangtimeSeconds: input.maxHangtimeSeconds,
+      jumpsCount: null,
+      maxJumpHeightMeters: null,
+      maxHangtimeSeconds: null,
       jumpHistory: List<SessionJumpRecord>.unmodifiable(input.jumpHistory),
       timelineKnots: List<double>.unmodifiable(input.timelineKnots),
       routePoints: List<SessionTrackPoint>.unmodifiable(input.routePoints),
@@ -249,8 +271,10 @@ class StartSessionRecordedSessionBuilder {
         accelerationEventCount: input.accelerationEventCount,
         rotationEventCount: input.rotationEventCount,
       ),
-      groups: SessionInsightData.buildGroupsForRecordedSession(
-        values: input.measuredValues,
+      advancedMetrics: SessionAdvancedMetrics(
+        groups: SessionInsightData.buildGroupsForRecordedSession(
+          values: input.measuredValues,
+        ),
       ),
     );
 
@@ -284,18 +308,27 @@ class StartSessionRecordedSessionBuilder {
         .map((jump) => jump.hangtimeSeconds)
         .fold<double?>(null, (prev, t) => prev == null ? t : math.max(prev, t));
 
-    final insights = SessionInsightData.empty(
-      deviceKind: input.deviceKind,
-      deviceSensorKeys: SessionInsightData.physicalSensorsForDeviceKind(
-        input.deviceKind,
-      ).toList(growable: false),
-      events: ['Sesión sincronizada desde dispositivo ${input.deviceName}'],
-    ).copyWith(
-      jumpsCount: input.imported.jumpHistory.length,
-      maxJumpHeightMeters: highestJump,
-      maxHangtimeSeconds: highestHangtime,
-      jumpHistory: input.imported.jumpHistory,
-    );
+    final insights =
+        SessionInsightData.empty(
+          deviceKind: input.deviceKind,
+          deviceSensorKeys: SessionInsightData.physicalSensorsForDeviceKind(
+            input.deviceKind,
+          ).toList(growable: false),
+          events: ['Sesión sincronizada desde dispositivo ${input.deviceName}'],
+        ).copyWith(
+          jumpHistory: input.imported.jumpHistory,
+          advancedMetrics: SessionAdvancedMetrics(
+            groups: SessionInsightData.buildGroupsForRecordedSession(
+              values: {
+                'saltos_totales': '${input.imported.jumpHistory.length}',
+                if (highestJump != null)
+                  'salto_mas_alto': '${highestJump.toStringAsFixed(1)} m',
+                if (highestHangtime != null)
+                  'hangtime_max': '${highestHangtime.toStringAsFixed(1)} s',
+              },
+            ),
+          ),
+        );
 
     return RecordedSession(
       id: input.id,
@@ -390,10 +423,9 @@ class StartSessionRecordedSessionBuilder {
                   .take(5)
                   .reduce((a, b) => a + b) /
               math.min(5, heightSamples.length));
-    final hangtimeValues = jumpHistory
-        .map((jump) => jump.hangtimeSeconds)
-        .toList(growable: false)
-      ..sort();
+    final hangtimeValues =
+        jumpHistory.map((jump) => jump.hangtimeSeconds).toList(growable: false)
+          ..sort();
     final hangtimeP95Seconds =
         hangtimeValues[((hangtimeValues.length - 1) * 0.95).floor()];
     final takeoffSpeedKnots = jumpHistory
@@ -404,9 +436,12 @@ class StartSessionRecordedSessionBuilder {
         .map((jump) => jump.landingSpeedKnots)
         .whereType<double>()
         .toList(growable: false);
-    final landingGs = jumpHistory.map((jump) => jump.landingG).toList(growable: false);
+    final landingGs = jumpHistory
+        .map((jump) => jump.landingG)
+        .toList(growable: false);
     final cleanLandingRate =
-        (landingGs.where((value) => value <= 2.4).length / landingGs.length) * 100;
+        (landingGs.where((value) => value <= 2.4).length / landingGs.length) *
+        100;
     final impactScore = landingGs.reduce((a, b) => a + b) / landingGs.length;
     final jumpCadencePerHour = duration.inSeconds <= 0
         ? null
@@ -421,7 +456,8 @@ class StartSessionRecordedSessionBuilder {
               .max(
                 0.0,
                 100 -
-                    ((jumpHeightSpread / math.max(avgJumpHeightMeters, 0.1)) * 100)
+                    ((jumpHeightSpread / math.max(avgJumpHeightMeters, 0.1)) *
+                            100)
                         .clamp(0, 100),
               )
               .toDouble();
@@ -440,8 +476,8 @@ class StartSessionRecordedSessionBuilder {
     final jumpHeightDistribution = heightSamples.isEmpty
         ? null
         : '${heightSamples.where((value) => value < 3).length}/'
-            '${heightSamples.where((value) => value >= 3 && value < 6).length}/'
-            '${heightSamples.where((value) => value >= 6).length}';
+              '${heightSamples.where((value) => value >= 3 && value < 6).length}/'
+              '${heightSamples.where((value) => value >= 6).length}';
 
     return _JumpMetrics(
       maxJumpHeightMeters: maxJumpHeightMeters,

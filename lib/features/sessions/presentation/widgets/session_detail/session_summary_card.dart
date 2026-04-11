@@ -17,22 +17,22 @@ class SessionSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final summaryItems = <_SessionSummaryItem>[
-      if (insights.maxJumpHeightMeters != null)
+      if (insights.resolvedMaxJumpHeightMeters case final jumpHeight?)
         _SessionSummaryItem(
           label: 'Salto mas alto',
-          value: '${insights.maxJumpHeightMeters!.toStringAsFixed(1)} m',
+          value: '${jumpHeight.toStringAsFixed(1)} m',
           icon: Icons.vertical_align_top_rounded,
         ),
-      if (insights.jumpsCount != null)
+      if (insights.resolvedJumpsCount case final jumps?)
         _SessionSummaryItem(
           label: 'Saltos',
-          value: '${insights.jumpsCount}',
+          value: '$jumps',
           icon: Icons.waves_rounded,
         ),
-      if (insights.maxHangtimeSeconds != null)
+      if (insights.resolvedMaxHangtimeSeconds case final hangtime?)
         _SessionSummaryItem(
           label: 'Hangtime maximo',
-          value: '${insights.maxHangtimeSeconds!.toStringAsFixed(1)} s',
+          value: '${hangtime.toStringAsFixed(1)} s',
           icon: Icons.timer_rounded,
         ),
       _SessionSummaryItem(
@@ -40,10 +40,10 @@ class SessionSummaryCard extends StatelessWidget {
         value: durationLabel,
         icon: Icons.av_timer_rounded,
       ),
-      if (insights.maxSpeedKnots != null)
+      if (insights.resolvedMaxSpeedKnots case final maxSpeed?)
         _SessionSummaryItem(
           label: 'Velocidad max',
-          value: '${insights.maxSpeedKnots!.toStringAsFixed(1)} kt',
+          value: '${maxSpeed.toStringAsFixed(1)} kt',
           icon: Icons.speed_rounded,
         ),
     ];

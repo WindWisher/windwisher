@@ -1079,19 +1079,11 @@ class RecordedSessionBuilderInput {
     required this.endedAt,
     required this.duration,
     required this.config,
-    required this.distanceKm,
-    required this.maxSpeedKnots,
-    required this.avgSpeedKnots,
-    required this.movingAvgSpeedKnots,
-    required this.planingMinutes,
     required this.recordedPointCount,
     required this.autoPauseCount,
     required this.accelerationEventCount,
     required this.rotationEventCount,
     required this.maxRotationDegPerSec,
-    required this.jumpsCount,
-    required this.maxJumpHeightMeters,
-    required this.maxHangtimeSeconds,
     required this.jumpHistory,
     required this.timelineKnots,
     required this.routePoints,
@@ -1109,19 +1101,11 @@ class RecordedSessionBuilderInput {
   final DateTime endedAt;
   final Duration duration;
   final StartSessionSaveConfigData config;
-  final double? distanceKm;
-  final double? maxSpeedKnots;
-  final double? avgSpeedKnots;
-  final double? movingAvgSpeedKnots;
-  final int? planingMinutes;
   final int recordedPointCount;
   final int autoPauseCount;
   final int accelerationEventCount;
   final int rotationEventCount;
   final double? maxRotationDegPerSec;
-  final int? jumpsCount;
-  final double? maxJumpHeightMeters;
-  final double? maxHangtimeSeconds;
   final List<SessionJumpRecord> jumpHistory;
   final List<double> timelineKnots;
   final List<SessionTrackPoint> routePoints;

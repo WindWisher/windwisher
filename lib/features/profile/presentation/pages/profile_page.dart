@@ -5,8 +5,11 @@ import 'package:windwisher/core/ui/app_scroll_behavior.dart';
 import 'package:windwisher/features/profile/domain/entities/app_message_index_entry.dart';
 import 'package:windwisher/features/profile/domain/entities/direct_message_thread.dart';
 import 'package:windwisher/features/profile/domain/entities/profile_gear_entities.dart';
+import 'package:windwisher/features/profile/application/profile_session_stats_aggregator.dart';
+import 'package:windwisher/features/profile/domain/entities/profile_session_stats_snapshot.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
 import 'package:windwisher/features/profile/di/profile_module.dart';
+import 'package:windwisher/features/profile/presentation/pages/profile_alarms_section.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile_gear_section.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile_gear_management_builder.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile_gear_dialogs_coordinator.dart';
@@ -18,6 +21,9 @@ import 'package:windwisher/features/profile/presentation/state/profile_controlle
 import 'package:windwisher/features/profile/presentation/state/profile_gear_controller.dart';
 import 'package:windwisher/features/profile/presentation/state/profile_gear_setup_catalog.dart';
 import 'package:windwisher/features/profile/presentation/state/profile_messages_controller.dart';
+import 'package:windwisher/features/sessions/di/sessions_module.dart';
+import 'package:windwisher/features/sessions/domain/entities/recorded_session.dart';
+import 'package:windwisher/features/sessions/presentation/models/session_detail_models.dart';
 
 typedef _KiteItem = KiteItem;
 typedef _BarItem = BarItem;
@@ -40,8 +46,10 @@ class ProfilePageState extends State<ProfilePage> {
   late final ProfileController _profileController;
   late final ProfileMessagesController _messagesController;
   late final ProfileGearController _gearController;
+  late final SessionsModule _sessionsModule;
+  List<RecordedSession> _recordedSessions = const <RecordedSession>[];
 
-  static const List<String> _tabs = ['Perfil', 'Mi equipo', 'Mensajes'];
+  static const List<String> _tabs = ['Perfil', 'Alarmas', 'Mensajes'];
   int _selectedTabIndex = 0;
 
   final TextEditingController _messageSearchController =
@@ -114,10 +122,15 @@ class ProfilePageState extends State<ProfilePage> {
     _profileController = module.profileController;
     _messagesController = module.messagesController;
     _gearController = module.gearController;
+    _sessionsModule = SessionsModule.auto(
+      encodeInsights: _encodeRecordedSessionInsights,
+      decodeInsights: _decodeRecordedSessionInsights,
+    );
     _publishGearSetupsForSessions();
     _hydrateProfile();
     _hydrateMessages();
     _hydrateGear();
+    _hydrateRecordedSessions();
   }
 
   Future<void> _hydrateProfile() async {
@@ -145,7 +158,34 @@ class ProfilePageState extends State<ProfilePage> {
     setState(() {});
   }
 
+  Future<void> _hydrateRecordedSessions() async {
+    final sessions = await _sessionsModule.getRecordedSessions.load();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _recordedSessions = sessions;
+    });
+  }
+
+  Object? _encodeRecordedSessionInsights(Object value) {
+    if (value is SessionInsightData) {
+      return value.toJson();
+    }
+    return value;
+  }
+
+  Object _decodeRecordedSessionInsights(Object? value) {
+    if (value is Map<String, dynamic>) {
+      return SessionInsightData.fromJson(value);
+    }
+    return value ?? SessionInsightData.empty(deviceKind: 'Dispositivo Android');
+  }
+
   _UserProfileData get _profileData => _profileController.profile;
+
+  ProfileSessionStatsSnapshot get _profileSessionStats =>
+      ProfileSessionStatsAggregator.build(_recordedSessions);
 
   void _publishGearSetupsForSessions() {
     ProfileGearSetupCatalog.instance.replaceAll(
@@ -742,76 +782,84 @@ class ProfilePageState extends State<ProfilePage> {
       padding: const EdgeInsets.all(AppSpacing.md),
       physics: kAppBouncingScrollPhysics,
       children: [
-          SegmentedButton<int>(
-            segments: _tabs
-                .map(
-                  (tab) => ButtonSegment<int>(
-                    value: _tabs.indexOf(tab),
-                    label: Text(tab),
-                  ),
-                )
-                .toList(),
-            selected: {_selectedTabIndex},
-            onSelectionChanged: (selection) {
-              setState(() {
-                _selectedTabIndex = selection.first;
-              });
-            },
-          ),
-          const SizedBox(height: AppSpacing.md),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: _buildTabContent(textTheme),
-          ),
-        ],
+        SegmentedButton<int>(
+          segments: _tabs
+              .map(
+                (tab) => ButtonSegment<int>(
+                  value: _tabs.indexOf(tab),
+                  label: Text(tab),
+                ),
+              )
+              .toList(),
+          selected: {_selectedTabIndex},
+          onSelectionChanged: (selection) {
+            setState(() {
+              _selectedTabIndex = selection.first;
+            });
+          },
+        ),
+        const SizedBox(height: AppSpacing.md),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: _buildTabContent(textTheme),
+        ),
+      ],
     );
   }
 
   Widget _buildTabContent(TextTheme textTheme) {
     switch (_selectedTabIndex) {
       case 0:
-        return ProfileOverviewSection(
-          profile: _profileData,
-          onProfileUpdated: _updateProfileData,
+        return Column(
+          key: const ValueKey('perfil_tab'),
+          children: [
+            ProfileOverviewSection(
+              profile: _profileData,
+              stats: _profileSessionStats,
+              onProfileUpdated: _updateProfileData,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            ProfileGearSection(
+              savedKites: _savedKites,
+              savedBars: _savedBars,
+              savedBoards: _savedBoards,
+              savedHarnesses: _savedHarnesses,
+              savedWetsuits: _savedWetsuits,
+              savedHelmets: _savedHelmets,
+              savedVests: _savedVests,
+              savedGearSetups: _savedGearSetups,
+              selectedGearConfigTabIndex: _selectedGearConfigTabIndex,
+              onSelectGearConfigTab: _setSelectedGearConfigTabIndex,
+              onOpenGearSetupDialog: _openGearSetupDialog,
+              onOpenGearSetupDetailsDialog: _openGearSetupDetailsDialog,
+              onConfirmDeleteItem: _confirmDeleteItem,
+              onDeleteGearSetup: _deleteGearSetup,
+              findKite: _findKite,
+              findBar: _findBar,
+              findBoard: _findBoard,
+              findHarness: _findHarness,
+              findWetsuit: _findWetsuit,
+              findHelmet: _findHelmet,
+              findVest: _findVest,
+              kiteManagement: _buildKiteManagement(),
+              boardManagement: _buildBoardManagement(),
+              barManagement: _buildBarManagement(),
+              harnessManagement: _buildHarnessManagement(),
+              wetsuitManagement: _buildWetsuitManagement(),
+              helmetManagement: _buildHelmetManagement(),
+              vestManagement: _buildVestManagement(),
+              onOpenKiteDialog: _openKiteDialog,
+              onOpenBoardDialog: _openBoardDialog,
+              onOpenBarDialog: _openBarDialog,
+              onOpenHarnessDialog: _openHarnessDialog,
+              onOpenWetsuitDialog: _openWetsuitDialog,
+              onOpenHelmetDialog: _openHelmetDialog,
+              onOpenVestDialog: _openVestDialog,
+            ),
+          ],
         );
       case 1:
-        return ProfileGearSection(
-          savedKites: _savedKites,
-          savedBars: _savedBars,
-          savedBoards: _savedBoards,
-          savedHarnesses: _savedHarnesses,
-          savedWetsuits: _savedWetsuits,
-          savedHelmets: _savedHelmets,
-          savedVests: _savedVests,
-          savedGearSetups: _savedGearSetups,
-          selectedGearConfigTabIndex: _selectedGearConfigTabIndex,
-          onSelectGearConfigTab: _setSelectedGearConfigTabIndex,
-          onOpenGearSetupDialog: _openGearSetupDialog,
-          onOpenGearSetupDetailsDialog: _openGearSetupDetailsDialog,
-          onConfirmDeleteItem: _confirmDeleteItem,
-          onDeleteGearSetup: _deleteGearSetup,
-          findKite: _findKite,
-          findBar: _findBar,
-          findBoard: _findBoard,
-          findHarness: _findHarness,
-          findWetsuit: _findWetsuit,
-          findHelmet: _findHelmet,
-          findVest: _findVest,
-          kiteManagement: _buildKiteManagement(),
-          boardManagement: _buildBoardManagement(),
-          barManagement: _buildBarManagement(),
-          harnessManagement: _buildHarnessManagement(),
-          wetsuitManagement: _buildWetsuitManagement(),
-          helmetManagement: _buildHelmetManagement(),
-          vestManagement: _buildVestManagement(),
-          onOpenKiteDialog: _openKiteDialog,
-          onOpenBoardDialog: _openBoardDialog,
-          onOpenBarDialog: _openBarDialog,
-          onOpenHarnessDialog: _openHarnessDialog,
-          onOpenWetsuitDialog: _openWetsuitDialog,
-          onOpenHelmetDialog: _openHelmetDialog,
-          onOpenVestDialog: _openVestDialog,
-        );
+        return const ProfileAlarmsSection();
       case 2:
         return ProfileMessagesSection(
           selectedMessagesViewIndex: _selectedMessagesViewIndex,

@@ -1,171 +1,50 @@
-import 'dart:io';
 import 'dart:math' as math;
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/features/profile/domain/entities/profile_session_stats_snapshot.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile_aux_pages.dart';
+import 'package:windwisher/features/profile/presentation/pages/widgets/profile/stats/kpi/profile_stats_details_dialog.dart';
+import 'package:windwisher/features/profile/presentation/pages/widgets/profile/summary/profile_public_preview_dialog.dart';
+import 'package:windwisher/features/profile/presentation/pages/widgets/profile/summary/followers_dialog.dart';
+import 'package:windwisher/features/profile/presentation/pages/widgets/profile/summary/following_dialog.dart';
+import 'package:windwisher/features/profile/presentation/pages/widgets/profile/summary/profile_connections_dialog_shell.dart';
+import 'package:windwisher/features/profile/presentation/pages/widgets/profile/stats/profile_summary_overview_card.dart';
+import 'package:windwisher/features/profile/presentation/pages/widgets/profile/profile_summary_card.dart';
 import 'package:windwisher/features/spots/presentation/state/spot_alarm_catalog.dart';
 
 class ProfileOverviewSection extends StatelessWidget {
   const ProfileOverviewSection({
     super.key,
     required this.profile,
+    required this.stats,
     required this.onProfileUpdated,
   });
 
   final UserProfileData profile;
+  final ProfileSessionStatsSnapshot stats;
   final ValueChanged<UserProfileData> onProfileUpdated;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    ImageProvider<Object>? bannerImage;
-    ImageProvider<Object>? avatarImage;
-    if (!kIsWeb && profile.bannerLocalPath != null) {
-      bannerImage = FileImage(File(profile.bannerLocalPath!));
-    }
-    if (!kIsWeb && profile.avatarLocalPath != null) {
-      avatarImage = FileImage(File(profile.avatarLocalPath!));
-    }
-    final hasBannerImage = bannerImage != null;
-    final hasAvatarImage = avatarImage != null;
 
     return Column(
       key: const ValueKey('perfil'),
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    gradient: !hasBannerImage
-                        ? LinearGradient(
-                            colors: [
-                              Theme.of(context).colorScheme.primaryContainer,
-                              Theme.of(context).colorScheme.secondaryContainer,
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          )
-                        : null,
-                    image: !hasBannerImage
-                        ? null
-                        : DecorationImage(
-                            image: bannerImage,
-                            fit: BoxFit.cover,
-                          ),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 36,
-                        backgroundColor: Colors.blue,
-                        backgroundImage: avatarImage,
-                        child: !hasAvatarImage
-                            ? const Icon(
-                                Icons.person,
-                                size: 36,
-                                color: Colors.white,
-                              )
-                            : null,
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              profile.displayName,
-                              style: textTheme.headlineSmall,
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                            Text(
-                              profile.handle,
-                              style: textTheme.bodyMedium?.copyWith(
-                                color: Colors.grey.shade800,
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                            Text(
-                              profile.publicTagline,
-                              style: textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Wrap(
-                  spacing: AppSpacing.xs,
-                  runSpacing: AppSpacing.xs,
-                  children: [
-                    _StatChip(label: 'Nivel', value: profile.level),
-                    _StatChip(label: 'Sesiones', value: profile.sessions),
-                    _StatChip(label: 'Ranking local', value: profile.ranking),
-                    _StatChip(label: 'Spot base', value: profile.baseSpot),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _openPublicProfilePreview(context),
-                        icon: const Icon(Icons.visibility_outlined),
-                        label: const Text('Vista publica'),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Expanded(
-                      child: FilledButton.tonalIcon(
-                        onPressed: () => _openEditProfile(context),
-                        icon: const Icon(Icons.edit_outlined),
-                        label: const Text('Editar perfil'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+        ProfileSummaryCard(
+          profile: profile,
+          stats: stats,
+          onPublicPreviewPressed: () => _openPublicProfilePreview(context),
+          onEditPressed: () => _openEditProfile(context),
+          onFollowersPressed: () => _openFollowers(context),
+          onFollowingPressed: () => _openFollowing(context),
         ),
         const SizedBox(height: AppSpacing.md),
-        _buildAlarmCard(context, textTheme),
-        const SizedBox(height: AppSpacing.md),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Estadisticas', style: textTheme.titleMedium),
-                const SizedBox(height: AppSpacing.sm),
-                _StatRow(label: 'Sesiones totales', value: profile.totalSessions),
-                _StatRow(label: 'Horas en agua', value: profile.waterHours),
-                _StatRow(label: 'Saltos registrados', value: profile.jumps),
-                _StatRow(label: 'Salto mas alto', value: profile.topJump),
-                _StatRow(label: 'Mejor spot', value: profile.bestSpot),
-                const SizedBox(height: AppSpacing.sm),
-                Center(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _openProfileStatsDetails(context),
-                    icon: const Icon(Icons.insights_outlined),
-                    label: const Text('Detalles'),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        ProfileSummaryOverviewCard(
+          profile: profile,
+          stats: stats,
+          onDetailsPressed: () => _openProfileStatsDetails(context),
         ),
         const SizedBox(height: AppSpacing.md),
         Card(
@@ -176,9 +55,18 @@ class ProfileOverviewSection extends StatelessWidget {
               children: [
                 Text('Actividad reciente', style: textTheme.titleMedium),
                 const SizedBox(height: AppSpacing.sm),
-                _StatRow(label: 'Ultima sesion subida', value: profile.latestSession),
-                _StatRow(label: 'Ultimo comentario', value: profile.latestComment),
-                _StatRow(label: 'Hilo destacado', value: profile.featuredThread),
+                _StatRow(
+                  label: 'Ultima sesion subida',
+                  value: profile.latestSession,
+                ),
+                _StatRow(
+                  label: 'Ultimo comentario',
+                  value: profile.latestComment,
+                ),
+                _StatRow(
+                  label: 'Hilo destacado',
+                  value: profile.featuredThread,
+                ),
               ],
             ),
           ),
@@ -187,6 +75,28 @@ class ProfileOverviewSection extends StatelessWidget {
     );
   }
 
+  Future<void> _openFollowers(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => FollowersDialog(
+        profile: profile,
+        behavior: ProfileConnectionsBehavior.followersManage,
+      ),
+    );
+  }
+
+  Future<void> _openFollowing(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => FollowingDialog(
+        profile: profile,
+        behavior: ProfileConnectionsBehavior.followingManage,
+      ),
+    );
+  }
+
+  // Kept temporarily to preserve the alarm editing helpers while alarms live in their own tab.
+  // ignore: unused_element
   Widget _buildAlarmCard(BuildContext context, TextTheme textTheme) {
     return AnimatedBuilder(
       animation: SpotAlarmCatalog.instance,
@@ -258,7 +168,8 @@ class ProfileOverviewSection extends StatelessWidget {
                         value: catalog.globalEnabled,
                         onChanged: (value) async {
                           await catalog.setGlobalEnabled(value);
-                          if (!context.mounted || catalog.lastSyncError == null) {
+                          if (!context.mounted ||
+                              catalog.lastSyncError == null) {
                             return;
                           }
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -284,7 +195,9 @@ class ProfileOverviewSection extends StatelessWidget {
                       ),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: colorScheme.outlineVariant.withValues(alpha: 0.45),
+                        color: colorScheme.outlineVariant.withValues(
+                          alpha: 0.45,
+                        ),
                       ),
                     ),
                     child: Row(
@@ -404,12 +317,17 @@ class ProfileOverviewSection extends StatelessWidget {
                   IconButton(
                     tooltip: 'Eliminar alarma',
                     onPressed: () async {
-                      final confirmed = await _confirmDeleteAlarm(context, alarm);
+                      final confirmed = await _confirmDeleteAlarm(
+                        context,
+                        alarm,
+                      );
                       if (!confirmed) {
                         return;
                       }
                       final deleted = await catalog.deleteAlarm(alarm.id);
-                      if (!context.mounted || deleted || catalog.lastSyncError == null) {
+                      if (!context.mounted ||
+                          deleted ||
+                          catalog.lastSyncError == null) {
                         return;
                       }
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -497,19 +415,17 @@ class ProfileOverviewSection extends StatelessWidget {
     onProfileUpdated(updated);
   }
 
-  void _openPublicProfilePreview(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => PublicProfilePreviewPage(profile: profile),
-      ),
+  Future<void> _openPublicProfilePreview(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => ProfilePublicPreviewDialog(profile: profile),
     );
   }
 
-  void _openProfileStatsDetails(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ProfileStatsDetailsPage(profile: profile),
-      ),
+  Future<void> _openProfileStatsDetails(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => ProfileStatsDetailsDialog(profile: profile, stats: stats),
     );
   }
 
@@ -763,7 +679,10 @@ class ProfileOverviewSection extends StatelessWidget {
                       repeatWindow: repeatWindow,
                       maxRepeats: alarm.maxRepeats,
                     );
-                    if (catalog.hasEquivalentAlarm(updated, excludingId: alarm.id)) {
+                    if (catalog.hasEquivalentAlarm(
+                      updated,
+                      excludingId: alarm.id,
+                    )) {
                       setDialogState(() {
                         errorText =
                             'Ya existe una alarma identica para esta estacion.';
@@ -835,42 +754,44 @@ class ProfileOverviewSection extends StatelessWidget {
     required void Function(String direction, bool value) onToggleDirection,
   }) {
     return Row(
-      children: row.map((direction) {
-        final selected = directions.contains(direction);
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(
-              right: direction == row.last ? 0 : AppSpacing.xs,
-            ),
-            child: FilterChip(
-              selected: selected,
-              showCheckmark: false,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity: VisualDensity.compact,
-              labelPadding: const EdgeInsets.symmetric(horizontal: 2),
-              label: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Transform.rotate(
-                    angle: _profileAlarmDirectionRotation(direction),
-                    child: Icon(
-                      Icons.navigation_rounded,
-                      size: 14,
-                      color: selected
-                          ? colorScheme.onSecondaryContainer
-                          : colorScheme.onSurfaceVariant,
-                    ),
+      children: row
+          .map((direction) {
+            final selected = directions.contains(direction);
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  right: direction == row.last ? 0 : AppSpacing.xs,
+                ),
+                child: FilterChip(
+                  selected: selected,
+                  showCheckmark: false,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+                  label: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Transform.rotate(
+                        angle: _profileAlarmDirectionRotation(direction),
+                        child: Icon(
+                          Icons.navigation_rounded,
+                          size: 14,
+                          color: selected
+                              ? colorScheme.onSecondaryContainer
+                              : colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(direction, style: const TextStyle(fontSize: 12)),
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  Text(direction, style: const TextStyle(fontSize: 12)),
-                ],
+                  onSelected: (value) => onToggleDirection(direction, value),
+                ),
               ),
-              onSelected: (value) => onToggleDirection(direction, value),
-            ),
-          ),
-        );
-      }).toList(growable: false),
+            );
+          })
+          .toList(growable: false),
     );
   }
 
@@ -937,21 +858,6 @@ class _StatRow extends StatelessWidget {
   }
 }
 
-class _StatChip extends StatelessWidget {
-  const _StatChip({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Chip(
-      label: Text('$label: $value'),
-      backgroundColor: Colors.blue.withValues(alpha: 0.1),
-    );
-  }
-}
-
 const List<String> _profileAlarmDirectionOptions = <String>[
   'N',
   'NE',
@@ -964,10 +870,7 @@ const List<String> _profileAlarmDirectionOptions = <String>[
 ];
 
 class _ProfileAlarmMetaChip extends StatelessWidget {
-  const _ProfileAlarmMetaChip({
-    required this.icon,
-    required this.label,
-  });
+  const _ProfileAlarmMetaChip({required this.icon, required this.label});
 
   final IconData icon;
   final String label;
@@ -995,9 +898,7 @@ class _ProfileAlarmMetaChip extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             label,
-            style: textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
           ),
         ],
       ),

@@ -1846,19 +1846,6 @@ class SessionsPageState extends State<SessionsPage> {
           gearSetupId: config.gearSetupId,
           gearSetupName: config.gearSetupName,
         ),
-        distanceKm: metricsSummary.distanceKm > 0
-            ? metricsSummary.distanceKm
-            : null,
-        maxSpeedKnots: _recordingMaxSpeedKnots > 0
-            ? _recordingMaxSpeedKnots
-            : null,
-        avgSpeedKnots: metricsSummary.avgSpeedKnots > 0
-            ? metricsSummary.avgSpeedKnots
-            : null,
-        movingAvgSpeedKnots: metricsSummary.movingAvgSpeedKnots > 0
-            ? metricsSummary.movingAvgSpeedKnots
-            : null,
-        planingMinutes: metricsSummary.planingMinutes,
         recordedPointCount: _recordingSamples.length,
         autoPauseCount: _recordingAutoPauseCount,
         accelerationEventCount: _recordingAccelerationEventCount,
@@ -1866,11 +1853,6 @@ class SessionsPageState extends State<SessionsPage> {
         maxRotationDegPerSec: _recordingMaxRotationDegPerSec > 0
             ? _recordingMaxRotationDegPerSec
             : null,
-        jumpsCount: metricsSummary.jumpsCount > 0
-            ? metricsSummary.jumpsCount
-            : null,
-        maxJumpHeightMeters: metricsSummary.maxJumpHeightMeters,
-        maxHangtimeSeconds: metricsSummary.maxHangtimeSeconds,
         jumpHistory: jumpHistory,
         timelineKnots: List<double>.from(_recordingTimelineKnots),
         routePoints: _recordingSamples
@@ -1930,13 +1912,6 @@ class SessionsPageState extends State<SessionsPage> {
     return '${seconds.toStringAsFixed(1)} s';
   }
 
-  String _formatSpeedKnots(double? knots) {
-    if (knots == null) {
-      return '--';
-    }
-    return '${knots.toStringAsFixed(1)} kt';
-  }
-
   MySessionCardData _buildMySessionCardData(_RecordedSession session) {
     final insights = _sessionInsightsForDetail(session);
     return MySessionsPresentationMapper.buildCardData(
@@ -1949,13 +1924,15 @@ class SessionsPageState extends State<SessionsPage> {
       localPhotoPath: session.sessionPhotoLocalPath,
       defaultSessionSummary: _defaultSessionSummary,
       durationLabel: _formatDuration(session.duration),
-      jumpLabel: _optionalLabel(
-        _formatJumpHeight(insights.maxJumpHeightMeters),
-      ),
-      hangtimeLabel: _optionalLabel(
-        _formatHangtime(insights.maxHangtimeSeconds),
-      ),
-      maxSpeedLabel: _optionalLabel(_formatSpeedKnots(insights.maxSpeedKnots)),
+      jumpLabel: insights.resolvedMaxJumpHeightMeters == null
+          ? null
+          : '${insights.resolvedMaxJumpHeightMeters!.toStringAsFixed(1)} m',
+      hangtimeLabel: insights.resolvedMaxHangtimeSeconds == null
+          ? null
+          : '${insights.resolvedMaxHangtimeSeconds!.toStringAsFixed(1)} s',
+      maxSpeedLabel: insights.resolvedMaxSpeedKnots == null
+          ? null
+          : '${insights.resolvedMaxSpeedKnots!.toStringAsFixed(1)} kt',
     );
   }
 
@@ -2190,13 +2167,6 @@ class SessionsPageState extends State<SessionsPage> {
       sessionCards: sessionCards,
       emptyStateTextStyle: textTheme.bodyMedium,
     );
-  }
-
-  String? _optionalLabel(String label) {
-    if (label == '--') {
-      return null;
-    }
-    return label;
   }
 
   SessionCapturePresentationInput _buildSessionCapturePresentationInput() {

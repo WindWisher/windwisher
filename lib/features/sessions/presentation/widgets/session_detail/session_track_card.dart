@@ -29,9 +29,14 @@ class SessionTrackCard extends StatelessWidget {
     final startPoint = latLngPoints.first;
     final endPoint = latLngPoints.last;
     final fastestPoint = routePoints.reduce(
-      (best, current) =>
-          current.speedKnots > best.speedKnots ? current : best,
+      (best, current) => current.speedKnots > best.speedKnots ? current : best,
     );
+    final distanceLabel = insights.resolvedDistanceKm == null
+        ? 'Distancia no disponible'
+        : '${insights.resolvedDistanceKm!.toStringAsFixed(2)} km';
+    final maxSpeedLabel = insights.resolvedMaxSpeedKnots == null
+        ? '${fastestPoint.speedKnots.toStringAsFixed(1)} kt'
+        : '${insights.resolvedMaxSpeedKnots!.toStringAsFixed(1)} kt';
 
     return Card(
       child: Padding(
@@ -56,14 +61,16 @@ class SessionTrackCard extends StatelessWidget {
                     initialCenter: center,
                     initialZoom: zoom,
                     interactionOptions: const InteractionOptions(
-                      flags: InteractiveFlag.drag |
+                      flags:
+                          InteractiveFlag.drag |
                           InteractiveFlag.pinchZoom |
                           InteractiveFlag.doubleTapZoom,
                     ),
                   ),
                   children: [
                     TileLayer(
-                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.windwisher.app',
                     ),
                     if (latLngPoints.length >= 2)
@@ -104,7 +111,10 @@ class SessionTrackCard extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: colorScheme.error,
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
                               ),
                               child: const Icon(
                                 Icons.flag_rounded,
@@ -125,7 +135,10 @@ class SessionTrackCard extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF57C00),
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
                               ),
                               child: const Icon(
                                 Icons.bolt_rounded,
@@ -148,16 +161,8 @@ class SessionTrackCard extends StatelessWidget {
                   spacing: AppSpacing.xs,
                   runSpacing: AppSpacing.xs,
                   children: [
-                    _TrackChip(
-                      icon: Icons.route_rounded,
-                      label: insights.distanceKm == null
-                          ? 'Distancia no disponible'
-                          : '${insights.distanceKm!.toStringAsFixed(2)} km',
-                    ),
-                    _TrackChip(
-                      icon: Icons.bolt_rounded,
-                      label: '${fastestPoint.speedKnots.toStringAsFixed(1)} kt',
-                    ),
+                    _TrackChip(icon: Icons.route_rounded, label: distanceLabel),
+                    _TrackChip(icon: Icons.bolt_rounded, label: maxSpeedLabel),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.xs),
@@ -195,11 +200,11 @@ class SessionTrackCard extends StatelessWidget {
     if (points.length == 1) {
       return points.first;
     }
-    final lat = points.map((point) => point.latitude).reduce((a, b) => a + b) /
+    final lat =
+        points.map((point) => point.latitude).reduce((a, b) => a + b) /
         points.length;
-    final lon = points
-            .map((point) => point.longitude)
-            .reduce((a, b) => a + b) /
+    final lon =
+        points.map((point) => point.longitude).reduce((a, b) => a + b) /
         points.length;
     return LatLng(lat, lon);
   }
@@ -246,11 +251,7 @@ class _TrackChip extends StatelessWidget {
           children: [
             Icon(icon, size: 16),
             const SizedBox(width: 6),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
           ],
         ),
       ),

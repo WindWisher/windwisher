@@ -92,11 +92,20 @@ class ProfileGearSection extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Text(
-                    'Configurar quiver',
-                    style: textTheme.titleMedium,
-                  ),
+                Text('Tu material', style: textTheme.titleLarge),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Primero configura las piezas de tu quiver. Luego podras crear equipaciones con ese material.',
+                  style: textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  'Gestionar piezas del quiver',
+                  style: textTheme.titleMedium,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                const Text(
+                  'Cometas, tablas, barras y resto de material disponible para tus equipaciones.',
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 SingleChildScrollView(
@@ -150,27 +159,45 @@ class ProfileGearSection extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Text(
-                    'Equipacion personalizada',
-                    style: textTheme.titleMedium,
-                  ),
+                Text('Mis equipaciones', style: textTheme.titleLarge),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Crea combinaciones listas para usar con el material que ya tengas guardado.',
+                  style: textTheme.bodyMedium,
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                Center(
-                  child: FilledButton.tonalIcon(
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
                     onPressed: () => onOpenGearSetupDialog(),
-                    icon: const Icon(Icons.tune),
-                    label: const Text('Configurar equipacion'),
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Nueva equipacion'),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                Center(
-                  child: Text(
-                    'Equipaciones guardadas (${savedGearSetups.length})',
-                  ),
+                Text(
+                  'Equipaciones guardadas (${savedGearSetups.length})',
+                  style: textTheme.titleMedium,
                 ),
-                if (savedGearSetups.isNotEmpty)
+                if (savedGearSetups.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.sm),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Aun no has guardado ninguna equipacion.',
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  )
+                else
                   ...savedGearSetups.map((setup) {
                     final kite = findKite(setup.kiteId);
                     final board = findBoard(setup.boardId);
@@ -407,20 +434,20 @@ class ProfileGearSection extends StatelessWidget {
     required Widget managementWidget,
   }) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: textTheme.titleSmall, textAlign: TextAlign.center),
+        Text(title, style: textTheme.titleSmall),
         const SizedBox(height: AppSpacing.xs),
         FilledButton.tonalIcon(
           onPressed: onPressed,
           icon: Icon(icon),
           label: Text(buttonLabel),
         ),
-        Text(savedLabel, textAlign: TextAlign.center),
+        const SizedBox(height: AppSpacing.xs),
+        Text(savedLabel),
         managementWidget,
         Text(
           'Disponible en el desplegable de equipacion personalizada.',
-          textAlign: TextAlign.center,
           style: textTheme.bodySmall?.copyWith(color: Colors.grey),
         ),
       ],

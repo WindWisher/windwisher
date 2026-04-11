@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
-import 'package:path_provider/path_provider.dart';
 
 class EditProfilePage extends StatefulWidget {
   final UserProfileData initialData;
@@ -22,7 +22,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late final TextEditingController _handle;
   late final TextEditingController _publicTagline;
   late final TextEditingController _bio;
-  late final TextEditingController _level;
+  late final TextEditingController _userRole;
   late final TextEditingController _ranking;
   late final TextEditingController _baseSpot;
   String? _avatarPath;
@@ -36,7 +36,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _handle = TextEditingController(text: data.handle);
     _publicTagline = TextEditingController(text: data.publicTagline);
     _bio = TextEditingController(text: data.bio);
-    _level = TextEditingController(text: data.level);
+    _userRole = TextEditingController(text: data.userRole);
     _ranking = TextEditingController(text: data.ranking);
     _baseSpot = TextEditingController(text: data.baseSpot);
     _avatarPath = data.avatarLocalPath;
@@ -49,7 +49,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _handle.dispose();
     _publicTagline.dispose();
     _bio.dispose();
-    _level.dispose();
+    _userRole.dispose();
     _ranking.dispose();
     _baseSpot.dispose();
     super.dispose();
@@ -62,14 +62,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
         handle: _handle.text.trim(),
         publicTagline: _publicTagline.text.trim(),
         bio: _bio.text.trim(),
-        level: _level.text.trim(),
+        userRole: _userRole.text.trim(),
         sessions: widget.initialData.sessions,
+        followers: widget.initialData.followers,
+        following: widget.initialData.following,
         ranking: _ranking.text.trim(),
         baseSpot: _baseSpot.text.trim(),
         totalSessions: widget.initialData.totalSessions,
         waterHours: widget.initialData.waterHours,
         jumps: widget.initialData.jumps,
         topJump: widget.initialData.topJump,
+        maxHangtime: widget.initialData.maxHangtime,
         bestSpot: widget.initialData.bestSpot,
         latestSession: widget.initialData.latestSession,
         latestComment: widget.initialData.latestComment,
@@ -221,138 +224,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
           _field('Handle', _handle),
           _field('Tagline publica', _publicTagline, lines: 2),
           _field('Bio', _bio, lines: 3),
-          _field('Nivel', _level),
+          _field('Rol de usuario', _userRole),
           _field('Ranking', _ranking),
           _field('Spot base', _baseSpot),
           FilledButton(onPressed: _save, child: const Text('Guardar cambios')),
-        ],
-      ),
-    );
-  }
-}
-
-class ProfileStatsDetailsPage extends StatelessWidget {
-  final UserProfileData profile;
-
-  const ProfileStatsDetailsPage({super.key, required this.profile});
-
-  int _toInt(String value) {
-    final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
-    return int.tryParse(digits) ?? 0;
-  }
-
-  double _toDouble(String value) {
-    final parsed = value.replaceAll(RegExp(r'[^0-9\.]'), '');
-    return double.tryParse(parsed) ?? 0;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final sessions = _toInt(profile.totalSessions);
-    final hours = _toInt(profile.waterHours);
-    final jumps = _toInt(profile.jumps);
-    final topJump = _toDouble(profile.topJump);
-    final avgSession = sessions == 0 ? 0 : (hours / sessions);
-    final avgJumps = sessions == 0 ? 0 : (jumps / sessions);
-    final estCalories = hours * 420;
-
-    Widget kpi(String label, String value) {
-      return Card(
-        margin: EdgeInsets.zero,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: textTheme.bodySmall?.copyWith(color: Colors.grey),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(value, style: textTheme.titleLarge),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('KPIs del perfil')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        children: [
-          GridView.count(
-            crossAxisCount: 2,
-            crossAxisSpacing: AppSpacing.xs,
-            mainAxisSpacing: AppSpacing.xs,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 1.55,
-            children: [
-              kpi('Sesiones', '$sessions'),
-              kpi('Horas en agua', '${hours}h'),
-              kpi('Saltos', '$jumps'),
-              kpi('Top salto', '${topJump.toStringAsFixed(1)}m'),
-              kpi('Promedio por sesion', '${avgSession.toStringAsFixed(1)}h'),
-              kpi('Saltos por sesion', avgJumps.toStringAsFixed(1)),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Rendimiento y contexto', style: textTheme.titleMedium),
-                  const SizedBox(height: AppSpacing.sm),
-                  _ProfileStatsRow(
-                    label: 'Nivel declarado',
-                    value: profile.level,
-                  ),
-                  _ProfileStatsRow(
-                    label: 'Ranking local',
-                    value: profile.ranking,
-                  ),
-                  _ProfileStatsRow(label: 'Spot base', value: profile.baseSpot),
-                  _ProfileStatsRow(
-                    label: 'Mejor spot',
-                    value: profile.bestSpot,
-                  ),
-                  _ProfileStatsRow(
-                    label: 'Calorias estimadas',
-                    value: '$estCalories kcal',
-                  ),
-                  _ProfileStatsRow(
-                    label: 'Hilo destacado',
-                    value: profile.featuredThread,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProfileStatsRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _ProfileStatsRow({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -451,7 +326,7 @@ class PublicProfilePreviewPage extends StatelessWidget {
                     spacing: AppSpacing.xs,
                     runSpacing: AppSpacing.xs,
                     children: [
-                      Chip(label: Text(profile.level)),
+                      Chip(label: Text(profile.userRole)),
                       Chip(label: Text(profile.baseSpot)),
                       Chip(label: Text('${profile.sessions} sesiones')),
                       Chip(label: Text('Top salto ${profile.topJump}')),

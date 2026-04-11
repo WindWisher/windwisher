@@ -3,9 +3,8 @@ import 'package:windwisher/features/profile/domain/ports/out/profile_repository_
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseProfileRepositoryAdapter implements ProfileRepositoryPort {
-  SupabaseProfileRepositoryAdapter({
-    SupabaseClient? client,
-  }) : _client = client ?? Supabase.instance.client;
+  SupabaseProfileRepositoryAdapter({SupabaseClient? client})
+    : _client = client ?? Supabase.instance.client;
 
   final SupabaseClient _client;
   UserProfileData _profile = UserProfileData.initial();
@@ -56,7 +55,8 @@ class SupabaseProfileRepositoryAdapter implements ProfileRepositoryPort {
       'handle': _normalizeHandle(value.handle),
       'public_tagline': value.publicTagline,
       'bio': value.bio,
-      'level': value.level,
+      'user_role': value.userRole,
+      'level': value.userRole,
       'base_spot': value.baseSpot,
       'avatar_path': value.avatarLocalPath,
       'banner_path': value.bannerLocalPath,
@@ -78,14 +78,17 @@ class SupabaseProfileRepositoryAdapter implements ProfileRepositoryPort {
       handle: _displayHandle((row['handle'] as String?) ?? ''),
       publicTagline: (row['public_tagline'] as String?) ?? '',
       bio: (row['bio'] as String?) ?? '',
-      level: (row['level'] as String?) ?? '',
+      userRole: (row['user_role'] as String? ?? row['level'] as String?) ?? '',
       sessions: ((row['total_sessions'] as num?)?.toInt() ?? 0).toString(),
+      followers: ((row['followers_count'] as num?)?.toInt() ?? 0).toString(),
+      following: ((row['following_count'] as num?)?.toInt() ?? 0).toString(),
       ranking: (row['ranking_label'] as String?) ?? '',
       baseSpot: (row['base_spot'] as String?) ?? '',
       totalSessions: ((row['total_sessions'] as num?)?.toInt() ?? 0).toString(),
       waterHours: _formatHours(row['water_hours']),
       jumps: ((row['jumps'] as num?)?.toInt() ?? 0).toString(),
       topJump: _formatMeters(row['top_jump_m']),
+      maxHangtime: _formatSeconds(row['hangtime_max_s'] ?? row['hangtime_max']),
       bestSpot: (row['best_spot'] as String?) ?? '',
       latestSession: (row['latest_session_label'] as String?) ?? '',
       latestComment: (row['latest_comment_label'] as String?) ?? '',
@@ -113,6 +116,11 @@ class SupabaseProfileRepositoryAdapter implements ProfileRepositoryPort {
   String _formatMeters(Object? value) {
     final numeric = (value as num?)?.toDouble() ?? 0;
     return '${numeric.toStringAsFixed(1)}m';
+  }
+
+  String _formatSeconds(Object? value) {
+    final numeric = (value as num?)?.toDouble() ?? 0;
+    return '${numeric.toStringAsFixed(1)}s';
   }
 
   String _normalizeHandle(String value) {

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:windwisher/features/sessions/domain/entities/recorded_session.dart';
 import 'package:windwisher/features/sessions/domain/ports/out/session_records_port.dart';
 import 'package:windwisher/features/sessions/infrastructure/adapters/local/local_file_session_records_adapter.dart';
+import 'package:windwisher/features/sessions/presentation/models/session_detail_models.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseSessionRecordsAdapter implements SessionRecordsPort {
@@ -49,7 +50,8 @@ class SupabaseSessionRecordsAdapter implements SessionRecordsPort {
           .eq('user_id', user.id);
       final gearSetupIdsByName = <String, String>{};
       for (final row
-          in (gearSetupRows as List<dynamic>).whereType<Map<String, dynamic>>()) {
+          in (gearSetupRows as List<dynamic>)
+              .whereType<Map<String, dynamic>>()) {
         final name = (row['name'] as String?)?.trim();
         final id = row['id'] as String?;
         if (name == null || name.isEmpty || id == null || id.isEmpty) {
@@ -68,15 +70,13 @@ class SupabaseSessionRecordsAdapter implements SessionRecordsPort {
       _sessions
         ..clear()
         ..addAll(
-          (response as List<dynamic>)
-              .whereType<Map<String, dynamic>>()
-              .map(
-                (row) => _fromSupabaseRow(
-                  row,
-                  gearSetupIdsByName: gearSetupIdsByName,
-                  repairedSessions: repairedSessions,
-                ),
-              ),
+          (response as List<dynamic>).whereType<Map<String, dynamic>>().map(
+            (row) => _fromSupabaseRow(
+              row,
+              gearSetupIdsByName: gearSetupIdsByName,
+              repairedSessions: repairedSessions,
+            ),
+          ),
         );
       await _mergePendingLocalSessions();
       for (final session in repairedSessions) {
@@ -122,10 +122,19 @@ class SupabaseSessionRecordsAdapter implements SessionRecordsPort {
         'insights': _encodeInsights(session.insights),
         'highest_jump_m': _doubleFromInsights(
           session.insights,
-          'maxJumpHeightMeters',
+          legacyKey: 'maxJumpHeightMeters',
+          advancedMetricKey: SessionMetricKeys.highestJump,
         ),
-        'distance_km': _doubleFromInsights(session.insights, 'distanceKm'),
-        'big_air_score': _intFromInsights(session.insights, 'jumpsCount'),
+        'distance_km': _doubleFromInsights(
+          session.insights,
+          legacyKey: 'distanceKm',
+          advancedMetricKey: SessionMetricKeys.distanceTotal,
+        ),
+        'big_air_score': _intFromInsights(
+          session.insights,
+          legacyKey: 'jumpsCount',
+          advancedMetricKey: SessionMetricKeys.bigAirScore,
+        ),
         'is_public': true,
       });
       await _localFallback.deleteRecordedSession(session.id);
@@ -208,20 +217,98 @@ class SupabaseSessionRecordsAdapter implements SessionRecordsPort {
     return session;
   }
 
-  double _doubleFromInsights(Object insights, String key) {
+  double _doubleFromInsights(
+    Object insights, {
+    required String legacyKey,
+    required String advancedMetricKey,
+  }) {
+    if (insights case final SessionInsightData sessionInsights) {
+      final advanced = sessionInsights.advancedMetrics.doubleValue(
+        advancedMetricKey,
+      );
+      if (advanced != null) {
+        return advanced;
+      }
+    }
+
     final encoded = _encodeInsights(insights);
     if (encoded is Map<String, dynamic>) {
-      return (encoded[key] as num?)?.toDouble() ?? 0;
+      final advanced = _parseLeadingDouble(
+        _advancedMetricValueFromEncoded(encoded, advancedMetricKey),
+      );
+      if (advanced != null) {
+        return advanced;
+      }
+      return (encoded[legacyKey] as num?)?.toDouble() ?? 0;
     }
     return 0;
   }
 
-  int _intFromInsights(Object insights, String key) {
+  int _intFromInsights(
+    Object insights, {
+    required String legacyKey,
+    required String advancedMetricKey,
+  }) {
+    if (insights case final SessionInsightData sessionInsights) {
+      final advanced = sessionInsights.advancedMetrics.intValue(
+        advancedMetricKey,
+      );
+      if (advanced != null) {
+        return advanced;
+      }
+    }
+
     final encoded = _encodeInsights(insights);
     if (encoded is Map<String, dynamic>) {
-      return (encoded[key] as num?)?.toInt() ?? 0;
+      final advanced = _parseLeadingDouble(
+        _advancedMetricValueFromEncoded(encoded, advancedMetricKey),
+      );
+      if (advanced != null) {
+        return advanced.round();
+      }
+      return (encoded[legacyKey] as num?)?.toInt() ?? 0;
     }
     return 0;
+  }
+
+  String? _advancedMetricValueFromEncoded(
+    Map<String, dynamic> encoded,
+    String advancedMetricKey,
+  ) {
+    final advancedMetrics = encoded['advancedMetrics'];
+    if (advancedMetrics is! Map<String, dynamic>) {
+      return null;
+    }
+    final groups = advancedMetrics['groups'];
+    if (groups is! List<dynamic>) {
+      return null;
+    }
+    for (final group in groups.whereType<Map<String, dynamic>>()) {
+      final items = group['items'];
+      if (items is! List<dynamic>) {
+        continue;
+      }
+      for (final item in items.whereType<Map<String, dynamic>>()) {
+        final key = item['key'] as String?;
+        final available = item['available'] as bool? ?? false;
+        if (key == advancedMetricKey && available) {
+          return item['value'] as String?;
+        }
+      }
+    }
+    return null;
+  }
+
+  double? _parseLeadingDouble(String? value) {
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    final normalized = value.replaceAll(',', '.');
+    final match = RegExp(r'-?\d+(?:\.\d+)?').firstMatch(normalized);
+    if (match == null) {
+      return null;
+    }
+    return double.tryParse(match.group(0)!);
   }
 
   bool _isRemoteSessionPhotoPath(String? path) {
@@ -229,6 +316,7 @@ class SupabaseSessionRecordsAdapter implements SessionRecordsPort {
       return false;
     }
     final normalized = path.trim().toLowerCase();
-    return normalized.startsWith('http://') || normalized.startsWith('https://');
+    return normalized.startsWith('http://') ||
+        normalized.startsWith('https://');
   }
 }
