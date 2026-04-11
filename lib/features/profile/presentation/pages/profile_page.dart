@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
 import 'package:windwisher/features/profile/domain/entities/app_message_index_entry.dart';
+import 'package:windwisher/features/community/di/community_module.dart';
+import 'package:windwisher/features/community/domain/entities/community_user_summary.dart';
+import 'package:windwisher/features/community/domain/entities/following_session.dart';
+import 'package:windwisher/features/community/domain/entities/session_comment.dart';
+import 'package:windwisher/features/community/domain/entities/session_like_state.dart';
 import 'package:windwisher/features/profile/domain/entities/direct_message_thread.dart';
 import 'package:windwisher/features/profile/domain/entities/profile_gear_entities.dart';
+import 'package:windwisher/features/profile/application/profile_community_stats_aggregator.dart';
+import 'package:windwisher/features/profile/application/profile_kpi_aggregator.dart';
 import 'package:windwisher/features/profile/application/profile_session_stats_aggregator.dart';
+import 'package:windwisher/features/profile/domain/entities/profile_community_stats_snapshot.dart';
+import 'package:windwisher/features/profile/domain/entities/profile_kpi_snapshot.dart';
 import 'package:windwisher/features/profile/domain/entities/profile_session_stats_snapshot.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
 import 'package:windwisher/features/profile/di/profile_module.dart';
@@ -32,6 +42,8 @@ typedef _HarnessItem = HarnessItem;
 typedef _WetsuitItem = WetsuitItem;
 typedef _HelmetItem = HelmetItem;
 typedef _VestItem = VestItem;
+typedef _CommunityUser = CommunityUserSummary;
+typedef _FollowingSession = FollowingSession;
 typedef _GearSetup = GearSetup;
 typedef _UserProfileData = UserProfileData;
 
@@ -47,7 +59,16 @@ class ProfilePageState extends State<ProfilePage> {
   late final ProfileMessagesController _messagesController;
   late final ProfileGearController _gearController;
   late final SessionsModule _sessionsModule;
+  late final CommunityModule _communityModule;
   List<RecordedSession> _recordedSessions = const <RecordedSession>[];
+  List<_CommunityUser> _communityUsers = const <_CommunityUser>[];
+  List<_FollowingSession> _communitySessions = const <_FollowingSession>[];
+  Set<String> _followingUsernames = const <String>{};
+  List<String>? _followerUsernames;
+  Map<String, List<SessionComment>> _sessionCommentsBySessionId =
+      const <String, List<SessionComment>>{};
+  Map<String, SessionLikeState> _sessionLikeStatesBySessionId =
+      const <String, SessionLikeState>{};
 
   static const List<String> _tabs = ['Perfil', 'Alarmas', 'Mensajes'];
   int _selectedTabIndex = 0;
@@ -126,11 +147,15 @@ class ProfilePageState extends State<ProfilePage> {
       encodeInsights: _encodeRecordedSessionInsights,
       decodeInsights: _decodeRecordedSessionInsights,
     );
+    _communityModule = EnvConfig.communityLocalPersistenceEnabled
+        ? CommunityModule.auto()
+        : CommunityModule.inMemory();
     _publishGearSetupsForSessions();
     _hydrateProfile();
     _hydrateMessages();
     _hydrateGear();
     _hydrateRecordedSessions();
+    _hydrateCommunityStats();
   }
 
   Future<void> _hydrateProfile() async {
@@ -168,6 +193,78 @@ class ProfilePageState extends State<ProfilePage> {
     });
   }
 
+  Future<void> _hydrateCommunityStats() async {
+    final users = await _communityModule.getCommunityUsers.load();
+    final sessions = await _communityModule.getFollowingSessions.load();
+    final followingUsernames =
+        await _communityModule.getFollowingUsernames.load() ?? const <String>{};
+    final client = Supabase.instance.client;
+    final currentUser = client.auth.currentUser;
+
+    List<String>? followerUsernames;
+    if (currentUser != null) {
+      final followerRows = await client
+          .from('user_follows')
+          .select('follower_user_id')
+          .eq('followed_user_id', currentUser.id);
+      final followerIds = (followerRows as List<dynamic>)
+          .whereType<Map<String, dynamic>>()
+          .map((row) => row['follower_user_id'] as String?)
+          .whereType<String>()
+          .toList(growable: false);
+      if (followerIds.isEmpty) {
+        followerUsernames = const <String>[];
+      } else {
+        final profileRows = await client
+            .from('profiles')
+            .select('id, handle')
+            .inFilter('id', followerIds);
+        followerUsernames = (profileRows as List<dynamic>)
+            .whereType<Map<String, dynamic>>()
+            .map((row) => (row['handle'] as String? ?? '').trim())
+            .where((handle) => handle.isNotEmpty)
+            .toList(growable: false);
+      }
+    }
+
+    final commentsEntries = await Future.wait(
+      sessions.map((session) async {
+        final comments = await _communityModule.getSessionComments.load(
+          sessionId: session.id,
+        );
+        return MapEntry(session.id, comments);
+      }),
+    );
+    final likeEntries = await Future.wait(
+      sessions.map((session) async {
+        final likeState = await _communityModule.getSessionLikeState.load(
+          sessionId: session.id,
+          username: _normalizedUsername(_profileData.handle),
+        );
+        return MapEntry(session.id, likeState);
+      }),
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _communityUsers = users;
+      _communitySessions = sessions;
+      _followingUsernames = followingUsernames;
+      _followerUsernames = followerUsernames;
+      _sessionCommentsBySessionId =
+          Map<String, List<SessionComment>>.fromEntries(commentsEntries);
+      _sessionLikeStatesBySessionId = Map<String, SessionLikeState>.fromEntries(
+        likeEntries,
+      );
+    });
+  }
+
+  String _normalizedUsername(String handle) {
+    final cleaned = handle.replaceFirst('@', '').trim();
+    return cleaned.isEmpty ? 'you_rider' : cleaned.toLowerCase();
+  }
+
   Object? _encodeRecordedSessionInsights(Object value) {
     if (value is SessionInsightData) {
       return value.toJson();
@@ -186,6 +283,23 @@ class ProfilePageState extends State<ProfilePage> {
 
   ProfileSessionStatsSnapshot get _profileSessionStats =>
       ProfileSessionStatsAggregator.build(_recordedSessions);
+
+  ProfileCommunityStatsSnapshot get _profileCommunityStats =>
+      ProfileCommunityStatsAggregator.build(
+        profile: _profileData,
+        communityUsers: _communityUsers,
+        followingUsernames: _followingUsernames,
+        followerUsernames: _followerUsernames,
+        visibleSessions: _communitySessions,
+        commentsBySessionId: _sessionCommentsBySessionId,
+        likeStatesBySessionId: _sessionLikeStatesBySessionId,
+      );
+
+  ProfileKpiSnapshot get _profileKpis => ProfileKpiAggregator.build(
+    _profileData,
+    _profileSessionStats,
+    _profileCommunityStats,
+  );
 
   void _publishGearSetupsForSessions() {
     ProfileGearSetupCatalog.instance.replaceAll(
@@ -815,7 +929,7 @@ class ProfilePageState extends State<ProfilePage> {
           children: [
             ProfileOverviewSection(
               profile: _profileData,
-              stats: _profileSessionStats,
+              kpis: _profileKpis,
               onProfileUpdated: _updateProfileData,
             ),
             const SizedBox(height: AppSpacing.md),

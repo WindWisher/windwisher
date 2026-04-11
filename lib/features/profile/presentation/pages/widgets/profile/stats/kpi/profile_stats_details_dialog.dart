@@ -1,24 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
-import 'package:windwisher/features/profile/domain/entities/profile_session_stats_snapshot.dart';
-import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
+import 'package:windwisher/features/profile/domain/entities/profile_kpi_snapshot.dart';
 import 'package:windwisher/features/profile/presentation/pages/widgets/profile/stats/kpi/profile_kpi_catalog.dart';
 
-class ProfileStatsDetailsDialog extends StatelessWidget {
-  final UserProfileData profile;
-  final ProfileSessionStatsSnapshot stats;
+class ProfileStatsDetailsDialog extends StatefulWidget {
+  final ProfileKpiSnapshot kpis;
 
-  const ProfileStatsDetailsDialog({
-    super.key,
-    required this.profile,
-    required this.stats,
-  });
+  const ProfileStatsDetailsDialog({super.key, required this.kpis});
+
+  @override
+  State<ProfileStatsDetailsDialog> createState() =>
+      _ProfileStatsDetailsDialogState();
+}
+
+class _ProfileStatsDetailsDialogState extends State<ProfileStatsDetailsDialog> {
+  var _selectedIndex = 0;
+  var _contextExpanded = false;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
-    final dialogData = ProfileKpiCatalog.build(profile, stats);
+    final dialogData = ProfileKpiCatalog.build(widget.kpis);
+    final sections = dialogData.sections;
+    final selectedSection = sections[_selectedIndex];
 
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(
@@ -42,7 +47,7 @@ class ProfileStatsDetailsDialog extends StatelessWidget {
                         Text('KPIs del perfil', style: textTheme.titleLarge),
                         const SizedBox(height: 2),
                         Text(
-                          'Esqueleto completo de metricas de perfil, con datos reales y placeholders.',
+                          'Resumen extendido del perfil, combinado desde sesiones y comunidad.',
                           style: textTheme.bodySmall?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                           ),
@@ -58,39 +63,52 @@ class ProfileStatsDetailsDialog extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: AppSpacing.sm),
+              _SectionDropdown(
+                sections: sections,
+                selectedIndex: _selectedIndex,
+                onSelected: (index) {
+                  setState(() => _selectedIndex = index);
+                },
+              ),
+              const SizedBox(height: AppSpacing.sm),
               Flexible(
                 child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (
-                        var index = 0;
-                        index < dialogData.sections.length;
-                        index++
-                      ) ...[
-                        _KpiSection(section: dialogData.sections[index]),
-                        if (index != dialogData.sections.length - 1)
-                          const SizedBox(height: AppSpacing.md),
-                      ],
+                      _KpiSection(section: selectedSection),
                       const SizedBox(height: AppSpacing.md),
                       Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppSpacing.md),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Theme(
+                          data: Theme.of(
+                            context,
+                          ).copyWith(dividerColor: Colors.transparent),
+                          child: ExpansionTile(
+                            tilePadding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md,
+                              vertical: AppSpacing.xs,
+                            ),
+                            childrenPadding: const EdgeInsets.fromLTRB(
+                              AppSpacing.md,
+                              0,
+                              AppSpacing.md,
+                              AppSpacing.md,
+                            ),
+                            initiallyExpanded: _contextExpanded,
+                            onExpansionChanged: (expanded) {
+                              setState(() => _contextExpanded = expanded);
+                            },
+                            title: Text(
+                              'Contexto actual',
+                              style: textTheme.titleMedium,
+                            ),
+                            subtitle: Text(
+                              'Datos de apoyo del perfil fuera del bloque principal de KPIs.',
+                              style: textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
                             children: [
-                              Text(
-                                'Contexto actual',
-                                style: textTheme.titleMedium,
-                              ),
-                              const SizedBox(height: AppSpacing.xs),
-                              Text(
-                                'Bloque de apoyo para datos del perfil que no son KPI puros pero ayudan a leer el contexto.',
-                                style: textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                              const SizedBox(height: AppSpacing.sm),
                               for (final row in dialogData.contextRows)
                                 _ProfileStatsRow(item: row),
                             ],
@@ -109,6 +127,43 @@ class ProfileStatsDetailsDialog extends StatelessWidget {
   }
 }
 
+class _SectionDropdown extends StatelessWidget {
+  const _SectionDropdown({
+    required this.sections,
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  final List<ProfileKpiSectionData> sections;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<int>(
+      initialValue: selectedIndex,
+      decoration: const InputDecoration(
+        labelText: 'Categoria',
+        border: OutlineInputBorder(),
+        prefixIcon: Icon(Icons.tune_rounded),
+        isDense: true,
+      ),
+      items: [
+        for (var index = 0; index < sections.length; index++)
+          DropdownMenuItem<int>(
+            value: index,
+            child: Text(sections[index].title),
+          ),
+      ],
+      onChanged: (value) {
+        if (value != null) {
+          onSelected(value);
+        }
+      },
+    );
+  }
+}
+
 class _KpiSection extends StatelessWidget {
   const _KpiSection({required this.section});
 
@@ -118,6 +173,8 @@ class _KpiSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
+    final width = MediaQuery.sizeOf(context).width;
+    final crossAxisCount = width < 640 ? 1 : 2;
 
     return Card(
       child: Padding(
@@ -138,11 +195,11 @@ class _KpiSection extends StatelessWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: section.items.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
                 crossAxisSpacing: AppSpacing.xs,
                 mainAxisSpacing: AppSpacing.xs,
-                childAspectRatio: 1.7,
+                mainAxisExtent: 132,
               ),
               itemBuilder: (context, index) =>
                   _KpiTile(item: section.items[index]),
@@ -181,6 +238,8 @@ class _KpiTile extends StatelessWidget {
         children: [
           Text(
             item.label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: textTheme.bodySmall?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
@@ -200,6 +259,8 @@ class _KpiTile extends StatelessWidget {
             item.hydrated
                 ? 'Dato disponible'
                 : (item.pendingSourceLabel ?? 'Pendiente de hidratar'),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: textTheme.labelSmall?.copyWith(
               color: item.hydrated
                   ? const Color(0xFF2E7D32)

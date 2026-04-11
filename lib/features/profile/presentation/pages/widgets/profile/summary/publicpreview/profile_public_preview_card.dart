@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:windwisher/features/profile/application/profile_kpi_aggregator.dart';
+import 'package:windwisher/features/profile/domain/entities/profile_community_stats_snapshot.dart';
 import 'package:windwisher/features/profile/domain/entities/profile_session_stats_snapshot.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
 import 'package:windwisher/features/profile/presentation/pages/widgets/profile/profile_summary_card.dart';
@@ -35,7 +37,37 @@ class ProfilePublicPreviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return ProfileSummaryCard(
       profile: profile,
-      stats: ProfileSessionStatsSnapshot.fromLegacyProfile(profile),
+      kpis: ProfileKpiAggregator.build(
+        profile,
+        ProfileSessionStatsSnapshot.fromLegacyProfile(profile),
+        ProfileCommunityStatsSnapshot(
+          followersLabel: profile.followers,
+          followingLabel: profile.following,
+          rankingLabel: profile.ranking,
+          sharedSessionsCountLabel: '--',
+          commentsReceivedLabel: '--',
+          likesReceivedLabel: '--',
+          followersFollowingRatioLabel: '--',
+          commentsPerSharedSessionLabel: '--',
+          likesPerSharedSessionLabel: '--',
+          mostCommentedSessionLabel: '--',
+          mostLikedSessionLabel: '--',
+          engagementRateLabel: '--',
+          sharedSessionsLast30DaysLabel: '--',
+          commentsReceivedLast30DaysLabel: '--',
+          hasSharedSessions: false,
+          hasCommentsReceived: false,
+          hasLikesReceived: false,
+          hasFollowersFollowingRatio: false,
+          hasCommentsPerSharedSession: false,
+          hasLikesPerSharedSession: false,
+          hasMostCommentedSession: false,
+          hasMostLikedSession: false,
+          hasEngagementRate: false,
+          hasSharedSessionsLast30Days: false,
+          hasCommentsReceivedLast30Days: false,
+        ),
+      ),
       showPublicPreviewButton: false,
       showEditButton: false,
       onFollowersPressed: () => _openFollowers(context),

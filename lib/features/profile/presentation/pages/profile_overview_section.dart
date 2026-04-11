@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
-import 'package:windwisher/features/profile/domain/entities/profile_session_stats_snapshot.dart';
+import 'package:windwisher/features/profile/domain/entities/profile_kpi_snapshot.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile_aux_pages.dart';
 import 'package:windwisher/features/profile/presentation/pages/widgets/profile/stats/kpi/profile_stats_details_dialog.dart';
@@ -17,12 +17,12 @@ class ProfileOverviewSection extends StatelessWidget {
   const ProfileOverviewSection({
     super.key,
     required this.profile,
-    required this.stats,
+    required this.kpis,
     required this.onProfileUpdated,
   });
 
   final UserProfileData profile;
-  final ProfileSessionStatsSnapshot stats;
+  final ProfileKpiSnapshot kpis;
   final ValueChanged<UserProfileData> onProfileUpdated;
 
   @override
@@ -34,7 +34,7 @@ class ProfileOverviewSection extends StatelessWidget {
       children: [
         ProfileSummaryCard(
           profile: profile,
-          stats: stats,
+          kpis: kpis,
           onPublicPreviewPressed: () => _openPublicProfilePreview(context),
           onEditPressed: () => _openEditProfile(context),
           onFollowersPressed: () => _openFollowers(context),
@@ -42,8 +42,7 @@ class ProfileOverviewSection extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.md),
         ProfileSummaryOverviewCard(
-          profile: profile,
-          stats: stats,
+          kpis: kpis,
           onDetailsPressed: () => _openProfileStatsDetails(context),
         ),
         const SizedBox(height: AppSpacing.md),
@@ -425,7 +424,7 @@ class ProfileOverviewSection extends StatelessWidget {
   Future<void> _openProfileStatsDetails(BuildContext context) async {
     await showDialog<void>(
       context: context,
-      builder: (_) => ProfileStatsDetailsDialog(profile: profile, stats: stats),
+      builder: (_) => ProfileStatsDetailsDialog(kpis: kpis),
     );
   }
 

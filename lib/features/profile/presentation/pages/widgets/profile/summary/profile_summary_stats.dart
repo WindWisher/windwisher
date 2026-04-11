@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
-import 'package:windwisher/features/profile/domain/entities/profile_session_stats_snapshot.dart';
-import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
+import 'package:windwisher/features/profile/domain/entities/profile_kpi_snapshot.dart';
 
 class ProfileSummaryStats extends StatelessWidget {
   const ProfileSummaryStats({
     super.key,
-    required this.profile,
-    required this.stats,
+    required this.kpis,
     this.onFollowersPressed,
     this.onFollowingPressed,
   });
 
-  final UserProfileData profile;
-  final ProfileSessionStatsSnapshot stats;
+  final ProfileKpiSnapshot kpis;
   final VoidCallback? onFollowersPressed;
   final VoidCallback? onFollowingPressed;
 
@@ -27,12 +24,12 @@ class ProfileSummaryStats extends StatelessWidget {
           runSpacing: AppSpacing.sm,
           children: [
             _SocialCount(
-              value: profile.followers,
+              value: kpis.followersLabel,
               label: 'Seguidores',
               onPressed: onFollowersPressed,
             ),
             _SocialCount(
-              value: profile.following,
+              value: kpis.followingLabel,
               label: 'Siguiendo',
               onPressed: onFollowingPressed,
             ),
@@ -45,13 +42,13 @@ class ProfileSummaryStats extends StatelessWidget {
           children: [
             _StatPill(
               label: 'Sesiones',
-              value: stats.totalSessionsLabel,
+              value: kpis.totalSessionsLabel,
               icon: Icons.waves_rounded,
             ),
             _StatPill(
-              label: 'Spot base',
-              value: profile.baseSpot,
-              icon: Icons.place_outlined,
+              label: 'Horas en agua',
+              value: kpis.waterHoursLabel,
+              icon: Icons.schedule_rounded,
             ),
           ],
         ),
@@ -61,7 +58,7 @@ class ProfileSummaryStats extends StatelessWidget {
             Expanded(
               child: _StatPill(
                 label: 'Salto mas alto',
-                value: stats.highestJumpLabel,
+                value: kpis.highestJumpLabel,
                 icon: Icons.height_rounded,
                 expand: true,
               ),
@@ -70,7 +67,7 @@ class ProfileSummaryStats extends StatelessWidget {
             Expanded(
               child: _StatPill(
                 label: 'Max hangtime',
-                value: stats.maxHangtimeLabel,
+                value: kpis.maxHangtimeLabel,
                 icon: Icons.timer_outlined,
                 expand: true,
               ),

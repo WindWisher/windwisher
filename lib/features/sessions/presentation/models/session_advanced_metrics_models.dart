@@ -2,12 +2,39 @@ class SessionMetricKeys {
   const SessionMetricKeys._();
 
   static const String distanceTotal = 'distancia_total';
+  static const String distancePlaning = 'distancia_planeo';
+  static const String speedP95 = 'velocidad_p95';
   static const String maxSpeed = 'velocidad_max';
   static const String avgSpeed = 'velocidad_media';
   static const String totalJumps = 'saltos_totales';
   static const String highestJump = 'salto_mas_alto';
   static const String maxHangtime = 'hangtime_max';
+  static const String transitions = 'transiciones';
+  static const String transitionsPerHour = 'transiciones_hora';
+  static const String tackEfficiency = 'eficiencia_bordos';
+  static const String sweetspotTime = 'tiempo_sweetspot';
+  static const String impactScore = 'impact_score';
+  static const String takeoffSpeed = 'takeoff_speed';
+  static const String landingSpeed = 'landing_speed';
+  static const String cleanLandingRate = 'clean_landing_rate';
+  static const String speedVariability = 'variabilidad_velocidad';
+  static const String directionalStability = 'estabilidad_direccional';
+  static const String jibeQuality = 'calidad_jibe';
+  static const String transitionSpeedLoss = 'perdida_vel_transiciones';
+  static const String planingRecovery = 'recuperacion_planeo';
+  static const String jumpHeightConsistency = 'consistencia_alturas';
+  static const String sessionScore = 'session_score';
+  static const String netDrift = 'deriva_neta';
+  static const String areaCoverage = 'cobertura_area';
+  static const String fallsPerHour = 'caidas_hora';
+  static const String overpowerEvents = 'eventos_sobrepotencia';
+  static const String maxDistanceCoast = 'distancia_max_costa';
+  static const String riskZoneTime = 'tiempo_zona_riesgo';
+  static const String gpsQuality = 'calidad_gps';
+  static const String lostSamples = 'samples_perdidos';
   static const String bigAirScore = 'big_air_score';
+  static const String freerideScore = 'freeride_score';
+  static const String safetyScore = 'safety_score';
 }
 
 class SessionAdvancedMetrics {

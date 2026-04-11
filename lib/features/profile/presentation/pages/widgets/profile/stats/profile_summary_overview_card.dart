@@ -1,18 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
-import 'package:windwisher/features/profile/domain/entities/profile_session_stats_snapshot.dart';
-import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
+import 'package:windwisher/features/profile/domain/entities/profile_kpi_snapshot.dart';
 
 class ProfileSummaryOverviewCard extends StatelessWidget {
   const ProfileSummaryOverviewCard({
     super.key,
-    required this.profile,
-    required this.stats,
+    required this.kpis,
     required this.onDetailsPressed,
   });
 
-  final UserProfileData profile;
-  final ProfileSessionStatsSnapshot stats;
+  final ProfileKpiSnapshot kpis;
   final VoidCallback onDetailsPressed;
 
   @override
@@ -29,23 +26,23 @@ class ProfileSummaryOverviewCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             _ProfileSummaryOverviewRow(
               label: 'Sesiones totales',
-              value: stats.totalSessionsLabel,
+              value: kpis.totalSessionsLabel,
             ),
             _ProfileSummaryOverviewRow(
               label: 'Horas en agua',
-              value: stats.waterHoursLabel,
+              value: kpis.waterHoursLabel,
             ),
             _ProfileSummaryOverviewRow(
               label: 'Saltos registrados',
-              value: stats.totalJumpsLabel,
+              value: kpis.totalJumpsLabel,
             ),
             _ProfileSummaryOverviewRow(
               label: 'Salto mas alto',
-              value: stats.highestJumpLabel,
+              value: kpis.highestJumpLabel,
             ),
             _ProfileSummaryOverviewRow(
               label: 'Mejor spot',
-              value: profile.bestSpot,
+              value: kpis.bestSpotLabel,
             ),
             const SizedBox(height: AppSpacing.sm),
             Center(

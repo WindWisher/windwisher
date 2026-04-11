@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
-import 'package:windwisher/features/profile/domain/entities/profile_session_stats_snapshot.dart';
+import 'package:windwisher/features/profile/domain/entities/profile_kpi_snapshot.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
 import 'package:windwisher/features/profile/presentation/pages/widgets/profile/summary/profile_summary_avatar.dart';
 import 'package:windwisher/features/profile/presentation/pages/widgets/profile/summary/profile_summary_banner.dart';
@@ -14,7 +14,7 @@ class ProfileSummaryCard extends StatelessWidget {
   const ProfileSummaryCard({
     super.key,
     required this.profile,
-    required this.stats,
+    required this.kpis,
     this.onPublicPreviewPressed,
     this.onEditPressed,
     this.onFollowersPressed,
@@ -24,7 +24,7 @@ class ProfileSummaryCard extends StatelessWidget {
   });
 
   final UserProfileData profile;
-  final ProfileSessionStatsSnapshot stats;
+  final ProfileKpiSnapshot kpis;
   final VoidCallback? onPublicPreviewPressed;
   final VoidCallback? onEditPressed;
   final VoidCallback? onFollowersPressed;
@@ -91,6 +91,27 @@ class ProfileSummaryCard extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (kpis.rankingLabel != '--') ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.emoji_events_outlined,
+                        size: 16,
+                        color: colorScheme.tertiary,
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        'Ranking global ${kpis.rankingLabel}',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.sm),
                 Text(
                   profile.publicTagline,
@@ -101,8 +122,7 @@ class ProfileSummaryCard extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 ProfileSummaryStats(
-                  profile: profile,
-                  stats: stats,
+                  kpis: kpis,
                   onFollowersPressed: onFollowersPressed,
                   onFollowingPressed: onFollowingPressed,
                 ),

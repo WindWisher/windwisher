@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 120h 24m`.
+- `Total historico minimo consolidado del proyecto: 126h 24m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -13,10 +13,11 @@
   - bloque consolidado adicional en `2026-04-08`: `+3h` estimadas
   - bloque consolidado adicional en `2026-04-09`: `+2h` estimadas
   - bloque consolidado adicional en `2026-04-11`: `+8h` estimadas
+  - bloque consolidado adicional en `2026-04-11`: `+6h` estimadas
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-04-11`: `+8h` estimadas.
+  - ultima consolidacion manual anadida el `2026-04-11`: `+6h` estimadas.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
 
@@ -66,6 +67,35 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
   - `test/features/auth/presentation/pages/login_page_test.dart`
   - `test/widget_test.dart`
 - Verificacion ejecutada: `flutter test -r expanded && flutter analyze` (ok).
+
+### 2026-04-11 - Perfil KPI engine, comunidad real y dialogo de KPIs
+
+- Separada la capa de `Profile KPIs` para que `Perfil` no mezcle directamente `UserProfileData`, sesiones agregadas y comunidad en la UI.
+- Anadidos modelos/agregadores dedicados para comunidad y KPIs de perfil:
+  - `lib/features/profile/domain/entities/profile_community_stats_snapshot.dart`
+  - `lib/features/profile/application/profile_community_stats_aggregator.dart`
+  - `lib/features/profile/domain/entities/profile_kpi_snapshot.dart`
+  - `lib/features/profile/application/profile_kpi_aggregator.dart`
+- `ProfilePage` ahora hidrata fuentes reales de comunidad/social (seguidores, siguiendo, ranking, sesiones compartidas, comentarios y likes) y las integra con las stats deportivas del perfil.
+- Hidratados KPIs sociales reales en perfil:
+  - `Seguidores`, `Siguiendo`, `Ranking global`, `Sesiones compartidas`
+  - `Comentarios recibidos`, `Likes recibidos`
+  - `Ratio seguidores/siguiendo`, `Comentarios por sesion compartida`, `Likes por sesion compartida`
+  - `Sesion mas comentada`, `Sesion mas likeada`, `Tasa de interaccion`
+  - `Sesiones compartidas en 30 dias`, `Comentarios recibidos en 30 dias`
+- Hidratado un bloque amplio de KPIs deportivos y tecnicos desde `advanced metrics` agregados de sesion:
+  - velocidad `p95`, planeo, `takeoff/landing`, `clean landing rate`
+  - transiciones, eficiencia de bordos, `sweet spot`, impacto, `Big Air`, `Freeride`, `Safety`, `Session score`
+  - cobertura, deriva, distancia a costa, tiempo en zona de riesgo, calidad GPS, sobrepotencia, caidas por hora y samples perdidos
+- Reorganizado el dialogo de KPIs del perfil para mejorar lectura y densidad:
+  - selector de categoria en desplegable
+  - una sola seccion visible cada vez
+  - `Contexto actual` plegable
+  - copy de categorias refinado para sonar mas a producto y menos a bloque tecnico
+- La tarjeta publica del perfil reutiliza la misma base de summary y mantiene followers/following/ranking visibles de forma consistente.
+- Validacion ejecutada:
+  - `flutter analyze` limpio
+  - solo permanece el warning externo conocido de `webview_flutter:macos`
 
 ### 2026-04-11 - Perfil y sessions unificados en torno a advanced metrics
 
