@@ -3,11 +3,13 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/features/profile/domain/entities/profile_gear_entities.dart';
 import 'package:windwisher/features/profile/domain/entities/profile_kpi_snapshot.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/user/widgets/summary/profile_summary_avatar.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/user/widgets/summary/profile_summary_banner.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/user/widgets/summary/profile_summary_edit_button.dart';
+import 'package:windwisher/features/profile/presentation/pages/profile/user/widgets/summary/profile_summary_gear_setups.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/user/widgets/summary/profile_summary_stats.dart';
 
 class ProfileSummaryCard extends StatelessWidget {
@@ -19,6 +21,14 @@ class ProfileSummaryCard extends StatelessWidget {
     this.onEditPressed,
     this.onFollowersPressed,
     this.onFollowingPressed,
+    this.savedGearSetups = const <GearSetup>[],
+    this.findKite,
+    this.findBar,
+    this.findBoard,
+    this.findHarness,
+    this.findWetsuit,
+    this.findHelmet,
+    this.findVest,
     this.showPublicPreviewButton = true,
     this.showEditButton = true,
   });
@@ -29,6 +39,14 @@ class ProfileSummaryCard extends StatelessWidget {
   final VoidCallback? onEditPressed;
   final VoidCallback? onFollowersPressed;
   final VoidCallback? onFollowingPressed;
+  final List<GearSetup> savedGearSetups;
+  final KiteItem? Function(String id)? findKite;
+  final BarItem? Function(String id)? findBar;
+  final BoardItem? Function(String id)? findBoard;
+  final HarnessItem? Function(String id)? findHarness;
+  final WetsuitItem? Function(String id)? findWetsuit;
+  final HelmetItem? Function(String id)? findHelmet;
+  final VestItem? Function(String id)? findVest;
   final bool showPublicPreviewButton;
   final bool showEditButton;
 
@@ -126,6 +144,26 @@ class ProfileSummaryCard extends StatelessWidget {
                   onFollowersPressed: onFollowersPressed,
                   onFollowingPressed: onFollowingPressed,
                 ),
+                if (savedGearSetups.isNotEmpty &&
+                    findKite != null &&
+                    findBar != null &&
+                    findBoard != null &&
+                    findHarness != null &&
+                    findWetsuit != null &&
+                    findHelmet != null &&
+                    findVest != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  ProfileSummaryGearSetups(
+                    savedGearSetups: savedGearSetups,
+                    findKite: findKite!,
+                    findBar: findBar!,
+                    findBoard: findBoard!,
+                    findHarness: findHarness!,
+                    findWetsuit: findWetsuit!,
+                    findHelmet: findHelmet!,
+                    findVest: findVest!,
+                  ),
+                ],
                 if (showEditButton && onEditPressed != null) ...[
                   const SizedBox(height: AppSpacing.sm),
                   ProfileSummaryEditButton(onPressed: onEditPressed!),

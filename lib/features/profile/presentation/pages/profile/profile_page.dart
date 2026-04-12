@@ -89,6 +89,7 @@ class ProfilePageState extends State<ProfilePage> {
   final TextEditingController _kiteYearController = TextEditingController(
     text: DateTime.now().year.toString(),
   );
+  final TextEditingController _kitePriceController = TextEditingController();
   final TextEditingController _barBrandController = TextEditingController();
   final TextEditingController _barModelController = TextEditingController();
   final TextEditingController _barLineLengthController = TextEditingController(
@@ -100,12 +101,14 @@ class ProfilePageState extends State<ProfilePage> {
   final TextEditingController _barYearController = TextEditingController(
     text: DateTime.now().year.toString(),
   );
+  final TextEditingController _barPriceController = TextEditingController();
   final TextEditingController _boardBrandController = TextEditingController();
   final TextEditingController _boardModelController = TextEditingController();
   final TextEditingController _boardSizeController = TextEditingController();
   final TextEditingController _boardYearController = TextEditingController(
     text: DateTime.now().year.toString(),
   );
+  final TextEditingController _boardPriceController = TextEditingController();
   final TextEditingController _harnessBrandController = TextEditingController();
   final TextEditingController _harnessModelController = TextEditingController();
   final TextEditingController _harnessSizeController = TextEditingController(
@@ -114,6 +117,7 @@ class ProfilePageState extends State<ProfilePage> {
   final TextEditingController _harnessYearController = TextEditingController(
     text: DateTime.now().year.toString(),
   );
+  final TextEditingController _harnessPriceController = TextEditingController();
   final TextEditingController _wetsuitBrandController = TextEditingController();
   final TextEditingController _wetsuitModelController = TextEditingController();
   final TextEditingController _wetsuitThicknessController =
@@ -124,11 +128,13 @@ class ProfilePageState extends State<ProfilePage> {
   final TextEditingController _wetsuitYearController = TextEditingController(
     text: DateTime.now().year.toString(),
   );
+  final TextEditingController _wetsuitPriceController = TextEditingController();
   final TextEditingController _helmetBrandController = TextEditingController();
   final TextEditingController _helmetModelController = TextEditingController();
   final TextEditingController _helmetYearController = TextEditingController(
     text: DateTime.now().year.toString(),
   );
+  final TextEditingController _helmetPriceController = TextEditingController();
   final TextEditingController _vestBrandController = TextEditingController();
   final TextEditingController _vestModelController = TextEditingController();
   final TextEditingController _vestSizeController = TextEditingController(
@@ -137,6 +143,7 @@ class ProfilePageState extends State<ProfilePage> {
   final TextEditingController _vestYearController = TextEditingController(
     text: DateTime.now().year.toString(),
   );
+  final TextEditingController _vestPriceController = TextEditingController();
 
   @override
   void initState() {
@@ -445,31 +452,38 @@ class ProfilePageState extends State<ProfilePage> {
       kiteModelController: _kiteModelController,
       kiteSizeController: _kiteSizeController,
       kiteYearController: _kiteYearController,
+      kitePriceController: _kitePriceController,
       barBrandController: _barBrandController,
       barModelController: _barModelController,
       barLineLengthController: _barLineLengthController,
       barWidthController: _barWidthController,
       barYearController: _barYearController,
+      barPriceController: _barPriceController,
       boardBrandController: _boardBrandController,
       boardModelController: _boardModelController,
       boardSizeController: _boardSizeController,
       boardYearController: _boardYearController,
+      boardPriceController: _boardPriceController,
       harnessBrandController: _harnessBrandController,
       harnessModelController: _harnessModelController,
       harnessSizeController: _harnessSizeController,
       harnessYearController: _harnessYearController,
+      harnessPriceController: _harnessPriceController,
       wetsuitBrandController: _wetsuitBrandController,
       wetsuitModelController: _wetsuitModelController,
       wetsuitThicknessController: _wetsuitThicknessController,
       wetsuitSizeController: _wetsuitSizeController,
       wetsuitYearController: _wetsuitYearController,
+      wetsuitPriceController: _wetsuitPriceController,
       helmetBrandController: _helmetBrandController,
       helmetModelController: _helmetModelController,
       helmetYearController: _helmetYearController,
+      helmetPriceController: _helmetPriceController,
       vestBrandController: _vestBrandController,
       vestModelController: _vestModelController,
       vestSizeController: _vestSizeController,
       vestYearController: _vestYearController,
+      vestPriceController: _vestPriceController,
       selectedBoardType: () => _selectedBoardType,
       setSelectedBoardType: (value) => _selectedBoardType = value,
       selectedKiteForSetupId: () => _selectedKiteForSetupId,
@@ -614,31 +628,38 @@ class ProfilePageState extends State<ProfilePage> {
         kiteModelController: _kiteModelController,
         kiteSizeController: _kiteSizeController,
         kiteYearController: _kiteYearController,
+        kitePriceController: _kitePriceController,
         barBrandController: _barBrandController,
         barModelController: _barModelController,
         barLineLengthController: _barLineLengthController,
         barWidthController: _barWidthController,
         barYearController: _barYearController,
+        barPriceController: _barPriceController,
         boardBrandController: _boardBrandController,
         boardModelController: _boardModelController,
         boardSizeController: _boardSizeController,
         boardYearController: _boardYearController,
+        boardPriceController: _boardPriceController,
         harnessBrandController: _harnessBrandController,
         harnessModelController: _harnessModelController,
         harnessSizeController: _harnessSizeController,
         harnessYearController: _harnessYearController,
+        harnessPriceController: _harnessPriceController,
         wetsuitBrandController: _wetsuitBrandController,
         wetsuitModelController: _wetsuitModelController,
         wetsuitThicknessController: _wetsuitThicknessController,
         wetsuitSizeController: _wetsuitSizeController,
         wetsuitYearController: _wetsuitYearController,
+        wetsuitPriceController: _wetsuitPriceController,
         helmetBrandController: _helmetBrandController,
         helmetModelController: _helmetModelController,
         helmetYearController: _helmetYearController,
+        helmetPriceController: _helmetPriceController,
         vestBrandController: _vestBrandController,
         vestModelController: _vestModelController,
         vestSizeController: _vestSizeController,
         vestYearController: _vestYearController,
+        vestPriceController: _vestPriceController,
       ),
       inventory: ProfileGearDialogInventory(
         savedKites: () => _savedKites,
@@ -1014,6 +1035,14 @@ class ProfilePageState extends State<ProfilePage> {
                       profile: _profileData,
                       kpis: _profileKpis,
                       onProfileUpdated: _updateProfileData,
+                      savedGearSetups: _savedGearSetups,
+                      findKite: _findKite,
+                      findBar: _findBar,
+                      findBoard: _findBoard,
+                      findHarness: _findHarness,
+                      findWetsuit: _findWetsuit,
+                      findHelmet: _findHelmet,
+                      findVest: _findVest,
                     )
                   : ProfileGearSection(
                       key: const ValueKey('perfil_equipo_section'),
@@ -1064,6 +1093,7 @@ class ProfilePageState extends State<ProfilePage> {
                         savedWetsuits: _savedWetsuits,
                         savedHelmets: _savedHelmets,
                         savedVests: _savedVests,
+                        recordedSessions: _recordedSessions,
                       ),
                     ),
             ),

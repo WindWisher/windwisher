@@ -10,6 +10,7 @@ class ProfileBarForm extends StatelessWidget {
     required this.lineLengthController,
     required this.widthController,
     required this.yearController,
+    required this.priceController,
   });
 
   final TextEditingController brandController;
@@ -17,6 +18,7 @@ class ProfileBarForm extends StatelessWidget {
   final TextEditingController lineLengthController;
   final TextEditingController widthController;
   final TextEditingController yearController;
+  final TextEditingController priceController;
 
   @override
   Widget build(BuildContext context) {
@@ -50,6 +52,12 @@ class ProfileBarForm extends StatelessWidget {
             controller: yearController,
             label: 'Ano barra',
             keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          ProfileGearTextField(
+            controller: priceController,
+            label: 'Precio barra (EUR)',
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
           ),
         ],
       ),

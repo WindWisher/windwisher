@@ -7,6 +7,7 @@ extension ProfileGearItemDialogs on ProfileGearDialogsCoordinator {
       kiteModelController.text = existing.model;
       kiteSizeController.text = existing.sizeMeters;
       kiteYearController.text = existing.year;
+      kitePriceController.text = existing.priceEur;
     }
     await showDialog<void>(
       context: context,
@@ -18,6 +19,7 @@ extension ProfileGearItemDialogs on ProfileGearDialogsCoordinator {
             modelController: kiteModelController,
             sizeController: kiteSizeController,
             yearController: kiteYearController,
+            priceController: kitePriceController,
           ),
           actions: [
             ProfileGearDialogActions(
@@ -41,6 +43,7 @@ extension ProfileGearItemDialogs on ProfileGearDialogsCoordinator {
       barLineLengthController.text = existing.lineLengthMeters;
       barWidthController.text = existing.widthCm;
       barYearController.text = existing.year;
+      barPriceController.text = existing.priceEur;
     }
     await showDialog<void>(
       context: context,
@@ -53,6 +56,7 @@ extension ProfileGearItemDialogs on ProfileGearDialogsCoordinator {
             lineLengthController: barLineLengthController,
             widthController: barWidthController,
             yearController: barYearController,
+            priceController: barPriceController,
           ),
           actions: [
             ProfileGearDialogActions(
@@ -76,6 +80,7 @@ extension ProfileGearItemDialogs on ProfileGearDialogsCoordinator {
       boardModelController.text = existing.model;
       boardSizeController.text = existing.sizeCm;
       boardYearController.text = existing.year;
+      boardPriceController.text = existing.priceEur;
     }
     await showDialog<void>(
       context: context,
@@ -94,6 +99,7 @@ extension ProfileGearItemDialogs on ProfileGearDialogsCoordinator {
                 },
                 sizeController: boardSizeController,
                 yearController: boardYearController,
+                priceController: boardPriceController,
               ),
               actions: [
                 ProfileGearDialogActions(
@@ -119,6 +125,7 @@ extension ProfileGearItemDialogs on ProfileGearDialogsCoordinator {
       harnessModelController.text = existing.model;
       harnessSizeController.text = existing.size;
       harnessYearController.text = existing.year;
+      harnessPriceController.text = existing.priceEur;
     }
     await showDialog<void>(
       context: context,
@@ -130,6 +137,7 @@ extension ProfileGearItemDialogs on ProfileGearDialogsCoordinator {
             modelController: harnessModelController,
             sizeController: harnessSizeController,
             yearController: harnessYearController,
+            priceController: harnessPriceController,
           ),
           actions: [
             ProfileGearDialogActions(
@@ -153,6 +161,7 @@ extension ProfileGearItemDialogs on ProfileGearDialogsCoordinator {
       wetsuitThicknessController.text = existing.thickness;
       wetsuitSizeController.text = existing.size;
       wetsuitYearController.text = existing.year;
+      wetsuitPriceController.text = existing.priceEur;
     }
     await showDialog<void>(
       context: context,
@@ -165,6 +174,7 @@ extension ProfileGearItemDialogs on ProfileGearDialogsCoordinator {
             thicknessController: wetsuitThicknessController,
             sizeController: wetsuitSizeController,
             yearController: wetsuitYearController,
+            priceController: wetsuitPriceController,
           ),
           actions: [
             ProfileGearDialogActions(
@@ -186,6 +196,7 @@ extension ProfileGearItemDialogs on ProfileGearDialogsCoordinator {
       helmetBrandController.text = existing.brand;
       helmetModelController.text = existing.model;
       helmetYearController.text = existing.year;
+      helmetPriceController.text = existing.priceEur;
     }
     await showDialog<void>(
       context: context,
@@ -196,6 +207,7 @@ extension ProfileGearItemDialogs on ProfileGearDialogsCoordinator {
             brandController: helmetBrandController,
             modelController: helmetModelController,
             yearController: helmetYearController,
+            priceController: helmetPriceController,
           ),
           actions: [
             ProfileGearDialogActions(
@@ -218,6 +230,7 @@ extension ProfileGearItemDialogs on ProfileGearDialogsCoordinator {
       vestModelController.text = existing.model;
       vestSizeController.text = existing.size;
       vestYearController.text = existing.year;
+      vestPriceController.text = existing.priceEur;
     }
     await showDialog<void>(
       context: context,
@@ -229,6 +242,7 @@ extension ProfileGearItemDialogs on ProfileGearDialogsCoordinator {
             modelController: vestModelController,
             sizeController: vestSizeController,
             yearController: vestYearController,
+            priceController: vestPriceController,
           ),
           actions: [
             ProfileGearDialogActions(

@@ -5,6 +5,7 @@ class KiteItem {
     required this.model,
     required this.sizeMeters,
     required this.year,
+    this.priceEur = '',
   });
 
   final String id;
@@ -12,6 +13,7 @@ class KiteItem {
   final String model;
   final String sizeMeters;
   final String year;
+  final String priceEur;
 }
 
 class BarItem {
@@ -22,6 +24,7 @@ class BarItem {
     required this.lineLengthMeters,
     required this.widthCm,
     required this.year,
+    this.priceEur = '',
   });
 
   final String id;
@@ -30,6 +33,7 @@ class BarItem {
   final String lineLengthMeters;
   final String widthCm;
   final String year;
+  final String priceEur;
 }
 
 class BoardItem {
@@ -40,6 +44,7 @@ class BoardItem {
     required this.type,
     required this.sizeCm,
     required this.year,
+    this.priceEur = '',
   });
 
   final String id;
@@ -48,6 +53,7 @@ class BoardItem {
   final String type;
   final String sizeCm;
   final String year;
+  final String priceEur;
 }
 
 class HarnessItem {
@@ -57,6 +63,7 @@ class HarnessItem {
     required this.model,
     required this.size,
     required this.year,
+    this.priceEur = '',
   });
 
   final String id;
@@ -64,6 +71,7 @@ class HarnessItem {
   final String model;
   final String size;
   final String year;
+  final String priceEur;
 }
 
 class WetsuitItem {
@@ -74,6 +82,7 @@ class WetsuitItem {
     required this.thickness,
     required this.size,
     required this.year,
+    this.priceEur = '',
   });
 
   final String id;
@@ -82,6 +91,7 @@ class WetsuitItem {
   final String thickness;
   final String size;
   final String year;
+  final String priceEur;
 }
 
 class HelmetItem {
@@ -90,12 +100,14 @@ class HelmetItem {
     required this.brand,
     required this.model,
     required this.year,
+    this.priceEur = '',
   });
 
   final String id;
   final String brand;
   final String model;
   final String year;
+  final String priceEur;
 }
 
 class VestItem {
@@ -105,6 +117,7 @@ class VestItem {
     required this.model,
     required this.size,
     required this.year,
+    this.priceEur = '',
   });
 
   final String id;
@@ -112,6 +125,7 @@ class VestItem {
   final String model;
   final String size;
   final String year;
+  final String priceEur;
 }
 
 class GearSetup {

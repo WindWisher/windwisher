@@ -14,31 +14,38 @@ class ProfileGearActionsHandler {
     required this.kiteModelController,
     required this.kiteSizeController,
     required this.kiteYearController,
+    required this.kitePriceController,
     required this.barBrandController,
     required this.barModelController,
     required this.barLineLengthController,
     required this.barWidthController,
     required this.barYearController,
+    required this.barPriceController,
     required this.boardBrandController,
     required this.boardModelController,
     required this.boardSizeController,
     required this.boardYearController,
+    required this.boardPriceController,
     required this.harnessBrandController,
     required this.harnessModelController,
     required this.harnessSizeController,
     required this.harnessYearController,
+    required this.harnessPriceController,
     required this.wetsuitBrandController,
     required this.wetsuitModelController,
     required this.wetsuitThicknessController,
     required this.wetsuitSizeController,
     required this.wetsuitYearController,
+    required this.wetsuitPriceController,
     required this.helmetBrandController,
     required this.helmetModelController,
     required this.helmetYearController,
+    required this.helmetPriceController,
     required this.vestBrandController,
     required this.vestModelController,
     required this.vestSizeController,
     required this.vestYearController,
+    required this.vestPriceController,
     required this.selectedBoardType,
     required this.setSelectedBoardType,
     required this.selectedKiteForSetupId,
@@ -60,31 +67,38 @@ class ProfileGearActionsHandler {
   final TextEditingController kiteModelController;
   final TextEditingController kiteSizeController;
   final TextEditingController kiteYearController;
+  final TextEditingController kitePriceController;
   final TextEditingController barBrandController;
   final TextEditingController barModelController;
   final TextEditingController barLineLengthController;
   final TextEditingController barWidthController;
   final TextEditingController barYearController;
+  final TextEditingController barPriceController;
   final TextEditingController boardBrandController;
   final TextEditingController boardModelController;
   final TextEditingController boardSizeController;
   final TextEditingController boardYearController;
+  final TextEditingController boardPriceController;
   final TextEditingController harnessBrandController;
   final TextEditingController harnessModelController;
   final TextEditingController harnessSizeController;
   final TextEditingController harnessYearController;
+  final TextEditingController harnessPriceController;
   final TextEditingController wetsuitBrandController;
   final TextEditingController wetsuitModelController;
   final TextEditingController wetsuitThicknessController;
   final TextEditingController wetsuitSizeController;
   final TextEditingController wetsuitYearController;
+  final TextEditingController wetsuitPriceController;
   final TextEditingController helmetBrandController;
   final TextEditingController helmetModelController;
   final TextEditingController helmetYearController;
+  final TextEditingController helmetPriceController;
   final TextEditingController vestBrandController;
   final TextEditingController vestModelController;
   final TextEditingController vestSizeController;
   final TextEditingController vestYearController;
+  final TextEditingController vestPriceController;
 
   final String Function() selectedBoardType;
   final ValueChanged<String> setSelectedBoardType;
@@ -114,6 +128,7 @@ class ProfileGearActionsHandler {
       model: kiteModelController.text.trim(),
       sizeMeters: kiteSizeController.text.trim(),
       year: kiteYearController.text.trim(),
+      priceEur: kitePriceController.text.trim(),
     );
     mutateState(() {
       gearController.saveKite(kite);
@@ -121,6 +136,7 @@ class ProfileGearActionsHandler {
       kiteModelController.clear();
       kiteSizeController.text = '12';
       kiteYearController.text = DateTime.now().year.toString();
+      kitePriceController.clear();
     });
   }
 
@@ -133,6 +149,7 @@ class ProfileGearActionsHandler {
       lineLengthMeters: barLineLengthController.text.trim(),
       widthCm: barWidthController.text.trim(),
       year: barYearController.text.trim(),
+      priceEur: barPriceController.text.trim(),
     );
     mutateState(() {
       gearController.saveBar(bar);
@@ -141,6 +158,7 @@ class ProfileGearActionsHandler {
       barLineLengthController.text = '22';
       barWidthController.text = '50';
       barYearController.text = DateTime.now().year.toString();
+      barPriceController.clear();
     });
   }
 
@@ -153,6 +171,7 @@ class ProfileGearActionsHandler {
       type: selectedBoardType(),
       sizeCm: boardSizeController.text.trim(),
       year: boardYearController.text.trim(),
+      priceEur: boardPriceController.text.trim(),
     );
     mutateState(() {
       gearController.saveBoard(board);
@@ -161,6 +180,7 @@ class ProfileGearActionsHandler {
       boardSizeController.clear();
       boardYearController.text = DateTime.now().year.toString();
       setSelectedBoardType('Twin tip');
+      boardPriceController.clear();
     });
   }
 
@@ -172,6 +192,7 @@ class ProfileGearActionsHandler {
       model: harnessModelController.text.trim(),
       size: harnessSizeController.text.trim(),
       year: harnessYearController.text.trim(),
+      priceEur: harnessPriceController.text.trim(),
     );
     mutateState(() {
       gearController.saveHarness(harness);
@@ -179,6 +200,7 @@ class ProfileGearActionsHandler {
       harnessModelController.clear();
       harnessSizeController.text = 'M';
       harnessYearController.text = DateTime.now().year.toString();
+      harnessPriceController.clear();
     });
   }
 
@@ -191,6 +213,7 @@ class ProfileGearActionsHandler {
       thickness: wetsuitThicknessController.text.trim(),
       size: wetsuitSizeController.text.trim(),
       year: wetsuitYearController.text.trim(),
+      priceEur: wetsuitPriceController.text.trim(),
     );
     mutateState(() {
       gearController.saveWetsuit(wetsuit);
@@ -199,6 +222,7 @@ class ProfileGearActionsHandler {
       wetsuitThicknessController.text = '4/3';
       wetsuitSizeController.text = 'M';
       wetsuitYearController.text = DateTime.now().year.toString();
+      wetsuitPriceController.clear();
     });
   }
 
@@ -209,12 +233,14 @@ class ProfileGearActionsHandler {
       brand: helmetBrandController.text.trim(),
       model: helmetModelController.text.trim(),
       year: helmetYearController.text.trim(),
+      priceEur: helmetPriceController.text.trim(),
     );
     mutateState(() {
       gearController.saveHelmet(helmet);
       helmetBrandController.clear();
       helmetModelController.clear();
       helmetYearController.text = DateTime.now().year.toString();
+      helmetPriceController.clear();
     });
   }
 
@@ -226,6 +252,7 @@ class ProfileGearActionsHandler {
       model: vestModelController.text.trim(),
       size: vestSizeController.text.trim(),
       year: vestYearController.text.trim(),
+      priceEur: vestPriceController.text.trim(),
     );
     mutateState(() {
       gearController.saveVest(vest);
@@ -233,6 +260,7 @@ class ProfileGearActionsHandler {
       vestModelController.clear();
       vestSizeController.text = 'M';
       vestYearController.text = DateTime.now().year.toString();
+      vestPriceController.clear();
     });
   }
 

@@ -71,6 +71,7 @@ class ProfileGearSection extends StatelessWidget {
           savedWetsuits: usage.savedWetsuits,
           savedHelmets: usage.savedHelmets,
           savedVests: usage.savedVests,
+          recordedSessions: usage.recordedSessions,
         ),
       ],
     );

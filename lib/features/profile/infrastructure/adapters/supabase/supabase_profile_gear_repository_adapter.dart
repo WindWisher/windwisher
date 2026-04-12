@@ -6,7 +6,8 @@ import 'package:windwisher/features/profile/domain/ports/out/profile_gear_reposi
 import 'package:windwisher/features/profile/infrastructure/adapters/in_memory/in_memory_profile_gear_repository_adapter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort {
+class SupabaseProfileGearRepositoryAdapter
+    implements ProfileGearRepositoryPort {
   SupabaseProfileGearRepositoryAdapter({SupabaseClient? client})
     : _client = client ?? Supabase.instance.client;
 
@@ -22,6 +23,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
   final SupabaseClient _client;
   final InMemoryProfileGearRepositoryAdapter _memory =
       InMemoryProfileGearRepositoryAdapter();
+  bool _priceColumnsAvailable = true;
 
   @override
   Future<void> hydrate() async {
@@ -35,7 +37,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
     final kiteRows = await _selectUserRows(
       _kitesTable,
       user.id,
-      'id, brand, model, size_meters, year',
+      _gearItemColumns('id, brand, model, size_meters, year'),
     );
     for (final row in kiteRows) {
       final item = _hydrateKiteRow(row);
@@ -47,7 +49,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
     final barRows = await _selectUserRows(
       _barsTable,
       user.id,
-      'id, brand, model, line_length_meters, width_cm, year',
+      _gearItemColumns('id, brand, model, line_length_meters, width_cm, year'),
     );
     for (final row in barRows) {
       final item = _hydrateBarRow(row);
@@ -59,7 +61,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
     final boardRows = await _selectUserRows(
       _boardsTable,
       user.id,
-      'id, brand, model, type, size_cm, year',
+      _gearItemColumns('id, brand, model, type, size_cm, year'),
     );
     for (final row in boardRows) {
       final item = _hydrateBoardRow(row);
@@ -71,7 +73,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
     final harnessRows = await _selectUserRows(
       _harnessesTable,
       user.id,
-      'id, brand, model, size, year',
+      _gearItemColumns('id, brand, model, size, year'),
     );
     for (final row in harnessRows) {
       final item = _hydrateHarnessRow(row);
@@ -83,7 +85,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
     final wetsuitRows = await _selectUserRows(
       _wetsuitsTable,
       user.id,
-      'id, brand, model, thickness, size, year',
+      _gearItemColumns('id, brand, model, thickness, size, year'),
     );
     for (final row in wetsuitRows) {
       final item = _hydrateWetsuitRow(row);
@@ -95,7 +97,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
     final helmetRows = await _selectUserRows(
       _helmetsTable,
       user.id,
-      'id, brand, model, year',
+      _gearItemColumns('id, brand, model, year'),
     );
     for (final row in helmetRows) {
       final item = _hydrateHelmetRow(row);
@@ -107,7 +109,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
     final vestRows = await _selectUserRows(
       _vestsTable,
       user.id,
-      'id, brand, model, size, year',
+      _gearItemColumns('id, brand, model, size, year'),
     );
     for (final row in vestRows) {
       final item = _hydrateVestRow(row);
@@ -154,9 +156,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
         _memory.saveWetsuit(snapshot.wetsuit!);
       }
       if (snapshot.helmet != null &&
-          !_memory.getHelmets().any(
-            (item) => item.id == snapshot.helmet!.id,
-          )) {
+          !_memory.getHelmets().any((item) => item.id == snapshot.helmet!.id)) {
         _memory.saveHelmet(snapshot.helmet!);
       }
       if (snapshot.vest != null &&
@@ -332,18 +332,71 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
     }
   }
 
+  String _gearItemColumns(String baseColumns) {
+    return _priceColumnsAvailable ? '$baseColumns, price_eur' : baseColumns;
+  }
+
+  String _withoutPriceColumn(String columns) {
+    return columns
+        .replaceAll(', price_eur', '')
+        .replaceAll('price_eur, ', '')
+        .trim();
+  }
+
+  bool _isMissingPriceColumnError(Object error) {
+    final message = error.toString().toLowerCase();
+    return message.contains('price_eur') &&
+        (message.contains('column') ||
+            message.contains('schema cache') ||
+            message.contains('select') ||
+            message.contains('upsert'));
+  }
+
   Future<List<Map<String, dynamic>>> _selectUserRows(
     String table,
     String userId,
     String columns,
   ) async {
-    final rows = await _client
-        .from(table)
-        .select(columns)
-        .eq('user_id', userId);
-    return (rows as List<dynamic>).whereType<Map<String, dynamic>>().toList(
-      growable: false,
-    );
+    try {
+      final rows = await _client
+          .from(table)
+          .select(columns)
+          .eq('user_id', userId);
+      return (rows as List<dynamic>).whereType<Map<String, dynamic>>().toList(
+        growable: false,
+      );
+    } catch (error) {
+      if (_priceColumnsAvailable && _isMissingPriceColumnError(error)) {
+        _priceColumnsAvailable = false;
+        final fallbackColumns = _withoutPriceColumn(columns);
+        final rows = await _client
+            .from(table)
+            .select(fallbackColumns)
+            .eq('user_id', userId);
+        return (rows as List<dynamic>).whereType<Map<String, dynamic>>().toList(
+          growable: false,
+        );
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> _upsertGearItemRow(
+    String table,
+    Map<String, dynamic> payload,
+  ) async {
+    try {
+      await _client.from(table).upsert(payload);
+    } catch (error) {
+      if (_priceColumnsAvailable && _isMissingPriceColumnError(error)) {
+        _priceColumnsAvailable = false;
+        final fallbackPayload = Map<String, dynamic>.from(payload)
+          ..remove('price_eur');
+        await _client.from(table).upsert(fallbackPayload);
+        return;
+      }
+      rethrow;
+    }
   }
 
   Future<void> _deleteRemoteRow(String table, String id) async {
@@ -359,13 +412,14 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
     if (user == null) {
       return;
     }
-    await _client.from(_kitesTable).upsert(<String, dynamic>{
+    await _upsertGearItemRow(_kitesTable, <String, dynamic>{
       'id': item.id,
       'user_id': user.id,
       'brand': item.brand,
       'model': item.model,
       'size_meters': item.sizeMeters,
       'year': item.year,
+      'price_eur': item.priceEur,
     });
   }
 
@@ -374,7 +428,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
     if (user == null) {
       return;
     }
-    await _client.from(_barsTable).upsert(<String, dynamic>{
+    await _upsertGearItemRow(_barsTable, <String, dynamic>{
       'id': item.id,
       'user_id': user.id,
       'brand': item.brand,
@@ -382,6 +436,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       'line_length_meters': item.lineLengthMeters,
       'width_cm': item.widthCm,
       'year': item.year,
+      'price_eur': item.priceEur,
     });
   }
 
@@ -390,7 +445,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
     if (user == null) {
       return;
     }
-    await _client.from(_boardsTable).upsert(<String, dynamic>{
+    await _upsertGearItemRow(_boardsTable, <String, dynamic>{
       'id': item.id,
       'user_id': user.id,
       'brand': item.brand,
@@ -398,6 +453,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       'type': item.type,
       'size_cm': item.sizeCm,
       'year': item.year,
+      'price_eur': item.priceEur,
     });
   }
 
@@ -406,13 +462,14 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
     if (user == null) {
       return;
     }
-    await _client.from(_harnessesTable).upsert(<String, dynamic>{
+    await _upsertGearItemRow(_harnessesTable, <String, dynamic>{
       'id': item.id,
       'user_id': user.id,
       'brand': item.brand,
       'model': item.model,
       'size': item.size,
       'year': item.year,
+      'price_eur': item.priceEur,
     });
   }
 
@@ -421,7 +478,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
     if (user == null) {
       return;
     }
-    await _client.from(_wetsuitsTable).upsert(<String, dynamic>{
+    await _upsertGearItemRow(_wetsuitsTable, <String, dynamic>{
       'id': item.id,
       'user_id': user.id,
       'brand': item.brand,
@@ -429,6 +486,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       'thickness': item.thickness,
       'size': item.size,
       'year': item.year,
+      'price_eur': item.priceEur,
     });
   }
 
@@ -437,12 +495,13 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
     if (user == null) {
       return;
     }
-    await _client.from(_helmetsTable).upsert(<String, dynamic>{
+    await _upsertGearItemRow(_helmetsTable, <String, dynamic>{
       'id': item.id,
       'user_id': user.id,
       'brand': item.brand,
       'model': item.model,
       'year': item.year,
+      'price_eur': item.priceEur,
     });
   }
 
@@ -451,13 +510,14 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
     if (user == null) {
       return;
     }
-    await _client.from(_vestsTable).upsert(<String, dynamic>{
+    await _upsertGearItemRow(_vestsTable, <String, dynamic>{
       'id': item.id,
       'user_id': user.id,
       'brand': item.brand,
       'model': item.model,
       'size': item.size,
       'year': item.year,
+      'price_eur': item.priceEur,
     });
   }
 
@@ -472,6 +532,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       model: row['model'] as String? ?? '',
       sizeMeters: row['size_meters'] as String? ?? '',
       year: row['year'] as String? ?? '',
+      priceEur: row['price_eur'] as String? ?? '',
     );
   }
 
@@ -487,6 +548,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       lineLengthMeters: row['line_length_meters'] as String? ?? '',
       widthCm: row['width_cm'] as String? ?? '',
       year: row['year'] as String? ?? '',
+      priceEur: row['price_eur'] as String? ?? '',
     );
   }
 
@@ -502,6 +564,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       type: row['type'] as String? ?? '',
       sizeCm: row['size_cm'] as String? ?? '',
       year: row['year'] as String? ?? '',
+      priceEur: row['price_eur'] as String? ?? '',
     );
   }
 
@@ -516,6 +579,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       model: row['model'] as String? ?? '',
       size: row['size'] as String? ?? '',
       year: row['year'] as String? ?? '',
+      priceEur: row['price_eur'] as String? ?? '',
     );
   }
 
@@ -531,6 +595,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       thickness: row['thickness'] as String? ?? '',
       size: row['size'] as String? ?? '',
       year: row['year'] as String? ?? '',
+      priceEur: row['price_eur'] as String? ?? '',
     );
   }
 
@@ -544,6 +609,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       brand: row['brand'] as String? ?? '',
       model: row['model'] as String? ?? '',
       year: row['year'] as String? ?? '',
+      priceEur: row['price_eur'] as String? ?? '',
     );
   }
 
@@ -558,6 +624,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       model: row['model'] as String? ?? '',
       size: row['size'] as String? ?? '',
       year: row['year'] as String? ?? '',
+      priceEur: row['price_eur'] as String? ?? '',
     );
   }
 
@@ -582,7 +649,11 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
         DateTime.now();
     final kite = (row['kite'] as String?)?.trim();
     final board = (row['board'] as String?)?.trim();
-    if (rowId.isEmpty || kite == null || kite.isEmpty || board == null || board.isEmpty) {
+    if (rowId.isEmpty ||
+        kite == null ||
+        kite.isEmpty ||
+        board == null ||
+        board.isEmpty) {
       return null;
     }
 
@@ -592,6 +663,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       model: '',
       sizeMeters: '',
       year: '',
+      priceEur: '',
     );
     final boardItem = BoardItem(
       id: 'remote-board-$rowId',
@@ -600,6 +672,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       type: '',
       sizeCm: '',
       year: '',
+      priceEur: '',
     );
     final bar = (row['bar'] as String?)?.trim();
     final wetsuit = (row['wetsuit'] as String?)?.trim();
@@ -612,6 +685,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
             lineLengthMeters: '',
             widthCm: '',
             year: '',
+            priceEur: '',
           );
     final wetsuitItem = wetsuit == null || wetsuit.isEmpty
         ? null
@@ -622,6 +696,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
             thickness: '',
             size: '',
             year: '',
+            priceEur: '',
           );
     return _HydratedSetup(
       setup: GearSetup(
@@ -644,23 +719,44 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
 
   _GearSnapshot _buildSnapshot(GearSetup setup) {
     return _GearSnapshot(
-      kite: _memory.getKites().where((item) => item.id == setup.kiteId).firstOrNull,
+      kite: _memory
+          .getKites()
+          .where((item) => item.id == setup.kiteId)
+          .firstOrNull,
       bar: setup.barId == null
           ? null
-          : _memory.getBars().where((item) => item.id == setup.barId).firstOrNull,
-      board: _memory.getBoards().where((item) => item.id == setup.boardId).firstOrNull,
+          : _memory
+                .getBars()
+                .where((item) => item.id == setup.barId)
+                .firstOrNull,
+      board: _memory
+          .getBoards()
+          .where((item) => item.id == setup.boardId)
+          .firstOrNull,
       harness: setup.harnessId == null
           ? null
-          : _memory.getHarnesses().where((item) => item.id == setup.harnessId).firstOrNull,
+          : _memory
+                .getHarnesses()
+                .where((item) => item.id == setup.harnessId)
+                .firstOrNull,
       wetsuit: setup.wetsuitId == null
           ? null
-          : _memory.getWetsuits().where((item) => item.id == setup.wetsuitId).firstOrNull,
+          : _memory
+                .getWetsuits()
+                .where((item) => item.id == setup.wetsuitId)
+                .firstOrNull,
       helmet: setup.helmetId == null
           ? null
-          : _memory.getHelmets().where((item) => item.id == setup.helmetId).firstOrNull,
+          : _memory
+                .getHelmets()
+                .where((item) => item.id == setup.helmetId)
+                .firstOrNull,
       vest: setup.vestId == null
           ? null
-          : _memory.getVests().where((item) => item.id == setup.vestId).firstOrNull,
+          : _memory
+                .getVests()
+                .where((item) => item.id == setup.vestId)
+                .firstOrNull,
     );
   }
 
@@ -744,6 +840,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
           'model': item.model,
           'sizeMeters': item.sizeMeters,
           'year': item.year,
+          'priceEur': item.priceEur,
         };
 
   KiteItem? _deserializeKite(dynamic source) {
@@ -756,6 +853,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       model: source['model'] as String? ?? '',
       sizeMeters: source['sizeMeters'] as String? ?? '',
       year: source['year'] as String? ?? '',
+      priceEur: source['priceEur'] as String? ?? '',
     );
   }
 
@@ -768,6 +866,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
           'lineLengthMeters': item.lineLengthMeters,
           'widthCm': item.widthCm,
           'year': item.year,
+          'priceEur': item.priceEur,
         };
 
   BarItem? _deserializeBar(dynamic source) {
@@ -781,6 +880,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       lineLengthMeters: source['lineLengthMeters'] as String? ?? '',
       widthCm: source['widthCm'] as String? ?? '',
       year: source['year'] as String? ?? '',
+      priceEur: source['priceEur'] as String? ?? '',
     );
   }
 
@@ -793,6 +893,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
           'type': item.type,
           'sizeCm': item.sizeCm,
           'year': item.year,
+          'priceEur': item.priceEur,
         };
 
   BoardItem? _deserializeBoard(dynamic source) {
@@ -806,6 +907,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       type: source['type'] as String? ?? '',
       sizeCm: source['sizeCm'] as String? ?? '',
       year: source['year'] as String? ?? '',
+      priceEur: source['priceEur'] as String? ?? '',
     );
   }
 
@@ -817,6 +919,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
           'model': item.model,
           'size': item.size,
           'year': item.year,
+          'priceEur': item.priceEur,
         };
 
   HarnessItem? _deserializeHarness(dynamic source) {
@@ -829,6 +932,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       model: source['model'] as String? ?? '',
       size: source['size'] as String? ?? '',
       year: source['year'] as String? ?? '',
+      priceEur: source['priceEur'] as String? ?? '',
     );
   }
 
@@ -841,6 +945,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
           'thickness': item.thickness,
           'size': item.size,
           'year': item.year,
+          'priceEur': item.priceEur,
         };
 
   WetsuitItem? _deserializeWetsuit(dynamic source) {
@@ -854,6 +959,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       thickness: source['thickness'] as String? ?? '',
       size: source['size'] as String? ?? '',
       year: source['year'] as String? ?? '',
+      priceEur: source['priceEur'] as String? ?? '',
     );
   }
 
@@ -864,6 +970,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
           'brand': item.brand,
           'model': item.model,
           'year': item.year,
+          'priceEur': item.priceEur,
         };
 
   HelmetItem? _deserializeHelmet(dynamic source) {
@@ -875,6 +982,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
       brand: source['brand'] as String? ?? '',
       model: source['model'] as String? ?? '',
       year: source['year'] as String? ?? '',
+      priceEur: source['priceEur'] as String? ?? '',
     );
   }
 
@@ -886,6 +994,7 @@ class SupabaseProfileGearRepositoryAdapter implements ProfileGearRepositoryPort 
           'model': item.model,
           'size': item.size,
           'year': item.year,
+          'priceEur': item.priceEur,
         };
 
   VestItem? _deserializeVest(dynamic source) {

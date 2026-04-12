@@ -47,6 +47,8 @@ class ProfileGearDialogsCoordinator {
       controllers.kiteSizeController;
   TextEditingController get kiteYearController =>
       controllers.kiteYearController;
+  TextEditingController get kitePriceController =>
+      controllers.kitePriceController;
   TextEditingController get barBrandController =>
       controllers.barBrandController;
   TextEditingController get barModelController =>
@@ -56,6 +58,8 @@ class ProfileGearDialogsCoordinator {
   TextEditingController get barWidthController =>
       controllers.barWidthController;
   TextEditingController get barYearController => controllers.barYearController;
+  TextEditingController get barPriceController =>
+      controllers.barPriceController;
   TextEditingController get boardBrandController =>
       controllers.boardBrandController;
   TextEditingController get boardModelController =>
@@ -64,6 +68,8 @@ class ProfileGearDialogsCoordinator {
       controllers.boardSizeController;
   TextEditingController get boardYearController =>
       controllers.boardYearController;
+  TextEditingController get boardPriceController =>
+      controllers.boardPriceController;
   TextEditingController get harnessBrandController =>
       controllers.harnessBrandController;
   TextEditingController get harnessModelController =>
@@ -72,6 +78,8 @@ class ProfileGearDialogsCoordinator {
       controllers.harnessSizeController;
   TextEditingController get harnessYearController =>
       controllers.harnessYearController;
+  TextEditingController get harnessPriceController =>
+      controllers.harnessPriceController;
   TextEditingController get wetsuitBrandController =>
       controllers.wetsuitBrandController;
   TextEditingController get wetsuitModelController =>
@@ -82,12 +90,16 @@ class ProfileGearDialogsCoordinator {
       controllers.wetsuitSizeController;
   TextEditingController get wetsuitYearController =>
       controllers.wetsuitYearController;
+  TextEditingController get wetsuitPriceController =>
+      controllers.wetsuitPriceController;
   TextEditingController get helmetBrandController =>
       controllers.helmetBrandController;
   TextEditingController get helmetModelController =>
       controllers.helmetModelController;
   TextEditingController get helmetYearController =>
       controllers.helmetYearController;
+  TextEditingController get helmetPriceController =>
+      controllers.helmetPriceController;
   TextEditingController get vestBrandController =>
       controllers.vestBrandController;
   TextEditingController get vestModelController =>
@@ -96,6 +108,8 @@ class ProfileGearDialogsCoordinator {
       controllers.vestSizeController;
   TextEditingController get vestYearController =>
       controllers.vestYearController;
+  TextEditingController get vestPriceController =>
+      controllers.vestPriceController;
 
   List<KiteItem> Function() get savedKites => inventory.savedKites;
   List<BarItem> Function() get savedBars => inventory.savedBars;

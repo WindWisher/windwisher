@@ -8,31 +8,38 @@ class ProfileGearDialogControllers {
     required this.kiteModelController,
     required this.kiteSizeController,
     required this.kiteYearController,
+    required this.kitePriceController,
     required this.barBrandController,
     required this.barModelController,
     required this.barLineLengthController,
     required this.barWidthController,
     required this.barYearController,
+    required this.barPriceController,
     required this.boardBrandController,
     required this.boardModelController,
     required this.boardSizeController,
     required this.boardYearController,
+    required this.boardPriceController,
     required this.harnessBrandController,
     required this.harnessModelController,
     required this.harnessSizeController,
     required this.harnessYearController,
+    required this.harnessPriceController,
     required this.wetsuitBrandController,
     required this.wetsuitModelController,
     required this.wetsuitThicknessController,
     required this.wetsuitSizeController,
     required this.wetsuitYearController,
+    required this.wetsuitPriceController,
     required this.helmetBrandController,
     required this.helmetModelController,
     required this.helmetYearController,
+    required this.helmetPriceController,
     required this.vestBrandController,
     required this.vestModelController,
     required this.vestSizeController,
     required this.vestYearController,
+    required this.vestPriceController,
   });
 
   final TextEditingController gearSetupNameController;
@@ -40,31 +47,38 @@ class ProfileGearDialogControllers {
   final TextEditingController kiteModelController;
   final TextEditingController kiteSizeController;
   final TextEditingController kiteYearController;
+  final TextEditingController kitePriceController;
   final TextEditingController barBrandController;
   final TextEditingController barModelController;
   final TextEditingController barLineLengthController;
   final TextEditingController barWidthController;
   final TextEditingController barYearController;
+  final TextEditingController barPriceController;
   final TextEditingController boardBrandController;
   final TextEditingController boardModelController;
   final TextEditingController boardSizeController;
   final TextEditingController boardYearController;
+  final TextEditingController boardPriceController;
   final TextEditingController harnessBrandController;
   final TextEditingController harnessModelController;
   final TextEditingController harnessSizeController;
   final TextEditingController harnessYearController;
+  final TextEditingController harnessPriceController;
   final TextEditingController wetsuitBrandController;
   final TextEditingController wetsuitModelController;
   final TextEditingController wetsuitThicknessController;
   final TextEditingController wetsuitSizeController;
   final TextEditingController wetsuitYearController;
+  final TextEditingController wetsuitPriceController;
   final TextEditingController helmetBrandController;
   final TextEditingController helmetModelController;
   final TextEditingController helmetYearController;
+  final TextEditingController helmetPriceController;
   final TextEditingController vestBrandController;
   final TextEditingController vestModelController;
   final TextEditingController vestSizeController;
   final TextEditingController vestYearController;
+  final TextEditingController vestPriceController;
 }
 
 class ProfileGearDialogInventory {

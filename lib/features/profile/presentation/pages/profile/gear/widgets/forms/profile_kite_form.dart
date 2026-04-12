@@ -9,12 +9,14 @@ class ProfileKiteForm extends StatelessWidget {
     required this.modelController,
     required this.sizeController,
     required this.yearController,
+    required this.priceController,
   });
 
   final TextEditingController brandController;
   final TextEditingController modelController;
   final TextEditingController sizeController;
   final TextEditingController yearController;
+  final TextEditingController priceController;
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +44,12 @@ class ProfileKiteForm extends StatelessWidget {
             controller: yearController,
             label: 'Ano cometa',
             keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          ProfileGearTextField(
+            controller: priceController,
+            label: 'Precio cometa (EUR)',
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
           ),
         ],
       ),

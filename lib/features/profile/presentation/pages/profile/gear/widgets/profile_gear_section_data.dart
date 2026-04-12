@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/features/profile/domain/entities/profile_gear_entities.dart';
+import 'package:windwisher/features/sessions/domain/entities/recorded_session.dart';
 
 class ProfileGearMaterialCardData {
   const ProfileGearMaterialCardData({
@@ -91,6 +92,7 @@ class ProfileGearUsageStatsCardData {
     required this.savedWetsuits,
     required this.savedHelmets,
     required this.savedVests,
+    required this.recordedSessions,
   });
 
   final List<GearSetup> savedGearSetups;
@@ -101,4 +103,5 @@ class ProfileGearUsageStatsCardData {
   final List<WetsuitItem> savedWetsuits;
   final List<HelmetItem> savedHelmets;
   final List<VestItem> savedVests;
+  final List<RecordedSession> recordedSessions;
 }

@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 134h 24m`.
+- `Total historico minimo consolidado del proyecto: 140h 24m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -15,10 +15,11 @@
   - bloque consolidado adicional en `2026-04-11`: `+8h` estimadas
   - bloque consolidado adicional en `2026-04-11`: `+6h` estimadas
   - bloque consolidado adicional en `2026-04-12`: `+8h` estimadas
+- bloque consolidado adicional en `2026-04-12`: `+6h` estimadas
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-04-12`: `+8h` estimadas.
+  - ultima consolidacion manual anadida el `2026-04-12`: `+6h` estimadas.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
 
@@ -94,6 +95,35 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
   - `Contexto actual` plegable
   - copy de categorias refinado para sonar mas a producto y menos a bloque tecnico
 - La tarjeta publica del perfil reutiliza la misma base de summary y mantiene followers/following/ranking visibles de forma consistente.
+- Validacion ejecutada:
+  - `flutter analyze` limpio
+  - solo permanece el warning externo conocido de `webview_flutter:macos`
+
+### 2026-04-12 - Perfil gear: precios, coste por sesion y acceso desde summary de usuario
+
+- Anadido soporte de precio por pieza en `gear` a nivel de dominio, formularios, guardado y persistencia Supabase.
+- Anadida migracion remota para `price_eur` en tablas de material de perfil:
+  - `supabase/migrations/20260412123000_add_price_to_profile_gear_items.sql`
+- El adaptador Supabase de `gear` queda tolerante a esquemas antiguos mientras la base se actualiza, evitando caidas por columna ausente durante hidratacion o guardado.
+- Aplicada la migracion en Supabase y verificada la alineacion entre `Local` y `Remote`.
+- La tarjeta de uso de equipacion y el dialogo de detalle de equipo ahora calculan y muestran metricas economicas reales a partir de sesiones asociadas a `gearSetupId/gearSetupName`:
+  - `Valor inventario`
+  - `Coste medio por sesion`
+  - `Coste medio de equipacion usada`
+  - `Inventario por sesion registrada`
+  - `Amortizacion media por sesion`
+- El detalle por familia de material dentro del dialogo de equipo ya permite alternar entre:
+  - `Numero de sesiones`
+  - `Porcentaje de sesiones`
+  - `Precio`
+  - `Coste por sesion`
+- Reconvertido el detalle de uso de equipacion de pagina a dialogo y alineado visualmente con el dialogo de estadisticas del usuario:
+  - selector de categoria
+  - una sola seccion visible cada vez
+  - tiles internos reutilizables
+- Refinada la jerarquia del dialogo de equipo para evitar duplicidades entre la tarjeta resumen y el selector interno.
+- La summary del usuario ahora incluye un bloque plegable de `Equipaciones guardadas` con chips de equipo; al pulsar cada chip se abre el dialogo individual de esa equipacion.
+- Se elimina el CTA anterior de `Ver equipaciones` para evitar redundancia con la nueva solucion embebida en la summary.
 - Validacion ejecutada:
   - `flutter analyze` limpio
   - solo permanece el warning externo conocido de `webview_flutter:macos`

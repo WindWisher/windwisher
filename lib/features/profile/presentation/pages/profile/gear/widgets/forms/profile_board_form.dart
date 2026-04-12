@@ -12,6 +12,7 @@ class ProfileBoardForm extends StatelessWidget {
     required this.onBoardTypeChanged,
     required this.sizeController,
     required this.yearController,
+    required this.priceController,
   });
 
   final TextEditingController brandController;
@@ -20,6 +21,7 @@ class ProfileBoardForm extends StatelessWidget {
   final ValueChanged<String?> onBoardTypeChanged;
   final TextEditingController sizeController;
   final TextEditingController yearController;
+  final TextEditingController priceController;
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +63,12 @@ class ProfileBoardForm extends StatelessWidget {
             controller: yearController,
             label: 'Ano tabla',
             keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          ProfileGearTextField(
+            controller: priceController,
+            label: 'Precio tabla (EUR)',
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
           ),
         ],
       ),

@@ -8,11 +8,13 @@ class ProfileHelmetForm extends StatelessWidget {
     required this.brandController,
     required this.modelController,
     required this.yearController,
+    required this.priceController,
   });
 
   final TextEditingController brandController;
   final TextEditingController modelController;
   final TextEditingController yearController;
+  final TextEditingController priceController;
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +36,12 @@ class ProfileHelmetForm extends StatelessWidget {
             controller: yearController,
             label: 'Ano casco',
             keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          ProfileGearTextField(
+            controller: priceController,
+            label: 'Precio casco (EUR)',
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
           ),
         ],
       ),

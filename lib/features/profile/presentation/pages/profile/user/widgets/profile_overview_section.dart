@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/features/profile/domain/entities/profile_gear_entities.dart';
 import 'package:windwisher/features/profile/domain/entities/profile_kpi_snapshot.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/profile_aux_pages.dart';
@@ -19,11 +20,27 @@ class ProfileOverviewSection extends StatelessWidget {
     required this.profile,
     required this.kpis,
     required this.onProfileUpdated,
+    required this.savedGearSetups,
+    required this.findKite,
+    required this.findBar,
+    required this.findBoard,
+    required this.findHarness,
+    required this.findWetsuit,
+    required this.findHelmet,
+    required this.findVest,
   });
 
   final UserProfileData profile;
   final ProfileKpiSnapshot kpis;
   final ValueChanged<UserProfileData> onProfileUpdated;
+  final List<GearSetup> savedGearSetups;
+  final KiteItem? Function(String id) findKite;
+  final BarItem? Function(String id) findBar;
+  final BoardItem? Function(String id) findBoard;
+  final HarnessItem? Function(String id) findHarness;
+  final WetsuitItem? Function(String id) findWetsuit;
+  final HelmetItem? Function(String id) findHelmet;
+  final VestItem? Function(String id) findVest;
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +54,14 @@ class ProfileOverviewSection extends StatelessWidget {
           onEditPressed: () => _openEditProfile(context),
           onFollowersPressed: () => _openFollowers(context),
           onFollowingPressed: () => _openFollowing(context),
+          savedGearSetups: savedGearSetups,
+          findKite: findKite,
+          findBar: findBar,
+          findBoard: findBoard,
+          findHarness: findHarness,
+          findWetsuit: findWetsuit,
+          findHelmet: findHelmet,
+          findVest: findVest,
         ),
         const SizedBox(height: AppSpacing.md),
         ProfileSummaryOverviewCard(

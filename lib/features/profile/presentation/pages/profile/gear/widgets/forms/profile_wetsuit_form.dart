@@ -10,6 +10,7 @@ class ProfileWetsuitForm extends StatelessWidget {
     required this.thicknessController,
     required this.sizeController,
     required this.yearController,
+    required this.priceController,
   });
 
   final TextEditingController brandController;
@@ -17,6 +18,7 @@ class ProfileWetsuitForm extends StatelessWidget {
   final TextEditingController thicknessController;
   final TextEditingController sizeController;
   final TextEditingController yearController;
+  final TextEditingController priceController;
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +50,12 @@ class ProfileWetsuitForm extends StatelessWidget {
             controller: yearController,
             label: 'Ano traje',
             keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          ProfileGearTextField(
+            controller: priceController,
+            label: 'Precio traje (EUR)',
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
           ),
         ],
       ),
