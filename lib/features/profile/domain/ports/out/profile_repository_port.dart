@@ -5,5 +5,7 @@ abstract class ProfileRepositoryPort {
 
   Future<UserProfileData> loadProfile();
 
+  Future<bool> isHandleAvailable(String handle);
+
   Future<void> saveProfile(UserProfileData value);
 }

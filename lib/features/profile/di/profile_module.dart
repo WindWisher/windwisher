@@ -51,6 +51,9 @@ class ProfileModule {
       profileController: ProfileController(
         getProfile: GetProfileUseCase(_inMemoryProfileRepository),
         saveProfile: SaveProfileUseCase(_inMemoryProfileRepository),
+        checkHandleAvailability: CheckProfileHandleAvailabilityUseCase(
+          _inMemoryProfileRepository,
+        ),
       ),
       messagesController: ProfileMessagesController(
         getDirectThreads: GetDirectMessageThreadsUseCase(_messagesRepository),
@@ -75,6 +78,9 @@ class ProfileModule {
       profileController: ProfileController(
         getProfile: GetProfileUseCase(localProfileRepository),
         saveProfile: SaveProfileUseCase(localProfileRepository),
+        checkHandleAvailability: CheckProfileHandleAvailabilityUseCase(
+          localProfileRepository,
+        ),
       ),
       messagesController: ProfileMessagesController(
         getDirectThreads: GetDirectMessageThreadsUseCase(_messagesRepository),
@@ -111,6 +117,9 @@ class ProfileModule {
       profileController: ProfileController(
         getProfile: GetProfileUseCase(profileRepository),
         saveProfile: SaveProfileUseCase(profileRepository),
+        checkHandleAvailability: CheckProfileHandleAvailabilityUseCase(
+          profileRepository,
+        ),
       ),
       messagesController: ProfileMessagesController(
         getDirectThreads: GetDirectMessageThreadsUseCase(messagesRepository),

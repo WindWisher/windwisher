@@ -69,15 +69,11 @@ class ProfileKpiSnapshot {
     required this.commentsReceivedLast30DaysLabel,
     required this.userRoleLabel,
     required this.baseSpotLabel,
-    required this.bestSpotLabel,
     required this.mostUsedSpotLabel,
     required this.bestMonthLabel,
     required this.latestRecordLabel,
     required this.highestJumpTrendLabel,
     required this.hangtimeTrendLabel,
-    required this.latestSessionLabel,
-    required this.latestCommentLabel,
-    required this.featuredThreadLabel,
   });
 
   final int totalSessions;
@@ -149,15 +145,11 @@ class ProfileKpiSnapshot {
   final String commentsReceivedLast30DaysLabel;
   final String userRoleLabel;
   final String baseSpotLabel;
-  final String bestSpotLabel;
   final String mostUsedSpotLabel;
   final String bestMonthLabel;
   final String latestRecordLabel;
   final String highestJumpTrendLabel;
   final String hangtimeTrendLabel;
-  final String latestSessionLabel;
-  final String latestCommentLabel;
-  final String featuredThreadLabel;
 
   bool get hasSessionActivity => totalSessions > 0;
   bool get hasActiveDays => activeDays > 0;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/features/profile/domain/entities/profile_gear_entities.dart';
+import 'package:windwisher/features/profile/presentation/pages/profile/gear/widgets/details/dialog/profile_gear_detail_dialog.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/gear/widgets/usage/details/profile_gear_usage_category_selector.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/gear/widgets/usage/details/profile_gear_usage_detail_tile.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/gear/widgets/usage/details/profile_gear_usage_dialog_data.dart';
@@ -34,7 +35,6 @@ class ProfileGearUsageDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
     final total = setups.length;
     final complete = setups
         .where(
@@ -1304,65 +1304,30 @@ class ProfileGearUsageDialog extends StatelessWidget {
         final activeSection =
             sections[selectedIndex.clamp(0, sections.length - 1)];
 
-        return Dialog(
-          insetPadding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.lg,
-          ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760, maxHeight: 760),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Detalle estadisticas del equipo',
-                              style: textTheme.titleLarge,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Resumen extendido del material guardado y del uso real detectado cuando la sesion tiene equipacion asociada.',
-                              style: textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.close),
-                        tooltip: 'Cerrar',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  ProfileGearUsageCategorySelector(
-                    sections: sections,
-                    selectedIndex: selectedIndex,
-                    onSelected: (index) {
-                      setDialogState(() => selectedIndex = index);
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Flexible(
-                    child: SingleChildScrollView(
-                      child: ProfileGearUsageSectionCard(
-                        section: activeSection,
-                      ),
-                    ),
-                  ),
-                ],
+        return ProfileGearDetailDialog(
+          title: 'Detalle estadisticas del equipo',
+          subtitle:
+              'Resumen extendido del material guardado y del uso real detectado cuando la sesion tiene equipacion asociada.',
+          maxWidth: 760,
+          maxHeight: 760,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ProfileGearUsageCategorySelector(
+                sections: sections,
+                selectedIndex: selectedIndex,
+                onSelected: (index) {
+                  setDialogState(() => selectedIndex = index);
+                },
               ),
-            ),
+              const SizedBox(height: AppSpacing.sm),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: ProfileGearUsageSectionCard(section: activeSection),
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -1584,13 +1549,6 @@ class ProfileGearUsageDialog extends StatelessWidget {
                   ],
                 ),
               ),
-              actions: [
-                IconButton(
-                  tooltip: 'Cerrar',
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
             );
           },
         );

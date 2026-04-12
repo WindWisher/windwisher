@@ -5,20 +5,17 @@ import 'package:windwisher/features/profile/presentation/pages/profile/user/widg
 class ProfileSummaryBanner extends StatelessWidget {
   const ProfileSummaryBanner({
     super.key,
-    required this.userRole,
     required this.bannerImage,
     required this.hasBannerImage,
     this.onPublicPreviewPressed,
   });
 
-  final String userRole;
   final ImageProvider<Object>? bannerImage;
   final bool hasBannerImage;
   final VoidCallback? onPublicPreviewPressed;
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
@@ -56,26 +53,6 @@ class ProfileSummaryBanner extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xs,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.22),
-                  ),
-                ),
-                child: Text(
-                  userRole,
-                  style: textTheme.labelLarge?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
               const Spacer(),
               if (onPublicPreviewPressed != null)
                 ProfileSummaryPublicPreviewButton(

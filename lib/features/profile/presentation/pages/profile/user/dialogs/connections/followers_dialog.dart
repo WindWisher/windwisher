@@ -67,7 +67,7 @@ class _FollowersDialogState extends State<FollowersDialog> {
     List<String> followerUsernames = const <String>[];
     if (followerIds.isNotEmpty) {
       final profileRows = await client
-          .from('profiles')
+          .from('public_profiles')
           .select('id, handle')
           .inFilter('id', followerIds);
       followerUsernames = (profileRows as List<dynamic>)

@@ -24,3 +24,13 @@ class SaveProfileUseCase {
     return _repository.saveProfile(value);
   }
 }
+
+class CheckProfileHandleAvailabilityUseCase {
+  const CheckProfileHandleAvailabilityUseCase(this._repository);
+
+  final ProfileRepositoryPort _repository;
+
+  Future<bool> call(String handle) {
+    return _repository.isHandleAvailable(handle);
+  }
+}

@@ -360,10 +360,10 @@ class _CommunityPageState extends State<CommunityPage> {
     _users.add(
       CommunityUserSummary(
         username: currentUsername,
-        bigAirScore: int.tryParse(profile.sessions) ?? 0,
+        bigAirScore: int.tryParse(profile.totalSessions) ?? 0,
         highestJumpMeters:
             double.tryParse(profile.topJump.replaceAll('m', '').trim()) ?? 0,
-        mainSpot: profile.baseSpot,
+        mainSpot: '',
         avatarColorValue: 0xFF455A64 + (seed % 0x00020202),
       ),
     );
@@ -1368,7 +1368,9 @@ class _CommunityPageState extends State<CommunityPage> {
                 ),
                 title: Text(_identityLabelForUser(user.username)),
                 subtitle: Text(
-                  '${user.mainSpot} · Big Air ${user.bigAirScore}',
+                  user.mainSpot.trim().isEmpty
+                      ? 'Big Air ${user.bigAirScore}'
+                      : '${user.mainSpot} · Big Air ${user.bigAirScore}',
                 ),
                 trailing: TextButton(
                   onPressed: () => _toggleFollowing(user.username),

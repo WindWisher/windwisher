@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 140h 24m`.
+- `Total historico minimo consolidado del proyecto: 147h 24m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -15,11 +15,12 @@
   - bloque consolidado adicional en `2026-04-11`: `+8h` estimadas
   - bloque consolidado adicional en `2026-04-11`: `+6h` estimadas
   - bloque consolidado adicional en `2026-04-12`: `+8h` estimadas
-- bloque consolidado adicional en `2026-04-12`: `+6h` estimadas
+  - bloque consolidado adicional en `2026-04-12`: `+6h` estimadas
+  - bloque consolidado adicional en `2026-04-12`: `+7h` estimadas
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-04-12`: `+6h` estimadas.
+  - ultima consolidacion manual anadida el `2026-04-12`: `+7h` estimadas.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
 
@@ -97,6 +98,45 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - La tarjeta publica del perfil reutiliza la misma base de summary y mantiene followers/following/ranking visibles de forma consistente.
 - Validacion ejecutada:
   - `flutter analyze` limpio
+  - solo permanece el warning externo conocido de `webview_flutter:macos`
+
+
+### 2026-04-12 - Perfil publico endurecido, hosting limpio y flujo de usuario afinado
+
+- Endurecida la seguridad de `profiles` en Supabase:
+  - eliminada la lectura publica directa de `public.profiles`
+  - anadida policy de lectura solo para el propietario
+  - creada `public.public_profiles` como vista publica minima para identidad visible y metricas basicas
+- Aplicada en remoto la migracion:
+  - `supabase/migrations/20260412180000_harden_profiles_and_add_public_view.sql`
+- Adaptadas las lecturas publicas de la app para usar `public_profiles` en comunidad, seguidores y mensajes directos, evitando depender de la tabla base publica.
+- Revisadas las superficies publicas expuestas con `anon key` y acotada la parte mas sensible del esquema de perfil.
+- Refinado el flujo de `Editar usuario`:
+  - paso a dialogo modal en vez de pantalla independiente
+  - validacion de nombre visible y nombre de usuario
+  - `@` fija y normalizacion del nombre de usuario
+  - comprobacion de unicidad del nombre de usuario al guardar
+  - copy de error ajustado a `Este nombre de usuario ya esta ocupado.`
+  - soporte para quitar avatar y banner
+  - recarga real desde Supabase tras guardar y feedback con `SnackBar`
+- Conectada subida de avatar y banner a Supabase Storage y limpieza best-effort de ficheros antiguos al reemplazarlos.
+- Simplificado el editor de usuario para centrarse en campos realmente utiles:
+  - foto
+  - banner
+  - nombre
+  - nombre de usuario
+  - tagline publica
+- Continuada la limpieza del modelo de perfil y de la UI para retirar dependencias legacy (`bio`, `userRole`, `baseSpot`, `ranking`, `followers`, `following`, `bestSpot`, `latestSession`, `latestComment`, `featuredThread`) y dejar esos datos en agregados reales o fuera del modelo activo.
+- Separado `profile_aux_pages.dart` en piezas mas pequenas de `user`:
+  - `edit_profile_dialog.dart`
+  - `public_profile_preview_page.dart`
+  - `profile_media_image_provider.dart`
+- Rehecho el redeploy web de `windwisher.com` y limpio el warning de Firebase Hosting creando config dedicada:
+  - `firebase.hosting.json`
+  - `scripts/deploy_firebase_hosting.sh`
+- Verificaciones ejecutadas:
+  - `flutter analyze` limpio
+  - `supabase db push` correcto para la migracion de endurecimiento de perfiles
   - solo permanece el warning externo conocido de `webview_flutter:macos`
 
 ### 2026-04-12 - Perfil gear: precios, coste por sesion y acceso desde summary de usuario

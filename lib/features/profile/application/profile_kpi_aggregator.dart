@@ -1,13 +1,11 @@
 import 'package:windwisher/features/profile/domain/entities/profile_community_stats_snapshot.dart';
 import 'package:windwisher/features/profile/domain/entities/profile_kpi_snapshot.dart';
 import 'package:windwisher/features/profile/domain/entities/profile_session_stats_snapshot.dart';
-import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
 
 class ProfileKpiAggregator {
   const ProfileKpiAggregator._();
 
   static ProfileKpiSnapshot build(
-    UserProfileData profile,
     ProfileSessionStatsSnapshot stats,
     ProfileCommunityStatsSnapshot community,
   ) {
@@ -80,17 +78,13 @@ class ProfileKpiAggregator {
       sharedSessionsLast30DaysLabel: community.sharedSessionsLast30DaysLabel,
       commentsReceivedLast30DaysLabel:
           community.commentsReceivedLast30DaysLabel,
-      userRoleLabel: _fallback(profile.userRole),
-      baseSpotLabel: _fallback(profile.baseSpot),
-      bestSpotLabel: _fallback(profile.bestSpot),
-      mostUsedSpotLabel: _fallback(stats.mostUsedSpot ?? profile.baseSpot),
+      userRoleLabel: '--',
+      baseSpotLabel: '--',
+      mostUsedSpotLabel: _fallback(stats.mostUsedSpot),
       bestMonthLabel: _fallback(stats.bestMonthLabel),
       latestRecordLabel: _fallback(stats.latestRecordLabel),
       highestJumpTrendLabel: _fallback(stats.highestJumpTrendLabel),
       hangtimeTrendLabel: _fallback(stats.hangtimeTrendLabel),
-      latestSessionLabel: _fallback(profile.latestSession),
-      latestCommentLabel: _fallback(profile.latestComment),
-      featuredThreadLabel: _fallback(profile.featuredThread),
     );
   }
 

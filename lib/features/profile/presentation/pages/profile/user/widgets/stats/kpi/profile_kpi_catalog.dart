@@ -633,16 +633,6 @@ class ProfileKpiCatalog {
           .toList(),
       contextRows: [
         ProfileDetailRowData(
-          'Rol de usuario',
-          kpis.userRoleLabel,
-          hydrated: kpis.userRoleLabel != '--',
-        ),
-        ProfileDetailRowData(
-          'Spot base',
-          kpis.baseSpotLabel,
-          hydrated: kpis.baseSpotLabel != '--',
-        ),
-        ProfileDetailRowData(
           'Spot mas utilizado',
           kpis.mostUsedSpotLabel,
           hydrated: kpis.mostUsedSpotLabel != '--',

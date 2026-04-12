@@ -1,18 +1,38 @@
 import 'package:flutter/material.dart';
-import 'package:windwisher/features/profile/application/profile_kpi_aggregator.dart';
-import 'package:windwisher/features/profile/domain/entities/profile_community_stats_snapshot.dart';
-import 'package:windwisher/features/profile/domain/entities/profile_session_stats_snapshot.dart';
+import 'package:windwisher/features/profile/domain/entities/profile_gear_entities.dart';
+import 'package:windwisher/features/profile/domain/entities/profile_kpi_snapshot.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
-import 'package:windwisher/features/profile/presentation/pages/profile/user/widgets/profile_summary_card.dart';
-import 'package:windwisher/features/profile/presentation/pages/profile/user/widgets/stats/profile_summary_overview_card.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/user/dialogs/connections/followers_dialog.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/user/dialogs/connections/following_dialog.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/user/dialogs/connections/profile_connections_dialog_shell.dart';
+import 'package:windwisher/features/profile/presentation/pages/profile/user/widgets/profile_summary_card.dart';
+import 'package:windwisher/features/profile/presentation/pages/profile/user/widgets/stats/profile_summary_overview_card.dart';
 
 class ProfilePublicPreviewCard extends StatelessWidget {
-  const ProfilePublicPreviewCard({super.key, required this.profile});
+  const ProfilePublicPreviewCard({
+    super.key,
+    required this.profile,
+    required this.kpis,
+    required this.savedGearSetups,
+    required this.findKite,
+    required this.findBar,
+    required this.findBoard,
+    required this.findHarness,
+    required this.findWetsuit,
+    required this.findHelmet,
+    required this.findVest,
+  });
 
   final UserProfileData profile;
+  final ProfileKpiSnapshot kpis;
+  final List<GearSetup> savedGearSetups;
+  final KiteItem? Function(String id) findKite;
+  final BarItem? Function(String id) findBar;
+  final BoardItem? Function(String id) findBoard;
+  final HarnessItem? Function(String id) findHarness;
+  final WetsuitItem? Function(String id) findWetsuit;
+  final HelmetItem? Function(String id) findHelmet;
+  final VestItem? Function(String id) findVest;
 
   Future<void> _openFollowers(BuildContext context) async {
     await showDialog<void>(
@@ -36,38 +56,6 @@ class ProfilePublicPreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final kpis = ProfileKpiAggregator.build(
-      profile,
-      ProfileSessionStatsSnapshot.fromLegacyProfile(profile),
-      ProfileCommunityStatsSnapshot(
-        followersLabel: profile.followers,
-        followingLabel: profile.following,
-        rankingLabel: profile.ranking,
-        sharedSessionsCountLabel: '--',
-        commentsReceivedLabel: '--',
-        likesReceivedLabel: '--',
-        followersFollowingRatioLabel: '--',
-        commentsPerSharedSessionLabel: '--',
-        likesPerSharedSessionLabel: '--',
-        mostCommentedSessionLabel: '--',
-        mostLikedSessionLabel: '--',
-        engagementRateLabel: '--',
-        sharedSessionsLast30DaysLabel: '--',
-        commentsReceivedLast30DaysLabel: '--',
-        hasSharedSessions: false,
-        hasCommentsReceived: false,
-        hasLikesReceived: false,
-        hasFollowersFollowingRatio: false,
-        hasCommentsPerSharedSession: false,
-        hasLikesPerSharedSession: false,
-        hasMostCommentedSession: false,
-        hasMostLikedSession: false,
-        hasEngagementRate: false,
-        hasSharedSessionsLast30Days: false,
-        hasCommentsReceivedLast30Days: false,
-      ),
-    );
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -78,6 +66,14 @@ class ProfilePublicPreviewCard extends StatelessWidget {
           showEditButton: false,
           onFollowersPressed: () => _openFollowers(context),
           onFollowingPressed: () => _openFollowing(context),
+          savedGearSetups: savedGearSetups,
+          findKite: findKite,
+          findBar: findBar,
+          findBoard: findBoard,
+          findHarness: findHarness,
+          findWetsuit: findWetsuit,
+          findHelmet: findHelmet,
+          findVest: findVest,
         ),
         const SizedBox(height: 12),
         ProfileSummaryOverviewCard(kpis: kpis),

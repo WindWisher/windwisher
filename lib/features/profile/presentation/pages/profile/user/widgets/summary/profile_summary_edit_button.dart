@@ -14,7 +14,7 @@ class ProfileSummaryEditButton extends StatelessWidget {
       child: FilledButton.tonalIcon(
         onPressed: onPressed,
         icon: const Icon(Icons.edit_outlined),
-        label: const Text('Editar perfil'),
+        label: const Text('Editar usuario'),
         style: FilledButton.styleFrom(
           minimumSize: const Size.fromHeight(56),
           textStyle: textTheme.titleSmall?.copyWith(

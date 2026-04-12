@@ -33,13 +33,12 @@ class ProfileCommunityStatsAggregator {
     }
 
     final followingLabel = followingUsernames.isEmpty
-        ? _fallback(profile.following)
+        ? '--'
         : followingUsernames.length.toString();
     final followersLabel = followerUsernames == null
-        ? _fallback(profile.followers)
+        ? '--'
         : followerUsernames.length.toString();
     final rankingLabel = _resolveRankingLabel(
-      profile: profile,
       communityUsers: communityUsers,
       currentUsername: currentUsername,
     );
@@ -136,12 +135,11 @@ class ProfileCommunityStatsAggregator {
   }
 
   static String _resolveRankingLabel({
-    required UserProfileData profile,
     required List<CommunityUserSummary> communityUsers,
     required String currentUsername,
   }) {
     if (communityUsers.isEmpty) {
-      return _fallback(profile.ranking);
+      return '--';
     }
     final sorted = communityUsers.toList(growable: false)
       ..sort((a, b) => b.bigAirScore.compareTo(a.bigAirScore));
@@ -150,14 +148,7 @@ class ProfileCommunityStatsAggregator {
         return '#${index + 1}';
       }
     }
-    return _fallback(profile.ranking);
+    return '--';
   }
 
-  static String _fallback(String? value) {
-    final normalized = value?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      return '--';
-    }
-    return normalized;
-  }
 }

@@ -287,7 +287,7 @@ class _ConnectionUserTile extends StatelessWidget {
           ),
         ),
         title: Text(userProfile.displayName),
-        subtitle: Text('${userProfile.handle} · ${userProfile.baseSpot}'),
+        subtitle: Text(userProfile.handle),
         trailing: trailing,
       ),
     );

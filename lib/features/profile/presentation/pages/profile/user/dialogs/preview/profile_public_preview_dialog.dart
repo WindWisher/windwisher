@@ -1,12 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/features/profile/domain/entities/profile_gear_entities.dart';
+import 'package:windwisher/features/profile/domain/entities/profile_kpi_snapshot.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/user/widgets/summary/publicpreview/profile_public_preview_card.dart';
 
 class ProfilePublicPreviewDialog extends StatelessWidget {
-  const ProfilePublicPreviewDialog({super.key, required this.profile});
+  const ProfilePublicPreviewDialog({
+    super.key,
+    required this.profile,
+    required this.kpis,
+    required this.savedGearSetups,
+    required this.findKite,
+    required this.findBar,
+    required this.findBoard,
+    required this.findHarness,
+    required this.findWetsuit,
+    required this.findHelmet,
+    required this.findVest,
+  });
 
   final UserProfileData profile;
+  final ProfileKpiSnapshot kpis;
+  final List<GearSetup> savedGearSetups;
+  final KiteItem? Function(String id) findKite;
+  final BarItem? Function(String id) findBar;
+  final BoardItem? Function(String id) findBoard;
+  final HarnessItem? Function(String id) findHarness;
+  final WetsuitItem? Function(String id) findWetsuit;
+  final HelmetItem? Function(String id) findHelmet;
+  final VestItem? Function(String id) findVest;
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +87,20 @@ class ProfilePublicPreviewDialog extends StatelessWidget {
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(AppSpacing.md),
-                children: [ProfilePublicPreviewCard(profile: profile)],
+                children: [
+                  ProfilePublicPreviewCard(
+                    profile: profile,
+                    kpis: kpis,
+                    savedGearSetups: savedGearSetups,
+                    findKite: findKite,
+                    findBar: findBar,
+                    findBoard: findBoard,
+                    findHarness: findHarness,
+                    findWetsuit: findWetsuit,
+                    findHelmet: findHelmet,
+                    findVest: findVest,
+                  ),
+                ],
               ),
             ),
           ],

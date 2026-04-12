@@ -73,8 +73,21 @@ class SupabaseProfileMessagesRepositoryAdapter
         .order('created_at', ascending: false);
     final allParticipants = await _client
         .from('direct_thread_participants')
-        .select('thread_id, user_id, profiles!inner(display_name)')
+        .select('thread_id, user_id')
         .inFilter('thread_id', threadIds);
+    final participantIds = (allParticipants as List<dynamic>)
+        .whereType<Map<String, dynamic>>()
+        .map((row) => row['user_id'] as String?)
+        .whereType<String>()
+        .where((participantId) => participantId != user.id)
+        .toSet()
+        .toList(growable: false);
+    final participantProfiles = participantIds.isEmpty
+        ? const <dynamic>[]
+        : await _client
+              .from('public_profiles')
+              .select('id, display_name')
+              .inFilter('id', participantIds);
     final stateRows = await _client
         .from('direct_thread_user_states')
         .select('thread_id, is_muted, is_blocked, is_deleted')
@@ -84,7 +97,8 @@ class SupabaseProfileMessagesRepositoryAdapter
     _mutedThreadIds.clear();
     _blockedThreadIds.clear();
     _deletedThreadIds.clear();
-    for (final row in (stateRows as List<dynamic>).whereType<Map<String, dynamic>>()) {
+    for (final row
+        in (stateRows as List<dynamic>).whereType<Map<String, dynamic>>()) {
       final threadId = row['thread_id'] as String?;
       if (threadId == null) {
         continue;
@@ -101,7 +115,8 @@ class SupabaseProfileMessagesRepositoryAdapter
     }
 
     final latestMessageByThread = <String, Map<String, dynamic>>{};
-    for (final row in (messagesRows as List<dynamic>).whereType<Map<String, dynamic>>()) {
+    for (final row
+        in (messagesRows as List<dynamic>).whereType<Map<String, dynamic>>()) {
       final threadId = row['thread_id'] as String?;
       if (threadId == null || latestMessageByThread.containsKey(threadId)) {
         continue;
@@ -109,8 +124,21 @@ class SupabaseProfileMessagesRepositoryAdapter
       latestMessageByThread[threadId] = row;
     }
 
+    final displayNameByParticipantId = <String, String>{};
+    for (final row in participantProfiles.whereType<Map<String, dynamic>>()) {
+      final participantId = row['id'] as String?;
+      if (participantId == null || participantId.isEmpty) {
+        continue;
+      }
+      final displayName = (row['display_name'] as String?)?.trim();
+      displayNameByParticipantId[participantId] =
+          displayName == null || displayName.isEmpty ? 'Rider' : displayName;
+    }
+
     final participantNameByThread = <String, String>{};
-    for (final row in (allParticipants as List<dynamic>).whereType<Map<String, dynamic>>()) {
+    for (final row
+        in (allParticipants as List<dynamic>)
+            .whereType<Map<String, dynamic>>()) {
       final threadId = row['thread_id'] as String?;
       final participantId = row['user_id'] as String?;
       if (threadId == null ||
@@ -119,21 +147,8 @@ class SupabaseProfileMessagesRepositoryAdapter
           participantNameByThread.containsKey(threadId)) {
         continue;
       }
-      final profile = row['profiles'];
-      if (profile is Map<String, dynamic>) {
-        participantNameByThread[threadId] =
-            (profile['display_name'] as String?)?.trim().isNotEmpty == true
-            ? (profile['display_name'] as String).trim()
-            : 'Rider';
-      } else if (profile is List && profile.isNotEmpty) {
-        final first = profile.first;
-        if (first is Map<String, dynamic>) {
-          participantNameByThread[threadId] =
-              (first['display_name'] as String?)?.trim().isNotEmpty == true
-              ? (first['display_name'] as String).trim()
-              : 'Rider';
-        }
-      }
+      participantNameByThread[threadId] =
+          displayNameByParticipantId[participantId] ?? 'Rider';
     }
 
     _directThreads
@@ -151,10 +166,14 @@ class SupabaseProfileMessagesRepositoryAdapter
               final participantName = participantNameByThread[id];
               return DirectMessageThread(
                 id: id,
-                participant: participantName ?? (title.isNotEmpty ? title : 'Chat'),
-                preview: (latest?['body'] as String?) ?? 'Sin mensajes todavia.',
+                participant:
+                    participantName ?? (title.isNotEmpty ? title : 'Chat'),
+                preview:
+                    (latest?['body'] as String?) ?? 'Sin mensajes todavia.',
                 lastActivity:
-                    DateTime.tryParse((latest?['created_at'] as String?) ?? '') ??
+                    DateTime.tryParse(
+                      (latest?['created_at'] as String?) ?? '',
+                    ) ??
                     updatedAt,
                 unreadCount: 0,
                 isMuted: _mutedThreadIds.contains(id),
@@ -263,7 +282,9 @@ class SupabaseProfileMessagesRepositoryAdapter
     });
   }
 
-  Future<void> _persistIndexedMessageUpdate(AppMessageIndexEntry updated) async {
+  Future<void> _persistIndexedMessageUpdate(
+    AppMessageIndexEntry updated,
+  ) async {
     if (updated.id.startsWith('session-comment-')) {
       final commentId = updated.id.substring('session-comment-'.length);
       await _client
@@ -299,7 +320,9 @@ class SupabaseProfileMessagesRepositoryAdapter
   ) {
     final entries = <AppMessageIndexEntry>[];
 
-    for (final row in (sessionCommentRows as List<dynamic>).whereType<Map<String, dynamic>>()) {
+    for (final row
+        in (sessionCommentRows as List<dynamic>)
+            .whereType<Map<String, dynamic>>()) {
       final id = row['id'] as String?;
       final text = (row['text'] as String?)?.trim();
       final createdAt = DateTime.tryParse((row['created_at'] as String?) ?? '');
@@ -330,7 +353,9 @@ class SupabaseProfileMessagesRepositoryAdapter
       );
     }
 
-    for (final row in (authoredMessageRows as List<dynamic>).whereType<Map<String, dynamic>>()) {
+    for (final row
+        in (authoredMessageRows as List<dynamic>)
+            .whereType<Map<String, dynamic>>()) {
       final id = row['id'] as String?;
       final body = (row['body'] as String?)?.trim();
       final createdAt = DateTime.tryParse((row['created_at'] as String?) ?? '');

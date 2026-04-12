@@ -39,7 +39,7 @@ class SupabaseCommunityFollowingPreferencesAdapter
     }
 
     final profileRows = await _client
-        .from('profiles')
+        .from('public_profiles')
         .select('id, handle')
         .inFilter('id', followedIds);
     _cachedUsernames = (profileRows as List<dynamic>)
@@ -58,7 +58,10 @@ class SupabaseCommunityFollowingPreferencesAdapter
     }
 
     final current = await loadFollowingUsernames() ?? <String>{};
-    final wanted = usernames.map((name) => name.trim()).where((name) => name.isNotEmpty).toSet();
+    final wanted = usernames
+        .map((name) => name.trim())
+        .where((name) => name.isNotEmpty)
+        .toSet();
 
     final toFollow = wanted.difference(current);
     final toUnfollow = current.difference(wanted);
@@ -69,11 +72,12 @@ class SupabaseCommunityFollowingPreferencesAdapter
     }
 
     final profiles = await _client
-        .from('profiles')
+        .from('public_profiles')
         .select('id, handle')
         .inFilter('handle', affectedHandles.toList(growable: false));
     final idByHandle = <String, String>{};
-    for (final row in (profiles as List<dynamic>).whereType<Map<String, dynamic>>()) {
+    for (final row
+        in (profiles as List<dynamic>).whereType<Map<String, dynamic>>()) {
       final handle = (row['handle'] as String? ?? '').trim();
       final id = row['id'] as String?;
       if (handle.isNotEmpty && id != null && id.isNotEmpty) {

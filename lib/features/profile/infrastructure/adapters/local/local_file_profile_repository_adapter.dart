@@ -25,6 +25,11 @@ class LocalFileProfileRepositoryAdapter implements ProfileRepositoryPort {
   }
 
   @override
+  Future<bool> isHandleAvailable(String handle) async {
+    return true;
+  }
+
+  @override
   Future<void> saveProfile(UserProfileData value) async {
     _profile = value;
     _save();

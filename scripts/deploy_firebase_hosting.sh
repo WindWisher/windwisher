@@ -26,4 +26,4 @@ safe = {
 File.write("build/web/assets/local.env.json", JSON.pretty_generate(safe))
 RUBY
 
-firebase deploy --only hosting
+firebase deploy --only hosting --config firebase.hosting.json

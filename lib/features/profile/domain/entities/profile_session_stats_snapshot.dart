@@ -1,5 +1,3 @@
-import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
-
 class ProfileSessionStatsSnapshot {
   const ProfileSessionStatsSnapshot({
     required this.totalSessions,
@@ -173,72 +171,6 @@ class ProfileSessionStatsSnapshot {
     hangtimeTrendLabel: null,
   );
 
-  factory ProfileSessionStatsSnapshot.fromLegacyProfile(
-    UserProfileData profile,
-  ) {
-    final totalSessions = _parseInt(profile.totalSessions);
-    final totalWaterHours = _parseDouble(profile.waterHours);
-    final totalJumps = _parseInt(profile.jumps);
-    final highestJumpMeters = _parseNullableDouble(profile.topJump);
-    final maxHangtimeSeconds = _parseNullableDouble(profile.maxHangtime);
-    return ProfileSessionStatsSnapshot(
-      totalSessions: totalSessions,
-      totalWaterHours: totalWaterHours,
-      totalJumps: totalJumps,
-      activeDays: 0,
-      sessionsWithJumps: 0,
-      highestJumpMeters: highestJumpMeters,
-      maxHangtimeSeconds: maxHangtimeSeconds,
-      maxAccelerationG: null,
-      maxRotationDegPerSec: null,
-      maxSpeedKnots: null,
-      avgSpeedKnots: null,
-      avgSpeedP95Knots: null,
-      totalPlaningDistanceKm: 0,
-      avgPlaningDistanceKm: 0,
-      avgTakeoffSpeedKnots: null,
-      avgLandingSpeedKnots: null,
-      avgCleanLandingRate: null,
-      avgJumpHeightMeters: null,
-      avgHangtimeSeconds: null,
-      avgJumpHeightConsistencyPercent: null,
-      avgSpeedVariabilityKnots: null,
-      avgDirectionalStabilityPercent: null,
-      avgJibeQualityPercent: null,
-      avgTransitionSpeedLossKnots: null,
-      avgPlaningRecoverySeconds: null,
-      totalTransitions: 0,
-      avgTransitionsPerHour: null,
-      avgTackEfficiencyPercent: null,
-      avgSweetspotPercent: null,
-      avgImpactScore: null,
-      maxBigAirScore: null,
-      avgBigAirScore: null,
-      maxFreerideScore: null,
-      avgFreerideScore: null,
-      avgSafetyScore: null,
-      maxSessionScore: null,
-      totalAreaCoverageKm2: 0,
-      avgNetDriftKm: null,
-      maxDistanceCoastKm: null,
-      totalRiskZoneHours: 0,
-      avgGpsAccuracyMeters: null,
-      totalOverpowerEvents: 0,
-      avgFallsPerHour: null,
-      avgLostSamplesPercent: null,
-      avgSessionHours: totalSessions == 0 ? 0 : totalWaterHours / totalSessions,
-      avgJumpsPerSession: totalSessions == 0 ? 0 : totalJumps / totalSessions,
-      sessionsThisMonth: 0,
-      last30DaysSessions: 0,
-      previous30DaysSessions: 0,
-      daysSinceLatestRecord: null,
-      mostUsedSpot: null,
-      bestMonthLabel: null,
-      latestRecordLabel: null,
-      highestJumpTrendLabel: null,
-      hangtimeTrendLabel: null,
-    );
-  }
 
   String get totalSessionsLabel => '$totalSessions';
 
@@ -424,18 +356,4 @@ class ProfileSessionStatsSnapshot {
     return '${percent.toStringAsFixed(0)}%';
   }
 
-  static int _parseInt(String raw) {
-    return int.tryParse(raw.replaceAll(RegExp(r'[^0-9-]'), '')) ?? 0;
-  }
-
-  static double _parseDouble(String raw) {
-    final normalized = raw.replaceAll(',', '.');
-    final match = RegExp(r'-?[0-9]+(?:\.\d+)?').firstMatch(normalized);
-    return double.tryParse(match?.group(0) ?? '') ?? 0;
-  }
-
-  static double? _parseNullableDouble(String raw) {
-    final value = _parseDouble(raw);
-    return value == 0 ? null : value;
-  }
 }

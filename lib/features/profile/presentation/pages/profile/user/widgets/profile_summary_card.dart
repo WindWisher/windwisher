@@ -58,6 +58,7 @@ class ProfileSummaryCard extends StatelessWidget {
     final avatarImage = _avatarImage();
     final hasBannerImage = bannerImage != null;
     final hasAvatarImage = avatarImage != null;
+    final tagline = profile.publicTagline.trim();
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -68,7 +69,6 @@ class ProfileSummaryCard extends StatelessWidget {
             clipBehavior: Clip.none,
             children: [
               ProfileSummaryBanner(
-                userRole: profile.userRole,
                 bannerImage: bannerImage,
                 hasBannerImage: hasBannerImage,
                 onPublicPreviewPressed: showPublicPreviewButton
@@ -130,15 +130,18 @@ class ProfileSummaryCard extends StatelessWidget {
                     ],
                   ),
                 ],
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  profile.publicTagline,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    height: 1.35,
+                if (tagline.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    tagline,
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      height: 1.35,
+                    ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: AppSpacing.md),
+                ] else
+                  const SizedBox(height: AppSpacing.sm),
                 ProfileSummaryStats(
                   kpis: kpis,
                   onFollowersPressed: onFollowersPressed,
@@ -177,15 +180,24 @@ class ProfileSummaryCard extends StatelessWidget {
   }
 
   ImageProvider<Object>? _bannerImage() {
-    if (!kIsWeb && profile.bannerLocalPath != null) {
-      return FileImage(File(profile.bannerLocalPath!));
-    }
-    return null;
+    return _profileImageProvider(profile.bannerLocalPath);
   }
 
   ImageProvider<Object>? _avatarImage() {
-    if (!kIsWeb && profile.avatarLocalPath != null) {
-      return FileImage(File(profile.avatarLocalPath!));
+    return _profileImageProvider(profile.avatarLocalPath);
+  }
+
+  ImageProvider<Object>? _profileImageProvider(String? path) {
+    if (path == null || path.trim().isEmpty) {
+      return null;
+    }
+    final trimmedPath = path.trim();
+    final uri = Uri.tryParse(trimmedPath);
+    if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
+      return NetworkImage(trimmedPath);
+    }
+    if (!kIsWeb) {
+      return FileImage(File(trimmedPath));
     }
     return null;
   }

@@ -5,11 +5,14 @@ class ProfileController {
   ProfileController({
     required GetProfileUseCase getProfile,
     required SaveProfileUseCase saveProfile,
+    required CheckProfileHandleAvailabilityUseCase checkHandleAvailability,
   }) : _getProfile = getProfile,
-       _saveProfile = saveProfile;
+       _saveProfile = saveProfile,
+       _checkHandleAvailability = checkHandleAvailability;
 
   final GetProfileUseCase _getProfile;
   final SaveProfileUseCase _saveProfile;
+  final CheckProfileHandleAvailabilityUseCase _checkHandleAvailability;
 
   UserProfileData get profile => _getProfile();
 
@@ -19,5 +22,9 @@ class ProfileController {
 
   Future<void> updateProfile(UserProfileData value) {
     return _saveProfile(value);
+  }
+
+  Future<bool> isHandleAvailable(String handle) {
+    return _checkHandleAvailability(handle);
   }
 }

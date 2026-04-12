@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/core/ui/app_detail_dialog.dart';
+import 'package:windwisher/core/ui/app_equipment_detail_list.dart';
 
 class SessionGearDialog extends StatelessWidget {
   const SessionGearDialog({
@@ -29,36 +31,30 @@ class SessionGearDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Equipo utilizado'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            gearSetupName,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          if (gearSetupDetailLines.isNotEmpty) ...[
+    return AppDetailDialog(
+      title: 'Equipo utilizado',
+      maxWidth: 460,
+      maxHeight: 420,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(gearSetupName, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: AppSpacing.sm),
-            ...gearSetupDetailLines.map(
-              (line) => Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                child: Text(line),
+            Expanded(
+              child: SingleChildScrollView(
+                child: AppEquipmentDetailList(
+                  lines: gearSetupDetailLines,
+                  emptyMessage:
+                      'No hay mas detalle disponible para este equipo.',
+                ),
               ),
             ),
-          ] else ...[
-            const SizedBox(height: AppSpacing.sm),
-            const Text('No hay mas detalle disponible para este equipo.'),
           ],
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cerrar'),
         ),
-      ],
+      ),
     );
   }
 }

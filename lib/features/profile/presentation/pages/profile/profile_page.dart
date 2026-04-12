@@ -18,6 +18,7 @@ import 'package:windwisher/features/profile/domain/entities/profile_community_st
 import 'package:windwisher/features/profile/domain/entities/profile_kpi_snapshot.dart';
 import 'package:windwisher/features/profile/domain/entities/profile_session_stats_snapshot.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
+import 'package:windwisher/features/profile/domain/errors/profile_handle_taken_exception.dart';
 import 'package:windwisher/features/profile/di/profile_module.dart';
 import 'package:windwisher/features/profile/presentation/pages/alarms/profile_alarms_section.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/gear/widgets/profile_gear_section.dart';
@@ -227,7 +228,7 @@ class ProfilePageState extends State<ProfilePage> {
         followerUsernames = const <String>[];
       } else {
         final profileRows = await client
-            .from('profiles')
+            .from('public_profiles')
             .select('id, handle')
             .inFilter('id', followerIds);
         followerUsernames = (profileRows as List<dynamic>)
@@ -306,11 +307,8 @@ class ProfilePageState extends State<ProfilePage> {
         likeStatesBySessionId: _sessionLikeStatesBySessionId,
       );
 
-  ProfileKpiSnapshot get _profileKpis => ProfileKpiAggregator.build(
-    _profileData,
-    _profileSessionStats,
-    _profileCommunityStats,
-  );
+  ProfileKpiSnapshot get _profileKpis =>
+      ProfileKpiAggregator.build(_profileSessionStats, _profileCommunityStats);
 
   void _publishGearSetupsForSessions() {
     ProfileGearSetupCatalog.instance.replaceAll(
@@ -776,12 +774,41 @@ class ProfilePageState extends State<ProfilePage> {
     });
   }
 
-  Future<void> _updateProfileData(_UserProfileData value) async {
-    await _profileController.updateProfile(value);
-    if (!mounted) {
-      return;
+  Future<bool> _updateProfileData(_UserProfileData value) async {
+    try {
+      await _profileController.updateProfile(value);
+      await _profileController.loadProfile();
+      if (!mounted) {
+        return false;
+      }
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Perfil actualizado correctamente.')),
+      );
+      return true;
+    } on ProfileHandleTakenException catch (_) {
+      if (!mounted) {
+        return false;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Este nombre de usuario ya esta ocupado.'),
+        ),
+      );
+      return false;
+    } catch (error) {
+      if (!mounted) {
+        return false;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo guardar el perfil: $error')),
+      );
+      return false;
     }
-    setState(() {});
+  }
+
+  Future<bool> _isProfileHandleAvailable(String handle) {
+    return _profileController.isHandleAvailable(handle);
   }
 
   void _setSelectedMessagesView(int index) {
@@ -1035,6 +1062,7 @@ class ProfilePageState extends State<ProfilePage> {
                       profile: _profileData,
                       kpis: _profileKpis,
                       onProfileUpdated: _updateProfileData,
+                      isHandleAvailable: _isProfileHandleAvailable,
                       savedGearSetups: _savedGearSetups,
                       findKite: _findKite,
                       findBar: _findBar,

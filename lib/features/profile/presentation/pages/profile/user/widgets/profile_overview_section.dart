@@ -4,7 +4,7 @@ import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/features/profile/domain/entities/profile_gear_entities.dart';
 import 'package:windwisher/features/profile/domain/entities/profile_kpi_snapshot.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
-import 'package:windwisher/features/profile/presentation/pages/profile/profile_aux_pages.dart';
+import 'package:windwisher/features/profile/presentation/pages/profile/user/dialogs/edit/edit_profile_dialog.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/user/dialogs/stats/profile_stats_details_dialog.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/user/dialogs/preview/profile_public_preview_dialog.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/user/dialogs/connections/followers_dialog.dart';
@@ -20,6 +20,7 @@ class ProfileOverviewSection extends StatelessWidget {
     required this.profile,
     required this.kpis,
     required this.onProfileUpdated,
+    required this.isHandleAvailable,
     required this.savedGearSetups,
     required this.findKite,
     required this.findBar,
@@ -32,7 +33,8 @@ class ProfileOverviewSection extends StatelessWidget {
 
   final UserProfileData profile;
   final ProfileKpiSnapshot kpis;
-  final ValueChanged<UserProfileData> onProfileUpdated;
+  final Future<bool> Function(UserProfileData) onProfileUpdated;
+  final Future<bool> Function(String handle) isHandleAvailable;
   final List<GearSetup> savedGearSetups;
   final KiteItem? Function(String id) findKite;
   final BarItem? Function(String id) findBar;
@@ -403,19 +405,29 @@ class ProfileOverviewSection extends StatelessWidget {
   }
 
   Future<void> _openEditProfile(BuildContext context) async {
-    final updated = await Navigator.of(context).push<UserProfileData>(
-      MaterialPageRoute(builder: (_) => EditProfilePage(initialData: profile)),
+    await EditProfileDialog.show(
+      context,
+      initialData: profile,
+      onSave: onProfileUpdated,
+      isHandleAvailable: isHandleAvailable,
     );
-    if (updated == null || !context.mounted) {
-      return;
-    }
-    onProfileUpdated(updated);
   }
 
   Future<void> _openPublicProfilePreview(BuildContext context) async {
     await showDialog<void>(
       context: context,
-      builder: (_) => ProfilePublicPreviewDialog(profile: profile),
+      builder: (_) => ProfilePublicPreviewDialog(
+        profile: profile,
+        kpis: kpis,
+        savedGearSetups: savedGearSetups,
+        findKite: findKite,
+        findBar: findBar,
+        findBoard: findBoard,
+        findHarness: findHarness,
+        findWetsuit: findWetsuit,
+        findHelmet: findHelmet,
+        findVest: findVest,
+      ),
     );
   }
 

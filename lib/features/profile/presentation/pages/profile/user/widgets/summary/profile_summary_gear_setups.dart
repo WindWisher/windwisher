@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/core/ui/app_gear_chip.dart';
 import 'package:windwisher/features/profile/domain/entities/profile_gear_entities.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/gear/widgets/setups/dialog/profile_gear_setup_dialog.dart';
 
@@ -110,54 +111,16 @@ class _ProfileSummaryGearSetupChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: () {
-          ProfileGearSetupDialog.show(
-            context,
-            setupName: setup.name,
-            detailLines: detailLines,
-          );
-        },
-        child: Ink(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm,
-            vertical: 10,
-          ),
-          decoration: BoxDecoration(
-            color: colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.checkroom_rounded,
-                size: 16,
-                color: colorScheme.onPrimaryContainer,
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 180),
-                child: Text(
-                  setup.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return AppGearChip(
+      label: setup.name,
+      maxLabelWidth: 180,
+      onPressed: () {
+        ProfileGearSetupDialog.show(
+          context,
+          setupName: setup.name,
+          detailLines: detailLines,
+        );
+      },
     );
   }
 }
