@@ -8,6 +8,7 @@ class DirectMessageThread {
     required this.isMuted,
     required this.isBlocked,
     required this.lastLocation,
+    this.participantAvatarPath,
   });
 
   final String id;
@@ -18,8 +19,13 @@ class DirectMessageThread {
   final bool isMuted;
   final bool isBlocked;
   final String lastLocation;
+  final String? participantAvatarPath;
 
-  DirectMessageThread copyWith({bool? isMuted, bool? isBlocked}) {
+  DirectMessageThread copyWith({
+    bool? isMuted,
+    bool? isBlocked,
+    String? participantAvatarPath,
+  }) {
     return DirectMessageThread(
       id: id,
       participant: participant,
@@ -29,6 +35,7 @@ class DirectMessageThread {
       isMuted: isMuted ?? this.isMuted,
       isBlocked: isBlocked ?? this.isBlocked,
       lastLocation: lastLocation,
+      participantAvatarPath: participantAvatarPath ?? this.participantAvatarPath,
     );
   }
 }

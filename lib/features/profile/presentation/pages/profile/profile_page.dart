@@ -3,12 +3,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
-import 'package:windwisher/features/profile/domain/entities/app_message_index_entry.dart';
 import 'package:windwisher/features/community/di/community_module.dart';
 import 'package:windwisher/features/community/domain/entities/community_user_summary.dart';
 import 'package:windwisher/features/community/domain/entities/following_session.dart';
 import 'package:windwisher/features/community/domain/entities/session_comment.dart';
 import 'package:windwisher/features/community/domain/entities/session_like_state.dart';
+import 'package:windwisher/features/profile/domain/entities/direct_chat_user_candidate.dart';
 import 'package:windwisher/features/profile/domain/entities/direct_message_thread.dart';
 import 'package:windwisher/features/profile/domain/entities/profile_gear_entities.dart';
 import 'package:windwisher/features/profile/application/profile_community_stats_aggregator.dart';
@@ -27,8 +27,8 @@ import 'package:windwisher/features/profile/presentation/pages/profile/gear/mana
 import 'package:windwisher/features/profile/presentation/pages/profile/gear/dialogs/profile_gear_dialogs_coordinator.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/gear/dialogs/profile_gear_dialogs_dependencies.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/gear/management/profile_gear_actions_handler.dart';
-import 'package:windwisher/features/profile/presentation/pages/messages/profile_messages_index_pages.dart';
-import 'package:windwisher/features/profile/presentation/pages/messages/profile_messages_section.dart';
+import 'package:windwisher/features/profile/presentation/pages/messages/direct_chat_dialog.dart';
+import 'package:windwisher/features/profile/presentation/pages/messages/profile_direct_messages_section.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/user/widgets/profile_overview_section.dart';
 import 'package:windwisher/features/profile/presentation/state/profile_controller.dart';
 import 'package:windwisher/features/profile/presentation/state/profile_gear_controller.dart';
@@ -752,18 +752,6 @@ class ProfilePageState extends State<ProfilePage> {
     return _messagesController.directThreads;
   }
 
-  int get _selectedMessagesViewIndex {
-    return _messagesController.selectedMessagesViewIndex;
-  }
-
-  String get _messageSearchQuery {
-    return _messagesController.messageSearchQuery;
-  }
-
-  List<AppMessageIndexEntry> _filteredIndexedMessages() {
-    return _messagesController.filteredIndexedMessages;
-  }
-
   void _mutateState(VoidCallback callback) {
     setState(callback);
   }
@@ -811,22 +799,50 @@ class ProfilePageState extends State<ProfilePage> {
     return _profileController.isHandleAvailable(handle);
   }
 
-  void _setSelectedMessagesView(int index) {
-    setState(() {
-      _messagesController.setSelectedMessagesView(index);
-    });
-  }
-
-  void _setMessageSearchQuery(String value) {
-    setState(() {
-      _messagesController.setMessageSearchQuery(value);
-    });
-  }
-
   void _toggleMuteDirectThread(String threadId) {
     setState(() {
       _messagesController.toggleMuteDirectThread(threadId);
     });
+  }
+
+  Future<void> _startNewDirectChat(DirectChatUserCandidate candidate) async {
+    final thread = await _messagesController.createOrOpenDirectChat(candidate.id);
+    if (!mounted) {
+      return;
+    }
+    if (thread == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo abrir el chat seleccionado.')),
+      );
+      return;
+    }
+
+    setState(() {});
+    await _openDirectChat(thread);
+  }
+
+  Future<void> _openDirectChat(DirectMessageThread thread) async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => DirectChatDialog(
+        threadId: thread.id,
+        participant: thread.participant,
+        participantAvatarPath: thread.participantAvatarPath,
+        loadMessages: _messagesController.loadDirectChatMessages,
+        sendMessage: _messagesController.sendDirectChatMessage,
+        sendMediaMessage: _messagesController.sendDirectChatMediaMessage,
+        updateMessage: _messagesController.updateDirectChatMessage,
+        deleteMessages: _messagesController.deleteDirectChatMessages,
+      ),
+    );
+    if (!mounted) {
+      return;
+    }
+    await _messagesController.hydrate();
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
   }
 
   void _deleteDirectThread(String threadId) {
@@ -836,14 +852,17 @@ class ProfilePageState extends State<ProfilePage> {
   }
 
   void _blockDirectThread(String threadId, String participant) {
-    final changed = _messagesController.blockDirectThread(threadId);
-    if (!changed) {
-      return;
-    }
+    final blocked = _messagesController.toggleBlockDirectThread(threadId);
     setState(() {});
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text('$participant bloqueado.')));
+    ).showSnackBar(
+      SnackBar(
+        content: Text(
+          blocked ? '$participant bloqueado.' : '$participant desbloqueado.',
+        ),
+      ),
+    );
   }
 
   Future<void> _confirmAndDeleteDirectThread(
@@ -882,13 +901,20 @@ class ProfilePageState extends State<ProfilePage> {
     String threadId,
     String participant,
   ) async {
+    final thread = _directMessageThreads.cast<DirectMessageThread?>().firstWhere(
+      (item) => item?.id == threadId,
+      orElse: () => null,
+    );
+    final isBlocked = thread?.isBlocked ?? false;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Bloquear usuario'),
+          title: Text(isBlocked ? 'Desbloquear usuario' : 'Bloquear usuario'),
           content: Text(
-            'Se bloqueara a $participant. Podras desbloquearlo mas adelante.',
+            isBlocked
+                ? 'Se desbloqueara a $participant y podras volver a interactuar con este chat.'
+                : 'Se bloqueara a $participant. Podras desbloquearlo mas adelante.',
           ),
           actions: [
             TextButton(
@@ -897,7 +923,7 @@ class ProfilePageState extends State<ProfilePage> {
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Bloquear'),
+              child: Text(isBlocked ? 'Desbloquear' : 'Bloquear'),
             ),
           ],
         );
@@ -1130,49 +1156,20 @@ class ProfilePageState extends State<ProfilePage> {
       case 1:
         return const ProfileAlarmsSection();
       case 2:
-        return ProfileMessagesSection(
-          selectedMessagesViewIndex: _selectedMessagesViewIndex,
-          onSelectMessagesView: _setSelectedMessagesView,
+        return ProfileDirectMessagesSection(
           directMessageThreads: _directMessageThreads,
+          directChatUserCandidates: _messagesController.directChatUserCandidates,
+          onOpenChat: _openDirectChat,
           onToggleMute: _toggleMuteDirectThread,
           onBlock: _confirmAndBlockDirectThread,
           onDelete: _confirmAndDeleteDirectThread,
-          messageSearchController: _messageSearchController,
-          messageSearchQuery: _messageSearchQuery,
-          onSearchChanged: _setMessageSearchQuery,
-          indexedResults: _filteredIndexedMessages(),
-          onOpenIndexedMessage: _openIndexedMessage,
+          onStartChatWithCandidate: _startNewDirectChat,
           formatTimestamp: _formatTimestamp,
         );
       default:
         return const SizedBox.shrink();
     }
   }
-
-  void _openIndexedMessage(AppMessageIndexEntry entry) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => IndexedCommentDetailPage(
-          entry: entry,
-          onEntryUpdated: _updateIndexedMessage,
-          onEntryDeleted: _deleteIndexedMessage,
-        ),
-      ),
-    );
-  }
-
-  void _updateIndexedMessage(AppMessageIndexEntry updated) {
-    setState(() {
-      _messagesController.updateIndexedMessage(updated);
-    });
-  }
-
-  void _deleteIndexedMessage(String id) {
-    setState(() {
-      _messagesController.deleteIndexedMessage(id);
-    });
-  }
-
   String _formatTimestamp(DateTime timestamp) {
     final now = DateTime.now();
     final diff = now.difference(timestamp);

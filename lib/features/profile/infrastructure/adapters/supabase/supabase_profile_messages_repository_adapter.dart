@@ -1,13 +1,19 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:windwisher/features/profile/domain/entities/app_message_index_entry.dart';
+import 'package:windwisher/features/profile/domain/entities/direct_chat_message.dart';
+import 'package:windwisher/features/profile/domain/entities/direct_chat_user_candidate.dart';
 import 'package:windwisher/features/profile/domain/entities/direct_message_thread.dart';
 import 'package:windwisher/features/profile/domain/ports/out/profile_messages_repository_port.dart';
 import 'package:windwisher/features/profile/infrastructure/adapters/in_memory/in_memory_profile_messages_repository_adapter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
 class SupabaseProfileMessagesRepositoryAdapter
     implements ProfileMessagesRepositoryPort {
+  static const Uuid _uuid = Uuid();
+  static const String _attachmentsBucket = 'direct-chat-media';
   SupabaseProfileMessagesRepositoryAdapter({SupabaseClient? client})
     : _client = client ?? Supabase.instance.client,
       _fallbackIndexed = InMemoryProfileMessagesRepositoryAdapter();
@@ -16,6 +22,7 @@ class SupabaseProfileMessagesRepositoryAdapter
   final InMemoryProfileMessagesRepositoryAdapter _fallbackIndexed;
 
   final List<DirectMessageThread> _directThreads = <DirectMessageThread>[];
+  final List<DirectChatUserCandidate> _userCandidates = <DirectChatUserCandidate>[];
   final List<AppMessageIndexEntry> _indexedMessages = <AppMessageIndexEntry>[];
   final Set<String> _mutedThreadIds = <String>{};
   final Set<String> _blockedThreadIds = <String>{};
@@ -32,10 +39,18 @@ class SupabaseProfileMessagesRepositoryAdapter
   }
 
   @override
+  List<DirectChatUserCandidate> getDirectChatUserCandidates() {
+    return List<DirectChatUserCandidate>.unmodifiable(_userCandidates);
+  }
+
+  @override
   Future<void> hydrate() async {
     final user = _client.auth.currentUser;
     if (user == null) {
       _directThreads.clear();
+      _userCandidates
+        ..clear()
+        ..addAll(_fallbackIndexed.getDirectChatUserCandidates());
       _indexedMessages
         ..clear()
         ..addAll(_fallbackIndexed.getIndexedMessages());
@@ -44,6 +59,21 @@ class SupabaseProfileMessagesRepositoryAdapter
       _deletedThreadIds.clear();
       return;
     }
+
+    final candidateRows = await _client
+        .from('public_profiles')
+        .select('id, display_name, handle, avatar_path')
+        .neq('id', user.id);
+    _userCandidates
+      ..clear()
+      ..addAll(
+        (candidateRows as List<dynamic>)
+            .whereType<Map<String, dynamic>>()
+            .map(_candidateFromRow)
+            .where((candidate) => candidate.displayName.isNotEmpty)
+            .toList(growable: false)
+          ..sort((a, b) => a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase())),
+      );
 
     final participantRows = await _client
         .from('direct_thread_participants')
@@ -68,7 +98,7 @@ class SupabaseProfileMessagesRepositoryAdapter
         .inFilter('id', threadIds);
     final messagesRows = await _client
         .from('direct_messages')
-        .select('thread_id, body, created_at')
+        .select('thread_id, body, created_at, attachment_type')
         .inFilter('thread_id', threadIds)
         .order('created_at', ascending: false);
     final allParticipants = await _client
@@ -86,7 +116,7 @@ class SupabaseProfileMessagesRepositoryAdapter
         ? const <dynamic>[]
         : await _client
               .from('public_profiles')
-              .select('id, display_name')
+              .select('id, display_name, avatar_path')
               .inFilter('id', participantIds);
     final stateRows = await _client
         .from('direct_thread_user_states')
@@ -125,6 +155,7 @@ class SupabaseProfileMessagesRepositoryAdapter
     }
 
     final displayNameByParticipantId = <String, String>{};
+    final avatarPathByParticipantId = <String, String?>{};
     for (final row in participantProfiles.whereType<Map<String, dynamic>>()) {
       final participantId = row['id'] as String?;
       if (participantId == null || participantId.isEmpty) {
@@ -133,9 +164,12 @@ class SupabaseProfileMessagesRepositoryAdapter
       final displayName = (row['display_name'] as String?)?.trim();
       displayNameByParticipantId[participantId] =
           displayName == null || displayName.isEmpty ? 'Rider' : displayName;
+      avatarPathByParticipantId[participantId] =
+          (row['avatar_path'] as String?)?.trim();
     }
 
     final participantNameByThread = <String, String>{};
+    final participantAvatarByThread = <String, String?>{};
     for (final row
         in (allParticipants as List<dynamic>)
             .whereType<Map<String, dynamic>>()) {
@@ -149,6 +183,7 @@ class SupabaseProfileMessagesRepositoryAdapter
       }
       participantNameByThread[threadId] =
           displayNameByParticipantId[participantId] ?? 'Rider';
+      participantAvatarByThread[threadId] = avatarPathByParticipantId[participantId];
     }
 
     _directThreads
@@ -168,8 +203,7 @@ class SupabaseProfileMessagesRepositoryAdapter
                 id: id,
                 participant:
                     participantName ?? (title.isNotEmpty ? title : 'Chat'),
-                preview:
-                    (latest?['body'] as String?) ?? 'Sin mensajes todavia.',
+                preview: _messagePreviewFromRow(latest),
                 lastActivity:
                     DateTime.tryParse(
                       (latest?['created_at'] as String?) ?? '',
@@ -179,6 +213,7 @@ class SupabaseProfileMessagesRepositoryAdapter
                 isMuted: _mutedThreadIds.contains(id),
                 isBlocked: _blockedThreadIds.contains(id),
                 lastLocation: 'Mensajes directos',
+                participantAvatarPath: participantAvatarByThread[id],
               );
             })
             .where((thread) => !_deletedThreadIds.contains(thread.id))
@@ -217,14 +252,16 @@ class SupabaseProfileMessagesRepositoryAdapter
   }
 
   @override
-  bool blockDirectThread(String threadId) {
-    if (_blockedThreadIds.contains(threadId)) {
-      return false;
+  bool toggleBlockDirectThread(String threadId) {
+    final nextBlocked = !_blockedThreadIds.contains(threadId);
+    if (nextBlocked) {
+      _blockedThreadIds.add(threadId);
+    } else {
+      _blockedThreadIds.remove(threadId);
     }
-    _blockedThreadIds.add(threadId);
     _applyLocalFlags(threadId);
     unawaited(_persistThreadState(threadId));
-    return true;
+    return nextBlocked;
   }
 
   @override
@@ -233,6 +270,298 @@ class SupabaseProfileMessagesRepositoryAdapter
     _directThreads.removeWhere((item) => item.id == threadId);
     unawaited(_persistThreadState(threadId));
   }
+
+  @override
+  Future<DirectMessageThread?> createOrOpenDirectChat(String userId) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return null;
+    }
+
+    DirectChatUserCandidate? candidate;
+    for (final item in _userCandidates) {
+      if (item.id == userId) {
+        candidate = item;
+        break;
+      }
+    }
+    if (candidate == null) {
+      return null;
+    }
+
+    final participantRows = await _client
+        .from('direct_thread_participants')
+        .select('thread_id')
+        .eq('user_id', user.id);
+    final threadIds = (participantRows as List<dynamic>)
+        .whereType<Map<String, dynamic>>()
+        .map((row) => row['thread_id'] as String?)
+        .whereType<String>()
+        .toSet()
+        .toList(growable: false);
+
+    if (threadIds.isNotEmpty) {
+      final allParticipants = await _client
+          .from('direct_thread_participants')
+          .select('thread_id, user_id')
+          .inFilter('thread_id', threadIds);
+      final participantsByThread = <String, Set<String>>{};
+      for (final row in (allParticipants as List<dynamic>).whereType<Map<String, dynamic>>()) {
+        final threadId = row['thread_id'] as String?;
+        final participantId = row['user_id'] as String?;
+        if (threadId == null || participantId == null) {
+          continue;
+        }
+        participantsByThread.putIfAbsent(threadId, () => <String>{}).add(participantId);
+      }
+      for (final entry in participantsByThread.entries) {
+        if (entry.value.length == 2 && entry.value.contains(user.id) && entry.value.contains(userId)) {
+          _deletedThreadIds.remove(entry.key);
+          await _persistThreadState(entry.key);
+          await hydrate();
+          for (final thread in _directThreads) {
+            if (thread.id == entry.key) {
+              return thread;
+            }
+          }
+          return null;
+        }
+      }
+    }
+
+    final threadId = _uuid.v4();
+
+    await _client.from('direct_threads').insert(<String, dynamic>{
+      'id': threadId,
+      'created_by': user.id,
+      'title': candidate.displayName,
+    });
+
+    await _client.from('direct_thread_participants').insert(<Map<String, dynamic>>[
+      <String, dynamic>{'thread_id': threadId, 'user_id': user.id},
+      <String, dynamic>{'thread_id': threadId, 'user_id': userId},
+    ]);
+
+    _deletedThreadIds.remove(threadId);
+    await hydrate();
+
+    for (final thread in _directThreads) {
+      if (thread.id == threadId) {
+        return thread;
+      }
+    }
+    return DirectMessageThread(
+          id: threadId,
+          participant: candidate.displayName,
+          preview: 'Sin mensajes todavia.',
+          lastActivity: DateTime.now(),
+          unreadCount: 0,
+          isMuted: false,
+          isBlocked: false,
+          lastLocation: 'Mensajes directos',
+          participantAvatarPath: candidate.avatarPath,
+        );
+  }
+
+
+  @override
+  Future<List<DirectChatMessage>> loadDirectChatMessages(String threadId) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return const <DirectChatMessage>[];
+    }
+
+    final rows = await _client
+        .from('direct_messages')
+        .select(_directMessageSelect)
+        .eq('thread_id', threadId)
+        .order('created_at', ascending: true);
+
+    final typedRows = (rows as List<dynamic>)
+        .whereType<Map<String, dynamic>>()
+        .toList(growable: false);
+    final rowById = <String, Map<String, dynamic>>{};
+    for (final row in typedRows) {
+      final id = row['id'] as String?;
+      if (id != null && id.isNotEmpty) {
+        rowById[id] = row;
+      }
+    }
+
+    return typedRows
+        .map(
+          (row) => _messageFromRow(
+            row,
+            currentUserId: user.id,
+            fallbackThreadId: threadId,
+            replyLookup: rowById,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  @override
+  Future<DirectChatMessage?> sendDirectChatMessage(
+    String threadId,
+    String body, {
+    String? replyToMessageId,
+  }) async {
+    final user = _client.auth.currentUser;
+    final trimmed = body.trim();
+    if (user == null || trimmed.isEmpty) {
+      return null;
+    }
+
+    final row = await _client
+        .from('direct_messages')
+        .insert(<String, dynamic>{
+          'thread_id': threadId,
+          'sender_user_id': user.id,
+          'body': trimmed,
+          'attachment_type': 'text',
+          'reply_to_message_id': replyToMessageId,
+        })
+        .select(_directMessageSelect)
+        .single();
+
+    final message = _messageFromRow(
+      row,
+      currentUserId: user.id,
+      fallbackThreadId: threadId,
+    );
+    _upsertThreadPreview(threadId: threadId, preview: message.content, sentAt: message.sentAt);
+    return message;
+  }
+
+  @override
+  Future<DirectChatMessage?> sendDirectChatMediaMessage({
+    required String threadId,
+    required List<int> bytes,
+    required String fileName,
+    required String mimeType,
+    required bool isVideo,
+    String? replyToMessageId,
+  }) async {
+    final user = _client.auth.currentUser;
+    if (user == null || bytes.isEmpty) {
+      return null;
+    }
+
+    final safeFileName = _sanitizeFileName(fileName);
+    final extension = _fileExtension(safeFileName);
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final attachmentType = isVideo ? 'video' : 'image';
+    final storagePath =
+        '${user.id}/$threadId/$timestamp-$attachmentType${extension.isEmpty ? '' : '.$extension'}';
+
+    await _client.storage
+        .from(_attachmentsBucket)
+        .uploadBinary(
+          storagePath,
+          Uint8List.fromList(bytes),
+          fileOptions: FileOptions(
+            contentType: mimeType.trim().isEmpty
+                ? _defaultMimeType(isVideo: isVideo, fileName: safeFileName)
+                : mimeType.trim(),
+            upsert: false,
+          ),
+        );
+
+    final publicUrl = _client.storage.from(_attachmentsBucket).getPublicUrl(storagePath);
+    final body = isVideo ? 'Video enviado' : 'Foto enviada';
+
+    final row = await _client
+        .from('direct_messages')
+        .insert(<String, dynamic>{
+          'thread_id': threadId,
+          'sender_user_id': user.id,
+          'body': body,
+          'attachment_type': attachmentType,
+          'storage_path': storagePath,
+          'public_url': publicUrl,
+          'file_name': safeFileName,
+          'mime_type': mimeType.trim().isEmpty
+              ? _defaultMimeType(isVideo: isVideo, fileName: safeFileName)
+              : mimeType.trim(),
+          'size_bytes': bytes.length,
+          'reply_to_message_id': replyToMessageId,
+        })
+        .select(_directMessageSelect)
+        .single();
+
+    final message = _messageFromRow(
+      row,
+      currentUserId: user.id,
+      fallbackThreadId: threadId,
+    );
+    _upsertThreadPreview(
+      threadId: threadId,
+      preview: message.content,
+      sentAt: message.sentAt,
+    );
+    return message;
+  }
+
+  @override
+  Future<DirectChatMessage?> updateDirectChatMessage(String messageId, String body) async {
+    final user = _client.auth.currentUser;
+    final trimmed = body.trim();
+    if (user == null || trimmed.isEmpty) {
+      return null;
+    }
+
+    final row = await _client
+        .from('direct_messages')
+        .update(<String, dynamic>{'body': trimmed})
+        .eq('id', messageId)
+        .eq('sender_user_id', user.id)
+        .select(_directMessageSelect)
+        .maybeSingle();
+
+    if (row == null) {
+      return null;
+    }
+
+    final message = _messageFromRow(
+      row,
+      currentUserId: user.id,
+      fallbackThreadId: '',
+      forceEdited: true,
+    );
+    _upsertThreadPreview(threadId: message.threadId, preview: message.content, sentAt: message.sentAt);
+    return message;
+  }
+
+  @override
+  Future<void> deleteDirectChatMessages(List<String> messageIds) async {
+    final user = _client.auth.currentUser;
+    if (user == null || messageIds.isEmpty) {
+      return;
+    }
+
+    final rows = await _client
+        .from('direct_messages')
+        .select('id, thread_id')
+        .inFilter('id', messageIds)
+        .eq('sender_user_id', user.id);
+    final threadIds = (rows as List<dynamic>)
+        .whereType<Map<String, dynamic>>()
+        .map((row) => row['thread_id'] as String?)
+        .whereType<String>()
+        .toSet()
+        .toList(growable: false);
+
+    await _client
+        .from('direct_messages')
+        .delete()
+        .inFilter('id', messageIds)
+        .eq('sender_user_id', user.id);
+
+    for (final threadId in threadIds) {
+      await _refreshThreadPreview(threadId);
+    }
+  }
+
 
   @override
   void updateIndexedMessage(AppMessageIndexEntry updated) {
@@ -254,6 +583,73 @@ class SupabaseProfileMessagesRepositoryAdapter
       return;
     }
     unawaited(_persistIndexedMessageDelete(id));
+  }
+
+  void _upsertThreadPreview({
+    required String threadId,
+    required String preview,
+    required DateTime sentAt,
+  }) {
+    final index = _directThreads.indexWhere((item) => item.id == threadId);
+    if (index < 0) {
+      return;
+    }
+    final current = _directThreads.removeAt(index);
+    _directThreads.insert(
+      0,
+      DirectMessageThread(
+        id: current.id,
+        participant: current.participant,
+        participantAvatarPath: current.participantAvatarPath,
+        preview: preview,
+        lastActivity: sentAt,
+        unreadCount: current.unreadCount,
+        isMuted: current.isMuted,
+        isBlocked: current.isBlocked,
+        lastLocation: current.lastLocation,
+      ),
+    );
+  }
+
+  Future<void> _refreshThreadPreview(String threadId) async {
+    final latestRows = await _client
+        .from('direct_messages')
+        .select('body, created_at')
+        .eq('thread_id', threadId)
+        .order('created_at', ascending: false)
+        .limit(1);
+    final latest = (latestRows as List<dynamic>).whereType<Map<String, dynamic>>().toList(growable: false);
+    final index = _directThreads.indexWhere((item) => item.id == threadId);
+    if (index < 0) {
+      return;
+    }
+    final current = _directThreads[index];
+    if (latest.isEmpty) {
+      _directThreads[index] = DirectMessageThread(
+        id: current.id,
+        participant: current.participant,
+        participantAvatarPath: current.participantAvatarPath,
+        preview: 'Sin mensajes todavia.',
+        lastActivity: current.lastActivity,
+        unreadCount: current.unreadCount,
+        isMuted: current.isMuted,
+        isBlocked: current.isBlocked,
+        lastLocation: current.lastLocation,
+      );
+      return;
+    }
+    final row = latest.first;
+    _directThreads[index] = DirectMessageThread(
+      id: current.id,
+      participant: current.participant,
+      participantAvatarPath: current.participantAvatarPath,
+      preview: (row['body'] as String?)?.trim() ?? 'Sin mensajes todavia.',
+      lastActivity: DateTime.tryParse((row['created_at'] as String?) ?? '') ?? current.lastActivity,
+      unreadCount: current.unreadCount,
+      isMuted: current.isMuted,
+      isBlocked: current.isBlocked,
+      lastLocation: current.lastLocation,
+    );
   }
 
   void _applyLocalFlags(String threadId) {
@@ -312,6 +708,117 @@ class SupabaseProfileMessagesRepositoryAdapter
       final messageId = id.substring('direct-message-'.length);
       await _client.from('direct_messages').delete().eq('id', messageId);
     }
+  }
+
+  DirectChatUserCandidate _candidateFromRow(Map<String, dynamic> row) {
+    final displayName = (row['display_name'] as String?)?.trim();
+    final handle = (row['handle'] as String?)?.trim();
+    return DirectChatUserCandidate(
+      id: row['id'] as String? ?? '',
+      displayName: displayName == null || displayName.isEmpty ? (handle == null || handle.isEmpty ? 'Rider' : handle.replaceFirst('@', '')) : displayName,
+      handle: handle == null || handle.isEmpty ? '@rider' : (handle.startsWith('@') ? handle : '@$handle'),
+      avatarPath: (row['avatar_path'] as String?)?.trim(),
+    );
+  }
+
+  static const String _directMessageSelect =
+      'id, thread_id, sender_user_id, body, created_at, attachment_type, public_url, thumbnail_url, file_name, mime_type, reply_to_message_id';
+
+  DirectChatMessage _messageFromRow(
+    Map<String, dynamic> row, {
+    required String currentUserId,
+    required String fallbackThreadId,
+    bool forceEdited = false,
+    Map<String, Map<String, dynamic>>? replyLookup,
+  }) {
+    final attachmentType = (row['attachment_type'] as String?)?.trim() ?? 'text';
+    final type = switch (attachmentType) {
+      'image' => DirectChatMessageType.image,
+      'video' => DirectChatMessageType.video,
+      _ => DirectChatMessageType.text,
+    };
+    final replyToMessageId = row['reply_to_message_id'] as String?;
+    final repliedRow = replyToMessageId == null || replyLookup == null
+        ? null
+        : replyLookup[replyToMessageId];
+    final repliedAttachmentType =
+        (repliedRow?['attachment_type'] as String?)?.trim() ?? 'text';
+    final repliedType = repliedRow == null
+        ? null
+        : switch (repliedAttachmentType) {
+            'image' => DirectChatMessageType.image,
+            'video' => DirectChatMessageType.video,
+            _ => DirectChatMessageType.text,
+          };
+    return DirectChatMessage(
+      id: row['id'] as String? ?? '',
+      threadId: row['thread_id'] as String? ?? fallbackThreadId,
+      content: (row['body'] as String?)?.trim() ?? '',
+      sentAt: DateTime.tryParse((row['created_at'] as String?) ?? '') ??
+          DateTime.now(),
+      isMine: row['sender_user_id'] == currentUserId,
+      type: type,
+      mediaUrl: row['public_url'] as String?,
+      thumbnailUrl: row['thumbnail_url'] as String?,
+      fileName: row['file_name'] as String?,
+      mimeType: row['mime_type'] as String?,
+      isEdited: forceEdited,
+      replyToMessageId: replyToMessageId,
+      replyToContent: (repliedRow?['body'] as String?)?.trim(),
+      replyToType: repliedType,
+      isReplyToMine: repliedRow == null
+          ? null
+          : repliedRow['sender_user_id'] == currentUserId,
+    );
+  }
+
+  String _messagePreviewFromRow(Map<String, dynamic>? row) {
+    if (row == null) {
+      return 'Sin mensajes todavia.';
+    }
+    final attachmentType = (row['attachment_type'] as String?)?.trim() ?? 'text';
+    if (attachmentType == 'image') {
+      return 'Foto enviada';
+    }
+    if (attachmentType == 'video') {
+      return 'Video enviado';
+    }
+    final body = (row['body'] as String?)?.trim();
+    return body == null || body.isEmpty ? 'Sin mensajes todavia.' : body;
+  }
+
+  String _sanitizeFileName(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return 'attachment';
+    }
+    return trimmed.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+  }
+
+  String _fileExtension(String value) {
+    final dot = value.lastIndexOf('.');
+    if (dot < 0 || dot == value.length - 1) {
+      return '';
+    }
+    return value.substring(dot + 1).toLowerCase();
+  }
+
+  String _defaultMimeType({required bool isVideo, required String fileName}) {
+    final extension = _fileExtension(fileName);
+    if (isVideo) {
+      return switch (extension) {
+        'mov' => 'video/quicktime',
+        'm4v' => 'video/x-m4v',
+        'webm' => 'video/webm',
+        _ => 'video/mp4',
+      };
+    }
+    return switch (extension) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      'gif' => 'image/gif',
+      _ => 'image/jpeg',
+    };
   }
 
   List<AppMessageIndexEntry> _buildIndexedEntries(

@@ -1,4 +1,6 @@
 import 'package:windwisher/features/profile/domain/entities/app_message_index_entry.dart';
+import 'package:windwisher/features/profile/domain/entities/direct_chat_message.dart';
+import 'package:windwisher/features/profile/domain/entities/direct_chat_user_candidate.dart';
 import 'package:windwisher/features/profile/domain/entities/direct_message_thread.dart';
 import 'package:windwisher/features/profile/domain/ports/out/profile_messages_repository_port.dart';
 
@@ -26,6 +28,16 @@ class GetIndexedMessagesUseCase {
   }
 }
 
+class GetDirectChatUserCandidatesUseCase {
+  const GetDirectChatUserCandidatesUseCase(this._repository);
+
+  final ProfileMessagesRepositoryPort _repository;
+
+  List<DirectChatUserCandidate> call() {
+    return _repository.getDirectChatUserCandidates();
+  }
+}
+
 class ToggleMuteDirectThreadUseCase {
   const ToggleMuteDirectThreadUseCase(this._repository);
 
@@ -36,13 +48,13 @@ class ToggleMuteDirectThreadUseCase {
   }
 }
 
-class BlockDirectThreadUseCase {
-  const BlockDirectThreadUseCase(this._repository);
+class ToggleBlockDirectThreadUseCase {
+  const ToggleBlockDirectThreadUseCase(this._repository);
 
   final ProfileMessagesRepositoryPort _repository;
 
   bool call(String threadId) {
-    return _repository.blockDirectThread(threadId);
+    return _repository.toggleBlockDirectThread(threadId);
   }
 }
 
@@ -53,6 +65,88 @@ class DeleteDirectThreadUseCase {
 
   void call(String threadId) {
     _repository.deleteDirectThread(threadId);
+  }
+}
+
+class CreateOrOpenDirectChatUseCase {
+  const CreateOrOpenDirectChatUseCase(this._repository);
+
+  final ProfileMessagesRepositoryPort _repository;
+
+  Future<DirectMessageThread?> call(String userId) {
+    return _repository.createOrOpenDirectChat(userId);
+  }
+}
+
+class LoadDirectChatMessagesUseCase {
+  const LoadDirectChatMessagesUseCase(this._repository);
+
+  final ProfileMessagesRepositoryPort _repository;
+
+  Future<List<DirectChatMessage>> call(String threadId) {
+    return _repository.loadDirectChatMessages(threadId);
+  }
+}
+
+class SendDirectChatMessageUseCase {
+  const SendDirectChatMessageUseCase(this._repository);
+
+  final ProfileMessagesRepositoryPort _repository;
+
+  Future<DirectChatMessage?> call(
+    String threadId,
+    String body, {
+    String? replyToMessageId,
+  }) {
+    return _repository.sendDirectChatMessage(
+      threadId,
+      body,
+      replyToMessageId: replyToMessageId,
+    );
+  }
+}
+
+class SendDirectChatMediaMessageUseCase {
+  const SendDirectChatMediaMessageUseCase(this._repository);
+
+  final ProfileMessagesRepositoryPort _repository;
+
+  Future<DirectChatMessage?> call({
+    required String threadId,
+    required List<int> bytes,
+    required String fileName,
+    required String mimeType,
+    required bool isVideo,
+    String? replyToMessageId,
+  }) {
+    return _repository.sendDirectChatMediaMessage(
+      threadId: threadId,
+      bytes: bytes,
+      fileName: fileName,
+      mimeType: mimeType,
+      isVideo: isVideo,
+      replyToMessageId: replyToMessageId,
+    );
+  }
+}
+
+class UpdateDirectChatMessageUseCase {
+  const UpdateDirectChatMessageUseCase(this._repository);
+
+  final ProfileMessagesRepositoryPort _repository;
+
+  Future<DirectChatMessage?> call(String messageId, String body) {
+    return _repository.updateDirectChatMessage(messageId, body);
+  }
+}
+
+class DeleteDirectChatMessagesUseCase {
+  const DeleteDirectChatMessagesUseCase(this._repository);
+
+  final ProfileMessagesRepositoryPort _repository;
+
+  Future<void> call(List<String> messageIds) {
+    return _repository.deleteDirectChatMessages(messageIds);
   }
 }
 

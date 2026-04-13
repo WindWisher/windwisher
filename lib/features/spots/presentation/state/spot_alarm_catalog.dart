@@ -1,26 +1,31 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/persistence/app_storage_paths.dart';
 import 'package:windwisher/features/spots/infrastructure/services/spot_alarm_sync_client.dart';
 
 class SpotAlarmCatalog extends ChangeNotifier {
-  SpotAlarmCatalog._()
-    : _file = kIsWeb
-          ? null
-          : File(AppStoragePaths.resolve('spot_alarm_catalog_v1.json')),
-      _syncClient = SpotAlarmSyncClient.auto() {
+  SpotAlarmCatalog._() : _syncClient = SpotAlarmSyncClient.auto() {
+    _activeStorageScope = _storageScopeForCurrentUser();
     _load();
+    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((_) {
+      _handleAuthScopeChanged();
+    });
+    if (_syncClient.canSync) {
+      unawaited(hydrateFromRemote());
+    }
   }
 
   static final SpotAlarmCatalog instance = SpotAlarmCatalog._();
 
-  final File? _file;
   final SpotAlarmSyncClient _syncClient;
+  StreamSubscription<AuthState>? _authStateSubscription;
   bool _globalEnabled = true;
+  late String _activeStorageScope;
   final Map<String, bool> _spotEnabledByKey = <String, bool>{};
   final List<SpotAlarmRecord> _alarms = <SpotAlarmRecord>[];
   bool _remoteHydrated = false;
@@ -29,6 +34,38 @@ class SpotAlarmCatalog extends ChangeNotifier {
   bool get globalEnabled => _globalEnabled;
   bool get hasRemoteSync => _syncClient.canSync;
   String? get lastSyncError => _lastSyncError;
+
+  File? get _file {
+    if (kIsWeb) {
+      return null;
+    }
+    return File(
+      AppStoragePaths.resolve('spot_alarm_catalog_v1_$_activeStorageScope.json'),
+    );
+  }
+
+  String _storageScopeForCurrentUser() {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null || userId.trim().isEmpty) {
+      return 'guest';
+    }
+    return userId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+  }
+
+  Future<void> _handleAuthScopeChanged() async {
+    final nextScope = _storageScopeForCurrentUser();
+    if (_activeStorageScope == nextScope) {
+      return;
+    }
+    _activeStorageScope = nextScope;
+    _remoteHydrated = false;
+    _lastSyncError = null;
+    _load();
+    notifyListeners();
+    if (_syncClient.canSync) {
+      await hydrateFromRemote();
+    }
+  }
 
   List<SpotAlarmRecord> get alarms =>
       List<SpotAlarmRecord>.unmodifiable(_alarms);
@@ -181,6 +218,10 @@ class SpotAlarmCatalog extends ChangeNotifier {
   }
 
   void _load() {
+    _globalEnabled = true;
+    _spotEnabledByKey.clear();
+    _alarms.clear();
+
     final file = _file;
     if (file == null) {
       return;
@@ -216,11 +257,15 @@ class SpotAlarmCatalog extends ChangeNotifier {
               const <SpotAlarmRecord>[],
         );
     } catch (_) {
-      _globalEnabled = true;
-      _spotEnabledByKey.clear();
-      _alarms.clear();
       _save();
     }
+  }
+
+
+  @override
+  void dispose() {
+    _authStateSubscription?.cancel();
+    super.dispose();
   }
 
   void _save() {

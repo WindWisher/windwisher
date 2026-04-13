@@ -15525,3 +15525,35 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - multiples `flutter analyze` limpios durante el bloque y al cierre,
       - se mantiene solo el warning externo conocido de `webview_flutter:macos`.
 
+
+  - bloque nuevo `2026-04-13`:
+    - cierre fuerte del tab `Mensajes` y saneado del scope de `Alarmas` por usuario,
+    - duracion estimada del bloque: `7h`,
+    - mensajes / producto:
+      - eliminada la antigua vista `Buscar en app` de la interfaz de perfil para dejar `Mensajes` centrado solo en chats directos,
+      - el listado de chats pasa a una UX mucho mas compacta y cercana a WhatsApp,
+      - sustituido el boton `+` con dialogo viejo por buscador inline capaz de filtrar chats existentes e iniciar conversaciones con usuarios desde la misma tarjeta,
+      - los resultados de busqueda mezclan ya chats existentes y usuarios nuevos en una sola lista,
+      - ordenados los resultados para priorizar coincidencias mas naturales,
+    - mensajes / chat directo:
+      - el chat directo queda funcional de extremo a extremo en dialogo: carga, envio, edicion, borrado, reply, multimedia persistente y apertura de foto/video,
+      - el flujo de bloqueo se corrige para que sea toggle real `bloquear / desbloquear` tanto en UI como en repositorio y controller,
+      - revisada la experiencia visual del chat para acercarla mas al patron del chat de `spot`,
+    - mensajes / arquitectura:
+      - eliminados archivos muertos del antiguo indexado y del dialogo legacy de `nuevo chat`,
+      - renombrado `profile_messages_chat_pages.dart` a `direct_chat_dialog.dart`,
+      - renombrado `profile_messages_section.dart` a `profile_direct_messages_section.dart`,
+      - reordenada la carpeta `widgets/chat/` por responsabilidad en `dialog`, `feed`, `composer` y `header`,
+      - extraidas hojas de acciones, utilidades, shell visual y controlador propio del chat directo,
+      - el archivo principal del chat queda ya como wiring de estado/vista y no como `god file`,
+    - alarmas / usuario:
+      - corregido el catalogo de alarmas para que la persistencia local tambien quede separada por usuario y no por un unico fichero global,
+      - el catalogo reacciona ya al cambio de sesion y rehidrata el scope correcto,
+      - esto alinea la cache local con el comportamiento remoto de Supabase para que cada usuario vea solo sus alarmas,
+    - migraciones / backend relacionadas con mensajes directos:
+      - mantenidas en el repo las migraciones para creacion segura de chat directo, multimedia persistente y soporte de `reply`,
+    - cierre del bloque:
+      - actualizado `SESSION_TRACKER.md` con el trabajo realizado y horas estimadas,
+    - verificacion:
+      - multiples `flutter analyze` limpios sobre `messages`, `profile_page`, `profile_module`, `spot_alarm_catalog` y piezas auxiliares durante el bloque,
+      - se mantiene solo el warning externo conocido de `webview_flutter:macos`.
