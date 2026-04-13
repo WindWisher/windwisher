@@ -13,9 +13,13 @@ class DirectChatDialog extends StatefulWidget {
     this.participantAvatarPath,
     required this.loadMessages,
     required this.sendMessage,
+    required this.watchMessages,
+    required this.watchTyping,
+    required this.sendTypingState,
     required this.sendMediaMessage,
     required this.updateMessage,
     required this.deleteMessages,
+    this.onThreadChanged,
   });
 
   final String threadId;
@@ -26,7 +30,16 @@ class DirectChatDialog extends StatefulWidget {
     String threadId,
     String body, {
     String? replyToMessageId,
-  }) sendMessage;
+  })
+  sendMessage;
+  final Stream<void> Function(String threadId) watchMessages;
+  final Stream<bool> Function(String threadId) watchTyping;
+  final Future<void> Function({
+    required String threadId,
+    required String participantLabel,
+    required bool isTyping,
+  })
+  sendTypingState;
   final Future<DirectChatMessage?> Function({
     required String threadId,
     required List<int> bytes,
@@ -34,10 +47,12 @@ class DirectChatDialog extends StatefulWidget {
     required String mimeType,
     required bool isVideo,
     String? replyToMessageId,
-  }) sendMediaMessage;
+  })
+  sendMediaMessage;
   final Future<DirectChatMessage?> Function(String messageId, String body)
   updateMessage;
   final Future<void> Function(List<String> messageIds) deleteMessages;
+  final Future<void> Function()? onThreadChanged;
 
   @override
   State<DirectChatDialog> createState() => _DirectChatDialogState();
@@ -53,9 +68,14 @@ class _DirectChatDialogState extends State<DirectChatDialog> {
       threadId: widget.threadId,
       loadMessages: widget.loadMessages,
       sendMessage: widget.sendMessage,
+      watchMessages: widget.watchMessages,
+      watchTyping: widget.watchTyping,
+      sendTypingState: widget.sendTypingState,
+      participantLabel: widget.participant,
       sendMediaMessage: widget.sendMediaMessage,
       updateMessage: widget.updateMessage,
       deleteMessages: widget.deleteMessages,
+      onThreadChanged: widget.onThreadChanged,
     )..initialize();
   }
 
@@ -67,7 +87,9 @@ class _DirectChatDialogState extends State<DirectChatDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final participantInitials = directChatParticipantInitials(widget.participant);
+    final participantInitials = directChatParticipantInitials(
+      widget.participant,
+    );
 
     return AnimatedBuilder(
       animation: _controller,
@@ -85,11 +107,14 @@ class _DirectChatDialogState extends State<DirectChatDialog> {
           composerController: _controller.composerController,
           replyingTo: _controller.replyingTo,
           onRefresh: _controller.hydrateMessages,
-          onManageMessage: (message) => _controller.showMessageActions(context, message),
+          statusText: _controller.isPeerTyping ? 'Escribiendo...' : null,
+          onManageMessage: (message) =>
+              _controller.showMessageActions(context, message),
           onReplyMessage: _controller.startReplying,
           formatHour: formatDirectChatHour,
           onClose: () => Navigator.of(context).pop(),
           onSubmitted: () => _controller.sendOrSaveMessage(context),
+          onComposerChanged: _controller.onComposerChanged,
           onAttachMedia: () => _controller.showAttachMediaOptions(context),
           onCancelEditing: _controller.cancelEditing,
           onCancelReply: _controller.cancelReplying,

@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:windwisher/core/notifications/direct_message_notification_event.dart';
 import 'package:windwisher/core/notifications/spot_alarm_cycle_runtime_service.dart';
 import 'package:windwisher/features/spots/presentation/state/spot_alarm_catalog.dart';
 
@@ -11,6 +13,7 @@ class LocalNotificationsService {
   LocalNotificationsService._();
 
   static const String _alarmChannelId = 'spot_alarms_v2';
+  static const String _directMessageChannelId = 'direct_messages_v1';
   static const String _alarmCategoryId = 'spot_alarm_actions';
   static const String _stopActionId = 'stop_alarm';
   static const String _snoozeActionId = 'snooze_alarm';
@@ -30,10 +33,31 @@ class LocalNotificationsService {
         audioAttributesUsage: AudioAttributesUsage.alarm,
       );
 
+  static final AndroidNotificationChannel _directMessageChannel =
+      const AndroidNotificationChannel(
+        _directMessageChannelId,
+        'Mensajes directos',
+        description: 'Notificaciones locales de chats directos entre usuarios.',
+        importance: Importance.high,
+      );
+
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
+  final StreamController<DirectMessageNotificationEvent>
+  _directMessageOpenController =
+      StreamController<DirectMessageNotificationEvent>.broadcast();
+  DirectMessageNotificationEvent? _pendingDirectMessageOpen;
   bool _initialized = false;
   bool _timezoneInitialized = false;
+
+  Stream<DirectMessageNotificationEvent> get directMessageOpenStream =>
+      _directMessageOpenController.stream;
+
+  DirectMessageNotificationEvent? consumePendingDirectMessageOpen() {
+    final pending = _pendingDirectMessageOpen;
+    _pendingDirectMessageOpen = null;
+    return pending;
+  }
 
   Future<void> initialize() async {
     if (_initialized) {
@@ -67,7 +91,7 @@ class LocalNotificationsService {
     );
 
     await _plugin.initialize(
-        settings: InitializationSettings(
+      settings: InitializationSettings(
         android: androidSettings,
         iOS: darwinSettings,
         macOS: darwinSettings,
@@ -80,6 +104,7 @@ class LocalNotificationsService {
           AndroidFlutterLocalNotificationsPlugin
         >();
     await androidPlugin?.createNotificationChannel(_alarmChannel);
+    await androidPlugin?.createNotificationChannel(_directMessageChannel);
     final launchDetails = await _plugin.getNotificationAppLaunchDetails();
     final launchResponse = launchDetails?.notificationResponse;
     if (launchResponse != null) {
@@ -127,6 +152,49 @@ class LocalNotificationsService {
       return true;
     }
     return grantedValues.any((value) => value);
+  }
+
+  Future<void> showDirectMessage({
+    required String threadId,
+    required String messageId,
+    required String senderName,
+    required String body,
+  }) async {
+    await initialize();
+    final safeSenderName = senderName.trim().isEmpty
+        ? 'Nuevo mensaje'
+        : senderName.trim();
+    final safeBody = body.trim().isEmpty
+        ? 'Tienes un mensaje nuevo.'
+        : body.trim();
+    final payload = jsonEncode(<String, String>{
+      'type': 'direct_message',
+      'threadId': threadId,
+      'messageId': messageId,
+    });
+    await _plugin.show(
+      id: threadId.hashCode & 0x7fffffff,
+      title: safeSenderName,
+      body: safeBody,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          _directMessageChannelId,
+          'Mensajes directos',
+          channelDescription:
+              'Notificaciones locales de chats directos entre usuarios.',
+          importance: Importance.high,
+          priority: Priority.high,
+          category: AndroidNotificationCategory.message,
+        ),
+        iOS: DarwinNotificationDetails(
+          interruptionLevel: InterruptionLevel.active,
+        ),
+        macOS: DarwinNotificationDetails(
+          interruptionLevel: InterruptionLevel.active,
+        ),
+      ),
+      payload: payload,
+    );
   }
 
   Future<void> showSpotAlarm({
@@ -403,6 +471,22 @@ class LocalNotificationsService {
     } catch (_) {
       return;
     }
+    if (decoded['type'] == 'direct_message') {
+      final threadId = decoded['threadId'] as String?;
+      final messageId = decoded['messageId'] as String?;
+      if (threadId != null &&
+          threadId.isNotEmpty &&
+          messageId != null &&
+          messageId.isNotEmpty) {
+        final event = DirectMessageNotificationEvent(
+          threadId: threadId,
+          messageId: messageId,
+        );
+        _pendingDirectMessageOpen = event;
+        _directMessageOpenController.add(event);
+      }
+      return;
+    }
     if (decoded['type'] != 'spot_alarm') {
       return;
     }
@@ -435,7 +519,8 @@ class LocalNotificationsService {
       await _scheduleRemainingRepeats(
         alarmId: alarmId,
         cycleId: cycleId,
-        title: response.notificationResponseType ==
+        title:
+            response.notificationResponseType ==
                 NotificationResponseType.selectedNotification
             ? 'Alarma de spot'
             : (response.payload ?? 'Alarma de spot'),

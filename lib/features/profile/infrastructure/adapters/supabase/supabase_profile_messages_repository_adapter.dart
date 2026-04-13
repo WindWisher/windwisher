@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:typed_data';
-
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:windwisher/features/profile/domain/entities/app_message_index_entry.dart';
 import 'package:windwisher/features/profile/domain/entities/direct_chat_message.dart';
 import 'package:windwisher/features/profile/domain/entities/direct_chat_user_candidate.dart';
@@ -22,7 +22,8 @@ class SupabaseProfileMessagesRepositoryAdapter
   final InMemoryProfileMessagesRepositoryAdapter _fallbackIndexed;
 
   final List<DirectMessageThread> _directThreads = <DirectMessageThread>[];
-  final List<DirectChatUserCandidate> _userCandidates = <DirectChatUserCandidate>[];
+  final List<DirectChatUserCandidate> _userCandidates =
+      <DirectChatUserCandidate>[];
   final List<AppMessageIndexEntry> _indexedMessages = <AppMessageIndexEntry>[];
   final Set<String> _mutedThreadIds = <String>{};
   final Set<String> _blockedThreadIds = <String>{};
@@ -72,7 +73,11 @@ class SupabaseProfileMessagesRepositoryAdapter
             .map(_candidateFromRow)
             .where((candidate) => candidate.displayName.isNotEmpty)
             .toList(growable: false)
-          ..sort((a, b) => a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase())),
+          ..sort(
+            (a, b) => a.displayName.toLowerCase().compareTo(
+              b.displayName.toLowerCase(),
+            ),
+          ),
       );
 
     final participantRows = await _client
@@ -98,7 +103,7 @@ class SupabaseProfileMessagesRepositoryAdapter
         .inFilter('id', threadIds);
     final messagesRows = await _client
         .from('direct_messages')
-        .select('thread_id, body, created_at, attachment_type')
+        .select('thread_id, body, created_at, attachment_type, sender_user_id')
         .inFilter('thread_id', threadIds)
         .order('created_at', ascending: false);
     final allParticipants = await _client
@@ -120,13 +125,16 @@ class SupabaseProfileMessagesRepositoryAdapter
               .inFilter('id', participantIds);
     final stateRows = await _client
         .from('direct_thread_user_states')
-        .select('thread_id, is_muted, is_blocked, is_deleted')
+        .select(
+          'thread_id, is_muted, is_blocked, is_deleted, last_read_message_created_at',
+        )
         .eq('user_id', user.id)
         .inFilter('thread_id', threadIds);
 
     _mutedThreadIds.clear();
     _blockedThreadIds.clear();
     _deletedThreadIds.clear();
+    final lastReadAtByThread = <String, DateTime?>{};
     for (final row
         in (stateRows as List<dynamic>).whereType<Map<String, dynamic>>()) {
       final threadId = row['thread_id'] as String?;
@@ -142,16 +150,31 @@ class SupabaseProfileMessagesRepositoryAdapter
       if (row['is_deleted'] == true) {
         _deletedThreadIds.add(threadId);
       }
+      lastReadAtByThread[threadId] = DateTime.tryParse(
+        (row['last_read_message_created_at'] as String?) ?? '',
+      );
     }
 
     final latestMessageByThread = <String, Map<String, dynamic>>{};
+    final unreadCountByThread = <String, int>{};
     for (final row
         in (messagesRows as List<dynamic>).whereType<Map<String, dynamic>>()) {
       final threadId = row['thread_id'] as String?;
-      if (threadId == null || latestMessageByThread.containsKey(threadId)) {
+      if (threadId == null) {
         continue;
       }
-      latestMessageByThread[threadId] = row;
+      latestMessageByThread.putIfAbsent(threadId, () => row);
+      final senderUserId = row['sender_user_id'] as String?;
+      if (senderUserId == user.id) {
+        continue;
+      }
+      final createdAt = DateTime.tryParse((row['created_at'] as String?) ?? '');
+      final lastReadAt = lastReadAtByThread[threadId];
+      if (createdAt == null ||
+          (lastReadAt != null && !createdAt.isAfter(lastReadAt))) {
+        continue;
+      }
+      unreadCountByThread[threadId] = (unreadCountByThread[threadId] ?? 0) + 1;
     }
 
     final displayNameByParticipantId = <String, String>{};
@@ -164,8 +187,8 @@ class SupabaseProfileMessagesRepositoryAdapter
       final displayName = (row['display_name'] as String?)?.trim();
       displayNameByParticipantId[participantId] =
           displayName == null || displayName.isEmpty ? 'Rider' : displayName;
-      avatarPathByParticipantId[participantId] =
-          (row['avatar_path'] as String?)?.trim();
+      avatarPathByParticipantId[participantId] = (row['avatar_path'] as String?)
+          ?.trim();
     }
 
     final participantNameByThread = <String, String>{};
@@ -183,7 +206,8 @@ class SupabaseProfileMessagesRepositoryAdapter
       }
       participantNameByThread[threadId] =
           displayNameByParticipantId[participantId] ?? 'Rider';
-      participantAvatarByThread[threadId] = avatarPathByParticipantId[participantId];
+      participantAvatarByThread[threadId] =
+          avatarPathByParticipantId[participantId];
     }
 
     _directThreads
@@ -209,7 +233,7 @@ class SupabaseProfileMessagesRepositoryAdapter
                       (latest?['created_at'] as String?) ?? '',
                     ) ??
                     updatedAt,
-                unreadCount: 0,
+                unreadCount: unreadCountByThread[id] ?? 0,
                 isMuted: _mutedThreadIds.contains(id),
                 isBlocked: _blockedThreadIds.contains(id),
                 lastLocation: 'Mensajes directos',
@@ -306,16 +330,22 @@ class SupabaseProfileMessagesRepositoryAdapter
           .select('thread_id, user_id')
           .inFilter('thread_id', threadIds);
       final participantsByThread = <String, Set<String>>{};
-      for (final row in (allParticipants as List<dynamic>).whereType<Map<String, dynamic>>()) {
+      for (final row
+          in (allParticipants as List<dynamic>)
+              .whereType<Map<String, dynamic>>()) {
         final threadId = row['thread_id'] as String?;
         final participantId = row['user_id'] as String?;
         if (threadId == null || participantId == null) {
           continue;
         }
-        participantsByThread.putIfAbsent(threadId, () => <String>{}).add(participantId);
+        participantsByThread
+            .putIfAbsent(threadId, () => <String>{})
+            .add(participantId);
       }
       for (final entry in participantsByThread.entries) {
-        if (entry.value.length == 2 && entry.value.contains(user.id) && entry.value.contains(userId)) {
+        if (entry.value.length == 2 &&
+            entry.value.contains(user.id) &&
+            entry.value.contains(userId)) {
           _deletedThreadIds.remove(entry.key);
           await _persistThreadState(entry.key);
           await hydrate();
@@ -337,10 +367,12 @@ class SupabaseProfileMessagesRepositoryAdapter
       'title': candidate.displayName,
     });
 
-    await _client.from('direct_thread_participants').insert(<Map<String, dynamic>>[
-      <String, dynamic>{'thread_id': threadId, 'user_id': user.id},
-      <String, dynamic>{'thread_id': threadId, 'user_id': userId},
-    ]);
+    await _client.from('direct_thread_participants').insert(
+      <Map<String, dynamic>>[
+        <String, dynamic>{'thread_id': threadId, 'user_id': user.id},
+        <String, dynamic>{'thread_id': threadId, 'user_id': userId},
+      ],
+    );
 
     _deletedThreadIds.remove(threadId);
     await hydrate();
@@ -351,24 +383,47 @@ class SupabaseProfileMessagesRepositoryAdapter
       }
     }
     return DirectMessageThread(
-          id: threadId,
-          participant: candidate.displayName,
-          preview: 'Sin mensajes todavia.',
-          lastActivity: DateTime.now(),
-          unreadCount: 0,
-          isMuted: false,
-          isBlocked: false,
-          lastLocation: 'Mensajes directos',
-          participantAvatarPath: candidate.avatarPath,
-        );
+      id: threadId,
+      participant: candidate.displayName,
+      preview: 'Sin mensajes todavia.',
+      lastActivity: DateTime.now(),
+      unreadCount: 0,
+      isMuted: false,
+      isBlocked: false,
+      lastLocation: 'Mensajes directos',
+      participantAvatarPath: candidate.avatarPath,
+    );
   }
 
-
   @override
-  Future<List<DirectChatMessage>> loadDirectChatMessages(String threadId) async {
+  Future<List<DirectChatMessage>> loadDirectChatMessages(
+    String threadId,
+  ) async {
     final user = _client.auth.currentUser;
     if (user == null) {
       return const <DirectChatMessage>[];
+    }
+
+    final participantRows = await _client
+        .from('direct_thread_participants')
+        .select('user_id')
+        .eq('thread_id', threadId);
+    final peerUserId = (participantRows as List<dynamic>)
+        .whereType<Map<String, dynamic>>()
+        .map((row) => row['user_id'] as String?)
+        .whereType<String>()
+        .firstWhere((id) => id != user.id, orElse: () => '');
+    DateTime? peerLastReadAt;
+    if (peerUserId.isNotEmpty) {
+      final peerState = await _client
+          .from('direct_thread_user_states')
+          .select('last_read_message_created_at')
+          .eq('thread_id', threadId)
+          .eq('user_id', peerUserId)
+          .maybeSingle();
+      peerLastReadAt = DateTime.tryParse(
+        (peerState?['last_read_message_created_at'] as String?) ?? '',
+      );
     }
 
     final rows = await _client
@@ -395,9 +450,201 @@ class SupabaseProfileMessagesRepositoryAdapter
             currentUserId: user.id,
             fallbackThreadId: threadId,
             replyLookup: rowById,
+            peerLastReadAt: peerLastReadAt,
           ),
         )
         .toList(growable: false);
+  }
+
+  @override
+  Future<void> markDirectThreadAsRead(String threadId) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return;
+    }
+    final latestRows = await _client
+        .from('direct_messages')
+        .select('created_at')
+        .eq('thread_id', threadId)
+        .order('created_at', ascending: false)
+        .limit(1);
+    final latest = (latestRows as List<dynamic>)
+        .whereType<Map<String, dynamic>>()
+        .toList(growable: false);
+    final lastReadAt = latest.isEmpty
+        ? DateTime.now().toUtc().toIso8601String()
+        : ((latest.first['created_at'] as String?) ??
+              DateTime.now().toUtc().toIso8601String());
+    await _client.from('direct_thread_user_states').upsert(<String, dynamic>{
+      'thread_id': threadId,
+      'user_id': user.id,
+      'is_muted': _mutedThreadIds.contains(threadId),
+      'is_blocked': _blockedThreadIds.contains(threadId),
+      'is_deleted': _deletedThreadIds.contains(threadId),
+      'last_read_message_created_at': lastReadAt,
+    });
+    final index = _directThreads.indexWhere((item) => item.id == threadId);
+    if (index >= 0) {
+      _directThreads[index] = _directThreads[index].copyWith(unreadCount: 0);
+    }
+  }
+
+  @override
+  Stream<bool> watchDirectChatTyping(String threadId) {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return Stream<bool>.value(false);
+    }
+    final controller = StreamController<bool>();
+    final channel = _client.channel('direct-chat-typing:$threadId');
+
+    channel
+        .onBroadcast(
+          event: 'typing',
+          callback: (payload) {
+            final data = payload['payload'];
+            if (data is! Map) {
+              return;
+            }
+            final senderId = data['sender_id'] as String?;
+            if (senderId == null || senderId == user.id) {
+              return;
+            }
+            controller.add(data['is_typing'] == true);
+          },
+        )
+        .subscribe();
+
+    controller.onCancel = () async {
+      await _client.removeChannel(channel);
+    };
+
+    return controller.stream;
+  }
+
+  @override
+  Future<void> sendDirectChatTypingState({
+    required String threadId,
+    required String participantLabel,
+    required bool isTyping,
+  }) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return;
+    }
+    final channel = _client.channel('direct-chat-typing:$threadId');
+    channel.subscribe((status, [_]) async {
+      if (status == RealtimeSubscribeStatus.subscribed) {
+        await channel.sendBroadcastMessage(
+          event: 'typing',
+          payload: <String, dynamic>{
+            'sender_id': user.id,
+            'participant_label': participantLabel,
+            'is_typing': isTyping,
+          },
+        );
+        await _client.removeChannel(channel);
+      }
+    });
+  }
+
+  @override
+  Stream<void> watchDirectThreads() {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return const Stream<void>.empty();
+    }
+    final controller = StreamController<void>();
+    final channel = _client.channel(
+      'direct-threads:${user.id}:${DateTime.now().microsecondsSinceEpoch}',
+    );
+
+    void emitRefresh() {
+      if (!controller.isClosed) {
+        controller.add(null);
+      }
+    }
+
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'direct_messages',
+          callback: (_) => emitRefresh(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'direct_thread_user_states',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: user.id,
+          ),
+          callback: (_) => emitRefresh(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'direct_thread_participants',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: user.id,
+          ),
+          callback: (_) => emitRefresh(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'direct_threads',
+          callback: (_) => emitRefresh(),
+        )
+        .subscribe();
+
+    controller.onCancel = () async {
+      await _client.removeChannel(channel);
+    };
+
+    return controller.stream;
+  }
+
+  @override
+  Stream<void> watchDirectChatMessages(String threadId) {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      return const Stream<void>.empty();
+    }
+    final controller = StreamController<void>();
+    final channel = _client.channel(
+      'direct-chat:$threadId:${DateTime.now().microsecondsSinceEpoch}',
+    );
+
+    void emitRefresh() {
+      if (!controller.isClosed) {
+        controller.add(null);
+      }
+    }
+
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'direct_messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'thread_id',
+            value: threadId,
+          ),
+          callback: (_) => emitRefresh(),
+        )
+        .subscribe();
+
+    controller.onCancel = () async {
+      await _client.removeChannel(channel);
+    };
+
+    return controller.stream;
   }
 
   @override
@@ -429,7 +676,12 @@ class SupabaseProfileMessagesRepositoryAdapter
       currentUserId: user.id,
       fallbackThreadId: threadId,
     );
-    _upsertThreadPreview(threadId: threadId, preview: message.content, sentAt: message.sentAt);
+    _upsertThreadPreview(
+      threadId: threadId,
+      preview: message.content,
+      sentAt: message.sentAt,
+    );
+    await _triggerDirectMessagePush(message.id);
     return message;
   }
 
@@ -467,7 +719,9 @@ class SupabaseProfileMessagesRepositoryAdapter
           ),
         );
 
-    final publicUrl = _client.storage.from(_attachmentsBucket).getPublicUrl(storagePath);
+    final publicUrl = _client.storage
+        .from(_attachmentsBucket)
+        .getPublicUrl(storagePath);
     final body = isVideo ? 'Video enviado' : 'Foto enviada';
 
     final row = await _client
@@ -499,11 +753,15 @@ class SupabaseProfileMessagesRepositoryAdapter
       preview: message.content,
       sentAt: message.sentAt,
     );
+    await _triggerDirectMessagePush(message.id);
     return message;
   }
 
   @override
-  Future<DirectChatMessage?> updateDirectChatMessage(String messageId, String body) async {
+  Future<DirectChatMessage?> updateDirectChatMessage(
+    String messageId,
+    String body,
+  ) async {
     final user = _client.auth.currentUser;
     final trimmed = body.trim();
     if (user == null || trimmed.isEmpty) {
@@ -528,7 +786,11 @@ class SupabaseProfileMessagesRepositoryAdapter
       fallbackThreadId: '',
       forceEdited: true,
     );
-    _upsertThreadPreview(threadId: message.threadId, preview: message.content, sentAt: message.sentAt);
+    _upsertThreadPreview(
+      threadId: message.threadId,
+      preview: message.content,
+      sentAt: message.sentAt,
+    );
     return message;
   }
 
@@ -561,7 +823,6 @@ class SupabaseProfileMessagesRepositoryAdapter
       await _refreshThreadPreview(threadId);
     }
   }
-
 
   @override
   void updateIndexedMessage(AppMessageIndexEntry updated) {
@@ -618,7 +879,9 @@ class SupabaseProfileMessagesRepositoryAdapter
         .eq('thread_id', threadId)
         .order('created_at', ascending: false)
         .limit(1);
-    final latest = (latestRows as List<dynamic>).whereType<Map<String, dynamic>>().toList(growable: false);
+    final latest = (latestRows as List<dynamic>)
+        .whereType<Map<String, dynamic>>()
+        .toList(growable: false);
     final index = _directThreads.indexWhere((item) => item.id == threadId);
     if (index < 0) {
       return;
@@ -644,7 +907,9 @@ class SupabaseProfileMessagesRepositoryAdapter
       participant: current.participant,
       participantAvatarPath: current.participantAvatarPath,
       preview: (row['body'] as String?)?.trim() ?? 'Sin mensajes todavia.',
-      lastActivity: DateTime.tryParse((row['created_at'] as String?) ?? '') ?? current.lastActivity,
+      lastActivity:
+          DateTime.tryParse((row['created_at'] as String?) ?? '') ??
+          current.lastActivity,
       unreadCount: current.unreadCount,
       isMuted: current.isMuted,
       isBlocked: current.isBlocked,
@@ -662,6 +927,31 @@ class SupabaseProfileMessagesRepositoryAdapter
       isMuted: _mutedThreadIds.contains(threadId),
       isBlocked: _blockedThreadIds.contains(threadId),
     );
+  }
+
+  Future<void> _triggerDirectMessagePush(String messageId) async {
+    final response = await _client.functions.invoke(
+      'direct-message-push',
+      headers: const <String, String>{'Content-Type': 'application/json'},
+      body: jsonEncode(<String, String>{'messageId': messageId}),
+    );
+    final data = response.data;
+    if (data is Map<String, dynamic>) {
+      final sent = data['sent'] is num ? (data['sent'] as num).toInt() : int.tryParse('${data['sent']}') ?? 0;
+      final failed = data['failed'] is num ? (data['failed'] as num).toInt() : int.tryParse('${data['failed']}') ?? 0;
+      final reason = data['reason']?.toString() ?? 'unknown';
+      debugPrint(
+        'direct-message-push result: messageId=$messageId sent=$sent failed=$failed reason=$reason',
+      );
+      if (sent <= 0) {
+        throw Exception('Push no enviada: $reason');
+      }
+      return;
+    }
+    debugPrint(
+      'direct-message-push result: messageId=$messageId raw=${response.data}',
+    );
+    throw Exception('Push no confirmada para el mensaje enviado.');
   }
 
   Future<void> _persistThreadState(String threadId) async {
@@ -715,8 +1005,14 @@ class SupabaseProfileMessagesRepositoryAdapter
     final handle = (row['handle'] as String?)?.trim();
     return DirectChatUserCandidate(
       id: row['id'] as String? ?? '',
-      displayName: displayName == null || displayName.isEmpty ? (handle == null || handle.isEmpty ? 'Rider' : handle.replaceFirst('@', '')) : displayName,
-      handle: handle == null || handle.isEmpty ? '@rider' : (handle.startsWith('@') ? handle : '@$handle'),
+      displayName: displayName == null || displayName.isEmpty
+          ? (handle == null || handle.isEmpty
+                ? 'Rider'
+                : handle.replaceFirst('@', ''))
+          : displayName,
+      handle: handle == null || handle.isEmpty
+          ? '@rider'
+          : (handle.startsWith('@') ? handle : '@$handle'),
       avatarPath: (row['avatar_path'] as String?)?.trim(),
     );
   }
@@ -730,8 +1026,10 @@ class SupabaseProfileMessagesRepositoryAdapter
     required String fallbackThreadId,
     bool forceEdited = false,
     Map<String, Map<String, dynamic>>? replyLookup,
+    DateTime? peerLastReadAt,
   }) {
-    final attachmentType = (row['attachment_type'] as String?)?.trim() ?? 'text';
+    final attachmentType =
+        (row['attachment_type'] as String?)?.trim() ?? 'text';
     final type = switch (attachmentType) {
       'image' => DirectChatMessageType.image,
       'video' => DirectChatMessageType.video,
@@ -754,7 +1052,8 @@ class SupabaseProfileMessagesRepositoryAdapter
       id: row['id'] as String? ?? '',
       threadId: row['thread_id'] as String? ?? fallbackThreadId,
       content: (row['body'] as String?)?.trim() ?? '',
-      sentAt: DateTime.tryParse((row['created_at'] as String?) ?? '') ??
+      sentAt:
+          DateTime.tryParse((row['created_at'] as String?) ?? '') ??
           DateTime.now(),
       isMine: row['sender_user_id'] == currentUserId,
       type: type,
@@ -776,7 +1075,8 @@ class SupabaseProfileMessagesRepositoryAdapter
     if (row == null) {
       return 'Sin mensajes todavia.';
     }
-    final attachmentType = (row['attachment_type'] as String?)?.trim() ?? 'text';
+    final attachmentType =
+        (row['attachment_type'] as String?)?.trim() ?? 'text';
     if (attachmentType == 'image') {
       return 'Foto enviada';
     }

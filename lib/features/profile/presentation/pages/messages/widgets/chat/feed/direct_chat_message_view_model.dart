@@ -15,6 +15,7 @@ class DirectChatMessageViewModel {
     this.replyToContent,
     this.replyToType,
     this.isReplyToMine,
+    this.isSeenByPeer = false,
   });
 
   factory DirectChatMessageViewModel.fromEntity(DirectChatMessage message) {
@@ -41,6 +42,7 @@ class DirectChatMessageViewModel {
         null => null,
       },
       isReplyToMine: message.isReplyToMine,
+      isSeenByPeer: message.isSeenByPeer,
     );
   }
 
@@ -57,12 +59,14 @@ class DirectChatMessageViewModel {
   final String? replyToContent;
   final DirectChatMessageTypeView? replyToType;
   final bool? isReplyToMine;
+  final bool isSeenByPeer;
 
   DirectChatMessageViewModel copyWith({
     String? replyToMessageId,
     String? replyToContent,
     DirectChatMessageTypeView? replyToType,
     bool? isReplyToMine,
+    bool? isSeenByPeer,
   }) {
     return DirectChatMessageViewModel(
       id: id,
@@ -78,6 +82,7 @@ class DirectChatMessageViewModel {
       replyToContent: replyToContent ?? this.replyToContent,
       replyToType: replyToType ?? this.replyToType,
       isReplyToMine: isReplyToMine ?? this.isReplyToMine,
+      isSeenByPeer: isSeenByPeer ?? this.isSeenByPeer,
     );
   }
 }

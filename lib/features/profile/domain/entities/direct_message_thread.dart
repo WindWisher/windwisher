@@ -24,18 +24,22 @@ class DirectMessageThread {
   DirectMessageThread copyWith({
     bool? isMuted,
     bool? isBlocked,
+    int? unreadCount,
+    String? preview,
+    DateTime? lastActivity,
     String? participantAvatarPath,
   }) {
     return DirectMessageThread(
       id: id,
       participant: participant,
-      preview: preview,
-      lastActivity: lastActivity,
-      unreadCount: unreadCount,
+      preview: preview ?? this.preview,
+      lastActivity: lastActivity ?? this.lastActivity,
+      unreadCount: unreadCount ?? this.unreadCount,
       isMuted: isMuted ?? this.isMuted,
       isBlocked: isBlocked ?? this.isBlocked,
       lastLocation: lastLocation,
-      participantAvatarPath: participantAvatarPath ?? this.participantAvatarPath,
+      participantAvatarPath:
+          participantAvatarPath ?? this.participantAvatarPath,
     );
   }
 }

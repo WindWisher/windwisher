@@ -17,6 +17,7 @@ class DirectChatMessage {
     this.replyToContent,
     this.replyToType,
     this.isReplyToMine,
+    this.isSeenByPeer = false,
   });
 
   final String id;
@@ -34,4 +35,5 @@ class DirectChatMessage {
   final String? replyToContent;
   final DirectChatMessageType? replyToType;
   final bool? isReplyToMine;
+  final bool isSeenByPeer;
 }

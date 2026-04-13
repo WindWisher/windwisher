@@ -43,8 +43,9 @@ class DirectChatBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Row(
-        mainAxisAlignment:
-            message.isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: message.isMine
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!message.isMine) ...[
@@ -66,8 +67,9 @@ class DirectChatBubble extends StatelessWidget {
           ],
           Flexible(
             child: Align(
-              alignment:
-                  message.isMine ? Alignment.centerRight : Alignment.centerLeft,
+              alignment: message.isMine
+                  ? Alignment.centerRight
+                  : Alignment.centerLeft,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 420),
                 child: InkWell(
@@ -115,7 +117,7 @@ class DirectChatBubble extends StatelessWidget {
                                 style: textTheme.bodySmall?.copyWith(
                                   color: message.isMine
                                       ? colorScheme.onPrimaryContainer
-                                          .withValues(alpha: 0.72)
+                                            .withValues(alpha: 0.72)
                                       : colorScheme.onSurfaceVariant,
                                 ),
                               ),
@@ -145,29 +147,36 @@ class DirectChatBubble extends StatelessWidget {
                             ),
                           ),
                         ],
-                        if (message.type == DirectChatMessageTypeView.image) ...[
+                        if (message.type ==
+                            DirectChatMessageTypeView.image) ...[
                           const SizedBox(height: 4),
                           _ChatImageBubble(
                             url: message.mediaUrl,
-                            onTap: message.mediaUrl == null ||
+                            onTap:
+                                message.mediaUrl == null ||
                                     message.mediaUrl!.isEmpty
                                 ? null
-                                : () => _showImagePreview(context, message.mediaUrl!),
+                                : () => _showImagePreview(
+                                    context,
+                                    message.mediaUrl!,
+                                  ),
                           ),
                         ],
-                        if (message.type == DirectChatMessageTypeView.video) ...[
+                        if (message.type ==
+                            DirectChatMessageTypeView.video) ...[
                           const SizedBox(height: 4),
                           _ChatVideoBubble(
                             url: message.mediaUrl,
                             fileName: message.fileName,
-                            onTap: message.mediaUrl == null ||
+                            onTap:
+                                message.mediaUrl == null ||
                                     message.mediaUrl!.isEmpty
                                 ? null
                                 : () => _showVideoPreview(
-                                      context,
-                                      url: message.mediaUrl!,
-                                      fileName: message.fileName,
-                                    ),
+                                    context,
+                                    url: message.mediaUrl!,
+                                    fileName: message.fileName,
+                                  ),
                           ),
                         ],
                         if (message.type != DirectChatMessageTypeView.text &&
@@ -180,14 +189,38 @@ class DirectChatBubble extends StatelessWidget {
                             ),
                           ),
                         ],
-                        if (message.isEdited) ...[
+                        if (message.isEdited ||
+                            (message.isMine && message.isSeenByPeer)) ...[
                           const SizedBox(height: 6),
-                          Text(
-                            'editado',
-                            style: textTheme.bodySmall?.copyWith(
-                              color: bubbleTextColor.withValues(alpha: 0.72),
-                              fontStyle: FontStyle.italic,
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.max,
+                            children: [
+                              if (message.isEdited)
+                                Text(
+                                  'editado',
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: bubbleTextColor.withValues(
+                                      alpha: 0.72,
+                                    ),
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              if (message.isEdited &&
+                                  message.isMine &&
+                                  message.isSeenByPeer)
+                                const SizedBox(width: 8),
+                              if (message.isMine && message.isSeenByPeer)
+                                Text(
+                                  'Visto',
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: bubbleTextColor.withValues(
+                                      alpha: 0.72,
+                                    ),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                            ],
                           ),
                         ],
                       ],
@@ -291,13 +324,9 @@ Future<void> _showVideoPreview(
 }) {
   return showDialog<void>(
     context: context,
-    builder: (_) => _DirectChatVideoPreviewDialog(
-      url: url,
-      fileName: fileName,
-    ),
+    builder: (_) => _DirectChatVideoPreviewDialog(url: url, fileName: fileName),
   );
 }
-
 
 class _ReplyQuoteCard extends StatelessWidget {
   const _ReplyQuoteCard({
@@ -335,7 +364,9 @@ class _ReplyQuoteCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border(
           left: BorderSide(
-            color: isMine ? colorScheme.onPrimaryContainer : colorScheme.primary,
+            color: isMine
+                ? colorScheme.onPrimaryContainer
+                : colorScheme.primary,
             width: 3,
           ),
         ),
@@ -489,7 +520,9 @@ class _DirectChatVideoPreviewDialogState
 
   Future<void> _init() async {
     try {
-      final controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+      final controller = VideoPlayerController.networkUrl(
+        Uri.parse(widget.url),
+      );
       await controller.initialize();
       await controller.setLooping(false);
       if (!mounted) {
@@ -518,7 +551,8 @@ class _DirectChatVideoPreviewDialogState
 
   @override
   Widget build(BuildContext context) {
-    final title = (widget.fileName != null && widget.fileName!.trim().isNotEmpty)
+    final title =
+        (widget.fileName != null && widget.fileName!.trim().isNotEmpty)
         ? widget.fileName!.trim()
         : 'Vídeo';
 
@@ -539,14 +573,14 @@ class _DirectChatVideoPreviewDialogState
                   child: _hasError
                       ? const Text('No se pudo abrir el vídeo.')
                       : !_isReady || _controller == null
-                          ? const CircularProgressIndicator()
-                          : AspectRatio(
-                              aspectRatio: _controller!.value.aspectRatio,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
-                                child: VideoPlayer(_controller!),
-                              ),
-                            ),
+                      ? const CircularProgressIndicator()
+                      : AspectRatio(
+                          aspectRatio: _controller!.value.aspectRatio,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: VideoPlayer(_controller!),
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),

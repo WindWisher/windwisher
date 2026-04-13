@@ -232,11 +232,44 @@ class InMemoryProfileMessagesRepositoryAdapter
   }
 
   @override
-  Future<List<DirectChatMessage>> loadDirectChatMessages(String threadId) async {
+  Future<List<DirectChatMessage>> loadDirectChatMessages(
+    String threadId,
+  ) async {
     return List<DirectChatMessage>.unmodifiable(
       _messagesByThread[threadId] ?? const <DirectChatMessage>[],
     );
   }
+
+  @override
+  Future<void> markDirectThreadAsRead(String threadId) async {
+    final index = _directThreads.indexWhere((item) => item.id == threadId);
+    if (index < 0) {
+      return;
+    }
+    _directThreads[index] = _directThreads[index].copyWith(unreadCount: 0);
+  }
+
+  @override
+  Stream<void> watchDirectThreads() {
+    return const Stream<void>.empty();
+  }
+
+  @override
+  Stream<void> watchDirectChatMessages(String threadId) {
+    return const Stream<void>.empty();
+  }
+
+  @override
+  Stream<bool> watchDirectChatTyping(String threadId) {
+    return Stream<bool>.value(false);
+  }
+
+  @override
+  Future<void> sendDirectChatTypingState({
+    required String threadId,
+    required String participantLabel,
+    required bool isTyping,
+  }) async {}
 
   @override
   Future<DirectChatMessage?> sendDirectChatMessage(
@@ -248,7 +281,10 @@ class InMemoryProfileMessagesRepositoryAdapter
     if (trimmed.isEmpty) {
       return null;
     }
-    final messages = _messagesByThread.putIfAbsent(threadId, () => <DirectChatMessage>[]);
+    final messages = _messagesByThread.putIfAbsent(
+      threadId,
+      () => <DirectChatMessage>[],
+    );
     DirectChatMessage? replied;
     if (replyToMessageId != null && replyToMessageId.isNotEmpty) {
       for (final item in messages) {
@@ -286,7 +322,10 @@ class InMemoryProfileMessagesRepositoryAdapter
     if (bytes.isEmpty) {
       return null;
     }
-    final messages = _messagesByThread.putIfAbsent(threadId, () => <DirectChatMessage>[]);
+    final messages = _messagesByThread.putIfAbsent(
+      threadId,
+      () => <DirectChatMessage>[],
+    );
     DirectChatMessage? replied;
     if (replyToMessageId != null && replyToMessageId.isNotEmpty) {
       for (final item in messages) {
@@ -312,18 +351,27 @@ class InMemoryProfileMessagesRepositoryAdapter
       isReplyToMine: replied?.isMine,
     );
     messages.add(message);
-    _touchThread(threadId: threadId, preview: message.content, sentAt: message.sentAt);
+    _touchThread(
+      threadId: threadId,
+      preview: message.content,
+      sentAt: message.sentAt,
+    );
     return message;
   }
 
   @override
-  Future<DirectChatMessage?> updateDirectChatMessage(String messageId, String body) async {
+  Future<DirectChatMessage?> updateDirectChatMessage(
+    String messageId,
+    String body,
+  ) async {
     final trimmed = body.trim();
     if (trimmed.isEmpty) {
       return null;
     }
     for (final entry in _messagesByThread.entries) {
-      final index = entry.value.indexWhere((message) => message.id == messageId);
+      final index = entry.value.indexWhere(
+        (message) => message.id == messageId,
+      );
       if (index < 0) {
         continue;
       }
@@ -346,7 +394,11 @@ class InMemoryProfileMessagesRepositoryAdapter
         isReplyToMine: current.isReplyToMine,
       );
       entry.value[index] = updated;
-      _touchThread(threadId: current.threadId, preview: trimmed, sentAt: current.sentAt);
+      _touchThread(
+        threadId: current.threadId,
+        preview: trimmed,
+        sentAt: current.sentAt,
+      );
       return updated;
     }
     return null;

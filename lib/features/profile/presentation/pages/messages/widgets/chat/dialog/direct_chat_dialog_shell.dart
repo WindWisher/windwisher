@@ -19,12 +19,14 @@ class DirectChatDialogShell extends StatelessWidget {
     required this.isPickingMedia,
     required this.composerController,
     required this.replyingTo,
+    required this.statusText,
     required this.onRefresh,
     required this.onManageMessage,
     required this.onReplyMessage,
     required this.formatHour,
     required this.onClose,
     required this.onSubmitted,
+    required this.onComposerChanged,
     required this.onAttachMedia,
     required this.onCancelEditing,
     required this.onCancelReply,
@@ -41,6 +43,7 @@ class DirectChatDialogShell extends StatelessWidget {
   final bool isPickingMedia;
   final TextEditingController composerController;
   final DirectChatMessageViewModel? replyingTo;
+  final String? statusText;
   final Future<void> Function({bool initialLoad, bool silent}) onRefresh;
   final Future<void> Function(DirectChatMessageViewModel message)
   onManageMessage;
@@ -48,6 +51,7 @@ class DirectChatDialogShell extends StatelessWidget {
   final String Function(DateTime timestamp) formatHour;
   final VoidCallback onClose;
   final VoidCallback onSubmitted;
+  final ValueChanged<String> onComposerChanged;
   final Future<void> Function() onAttachMedia;
   final VoidCallback onCancelEditing;
   final VoidCallback onCancelReply;
@@ -83,7 +87,7 @@ class DirectChatDialogShell extends StatelessWidget {
                   participant: participant,
                   participantInitials: participantInitials,
                   avatarPath: participantAvatarPath,
-                  statusText: null,
+                  statusText: statusText,
                   onClose: onClose,
                 ),
                 const SizedBox(height: AppSpacing.sm),
@@ -109,6 +113,7 @@ class DirectChatDialogShell extends StatelessWidget {
                   isPickingMedia: isPickingMedia,
                   isEditing: editingMessageId != null,
                   onSubmitted: onSubmitted,
+                  onChanged: onComposerChanged,
                   onAttachMedia: onAttachMedia,
                   onCancelEditing: onCancelEditing,
                   replyingTo: replyingTo,

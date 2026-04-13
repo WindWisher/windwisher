@@ -22,6 +22,20 @@ abstract class ProfileMessagesRepositoryPort {
 
   Future<List<DirectChatMessage>> loadDirectChatMessages(String threadId);
 
+  Future<void> markDirectThreadAsRead(String threadId);
+
+  Stream<void> watchDirectThreads();
+
+  Stream<void> watchDirectChatMessages(String threadId);
+
+  Stream<bool> watchDirectChatTyping(String threadId);
+
+  Future<void> sendDirectChatTypingState({
+    required String threadId,
+    required String participantLabel,
+    required bool isTyping,
+  });
+
   Future<DirectChatMessage?> sendDirectChatMessage(
     String threadId,
     String body, {
@@ -37,7 +51,10 @@ abstract class ProfileMessagesRepositoryPort {
     String? replyToMessageId,
   });
 
-  Future<DirectChatMessage?> updateDirectChatMessage(String messageId, String body);
+  Future<DirectChatMessage?> updateDirectChatMessage(
+    String messageId,
+    String body,
+  );
 
   Future<void> deleteDirectChatMessages(List<String> messageIds);
 

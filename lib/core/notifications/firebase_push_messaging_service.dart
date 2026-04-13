@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:windwisher/firebase_options.dart';
+import 'package:windwisher/core/notifications/direct_message_notification_event.dart';
 import 'package:windwisher/core/notifications/local_notifications_service.dart';
 import 'package:windwisher/core/notifications/push_notification_subscription_service.dart';
 import 'package:windwisher/features/spots/presentation/state/spot_alarm_catalog.dart';
@@ -15,6 +16,31 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    await LocalNotificationsService.instance.initialize();
+    if (message.data['type'] == 'direct_message' &&
+        (message.notification == null ||
+            ((message.notification?.title?.trim().isEmpty ?? true) &&
+                (message.notification?.body?.trim().isEmpty ?? true)))) {
+      final threadId = message.data['threadId']?.trim();
+      final messageId = message.data['messageId']?.trim();
+      if (threadId != null &&
+          threadId.isNotEmpty &&
+          messageId != null &&
+          messageId.isNotEmpty) {
+        await LocalNotificationsService.instance.showDirectMessage(
+          threadId: threadId,
+          messageId: messageId,
+          senderName:
+              message.data['senderDisplayName']?.trim().isNotEmpty == true
+              ? message.data['senderDisplayName']!.trim()
+              : 'Nuevo mensaje',
+          body: message.data['preview']?.trim().isNotEmpty == true
+              ? message.data['preview']!.trim()
+              : 'Tienes un mensaje nuevo.',
+        );
+      }
+      return;
+    }
     final alarmId = message.data['alarmId']?.trim();
     final repeatWindowRaw = message.data['repeatWindow']?.trim();
     final maxRepeats = int.tryParse(message.data['maxRepeats'] ?? '');
@@ -52,7 +78,21 @@ class FirebasePushMessagingService {
 
   StreamSubscription<String>? _tokenRefreshSubscription;
   StreamSubscription<RemoteMessage>? _foregroundMessageSubscription;
+  StreamSubscription<RemoteMessage>? _messageOpenedSubscription;
+  final StreamController<DirectMessageNotificationEvent>
+  _directMessageOpenController =
+      StreamController<DirectMessageNotificationEvent>.broadcast();
+  DirectMessageNotificationEvent? _pendingDirectMessageOpen;
   bool _initialized = false;
+
+  Stream<DirectMessageNotificationEvent> get directMessageOpenStream =>
+      _directMessageOpenController.stream;
+
+  DirectMessageNotificationEvent? consumePendingDirectMessageOpen() {
+    final pending = _pendingDirectMessageOpen;
+    _pendingDirectMessageOpen = null;
+    return pending;
+  }
 
   Future<void> initialize() async {
     if (_initialized) {
@@ -124,8 +164,15 @@ class FirebasePushMessagingService {
       _foregroundMessageSubscription = FirebaseMessaging.onMessage.listen((
         message,
       ) async {
-        await _showForegroundAlarmNotification(message);
+        await _showForegroundNotification(message);
       });
+      _messageOpenedSubscription = FirebaseMessaging.onMessageOpenedApp.listen(
+        _handleOpenedRemoteMessage,
+      );
+      final initialMessage = await messaging.getInitialMessage();
+      if (initialMessage != null) {
+        _handleOpenedRemoteMessage(initialMessage);
+      }
 
       _tokenRefreshSubscription = messaging.onTokenRefresh.listen((
         nextToken,
@@ -149,12 +196,18 @@ class FirebasePushMessagingService {
   Future<void> dispose() async {
     await _foregroundMessageSubscription?.cancel();
     _foregroundMessageSubscription = null;
+    await _messageOpenedSubscription?.cancel();
+    _messageOpenedSubscription = null;
     await _tokenRefreshSubscription?.cancel();
     _tokenRefreshSubscription = null;
   }
 
-  Future<void> _showForegroundAlarmNotification(RemoteMessage message) async {
+  Future<void> _showForegroundNotification(RemoteMessage message) async {
     final data = message.data;
+    if (data['type'] == 'direct_message') {
+      await _showForegroundDirectMessageNotification(message);
+      return;
+    }
     if (data['type'] != 'spot_alarm') {
       return;
     }
@@ -162,12 +215,10 @@ class FirebasePushMessagingService {
     if (alarmId == null || alarmId.isEmpty) {
       return;
     }
-    final title =
-        message.notification?.title?.trim().isNotEmpty == true
+    final title = message.notification?.title?.trim().isNotEmpty == true
         ? message.notification!.title!.trim()
         : 'Alarma de spot';
-    final body =
-        message.notification?.body?.trim().isNotEmpty == true
+    final body = message.notification?.body?.trim().isNotEmpty == true
         ? message.notification!.body!.trim()
         : 'La alarma ya esta activa.';
     final repeatWindow = AlarmRepeatWindow.values.firstWhere(
@@ -181,6 +232,60 @@ class FirebasePushMessagingService {
       body: body,
       repeatWindow: repeatWindow,
       maxRepeats: maxRepeats,
+    );
+  }
+
+  void _handleOpenedRemoteMessage(RemoteMessage message) {
+    final data = message.data;
+    if (data['type'] != 'direct_message') {
+      return;
+    }
+    final threadId = data['threadId']?.trim();
+    final messageId = data['messageId']?.trim();
+    if (threadId == null ||
+        threadId.isEmpty ||
+        messageId == null ||
+        messageId.isEmpty) {
+      return;
+    }
+    final event = DirectMessageNotificationEvent(
+      threadId: threadId,
+      messageId: messageId,
+    );
+    _pendingDirectMessageOpen = event;
+    _directMessageOpenController.add(event);
+  }
+
+  Future<void> _showForegroundDirectMessageNotification(
+    RemoteMessage message,
+  ) async {
+    final data = message.data;
+    final threadId = data['threadId']?.trim();
+    final messageId = data['messageId']?.trim();
+    if (threadId == null ||
+        threadId.isEmpty ||
+        messageId == null ||
+        messageId.isEmpty) {
+      return;
+    }
+    if (Platform.isIOS && message.notification != null) {
+      return;
+    }
+    final senderName = message.notification?.title?.trim().isNotEmpty == true
+        ? message.notification!.title!.trim()
+        : (data['senderDisplayName']?.trim().isNotEmpty == true
+              ? data['senderDisplayName']!.trim()
+              : 'Nuevo mensaje');
+    final body = message.notification?.body?.trim().isNotEmpty == true
+        ? message.notification!.body!.trim()
+        : (data['preview']?.trim().isNotEmpty == true
+              ? data['preview']!.trim()
+              : 'Tienes un mensaje nuevo.');
+    await LocalNotificationsService.instance.showDirectMessage(
+      threadId: threadId,
+      messageId: messageId,
+      senderName: senderName,
+      body: body,
     );
   }
 

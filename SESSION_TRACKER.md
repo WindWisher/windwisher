@@ -15557,3 +15557,34 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
     - verificacion:
       - multiples `flutter analyze` limpios sobre `messages`, `profile_page`, `profile_module`, `spot_alarm_catalog` y piezas auxiliares durante el bloque,
       - se mantiene solo el warning externo conocido de `webview_flutter:macos`.
+
+
+  - bloque nuevo `2026-04-13`:
+    - extension del bloque de `Mensajes` para cerrar notificaciones directas, unread y realtime en un nivel ya utilizable en produccion,
+    - duracion estimada adicional del tramo: `4h`,
+    - mensajes / notificaciones:
+      - anadido soporte cliente para `direct_message` en Firebase Messaging y notificaciones locales,
+      - creada la entidad de evento `direct_message_notification_event.dart` para abrir chats desde notificaciones remotas y locales,
+      - `DashboardPage` ya enruta la apertura de la notificacion hacia `Perfil > Mensajes > chat correspondiente`,
+      - desplegada la Edge Function `direct-message-push` y la RPC `get_backend_direct_message_push_targets(...)`,
+      - el envio push excluye chats silenciados, bloqueados o eliminados por el receptor,
+      - validado el comportamiento real:
+        - con app en primer plano y usuario en lista de chats: llega aviso local y se actualiza la lista,
+        - con app en segundo plano: llegan push correctamente,
+        - con app completamente cerrada en Xiaomi/MIUI queda documentada una limitacion dependiente del sistema,
+    - mensajes / realtime y estado:
+      - anadido `realtime` para lista de chats y para feed del chat directo,
+      - anadido `typing...` real por hilo,
+      - anadido unread real por usuario basado en `last_read_message_created_at`,
+      - anadido estado `Visto` en mensajes propios usando el ultimo punto de lectura del otro participante,
+      - corregido el refresco de preview del listado para que el ultimo mensaje del chat no quede stale tras enviar o editar,
+    - mensajes / robustez del cliente:
+      - al activar notificaciones, la app solicita y valida permisos reales del sistema,
+      - el envio de push deja trazas explicitas de `sent / failed / reason` para no volver a ir a ciegas,
+      - anadido fallback de aviso local en foreground desde `ProfilePage` cuando entra un mensaje nuevo y el chat no esta abierto,
+    - backend / repo:
+      - mantenidas y conectadas las migraciones `20260414001000_direct_message_push_notifications.sql` y `20260414004500_direct_thread_unread_state.sql`,
+      - actualizados puertos, casos de uso, controller y adapters para watchers, typing, unread y notificaciones,
+    - verificacion:
+      - multiples `flutter analyze` limpios sobre `main.dart`, `settings_page.dart`, `profile_page.dart`, `profile_messages` y adapters de Supabase,
+      - se mantiene solo el warning externo conocido de `webview_flutter:macos`.

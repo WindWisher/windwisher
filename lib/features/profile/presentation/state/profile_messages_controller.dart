@@ -15,6 +15,11 @@ class ProfileMessagesController extends ChangeNotifier {
     required DeleteDirectThreadUseCase deleteDirectThread,
     required CreateOrOpenDirectChatUseCase createOrOpenDirectChat,
     required LoadDirectChatMessagesUseCase loadDirectChatMessages,
+    required MarkDirectThreadAsReadUseCase markDirectThreadAsRead,
+    required WatchDirectThreadsUseCase watchDirectThreads,
+    required WatchDirectChatMessagesUseCase watchDirectChatMessages,
+    required WatchDirectChatTypingUseCase watchDirectChatTyping,
+    required SendDirectChatTypingStateUseCase sendDirectChatTypingState,
     required SendDirectChatMessageUseCase sendDirectChatMessage,
     required SendDirectChatMediaMessageUseCase sendDirectChatMediaMessage,
     required UpdateDirectChatMessageUseCase updateDirectChatMessage,
@@ -29,6 +34,11 @@ class ProfileMessagesController extends ChangeNotifier {
        _deleteDirectThread = deleteDirectThread,
        _createOrOpenDirectChat = createOrOpenDirectChat,
        _loadDirectChatMessages = loadDirectChatMessages,
+       _markDirectThreadAsRead = markDirectThreadAsRead,
+       _watchDirectThreads = watchDirectThreads,
+       _watchDirectChatMessages = watchDirectChatMessages,
+       _watchDirectChatTyping = watchDirectChatTyping,
+       _sendDirectChatTypingState = sendDirectChatTypingState,
        _sendDirectChatMessage = sendDirectChatMessage,
        _sendDirectChatMediaMessage = sendDirectChatMediaMessage,
        _updateDirectChatMessage = updateDirectChatMessage,
@@ -46,6 +56,11 @@ class ProfileMessagesController extends ChangeNotifier {
   final DeleteDirectThreadUseCase _deleteDirectThread;
   final CreateOrOpenDirectChatUseCase _createOrOpenDirectChat;
   final LoadDirectChatMessagesUseCase _loadDirectChatMessages;
+  final MarkDirectThreadAsReadUseCase _markDirectThreadAsRead;
+  final WatchDirectThreadsUseCase _watchDirectThreads;
+  final WatchDirectChatMessagesUseCase _watchDirectChatMessages;
+  final WatchDirectChatTypingUseCase _watchDirectChatTyping;
+  final SendDirectChatTypingStateUseCase _sendDirectChatTypingState;
   final SendDirectChatMessageUseCase _sendDirectChatMessage;
   final SendDirectChatMediaMessageUseCase _sendDirectChatMediaMessage;
   final UpdateDirectChatMessageUseCase _updateDirectChatMessage;
@@ -126,6 +141,35 @@ class ProfileMessagesController extends ChangeNotifier {
     return _loadDirectChatMessages(threadId);
   }
 
+  Future<void> markDirectThreadAsRead(String threadId) async {
+    await _markDirectThreadAsRead(threadId);
+    _refresh();
+  }
+
+  Stream<void> watchDirectThreads() {
+    return _watchDirectThreads();
+  }
+
+  Stream<void> watchDirectChatMessages(String threadId) {
+    return _watchDirectChatMessages(threadId);
+  }
+
+  Stream<bool> watchDirectChatTyping(String threadId) {
+    return _watchDirectChatTyping(threadId);
+  }
+
+  Future<void> sendDirectChatTypingState({
+    required String threadId,
+    required String participantLabel,
+    required bool isTyping,
+  }) {
+    return _sendDirectChatTypingState(
+      threadId: threadId,
+      participantLabel: participantLabel,
+      isTyping: isTyping,
+    );
+  }
+
   Future<DirectChatMessage?> sendDirectChatMessage(
     String threadId,
     String body, {
@@ -160,7 +204,10 @@ class ProfileMessagesController extends ChangeNotifier {
     return message;
   }
 
-  Future<DirectChatMessage?> updateDirectChatMessage(String messageId, String body) async {
+  Future<DirectChatMessage?> updateDirectChatMessage(
+    String messageId,
+    String body,
+  ) async {
     final message = await _updateDirectChatMessage(messageId, body);
     await hydrate();
     return message;

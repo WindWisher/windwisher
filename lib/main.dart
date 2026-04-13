@@ -40,6 +40,7 @@ Future<void> _initializeSupabaseIfConfigured() async {
 
 Future<void> _initializeBackgroundServices() async {
   await LocalNotificationsService.instance.initialize();
+  await LocalNotificationsService.instance.ensurePermissions();
   await PushNotificationSubscriptionService.instance.initialize();
   await FirebasePushMessagingService.instance.initialize();
 }

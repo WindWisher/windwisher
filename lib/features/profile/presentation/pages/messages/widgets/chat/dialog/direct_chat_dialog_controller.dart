@@ -16,7 +16,17 @@ class DirectChatDialogController extends ChangeNotifier {
       String threadId,
       String body, {
       String? replyToMessageId,
-    }) sendMessage,
+    })
+    sendMessage,
+    required Stream<void> Function(String threadId) watchMessages,
+    required Stream<bool> Function(String threadId) watchTyping,
+    required Future<void> Function({
+      required String threadId,
+      required String participantLabel,
+      required bool isTyping,
+    })
+    sendTypingState,
+    required String participantLabel,
     required Future<DirectChatMessage?> Function({
       required String threadId,
       required List<int> bytes,
@@ -24,15 +34,22 @@ class DirectChatDialogController extends ChangeNotifier {
       required String mimeType,
       required bool isVideo,
       String? replyToMessageId,
-    }) sendMediaMessage,
+    })
+    sendMediaMessage,
     required Future<DirectChatMessage?> Function(String messageId, String body)
     updateMessage,
     required Future<void> Function(List<String> messageIds) deleteMessages,
+    Future<void> Function()? onThreadChanged,
   }) : _loadMessages = loadMessages,
        _sendMessage = sendMessage,
+       _watchMessages = watchMessages,
+       _watchTyping = watchTyping,
+       _sendTypingState = sendTypingState,
+       _participantLabel = participantLabel,
        _sendMediaMessage = sendMediaMessage,
        _updateMessage = updateMessage,
-       _deleteMessages = deleteMessages;
+       _deleteMessages = deleteMessages,
+       _onThreadChanged = onThreadChanged;
 
   final String threadId;
   final Future<List<DirectChatMessage>> Function(String threadId) _loadMessages;
@@ -40,7 +57,17 @@ class DirectChatDialogController extends ChangeNotifier {
     String threadId,
     String body, {
     String? replyToMessageId,
-  }) _sendMessage;
+  })
+  _sendMessage;
+  final Stream<void> Function(String threadId) _watchMessages;
+  final Stream<bool> Function(String threadId) _watchTyping;
+  final Future<void> Function({
+    required String threadId,
+    required String participantLabel,
+    required bool isTyping,
+  })
+  _sendTypingState;
+  final String _participantLabel;
   final Future<DirectChatMessage?> Function({
     required String threadId,
     required List<int> bytes,
@@ -48,42 +75,97 @@ class DirectChatDialogController extends ChangeNotifier {
     required String mimeType,
     required bool isVideo,
     String? replyToMessageId,
-  }) _sendMediaMessage;
+  })
+  _sendMediaMessage;
   final Future<DirectChatMessage?> Function(String messageId, String body)
   _updateMessage;
   final Future<void> Function(List<String> messageIds) _deleteMessages;
+  final Future<void> Function()? _onThreadChanged;
 
   final TextEditingController composerController = TextEditingController();
   final ScrollController scrollController = ScrollController();
   final ImagePicker _imagePicker = ImagePicker();
 
   Timer? _autoRefreshTimer;
+  StreamSubscription<void>? _messagesSubscription;
+  StreamSubscription<bool>? _typingSubscription;
+  Timer? _typingDebounceTimer;
   List<DirectChatMessageViewModel> _messages = <DirectChatMessageViewModel>[];
   bool _isLoading = true;
   bool _isSubmitting = false;
   bool _isPickingMedia = false;
   String? _editingMessageId;
   String? _replyingMessageId;
+  bool _isPeerTyping = false;
+  bool _isTypingActive = false;
 
   List<DirectChatMessageViewModel> get messages => _messages;
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
   bool get isPickingMedia => _isPickingMedia;
   String? get editingMessageId => _editingMessageId;
+  bool get isPeerTyping => _isPeerTyping;
   DirectChatMessageViewModel? get replyingTo =>
       resolveReplyingMessage(_messages, _replyingMessageId);
 
   void initialize() {
     hydrateMessages(initialLoad: true);
+    _startRealtimeWatch();
+    _startTypingWatch();
     _startAutoRefresh();
   }
 
   @override
   void dispose() {
     _autoRefreshTimer?.cancel();
+    _messagesSubscription?.cancel();
+    _typingSubscription?.cancel();
+    _typingDebounceTimer?.cancel();
+    unawaited(_emitTyping(false));
     composerController.dispose();
     scrollController.dispose();
     super.dispose();
+  }
+
+  void _startRealtimeWatch() {
+    _messagesSubscription?.cancel();
+    _messagesSubscription = _watchMessages(threadId).listen((_) {
+      unawaited(hydrateMessages(silent: true));
+    });
+  }
+
+  void _startTypingWatch() {
+    _typingSubscription?.cancel();
+    _typingSubscription = _watchTyping(threadId).listen((isTyping) {
+      _isPeerTyping = isTyping;
+      notifyListeners();
+    });
+  }
+
+  void onComposerChanged(String value) {
+    final nextTyping = value.trim().isNotEmpty;
+    if (nextTyping != _isTypingActive) {
+      _isTypingActive = nextTyping;
+      unawaited(_emitTyping(nextTyping));
+    }
+    _typingDebounceTimer?.cancel();
+    if (!nextTyping) {
+      return;
+    }
+    _typingDebounceTimer = Timer(const Duration(seconds: 2), () {
+      _isTypingActive = false;
+      unawaited(_emitTyping(false));
+    });
+  }
+
+  Future<void> _emitTyping(bool isTyping) async {
+    try {
+      await _sendTypingState(
+        threadId: threadId,
+        participantLabel: _participantLabel,
+        isTyping: isTyping,
+      );
+    } catch (_) {}
   }
 
   void _startAutoRefresh() {
@@ -157,21 +239,33 @@ class DirectChatDialogController extends ChangeNotifier {
           ];
           _replyingMessageId = null;
           composerController.clear();
+          _typingDebounceTimer?.cancel();
+          _isTypingActive = false;
+          unawaited(_emitTyping(false));
           notifyListeners();
-          WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+          await _notifyThreadChanged();
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _scrollToBottom(),
+          );
         }
       } else {
         final updated = await _updateMessage(editingId, text);
         if (updated != null) {
-          _messages = _messages.map((message) {
-            if (message.id != editingId) {
-              return message;
-            }
-            return DirectChatMessageViewModel.fromEntity(updated);
-          }).toList(growable: false);
+          _messages = _messages
+              .map((message) {
+                if (message.id != editingId) {
+                  return message;
+                }
+                return DirectChatMessageViewModel.fromEntity(updated);
+              })
+              .toList(growable: false);
           _editingMessageId = null;
           composerController.clear();
+          _typingDebounceTimer?.cancel();
+          _isTypingActive = false;
+          unawaited(_emitTyping(false));
           notifyListeners();
+          await _notifyThreadChanged();
         }
       }
     } catch (error) {
@@ -270,6 +364,7 @@ class DirectChatDialogController extends ChangeNotifier {
         _replyingMessageId = null;
       }
       notifyListeners();
+      await _notifyThreadChanged();
     } catch (error) {
       messenger?.showSnackBar(
         SnackBar(content: Text('No se pudo eliminar el mensaje: $error')),
@@ -307,7 +402,10 @@ class DirectChatDialogController extends ChangeNotifier {
         isVideo: isVideo,
         replyToMessageId: _replyingMessageId,
       );
-      final repliedMessage = resolveReplyingMessage(_messages, _replyingMessageId);
+      final repliedMessage = resolveReplyingMessage(
+        _messages,
+        _replyingMessageId,
+      );
       if (message != null) {
         _messages = [
           ..._messages,
@@ -318,6 +416,7 @@ class DirectChatDialogController extends ChangeNotifier {
         ];
         _replyingMessageId = null;
         notifyListeners();
+        await _notifyThreadChanged();
         messenger?.showSnackBar(
           SnackBar(
             content: Text(
@@ -337,6 +436,17 @@ class DirectChatDialogController extends ChangeNotifier {
       _isPickingMedia = false;
       notifyListeners();
     }
+  }
+
+
+  Future<void> _notifyThreadChanged() async {
+    final callback = _onThreadChanged;
+    if (callback == null) {
+      return;
+    }
+    try {
+      await callback();
+    } catch (_) {}
   }
 
   void _scrollToBottom() {

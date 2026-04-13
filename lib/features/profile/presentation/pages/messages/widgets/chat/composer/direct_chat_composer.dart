@@ -10,6 +10,7 @@ class DirectChatComposer extends StatelessWidget {
     required this.isPickingMedia,
     required this.isEditing,
     required this.onSubmitted,
+    required this.onChanged,
     required this.onAttachMedia,
     required this.onCancelEditing,
     this.replyingTo,
@@ -22,6 +23,7 @@ class DirectChatComposer extends StatelessWidget {
   final bool isPickingMedia;
   final bool isEditing;
   final VoidCallback onSubmitted;
+  final ValueChanged<String> onChanged;
   final VoidCallback onAttachMedia;
   final VoidCallback onCancelEditing;
   final DirectChatMessageViewModel? replyingTo;
@@ -53,7 +55,8 @@ class DirectChatComposer extends StatelessWidget {
           if (isReplying)
             _ComposerContextCard(
               title: 'Respondiendo',
-              subtitle: '${replyingTo!.isMine ? 'Tú' : replyParticipantLabel}: ${_replyPreview(replyingTo!)}',
+              subtitle:
+                  '${replyingTo!.isMine ? 'Tú' : replyParticipantLabel}: ${_replyPreview(replyingTo!)}',
               accentColor: colorScheme.primary,
               onClose: isSubmitting ? null : onCancelReply,
             ),
@@ -66,12 +69,13 @@ class DirectChatComposer extends StatelessWidget {
               hintText: isEditing
                   ? 'Edita el mensaje seleccionado...'
                   : isReplying
-                      ? 'Escribe tu respuesta...'
-                      : 'Escribe al chat del spot...',
+                  ? 'Escribe tu respuesta...'
+                  : 'Escribe al chat del spot...',
               border: const OutlineInputBorder(),
               filled: true,
               fillColor: colorScheme.surfaceContainerLowest,
             ),
+            onChanged: onChanged,
             onSubmitted: (_) => onSubmitted(),
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -80,7 +84,9 @@ class DirectChatComposer extends StatelessWidget {
             children: [
               IconButton.filledTonal(
                 tooltip: 'Adjuntar foto o vídeo',
-                onPressed: isPickingMedia || isSubmitting ? null : onAttachMedia,
+                onPressed: isPickingMedia || isSubmitting
+                    ? null
+                    : onAttachMedia,
                 icon: isPickingMedia
                     ? const SizedBox(
                         width: 16,
@@ -108,15 +114,15 @@ class DirectChatComposer extends StatelessWidget {
                       isEditing
                           ? Icons.save_rounded
                           : isReplying
-                              ? Icons.reply_rounded
-                              : Icons.send_rounded,
+                          ? Icons.reply_rounded
+                          : Icons.send_rounded,
                     ),
                     label: Text(
                       isEditing
                           ? 'Guardar'
                           : isReplying
-                              ? 'Responder'
-                              : 'Enviar',
+                          ? 'Responder'
+                          : 'Enviar',
                     ),
                   ),
                 ],

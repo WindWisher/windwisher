@@ -58,18 +58,45 @@ class ProfileModule {
       messagesController: ProfileMessagesController(
         getDirectThreads: GetDirectMessageThreadsUseCase(_messagesRepository),
         getIndexedMessages: GetIndexedMessagesUseCase(_messagesRepository),
-        getDirectChatUserCandidates: GetDirectChatUserCandidatesUseCase(_messagesRepository),
+        getDirectChatUserCandidates: GetDirectChatUserCandidatesUseCase(
+          _messagesRepository,
+        ),
         toggleMuteDirectThread: ToggleMuteDirectThreadUseCase(
           _messagesRepository,
         ),
         blockDirectThread: ToggleBlockDirectThreadUseCase(_messagesRepository),
         deleteDirectThread: DeleteDirectThreadUseCase(_messagesRepository),
-        createOrOpenDirectChat: CreateOrOpenDirectChatUseCase(_messagesRepository),
-        loadDirectChatMessages: LoadDirectChatMessagesUseCase(_messagesRepository),
-        sendDirectChatMessage: SendDirectChatMessageUseCase(_messagesRepository),
-        sendDirectChatMediaMessage: SendDirectChatMediaMessageUseCase(_messagesRepository),
-        updateDirectChatMessage: UpdateDirectChatMessageUseCase(_messagesRepository),
-        deleteDirectChatMessages: DeleteDirectChatMessagesUseCase(_messagesRepository),
+        createOrOpenDirectChat: CreateOrOpenDirectChatUseCase(
+          _messagesRepository,
+        ),
+        loadDirectChatMessages: LoadDirectChatMessagesUseCase(
+          _messagesRepository,
+        ),
+        markDirectThreadAsRead: MarkDirectThreadAsReadUseCase(
+          _messagesRepository,
+        ),
+        watchDirectThreads: WatchDirectThreadsUseCase(_messagesRepository),
+        watchDirectChatMessages: WatchDirectChatMessagesUseCase(
+          _messagesRepository,
+        ),
+        watchDirectChatTyping: WatchDirectChatTypingUseCase(
+          _messagesRepository,
+        ),
+        sendDirectChatTypingState: SendDirectChatTypingStateUseCase(
+          _messagesRepository,
+        ),
+        sendDirectChatMessage: SendDirectChatMessageUseCase(
+          _messagesRepository,
+        ),
+        sendDirectChatMediaMessage: SendDirectChatMediaMessageUseCase(
+          _messagesRepository,
+        ),
+        updateDirectChatMessage: UpdateDirectChatMessageUseCase(
+          _messagesRepository,
+        ),
+        deleteDirectChatMessages: DeleteDirectChatMessagesUseCase(
+          _messagesRepository,
+        ),
         updateIndexedMessage: UpdateIndexedMessageUseCase(_messagesRepository),
         deleteIndexedMessage: DeleteIndexedMessageUseCase(_messagesRepository),
       ),
@@ -92,18 +119,45 @@ class ProfileModule {
       messagesController: ProfileMessagesController(
         getDirectThreads: GetDirectMessageThreadsUseCase(_messagesRepository),
         getIndexedMessages: GetIndexedMessagesUseCase(_messagesRepository),
-        getDirectChatUserCandidates: GetDirectChatUserCandidatesUseCase(_messagesRepository),
+        getDirectChatUserCandidates: GetDirectChatUserCandidatesUseCase(
+          _messagesRepository,
+        ),
         toggleMuteDirectThread: ToggleMuteDirectThreadUseCase(
           _messagesRepository,
         ),
         blockDirectThread: ToggleBlockDirectThreadUseCase(_messagesRepository),
         deleteDirectThread: DeleteDirectThreadUseCase(_messagesRepository),
-        createOrOpenDirectChat: CreateOrOpenDirectChatUseCase(_messagesRepository),
-        loadDirectChatMessages: LoadDirectChatMessagesUseCase(_messagesRepository),
-        sendDirectChatMessage: SendDirectChatMessageUseCase(_messagesRepository),
-        sendDirectChatMediaMessage: SendDirectChatMediaMessageUseCase(_messagesRepository),
-        updateDirectChatMessage: UpdateDirectChatMessageUseCase(_messagesRepository),
-        deleteDirectChatMessages: DeleteDirectChatMessagesUseCase(_messagesRepository),
+        createOrOpenDirectChat: CreateOrOpenDirectChatUseCase(
+          _messagesRepository,
+        ),
+        loadDirectChatMessages: LoadDirectChatMessagesUseCase(
+          _messagesRepository,
+        ),
+        markDirectThreadAsRead: MarkDirectThreadAsReadUseCase(
+          _messagesRepository,
+        ),
+        watchDirectThreads: WatchDirectThreadsUseCase(_messagesRepository),
+        watchDirectChatMessages: WatchDirectChatMessagesUseCase(
+          _messagesRepository,
+        ),
+        watchDirectChatTyping: WatchDirectChatTypingUseCase(
+          _messagesRepository,
+        ),
+        sendDirectChatTypingState: SendDirectChatTypingStateUseCase(
+          _messagesRepository,
+        ),
+        sendDirectChatMessage: SendDirectChatMessageUseCase(
+          _messagesRepository,
+        ),
+        sendDirectChatMediaMessage: SendDirectChatMediaMessageUseCase(
+          _messagesRepository,
+        ),
+        updateDirectChatMessage: UpdateDirectChatMessageUseCase(
+          _messagesRepository,
+        ),
+        deleteDirectChatMessages: DeleteDirectChatMessagesUseCase(
+          _messagesRepository,
+        ),
         updateIndexedMessage: UpdateIndexedMessageUseCase(_messagesRepository),
         deleteIndexedMessage: DeleteIndexedMessageUseCase(_messagesRepository),
       ),
@@ -138,18 +192,41 @@ class ProfileModule {
       messagesController: ProfileMessagesController(
         getDirectThreads: GetDirectMessageThreadsUseCase(messagesRepository),
         getIndexedMessages: GetIndexedMessagesUseCase(messagesRepository),
-        getDirectChatUserCandidates: GetDirectChatUserCandidatesUseCase(messagesRepository),
+        getDirectChatUserCandidates: GetDirectChatUserCandidatesUseCase(
+          messagesRepository,
+        ),
         toggleMuteDirectThread: ToggleMuteDirectThreadUseCase(
           messagesRepository,
         ),
         blockDirectThread: ToggleBlockDirectThreadUseCase(messagesRepository),
         deleteDirectThread: DeleteDirectThreadUseCase(messagesRepository),
-        createOrOpenDirectChat: CreateOrOpenDirectChatUseCase(messagesRepository),
-        loadDirectChatMessages: LoadDirectChatMessagesUseCase(messagesRepository),
+        createOrOpenDirectChat: CreateOrOpenDirectChatUseCase(
+          messagesRepository,
+        ),
+        loadDirectChatMessages: LoadDirectChatMessagesUseCase(
+          messagesRepository,
+        ),
+        markDirectThreadAsRead: MarkDirectThreadAsReadUseCase(
+          messagesRepository,
+        ),
+        watchDirectThreads: WatchDirectThreadsUseCase(messagesRepository),
+        watchDirectChatMessages: WatchDirectChatMessagesUseCase(
+          messagesRepository,
+        ),
+        watchDirectChatTyping: WatchDirectChatTypingUseCase(messagesRepository),
+        sendDirectChatTypingState: SendDirectChatTypingStateUseCase(
+          messagesRepository,
+        ),
         sendDirectChatMessage: SendDirectChatMessageUseCase(messagesRepository),
-        sendDirectChatMediaMessage: SendDirectChatMediaMessageUseCase(messagesRepository),
-        updateDirectChatMessage: UpdateDirectChatMessageUseCase(messagesRepository),
-        deleteDirectChatMessages: DeleteDirectChatMessagesUseCase(messagesRepository),
+        sendDirectChatMediaMessage: SendDirectChatMediaMessageUseCase(
+          messagesRepository,
+        ),
+        updateDirectChatMessage: UpdateDirectChatMessageUseCase(
+          messagesRepository,
+        ),
+        deleteDirectChatMessages: DeleteDirectChatMessagesUseCase(
+          messagesRepository,
+        ),
         updateIndexedMessage: UpdateIndexedMessageUseCase(messagesRepository),
         deleteIndexedMessage: DeleteIndexedMessageUseCase(messagesRepository),
       ),

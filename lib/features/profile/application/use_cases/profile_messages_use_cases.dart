@@ -88,6 +88,64 @@ class LoadDirectChatMessagesUseCase {
   }
 }
 
+class MarkDirectThreadAsReadUseCase {
+  const MarkDirectThreadAsReadUseCase(this._repository);
+
+  final ProfileMessagesRepositoryPort _repository;
+
+  Future<void> call(String threadId) {
+    return _repository.markDirectThreadAsRead(threadId);
+  }
+}
+
+class WatchDirectThreadsUseCase {
+  const WatchDirectThreadsUseCase(this._repository);
+
+  final ProfileMessagesRepositoryPort _repository;
+
+  Stream<void> call() {
+    return _repository.watchDirectThreads();
+  }
+}
+
+class WatchDirectChatMessagesUseCase {
+  const WatchDirectChatMessagesUseCase(this._repository);
+
+  final ProfileMessagesRepositoryPort _repository;
+
+  Stream<void> call(String threadId) {
+    return _repository.watchDirectChatMessages(threadId);
+  }
+}
+
+class WatchDirectChatTypingUseCase {
+  const WatchDirectChatTypingUseCase(this._repository);
+
+  final ProfileMessagesRepositoryPort _repository;
+
+  Stream<bool> call(String threadId) {
+    return _repository.watchDirectChatTyping(threadId);
+  }
+}
+
+class SendDirectChatTypingStateUseCase {
+  const SendDirectChatTypingStateUseCase(this._repository);
+
+  final ProfileMessagesRepositoryPort _repository;
+
+  Future<void> call({
+    required String threadId,
+    required String participantLabel,
+    required bool isTyping,
+  }) {
+    return _repository.sendDirectChatTypingState(
+      threadId: threadId,
+      participantLabel: participantLabel,
+      isTyping: isTyping,
+    );
+  }
+}
+
 class SendDirectChatMessageUseCase {
   const SendDirectChatMessageUseCase(this._repository);
 

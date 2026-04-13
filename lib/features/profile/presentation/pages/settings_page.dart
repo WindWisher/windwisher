@@ -8,6 +8,7 @@ import 'package:windwisher/app/router/app_routes.dart';
 import 'package:windwisher/core/i18n/app_locale_controller.dart';
 import 'package:windwisher/core/i18n/app_strings.dart';
 import 'package:windwisher/core/i18n/language_picker.dart';
+import 'package:windwisher/core/notifications/local_notifications_service.dart';
 import 'package:windwisher/core/notifications/push_notification_subscription_service.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
@@ -107,6 +108,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     newValue,
                   ) async {
                     final messenger = ScaffoldMessenger.of(context);
+                    if (newValue) {
+                      final permissionsGranted =
+                          await LocalNotificationsService.instance
+                              .ensurePermissions();
+                      if (!permissionsGranted) {
+                        if (!mounted) {
+                          return;
+                        }
+                        setState(() => _notificationsEnabled = false);
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'El sistema no ha concedido permisos de notificacion en este dispositivo.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+                    }
                     final status = await PushNotificationSubscriptionService
                         .instance
                         .setEnabled(newValue);

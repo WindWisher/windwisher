@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/core/notifications/local_notifications_service.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
 import 'package:windwisher/features/community/di/community_module.dart';
 import 'package:windwisher/features/community/domain/entities/community_user_summary.dart';
@@ -77,6 +80,10 @@ class ProfilePageState extends State<ProfilePage> {
   static const List<String> _profileSections = ['Usuario', 'Equipo'];
   int _selectedTabIndex = 0;
   int _selectedProfileSectionIndex = 0;
+  Timer? _messagesAutoRefreshTimer;
+  StreamSubscription<void>? _messagesRealtimeSubscription;
+  String? _activeDirectChatThreadId;
+  bool _hasHydratedMessagesOnce = false;
 
   final TextEditingController _messageSearchController =
       TextEditingController();
@@ -168,6 +175,8 @@ class ProfilePageState extends State<ProfilePage> {
     _hydrateGear();
     _hydrateRecordedSessions();
     _hydrateCommunityStats();
+    _startMessagesRealtime();
+    _startMessagesAutoRefresh();
   }
 
   Future<void> _hydrateProfile() async {
@@ -184,6 +193,71 @@ class ProfilePageState extends State<ProfilePage> {
       return;
     }
     setState(() {});
+  }
+
+  void _startMessagesRealtime() {
+    _messagesRealtimeSubscription?.cancel();
+    _messagesRealtimeSubscription = _messagesController
+        .watchDirectThreads()
+        .listen((_) {
+          if (!mounted) {
+            return;
+          }
+          unawaited(_refreshMessagesSilently());
+        });
+  }
+
+  void _startMessagesAutoRefresh() {
+    _messagesAutoRefreshTimer?.cancel();
+    _messagesAutoRefreshTimer = Timer.periodic(const Duration(seconds: 10), (
+      _,
+    ) {
+      if (!mounted || _selectedTabIndex != 2) {
+        return;
+      }
+      unawaited(_refreshMessagesSilently());
+    });
+  }
+
+  Future<void> _refreshMessagesSilently() async {
+    final previousThreads = List<DirectMessageThread>.from(_directMessageThreads);
+    await _messagesController.hydrate();
+    if (!mounted) {
+      return;
+    }
+    if (_hasHydratedMessagesOnce) {
+      unawaited(_notifyForegroundDirectMessagesIfNeeded(previousThreads));
+    } else {
+      _hasHydratedMessagesOnce = true;
+    }
+    setState(() {});
+  }
+
+  Future<void> _notifyForegroundDirectMessagesIfNeeded(
+    List<DirectMessageThread> previousThreads,
+  ) async {
+    if (_selectedTabIndex == 2 && _activeDirectChatThreadId != null) {
+      return;
+    }
+    final previousById = <String, DirectMessageThread>{
+      for (final thread in previousThreads) thread.id: thread,
+    };
+    for (final thread in _directMessageThreads) {
+      if (thread.id == _activeDirectChatThreadId) {
+        continue;
+      }
+      final previous = previousById[thread.id];
+      final previousUnread = previous?.unreadCount ?? 0;
+      if (thread.unreadCount <= previousUnread) {
+        continue;
+      }
+      await LocalNotificationsService.instance.showDirectMessage(
+        threadId: thread.id,
+        messageId: 'foreground-${thread.id}-${thread.lastActivity.millisecondsSinceEpoch}',
+        senderName: thread.participant,
+        body: thread.preview,
+      );
+    }
   }
 
   Future<void> _hydrateGear() async {
@@ -805,8 +879,35 @@ class ProfilePageState extends State<ProfilePage> {
     });
   }
 
+  Future<void> openDirectChatFromNotification(String threadId) async {
+    if (_selectedTabIndex != 2) {
+      setState(() {
+        _selectedTabIndex = 2;
+      });
+    }
+    await _messagesController.hydrate();
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
+    final thread = _directMessageThreads
+        .cast<DirectMessageThread?>()
+        .firstWhere((item) => item?.id == threadId, orElse: () => null);
+    if (thread == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo abrir el chat desde la notificacion.'),
+        ),
+      );
+      return;
+    }
+    await _openDirectChat(thread);
+  }
+
   Future<void> _startNewDirectChat(DirectChatUserCandidate candidate) async {
-    final thread = await _messagesController.createOrOpenDirectChat(candidate.id);
+    final thread = await _messagesController.createOrOpenDirectChat(
+      candidate.id,
+    );
     if (!mounted) {
       return;
     }
@@ -822,6 +923,12 @@ class ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _openDirectChat(DirectMessageThread thread) async {
+    await _messagesController.markDirectThreadAsRead(thread.id);
+    if (!mounted) {
+      return;
+    }
+    _activeDirectChatThreadId = thread.id;
+    setState(() {});
     await showDialog<void>(
       context: context,
       builder: (_) => DirectChatDialog(
@@ -830,11 +937,16 @@ class ProfilePageState extends State<ProfilePage> {
         participantAvatarPath: thread.participantAvatarPath,
         loadMessages: _messagesController.loadDirectChatMessages,
         sendMessage: _messagesController.sendDirectChatMessage,
+        watchMessages: _messagesController.watchDirectChatMessages,
+        watchTyping: _messagesController.watchDirectChatTyping,
+        sendTypingState: _messagesController.sendDirectChatTypingState,
         sendMediaMessage: _messagesController.sendDirectChatMediaMessage,
         updateMessage: _messagesController.updateDirectChatMessage,
         deleteMessages: _messagesController.deleteDirectChatMessages,
+        onThreadChanged: _refreshMessagesSilently,
       ),
     );
+    _activeDirectChatThreadId = null;
     if (!mounted) {
       return;
     }
@@ -854,9 +966,7 @@ class ProfilePageState extends State<ProfilePage> {
   void _blockDirectThread(String threadId, String participant) {
     final blocked = _messagesController.toggleBlockDirectThread(threadId);
     setState(() {});
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(
+    ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           blocked ? '$participant bloqueado.' : '$participant desbloqueado.',
@@ -901,10 +1011,9 @@ class ProfilePageState extends State<ProfilePage> {
     String threadId,
     String participant,
   ) async {
-    final thread = _directMessageThreads.cast<DirectMessageThread?>().firstWhere(
-      (item) => item?.id == threadId,
-      orElse: () => null,
-    );
+    final thread = _directMessageThreads
+        .cast<DirectMessageThread?>()
+        .firstWhere((item) => item?.id == threadId, orElse: () => null);
     final isBlocked = thread?.isBlocked ?? false;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1158,7 +1267,8 @@ class ProfilePageState extends State<ProfilePage> {
       case 2:
         return ProfileDirectMessagesSection(
           directMessageThreads: _directMessageThreads,
-          directChatUserCandidates: _messagesController.directChatUserCandidates,
+          directChatUserCandidates:
+              _messagesController.directChatUserCandidates,
           onOpenChat: _openDirectChat,
           onToggleMute: _toggleMuteDirectThread,
           onBlock: _confirmAndBlockDirectThread,
@@ -1170,6 +1280,7 @@ class ProfilePageState extends State<ProfilePage> {
         return const SizedBox.shrink();
     }
   }
+
   String _formatTimestamp(DateTime timestamp) {
     final now = DateTime.now();
     final diff = now.difference(timestamp);

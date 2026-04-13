@@ -1,5 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:windwisher/core/notifications/direct_message_notification_event.dart';
+import 'package:windwisher/core/notifications/firebase_push_messaging_service.dart';
+import 'package:windwisher/core/notifications/local_notifications_service.dart';
 import 'package:windwisher/app/router/app_routes.dart';
 import 'package:windwisher/features/dashboard/application/services/dashboard_toolbar_service.dart';
 import 'package:windwisher/features/community/presentation/pages/community_page.dart';
@@ -23,6 +28,35 @@ class _DashboardPageState extends State<DashboardPage> {
   final GlobalKey<SessionsPageState> _sessionsKey =
       GlobalKey<SessionsPageState>();
   final GlobalKey<ProfilePageState> _profileKey = GlobalKey<ProfilePageState>();
+  StreamSubscription<DirectMessageNotificationEvent>?
+  _remoteDirectMessageOpenSubscription;
+  StreamSubscription<DirectMessageNotificationEvent>?
+  _localDirectMessageOpenSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _remoteDirectMessageOpenSubscription = FirebasePushMessagingService
+        .instance
+        .directMessageOpenStream
+        .listen(_handleDirectMessageNotificationOpen);
+    _localDirectMessageOpenSubscription = LocalNotificationsService
+        .instance
+        .directMessageOpenStream
+        .listen(_handleDirectMessageNotificationOpen);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final pendingRemote = FirebasePushMessagingService.instance
+          .consumePendingDirectMessageOpen();
+      if (pendingRemote != null) {
+        _handleDirectMessageNotificationOpen(pendingRemote);
+      }
+      final pendingLocal = LocalNotificationsService.instance
+          .consumePendingDirectMessageOpen();
+      if (pendingLocal != null) {
+        _handleDirectMessageNotificationOpen(pendingLocal);
+      }
+    });
+  }
 
   List<Widget> get _pages => [
     SpotsPage(key: _spotsKey),
@@ -55,6 +89,27 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  Future<void> _handleDirectMessageNotificationOpen(
+    DirectMessageNotificationEvent event,
+  ) async {
+    if (!mounted) {
+      return;
+    }
+    if (_selectedIndex != 3) {
+      setState(() {
+        _selectedIndex = 3;
+      });
+    }
+    for (var attempt = 0; attempt < 10; attempt += 1) {
+      final profileState = _profileKey.currentState;
+      if (profileState != null) {
+        await profileState.openDirectChatFromNotification(event.threadId);
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+    }
+  }
+
   Future<void> _handleSessionsToolbarAction(
     _SessionsToolbarAction action,
   ) async {
@@ -66,6 +121,13 @@ class _DashboardPageState extends State<DashboardPage> {
       case _SessionsToolbarAction.delete:
         await state.deleteSelectedDeviceFromToolbar();
     }
+  }
+
+  @override
+  void dispose() {
+    _remoteDirectMessageOpenSubscription?.cancel();
+    _localDirectMessageOpenSubscription?.cancel();
+    super.dispose();
   }
 
   @override
