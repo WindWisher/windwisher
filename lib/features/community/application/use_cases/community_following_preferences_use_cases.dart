@@ -14,6 +14,20 @@ class GetFollowingUsernamesUseCase {
   }
 }
 
+class GetFollowerUsernamesUseCase {
+  const GetFollowerUsernamesUseCase(this._port);
+
+  final CommunityFollowingPreferencesPort _port;
+
+  Set<String>? call() {
+    return _port.getFollowerUsernames();
+  }
+
+  Future<Set<String>?> load() {
+    return _port.loadFollowerUsernames();
+  }
+}
+
 class SaveFollowingUsernamesUseCase {
   const SaveFollowingUsernamesUseCase(this._port);
 

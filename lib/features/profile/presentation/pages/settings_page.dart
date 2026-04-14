@@ -8,6 +8,7 @@ import 'package:windwisher/app/router/app_routes.dart';
 import 'package:windwisher/core/i18n/app_locale_controller.dart';
 import 'package:windwisher/core/i18n/app_strings.dart';
 import 'package:windwisher/core/i18n/language_picker.dart';
+import 'package:windwisher/core/notifications/firebase_push_messaging_service.dart';
 import 'package:windwisher/core/notifications/local_notifications_service.dart';
 import 'package:windwisher/core/notifications/push_notification_subscription_service.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
@@ -43,6 +44,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final pushService = PushNotificationSubscriptionService.instance;
     final pushStatus = pushService.currentStatus;
     final pushToken = pushService.deviceToken;
+    final pushInitError = FirebasePushMessagingService.instance.lastInitializationError;
     final hasModeratorPanel =
         _myRoles.contains('moderator') || _myRoles.contains('super_admin');
     final hasManagerPanel =
@@ -126,6 +128,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         );
                         return;
                       }
+                      await FirebasePushMessagingService.instance
+                          .refreshDeviceRegistration();
                     }
                     final status = await PushNotificationSubscriptionService
                         .instance
@@ -164,9 +168,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         break;
                       case PushSubscriptionSyncStatus.providerNotConfigured:
                         messenger.showSnackBar(
-                          const SnackBar(
+                          SnackBar(
                             content: Text(
-                              'Push remotas pendientes de configurar en la app. De momento solo estan listas las notificaciones locales.',
+                              pushInitError == null || pushInitError.isEmpty
+                                  ? 'Push remotas pendientes de configurar en la app. De momento solo estan listas las notificaciones locales.'
+                                  : 'No se ha podido inicializar el push remoto: $pushInitError',
                             ),
                           ),
                         );
@@ -185,11 +191,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   if (!PushNotificationSubscriptionService
                       .instance
                       .remoteProviderConfigured)
-                    const Padding(
-                      padding: EdgeInsets.only(top: AppSpacing.xs),
-                      child: Text(
-                        'Las push remotas para alarmas con la app cerrada siguen pendientes de configurar.',
-                        style: TextStyle(color: Colors.grey),
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.xs),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Las push remotas para alarmas con la app cerrada siguen pendientes de configurar.',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                          if (pushInitError != null && pushInitError.isNotEmpty)
+                            Text(
+                              'Detalle: $pushInitError',
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                        ],
                       ),
                     )
                   else

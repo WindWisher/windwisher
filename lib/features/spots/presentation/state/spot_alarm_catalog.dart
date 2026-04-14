@@ -122,6 +122,22 @@ class SpotAlarmCatalog extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setAlarmEnabled(String alarmId, bool value) async {
+    final index = _alarms.indexWhere((alarm) => alarm.id == alarmId);
+    if (index < 0 || _alarms[index].enabled == value) {
+      return;
+    }
+    _alarms[index] = _alarms[index].copyWith(enabled: value);
+    _save();
+    try {
+      _lastSyncError = null;
+      await _syncClient.saveAlarm(_alarms[index]);
+    } catch (error) {
+      _lastSyncError = error.toString();
+    }
+    notifyListeners();
+  }
+
   List<SpotAlarmRecord> alarmsForSpot(String spotKey) {
     return _alarms
         .where((alarm) => alarm.spotKey == spotKey)
@@ -301,6 +317,7 @@ class SpotAlarmRecord {
     this.maxRepeats = 3,
     this.triggerCount = 0,
     this.lastTriggeredAt,
+    this.enabled = true,
   });
 
   final String id;
@@ -320,6 +337,7 @@ class SpotAlarmRecord {
   final int maxRepeats;
   final int triggerCount;
   final DateTime? lastTriggeredAt;
+  final bool enabled;
 
   SpotAlarmRecord copyWith({
     RangeValues? windRange,
@@ -332,6 +350,7 @@ class SpotAlarmRecord {
     int? maxRepeats,
     int? triggerCount,
     DateTime? lastTriggeredAt,
+    bool? enabled,
     bool clearLastTriggeredAt = false,
   }) {
     return SpotAlarmRecord(
@@ -354,6 +373,7 @@ class SpotAlarmRecord {
       lastTriggeredAt: clearLastTriggeredAt
           ? null
           : (lastTriggeredAt ?? this.lastTriggeredAt),
+      enabled: enabled ?? this.enabled,
     );
   }
 
@@ -377,6 +397,7 @@ class SpotAlarmRecord {
       'maxRepeats': maxRepeats,
       'triggerCount': triggerCount,
       'lastTriggeredAt': lastTriggeredAt?.toIso8601String(),
+      'enabled': enabled,
     };
   }
 
@@ -412,6 +433,7 @@ class SpotAlarmRecord {
       lastTriggeredAt: DateTime.tryParse(
         json['lastTriggeredAt'] as String? ?? '',
       ),
+      enabled: json['enabled'] as bool? ?? true,
     );
   }
 

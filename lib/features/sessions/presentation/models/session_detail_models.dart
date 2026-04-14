@@ -296,7 +296,7 @@ class SessionInsightData {
     'orientation': 'Orientación calculada',
     'motion_analysis': 'Análisis de movimiento',
     'jump_detection_inertial': 'Detección de saltos inercial',
-    'jump_detection_barometric': 'Detección de saltos barométrica',
+    'jump_detection_barometric': 'Apoyo barométrico para saltos',
   };
 
   static Set<String> derivedCapabilitiesForPhysicalSensors(
@@ -342,7 +342,7 @@ class SessionInsightData {
     }
     if (sensors.contains('barometer')) {
       items.add(
-        'Tiene fuente vertical valida para medir altura y mejorar deteccion de saltos.',
+        'Tiene fuente vertical valida para apoyar la medicion barometrica del salto.',
       );
     }
     if (sensors.contains('accelerometer') && sensors.contains('gyroscope')) {
@@ -357,12 +357,26 @@ class SessionInsightData {
     return items;
   }
 
-  static String jumpDetectionModeForSensors(Iterable<String> sensorKeys) {
-    final sensors = sensorKeys.toSet();
-    if (sensors.contains('barometer')) {
-      return 'barometric';
+  static String jumpDetectionModeForDevice({
+    required String deviceKind,
+    Iterable<String>? sensorKeys,
+    String? placement,
+  }) {
+    final normalizedKind = deviceKind.toLowerCase();
+    final resolvedPlacement = (placement ?? '').toLowerCase();
+    final sensors = (sensorKeys ?? physicalSensorsForDeviceKind(deviceKind)).toSet();
+    final boardLike =
+        resolvedPlacement == 'board' ||
+        normalizedKind.contains('woo') ||
+        normalizedKind.contains('surfr') ||
+        normalizedKind.contains('tabla');
+    if (boardLike) {
+      return 'board_imu';
     }
-    return 'inertial_fallback';
+    if (sensors.contains('accelerometer') && sensors.contains('gyroscope')) {
+      return 'body_imu';
+    }
+    return 'body_imu';
   }
 
   static SessionInsightData empty({
@@ -375,8 +389,9 @@ class SessionInsightData {
       deviceSensorKeys:
           deviceSensorKeys ??
           physicalSensorsForDeviceKind(deviceKind).toList(growable: false),
-      jumpDetectionMode: jumpDetectionModeForSensors(
-        deviceSensorKeys ?? physicalSensorsForDeviceKind(deviceKind),
+      jumpDetectionMode: jumpDetectionModeForDevice(
+        deviceKind: deviceKind,
+        sensorKeys: deviceSensorKeys ?? physicalSensorsForDeviceKind(deviceKind),
       ),
       distanceKm: null,
       maxSpeedKnots: null,
@@ -426,6 +441,7 @@ class SessionInsightData {
         return {'gps', 'accelerometer', 'gyroscope', 'heart_rate', 'barometer'};
       case 'Woo Sports':
       case 'SurfR':
+      case 'Sensor de tabla':
         return {'gps', 'accelerometer', 'gyroscope'};
       default:
         return {'gps', 'accelerometer', 'gyroscope'};
@@ -474,6 +490,20 @@ class SessionJumpRecord {
     required this.hangtimeSeconds,
     required this.landingG,
     required this.recordedAt,
+    this.mountType = 'body',
+    this.measurementMode = 'body_imu',
+    this.measurementConfidence,
+    this.peakHeightMeters,
+    this.takeoffHeightMeters,
+    this.barometricHeightMeters,
+    this.barometricPeakHeightMeters,
+    this.barometricTakeoffHeightMeters,
+    this.heightDeltaMeters,
+    this.heightDeltaPercent,
+    this.approachHeadingDeg,
+    this.approachCourseDeg,
+    this.approachWindOffsetDeg,
+    this.edgeAngleDeg,
     this.maneuverG,
     this.maneuverRotationDegPerSec,
     this.fallSpeedMetersPerSecond,
@@ -486,6 +516,20 @@ class SessionJumpRecord {
   final double hangtimeSeconds;
   final double landingG;
   final Duration recordedAt;
+  final String mountType;
+  final String measurementMode;
+  final double? measurementConfidence;
+  final double? peakHeightMeters;
+  final double? takeoffHeightMeters;
+  final double? barometricHeightMeters;
+  final double? barometricPeakHeightMeters;
+  final double? barometricTakeoffHeightMeters;
+  final double? heightDeltaMeters;
+  final double? heightDeltaPercent;
+  final double? approachHeadingDeg;
+  final double? approachCourseDeg;
+  final double? approachWindOffsetDeg;
+  final double? edgeAngleDeg;
   final double? maneuverG;
   final double? maneuverRotationDegPerSec;
   final double? fallSpeedMetersPerSecond;
@@ -508,12 +552,26 @@ class SessionJumpRecord {
       'heightMeters': heightMeters,
       'hangtimeSeconds': hangtimeSeconds,
       'landingG': landingG,
+      'recordedAtSeconds': recordedAt.inSeconds,
+      'mountType': mountType,
+      'measurementMode': measurementMode,
+      'measurementConfidence': measurementConfidence,
+      'peakHeightMeters': peakHeightMeters,
+      'takeoffHeightMeters': takeoffHeightMeters,
+      'barometricHeightMeters': barometricHeightMeters,
+      'barometricPeakHeightMeters': barometricPeakHeightMeters,
+      'barometricTakeoffHeightMeters': barometricTakeoffHeightMeters,
+      'heightDeltaMeters': heightDeltaMeters,
+      'heightDeltaPercent': heightDeltaPercent,
+      'approachHeadingDeg': approachHeadingDeg,
+      'approachCourseDeg': approachCourseDeg,
+      'approachWindOffsetDeg': approachWindOffsetDeg,
+      'edgeAngleDeg': edgeAngleDeg,
       'maneuverG': maneuverG,
       'maneuverRotationDegPerSec': maneuverRotationDegPerSec,
       'fallSpeedMetersPerSecond': fallSpeedMetersPerSecond,
       'takeoffSpeedKnots': takeoffSpeedKnots,
       'landingSpeedKnots': landingSpeedKnots,
-      'recordedAtSeconds': recordedAt.inSeconds,
       'timeLabel': timeLabel,
     };
   }
@@ -527,6 +585,33 @@ class SessionJumpRecord {
       heightMeters: (json['heightMeters'] as num?)?.toDouble() ?? 0,
       hangtimeSeconds: (json['hangtimeSeconds'] as num?)?.toDouble() ?? 0,
       landingG: (json['landingG'] as num?)?.toDouble() ?? 0,
+      recordedAt: Duration(
+        seconds: (json['recordedAtSeconds'] as num?)?.toInt() ?? 0,
+      ),
+      mountType: (json['mountType'] as String?)?.trim().isNotEmpty == true
+          ? (json['mountType'] as String).trim()
+          : 'body',
+      measurementMode:
+          (json['measurementMode'] as String?)?.trim().isNotEmpty == true
+          ? (json['measurementMode'] as String).trim()
+          : 'body_imu',
+      measurementConfidence: (json['measurementConfidence'] as num?)
+          ?.toDouble(),
+      peakHeightMeters: (json['peakHeightMeters'] as num?)?.toDouble(),
+      takeoffHeightMeters: (json['takeoffHeightMeters'] as num?)?.toDouble(),
+      barometricHeightMeters:
+          (json['barometricHeightMeters'] as num?)?.toDouble(),
+      barometricPeakHeightMeters:
+          (json['barometricPeakHeightMeters'] as num?)?.toDouble(),
+      barometricTakeoffHeightMeters:
+          (json['barometricTakeoffHeightMeters'] as num?)?.toDouble(),
+      heightDeltaMeters: (json['heightDeltaMeters'] as num?)?.toDouble(),
+      heightDeltaPercent: (json['heightDeltaPercent'] as num?)?.toDouble(),
+      approachHeadingDeg: (json['approachHeadingDeg'] as num?)?.toDouble(),
+      approachCourseDeg: (json['approachCourseDeg'] as num?)?.toDouble(),
+      approachWindOffsetDeg:
+          (json['approachWindOffsetDeg'] as num?)?.toDouble(),
+      edgeAngleDeg: (json['edgeAngleDeg'] as num?)?.toDouble(),
       maneuverG: (json['maneuverG'] as num?)?.toDouble(),
       maneuverRotationDegPerSec: (json['maneuverRotationDegPerSec'] as num?)
           ?.toDouble(),
@@ -534,9 +619,6 @@ class SessionJumpRecord {
           ?.toDouble(),
       takeoffSpeedKnots: (json['takeoffSpeedKnots'] as num?)?.toDouble(),
       landingSpeedKnots: (json['landingSpeedKnots'] as num?)?.toDouble(),
-      recordedAt: Duration(
-        seconds: (json['recordedAtSeconds'] as num?)?.toInt() ?? 0,
-      ),
     );
   }
 }

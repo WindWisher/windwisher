@@ -54,8 +54,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_local_notifications: ^21.0.0
   timezone: ^0.11.0
-  firebase_core: 2.24.2
-  firebase_messaging: 14.7.10
+  firebase_core: ^3.15.2
+  firebase_messaging: ^15.2.10
   sensors_plus: ^7.0.0
   uuid: ^4.5.1
   flutter_reactive_ble: ^5.4.0
@@ -76,11 +76,6 @@ dev_dependencies:
   flutter_native_splash: ^2.4.6
 
 dependency_overrides:
-  firebase_core_platform_interface: 6.0.2
-  firebase_messaging_platform_interface:
-    path: third_party/firebase_messaging_platform_interface
-  firebase_messaging_web:
-    path: third_party/firebase_messaging_web
   webview_flutter_wkwebview: 3.6.1
 
 flutter_launcher_icons:

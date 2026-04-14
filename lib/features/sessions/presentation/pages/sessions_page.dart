@@ -1024,10 +1024,13 @@ class SessionsPageState extends State<SessionsPage> {
     double jumpMinTakeoffSpeedKnots,
     double jumpLandingMinSpeedKnots,
     String jumpDetectionMode,
+    String mountType,
+    String measurementMode,
   })
   _captureMeasurementPolicy() {
-    return StartSessionCaptureLogic.captureMeasurementPolicyForDeviceKind(
-      _selectedDevice?.kind,
+    return StartSessionCaptureLogic.captureMeasurementPolicyForDevice(
+      deviceKind: _selectedDevice?.kind,
+      placement: _selectedDevice?.placement,
     );
   }
 
@@ -1108,6 +1111,31 @@ class SessionsPageState extends State<SessionsPage> {
       return 0;
     }
     return _recordingSamples.last.speedKnots;
+  }
+
+
+  double? _currentApproachCourseDeg() {
+    if (_recordingSamples.length < 2) {
+      return null;
+    }
+    final recentSamples = _recordingSamples.length <= 4
+        ? _recordingSamples
+        : _recordingSamples.sublist(_recordingSamples.length - 4);
+    final first = recentSamples.first;
+    final last = recentSamples.last;
+    if (first.latitude == last.latitude && first.longitude == last.longitude) {
+      return null;
+    }
+    final bearing = Geolocator.bearingBetween(
+      first.latitude,
+      first.longitude,
+      last.latitude,
+      last.longitude,
+    );
+    if (!bearing.isFinite) {
+      return null;
+    }
+    return (bearing % 360 + 360) % 360;
   }
 
   bool _isAutoPausePending() {
@@ -1650,6 +1678,8 @@ class SessionsPageState extends State<SessionsPage> {
         jumpLandingThresholdG: _jumpLandingThresholdG,
         jumpLandingMinSpeedKnots:
             _captureMeasurementPolicy().jumpLandingMinSpeedKnots,
+        mountType: _captureMeasurementPolicy().mountType,
+        approachCourseDeg: _currentApproachCourseDeg(),
       ),
     );
     _pendingJumpCandidate = result.pendingCandidate;
@@ -1682,6 +1712,8 @@ class SessionsPageState extends State<SessionsPage> {
         jumpMinManeuverRotationDegPerSec: _jumpMinManeuverRotationDegPerSec,
         jumpCooldown: _jumpCooldown,
         jumpMaxAirTime: _jumpMaxAirTime,
+        mountType: _captureMeasurementPolicy().mountType,
+        approachCourseDeg: _currentApproachCourseDeg(),
       ),
     );
     _pendingJumpCandidate = result.pendingCandidate;
@@ -1704,6 +1736,8 @@ class SessionsPageState extends State<SessionsPage> {
         jumpMinManeuverG: _jumpMinManeuverG,
         jumpMinManeuverRotationDegPerSec: _jumpMinManeuverRotationDegPerSec,
         currentJumpHistory: _recordingJumpHistory,
+        mountType: _captureMeasurementPolicy().mountType,
+        measurementMode: _captureMeasurementPolicy().measurementMode,
       ),
     );
     _recordingJumpHistory
@@ -1799,8 +1833,10 @@ class SessionsPageState extends State<SessionsPage> {
         : SessionInsightData.physicalSensorsForDeviceKind(
             deviceKind,
           ).toList(growable: false);
-    final jumpDetectionMode = SessionInsightData.jumpDetectionModeForSensors(
-      deviceSensorKeys,
+    final jumpDetectionMode = SessionInsightData.jumpDetectionModeForDevice(
+      deviceKind: deviceKind,
+      sensorKeys: deviceSensorKeys,
+      placement: selectedDevice?.placement,
     );
     final jumpHistory = List<SessionJumpRecord>.unmodifiable(
       _recordingJumpHistory,

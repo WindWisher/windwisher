@@ -31,6 +31,7 @@ class CommunityModule {
     required this.getSessionComments,
     required this.addSessionComment,
     required this.getFollowingUsernames,
+    required this.getFollowerUsernames,
     required this.saveFollowingUsernames,
   });
 
@@ -42,6 +43,7 @@ class CommunityModule {
   final GetSessionCommentsUseCase getSessionComments;
   final AddSessionCommentUseCase addSessionComment;
   final GetFollowingUsernamesUseCase getFollowingUsernames;
+  final GetFollowerUsernamesUseCase getFollowerUsernames;
   final SaveFollowingUsernamesUseCase saveFollowingUsernames;
 
   factory CommunityModule.inMemory() {
@@ -62,6 +64,7 @@ class CommunityModule {
       getSessionComments: GetSessionCommentsUseCase(sessionComments),
       addSessionComment: AddSessionCommentUseCase(sessionComments),
       getFollowingUsernames: GetFollowingUsernamesUseCase(followingPreferences),
+      getFollowerUsernames: GetFollowerUsernamesUseCase(followingPreferences),
       saveFollowingUsernames: SaveFollowingUsernamesUseCase(
         followingPreferences,
       ),
@@ -92,6 +95,7 @@ class CommunityModule {
       getSessionComments: GetSessionCommentsUseCase(sessionComments),
       addSessionComment: AddSessionCommentUseCase(sessionComments),
       getFollowingUsernames: GetFollowingUsernamesUseCase(followingPreferences),
+      getFollowerUsernames: GetFollowerUsernamesUseCase(followingPreferences),
       saveFollowingUsernames: SaveFollowingUsernamesUseCase(
         followingPreferences,
       ),
@@ -139,6 +143,7 @@ class CommunityModule {
       getSessionComments: GetSessionCommentsUseCase(sessionComments),
       addSessionComment: AddSessionCommentUseCase(sessionComments),
       getFollowingUsernames: GetFollowingUsernamesUseCase(followingPreferences),
+      getFollowerUsernames: GetFollowerUsernamesUseCase(followingPreferences),
       saveFollowingUsernames: SaveFollowingUsernamesUseCase(
         followingPreferences,
       ),

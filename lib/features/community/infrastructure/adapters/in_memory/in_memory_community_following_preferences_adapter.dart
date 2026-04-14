@@ -16,6 +16,16 @@ class InMemoryCommunityFollowingPreferencesAdapter
   }
 
   @override
+  Set<String>? getFollowerUsernames() {
+    return const <String>{};
+  }
+
+  @override
+  Future<Set<String>?> loadFollowerUsernames() async {
+    return getFollowerUsernames();
+  }
+
+  @override
   Future<void> saveFollowingUsernames(Set<String> usernames) async {
     _followingUsernames = Set<String>.from(usernames);
   }

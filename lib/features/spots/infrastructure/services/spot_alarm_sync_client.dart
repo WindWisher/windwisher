@@ -117,6 +117,7 @@ class SpotAlarmSyncClient {
         'max_repeats': alarm.maxRepeats,
         'trigger_count': alarm.triggerCount,
         'last_triggered_at': alarm.lastTriggeredAt?.toUtc().toIso8601String(),
+        'enabled': alarm.enabled,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       });
     } catch (error) {
@@ -179,6 +180,7 @@ class SpotAlarmSyncClient {
       lastTriggeredAt: DateTime.tryParse(
         row['last_triggered_at'] as String? ?? '',
       )?.toLocal(),
+      enabled: row['enabled'] as bool? ?? true,
     );
   }
 

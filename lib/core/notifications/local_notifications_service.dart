@@ -2,12 +2,20 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:windwisher/core/notifications/direct_message_notification_event.dart';
 import 'package:windwisher/core/notifications/spot_alarm_cycle_runtime_service.dart';
 import 'package:windwisher/features/spots/presentation/state/spot_alarm_catalog.dart';
+
+@pragma('vm:entry-point')
+Future<void> notificationTapBackground(NotificationResponse response) async {
+  await LocalNotificationsService.instance.handleBackgroundNotificationResponse(
+    response,
+  );
+}
 
 class LocalNotificationsService {
   LocalNotificationsService._();
@@ -97,6 +105,7 @@ class LocalNotificationsService {
         macOS: darwinSettings,
       ),
       onDidReceiveNotificationResponse: _handleNotificationResponse,
+      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
 
     final androidPlugin = _plugin
@@ -122,6 +131,12 @@ class LocalNotificationsService {
         >();
     final androidGranted = await androidPlugin
         ?.requestNotificationsPermission();
+    try {
+      await androidPlugin?.requestExactAlarmsPermission();
+    } catch (_) {
+      // Best effort: if Android does not expose exact alarm permission on this device,
+      // keep standard notifications working and fall back later when scheduling.
+    }
 
     final iosPlugin = _plugin
         .resolvePlatformSpecificImplementation<
@@ -315,13 +330,13 @@ class LocalNotificationsService {
             AndroidNotificationAction(
               _snoozeActionId,
               'Posponer',
-              showsUserInterface: true,
+              showsUserInterface: false,
               cancelNotification: true,
             ),
             AndroidNotificationAction(
               _stopActionId,
               'Parar',
-              showsUserInterface: true,
+              showsUserInterface: false,
               cancelNotification: true,
             ),
           ],
@@ -378,52 +393,105 @@ class LocalNotificationsService {
         'occurrenceIndex': '$occurrenceIndex',
       });
       final when = DateTime.now().add(repeatDuration * offset);
-      await _plugin.zonedSchedule(
-        id: notificationIdForAlarm(alarmId, occurrenceIndex),
-        title: title,
-        body: body,
-        scheduledDate: tz.TZDateTime.from(when.toUtc(), tz.UTC),
-        notificationDetails: NotificationDetails(
-          android: AndroidNotificationDetails(
-            _alarmChannelId,
-            'Alarmas de spots',
-            channelDescription:
-                'Alertas locales cuando el live cumple una alarma guardada.',
-            importance: Importance.max,
-            priority: Priority.max,
-            category: AndroidNotificationCategory.alarm,
-            fullScreenIntent: true,
-            autoCancel: false,
-            ongoing: true,
-            audioAttributesUsage: AudioAttributesUsage.alarm,
-            vibrationPattern: Int64List.fromList(<int>[0, 900, 300, 900]),
-            actions: <AndroidNotificationAction>[
-              AndroidNotificationAction(
-                _snoozeActionId,
-                'Posponer',
-                showsUserInterface: true,
-                cancelNotification: true,
-              ),
-              AndroidNotificationAction(
-                _stopActionId,
-                'Parar',
-                showsUserInterface: true,
-                cancelNotification: true,
-              ),
-            ],
+      try {
+        await _plugin.zonedSchedule(
+          id: notificationIdForAlarm(alarmId, occurrenceIndex),
+          title: title,
+          body: body,
+          scheduledDate: tz.TZDateTime.from(when.toUtc(), tz.UTC),
+          notificationDetails: NotificationDetails(
+            android: AndroidNotificationDetails(
+              _alarmChannelId,
+              'Alarmas de spots',
+              channelDescription:
+                  'Alertas locales cuando el live cumple una alarma guardada.',
+              importance: Importance.max,
+              priority: Priority.max,
+              category: AndroidNotificationCategory.alarm,
+              fullScreenIntent: true,
+              autoCancel: false,
+              ongoing: true,
+              audioAttributesUsage: AudioAttributesUsage.alarm,
+              vibrationPattern: Int64List.fromList(<int>[0, 900, 300, 900]),
+              actions: <AndroidNotificationAction>[
+                AndroidNotificationAction(
+                  _snoozeActionId,
+                  'Posponer',
+                  showsUserInterface: false,
+                  cancelNotification: true,
+                ),
+                AndroidNotificationAction(
+                  _stopActionId,
+                  'Parar',
+                  showsUserInterface: false,
+                  cancelNotification: true,
+                ),
+              ],
+            ),
+            iOS: const DarwinNotificationDetails(
+              categoryIdentifier: _alarmCategoryId,
+              interruptionLevel: InterruptionLevel.timeSensitive,
+            ),
+            macOS: const DarwinNotificationDetails(
+              categoryIdentifier: _alarmCategoryId,
+              interruptionLevel: InterruptionLevel.timeSensitive,
+            ),
           ),
-          iOS: const DarwinNotificationDetails(
-            categoryIdentifier: _alarmCategoryId,
-            interruptionLevel: InterruptionLevel.timeSensitive,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          payload: payload,
+        );
+      } on PlatformException catch (error, stackTrace) {
+        debugPrint(
+          'LocalNotificationsService: exact schedule failed for alarm repeat; falling back to inexactAllowWhileIdle. $error',
+        );
+        debugPrintStack(stackTrace: stackTrace);
+        await _plugin.zonedSchedule(
+          id: notificationIdForAlarm(alarmId, occurrenceIndex),
+          title: title,
+          body: body,
+          scheduledDate: tz.TZDateTime.from(when.toUtc(), tz.UTC),
+          notificationDetails: NotificationDetails(
+            android: AndroidNotificationDetails(
+              _alarmChannelId,
+              'Alarmas de spots',
+              channelDescription:
+                  'Alertas locales cuando el live cumple una alarma guardada.',
+              importance: Importance.max,
+              priority: Priority.max,
+              category: AndroidNotificationCategory.alarm,
+              fullScreenIntent: true,
+              autoCancel: false,
+              ongoing: true,
+              audioAttributesUsage: AudioAttributesUsage.alarm,
+              vibrationPattern: Int64List.fromList(<int>[0, 900, 300, 900]),
+              actions: <AndroidNotificationAction>[
+                AndroidNotificationAction(
+                  _snoozeActionId,
+                  'Posponer',
+                  showsUserInterface: false,
+                  cancelNotification: true,
+                ),
+                AndroidNotificationAction(
+                  _stopActionId,
+                  'Parar',
+                  showsUserInterface: false,
+                  cancelNotification: true,
+                ),
+              ],
+            ),
+            iOS: const DarwinNotificationDetails(
+              categoryIdentifier: _alarmCategoryId,
+              interruptionLevel: InterruptionLevel.timeSensitive,
+            ),
+            macOS: const DarwinNotificationDetails(
+              categoryIdentifier: _alarmCategoryId,
+              interruptionLevel: InterruptionLevel.timeSensitive,
+            ),
           ),
-          macOS: const DarwinNotificationDetails(
-            categoryIdentifier: _alarmCategoryId,
-            interruptionLevel: InterruptionLevel.timeSensitive,
-          ),
-        ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        payload: payload,
-      );
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          payload: payload,
+        );
+      }
     }
   }
 
@@ -456,6 +524,13 @@ class LocalNotificationsService {
     tz_data.initializeTimeZones();
     tz.setLocalLocation(tz.UTC);
     _timezoneInitialized = true;
+  }
+
+  Future<void> handleBackgroundNotificationResponse(
+    NotificationResponse response,
+  ) async {
+    await initialize();
+    await _handleNotificationResponse(response);
   }
 
   Future<void> _handleNotificationResponse(

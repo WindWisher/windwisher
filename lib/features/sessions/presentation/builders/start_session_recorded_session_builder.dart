@@ -122,7 +122,6 @@ class StartSessionRecordedSessionBuilder {
                       .clamp(0, 100)
                       .toDouble(),
             jumpMetrics.cleanLandingRate ?? 0,
-            jumpMetrics.jumpHeightConsistency ?? 0,
           ]);
     final measuredValues = <String, String>{
       'duracion_total': _formatDuration(input.duration),

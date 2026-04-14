@@ -7,11 +7,12 @@ class SupabaseCommunityFollowingPreferencesAdapter
     : _client = client ?? Supabase.instance.client;
 
   final SupabaseClient _client;
-  Set<String>? _cachedUsernames;
+  Set<String>? _cachedFollowingUsernames;
+  Set<String>? _cachedFollowerUsernames;
 
   @override
   Set<String>? getFollowingUsernames() {
-    final usernames = _cachedUsernames;
+    final usernames = _cachedFollowingUsernames;
     return usernames == null ? null : Set<String>.from(usernames);
   }
 
@@ -19,7 +20,7 @@ class SupabaseCommunityFollowingPreferencesAdapter
   Future<Set<String>?> loadFollowingUsernames() async {
     final user = _client.auth.currentUser;
     if (user == null) {
-      _cachedUsernames = null;
+      _cachedFollowingUsernames = null;
       return null;
     }
 
@@ -33,27 +34,42 @@ class SupabaseCommunityFollowingPreferencesAdapter
         .whereType<String>()
         .toList(growable: false);
 
-    if (followedIds.isEmpty) {
-      _cachedUsernames = <String>{};
-      return getFollowingUsernames();
+    _cachedFollowingUsernames = await _loadHandlesForIds(followedIds);
+    return getFollowingUsernames();
+  }
+
+  @override
+  Set<String>? getFollowerUsernames() {
+    final usernames = _cachedFollowerUsernames;
+    return usernames == null ? null : Set<String>.from(usernames);
+  }
+
+  @override
+  Future<Set<String>?> loadFollowerUsernames() async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      _cachedFollowerUsernames = null;
+      return null;
     }
 
-    final profileRows = await _client
-        .from('public_profiles')
-        .select('id, handle')
-        .inFilter('id', followedIds);
-    _cachedUsernames = (profileRows as List<dynamic>)
+    final followRows = await _client
+        .from('user_follows')
+        .select('follower_user_id')
+        .eq('followed_user_id', user.id);
+    final followerIds = (followRows as List<dynamic>)
         .whereType<Map<String, dynamic>>()
-        .map((row) => (row['handle'] as String? ?? '').trim())
-        .where((handle) => handle.isNotEmpty)
-        .toSet();
-    return getFollowingUsernames();
+        .map((row) => row['follower_user_id'] as String?)
+        .whereType<String>()
+        .toList(growable: false);
+
+    _cachedFollowerUsernames = await _loadHandlesForIds(followerIds);
+    return getFollowerUsernames();
   }
 
   @override
   Future<void> saveFollowingUsernames(Set<String> usernames) async {
     if (_client.auth.currentUser == null) {
-      _cachedUsernames = Set<String>.from(usernames);
+      _cachedFollowingUsernames = Set<String>.from(usernames);
       return;
     }
 
@@ -67,7 +83,7 @@ class SupabaseCommunityFollowingPreferencesAdapter
     final toUnfollow = current.difference(wanted);
     final affectedHandles = <String>{...toFollow, ...toUnfollow};
     if (affectedHandles.isEmpty) {
-      _cachedUsernames = wanted;
+      _cachedFollowingUsernames = wanted;
       return;
     }
 
@@ -104,6 +120,23 @@ class SupabaseCommunityFollowingPreferencesAdapter
       }
     }
 
-    _cachedUsernames = wanted;
+    _cachedFollowingUsernames = wanted;
+    await loadFollowerUsernames();
+  }
+
+  Future<Set<String>> _loadHandlesForIds(List<String> userIds) async {
+    if (userIds.isEmpty) {
+      return <String>{};
+    }
+
+    final profileRows = await _client
+        .from('public_profiles')
+        .select('id, handle')
+        .inFilter('id', userIds);
+    return (profileRows as List<dynamic>)
+        .whereType<Map<String, dynamic>>()
+        .map((row) => (row['handle'] as String? ?? '').trim())
+        .where((handle) => handle.isNotEmpty)
+        .toSet();
   }
 }

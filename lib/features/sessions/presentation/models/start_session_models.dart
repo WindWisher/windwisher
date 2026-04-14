@@ -658,24 +658,45 @@ class SessionPendingJumpCandidate {
     required this.takeoffSpeedKnots,
     required this.maxManeuverG,
     required this.maxRotationDegPerSec,
+    this.peakHeightMeters,
+    this.takeoffHeightMeters,
+    this.approachCourseDeg,
+    this.approachWindOffsetDeg,
+    this.edgeAngleDeg,
   });
 
   final DateTime startedAt;
   final double takeoffSpeedKnots;
   final double maxManeuverG;
   final double maxRotationDegPerSec;
+  final double? peakHeightMeters;
+  final double? takeoffHeightMeters;
+  final double? approachCourseDeg;
+  final double? approachWindOffsetDeg;
+  final double? edgeAngleDeg;
 
   SessionPendingJumpCandidate copyWith({
     DateTime? startedAt,
     double? takeoffSpeedKnots,
     double? maxManeuverG,
     double? maxRotationDegPerSec,
+    double? peakHeightMeters,
+    double? takeoffHeightMeters,
+    double? approachCourseDeg,
+    double? approachWindOffsetDeg,
+    double? edgeAngleDeg,
   }) {
     return SessionPendingJumpCandidate(
       startedAt: startedAt ?? this.startedAt,
       takeoffSpeedKnots: takeoffSpeedKnots ?? this.takeoffSpeedKnots,
       maxManeuverG: maxManeuverG ?? this.maxManeuverG,
       maxRotationDegPerSec: maxRotationDegPerSec ?? this.maxRotationDegPerSec,
+      peakHeightMeters: peakHeightMeters ?? this.peakHeightMeters,
+      takeoffHeightMeters: takeoffHeightMeters ?? this.takeoffHeightMeters,
+      approachCourseDeg: approachCourseDeg ?? this.approachCourseDeg,
+      approachWindOffsetDeg:
+          approachWindOffsetDeg ?? this.approachWindOffsetDeg,
+      edgeAngleDeg: edgeAngleDeg ?? this.edgeAngleDeg,
     );
   }
 }
@@ -692,6 +713,8 @@ class SessionJumpCandidateStartInput {
     required this.jumpMinManeuverG,
     required this.jumpMinManeuverRotationDegPerSec,
     required this.jumpCooldown,
+    required this.mountType,
+    required this.approachCourseDeg,
   });
 
   final SessionPendingJumpCandidate? pendingCandidate;
@@ -704,6 +727,8 @@ class SessionJumpCandidateStartInput {
   final double jumpMinManeuverG;
   final double jumpMinManeuverRotationDegPerSec;
   final Duration jumpCooldown;
+  final String mountType;
+  final double? approachCourseDeg;
 }
 
 class SessionJumpCandidateExpirationInput {
@@ -729,6 +754,8 @@ class SessionJumpCandidateFinalizeInput {
     required this.jumpMinAirTime,
     required this.jumpMinManeuverG,
     required this.jumpMinManeuverRotationDegPerSec,
+    required this.mountType,
+    required this.measurementMode,
   });
 
   final SessionPendingJumpCandidate? pendingCandidate;
@@ -740,6 +767,8 @@ class SessionJumpCandidateFinalizeInput {
   final Duration jumpMinAirTime;
   final double jumpMinManeuverG;
   final double jumpMinManeuverRotationDegPerSec;
+  final String mountType;
+  final String measurementMode;
 }
 
 class SessionJumpCandidateFinalizeResult {
@@ -767,6 +796,8 @@ class SessionInertialJumpAccelerationUpdateInput {
     required this.jumpMaxAirTime,
     required this.jumpLandingThresholdG,
     required this.jumpLandingMinSpeedKnots,
+    required this.mountType,
+    required this.approachCourseDeg,
   });
 
   final SessionPendingJumpCandidate? pendingCandidate;
@@ -782,6 +813,8 @@ class SessionInertialJumpAccelerationUpdateInput {
   final Duration jumpMaxAirTime;
   final double jumpLandingThresholdG;
   final double jumpLandingMinSpeedKnots;
+  final String mountType;
+  final double? approachCourseDeg;
 }
 
 class SessionInertialJumpRotationUpdateInput {
@@ -796,6 +829,8 @@ class SessionInertialJumpRotationUpdateInput {
     required this.jumpMinManeuverRotationDegPerSec,
     required this.jumpCooldown,
     required this.jumpMaxAirTime,
+    required this.mountType,
+    required this.approachCourseDeg,
   });
 
   final SessionPendingJumpCandidate? pendingCandidate;
@@ -808,6 +843,8 @@ class SessionInertialJumpRotationUpdateInput {
   final double jumpMinManeuverRotationDegPerSec;
   final Duration jumpCooldown;
   final Duration jumpMaxAirTime;
+  final String mountType;
+  final double? approachCourseDeg;
 }
 
 class SessionInertialJumpUpdateResult {
@@ -842,6 +879,8 @@ class SessionJumpDetectionAccelerationInput {
     required this.jumpMaxAirTime,
     required this.jumpLandingThresholdG,
     required this.jumpLandingMinSpeedKnots,
+    required this.mountType,
+    required this.approachCourseDeg,
   });
 
   final String jumpDetectionMode;
@@ -858,6 +897,8 @@ class SessionJumpDetectionAccelerationInput {
   final Duration jumpMaxAirTime;
   final double jumpLandingThresholdG;
   final double jumpLandingMinSpeedKnots;
+  final String mountType;
+  final double? approachCourseDeg;
 }
 
 class SessionJumpDetectionRotationInput {
@@ -873,6 +914,8 @@ class SessionJumpDetectionRotationInput {
     required this.jumpMinManeuverRotationDegPerSec,
     required this.jumpCooldown,
     required this.jumpMaxAirTime,
+    required this.mountType,
+    required this.approachCourseDeg,
   });
 
   final String jumpDetectionMode;
@@ -886,6 +929,8 @@ class SessionJumpDetectionRotationInput {
   final double jumpMinManeuverRotationDegPerSec;
   final Duration jumpCooldown;
   final Duration jumpMaxAirTime;
+  final String mountType;
+  final double? approachCourseDeg;
 }
 
 class SessionApplyJumpFinalizeInput {
@@ -900,6 +945,8 @@ class SessionApplyJumpFinalizeInput {
     required this.jumpMinManeuverG,
     required this.jumpMinManeuverRotationDegPerSec,
     required this.currentJumpHistory,
+    required this.mountType,
+    required this.measurementMode,
   });
 
   final SessionPendingJumpCandidate? pendingCandidate;
@@ -912,6 +959,8 @@ class SessionApplyJumpFinalizeInput {
   final double jumpMinManeuverG;
   final double jumpMinManeuverRotationDegPerSec;
   final List<SessionJumpRecord> currentJumpHistory;
+  final String mountType;
+  final String measurementMode;
 }
 
 class SessionApplyJumpFinalizeResult {

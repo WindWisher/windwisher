@@ -189,6 +189,63 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
   - `flutter analyze` limpio
   - solo permanece el warning externo conocido de `webview_flutter:macos`
 
+### 2026-04-15 - Notificaciones estabilizadas, Community realista y arquitectura base de saltos
+
+- Recuperado y estabilizado el registro push Android tras reinstalaciones y cambios de permisos:
+  - inicializacion Firebase saneada entre `main.dart`, `MainActivity.kt` y `firebase_push_messaging_service.dart`
+  - re-registro forzado del token desde `Ajustes > Notificaciones`
+  - diagnostico visible en ajustes para errores reales (`No Firebase App`, `provider not configured`, etc.)
+  - flujo de mensajes directo del perfil verificado otra vez con push funcionando en foreground, lista y segundo plano
+- Endurecido el backend y el flujo de alarmas:
+  - limpieza automatica de tokens FCM invalidos (`UNREGISTERED`) en `spot-alarm-runner`
+  - nueva migracion `20260413180000_disable_invalid_push_subscriptions.sql`
+  - ajuste del registro push tras reinstalacion para volver a poblar `user_push_subscriptions`
+  - alarmas de spot enviadas ya como `data-only` desde la function para que la app genere la notificacion local propia desde el primer aviso
+  - acciones `Posponer` y `Parar` movidas al flujo local/background en `local_notifications_service.dart`
+  - fallback de programacion local exacta -> inexacta y permiso `SCHEDULE_EXACT_ALARM` en Android
+- Mejorada la gestion de alarmas en `Perfil`:
+  - agrupacion por spot
+  - toggle global
+  - toggle por spot
+  - toggle por alarma individual
+  - migracion remota `20260414100000_add_enabled_to_spot_alarms.sql` aplicada para respetar `enabled` por alarma en backend y sync
+- Limpieza fuerte de `Community` hacia datos reales:
+  - `Siguiendo` y `Seguidores` conectados a datos reales de `user_follows`
+  - eliminados defaults/hardcodeados de follows y followers locales
+  - `CommunityUserProfilePage` y `CommunityUserSessionsPage` hidratando perfiles publicos reales con fallback neutro
+  - leaderboard reajustado para usar metricas reales y menos datos sinteticos
+  - anadido `Mayor actividad` como metrica separada del `Big Air score`
+  - migracion remota `20260414113000_update_community_leaderboard_scoring.sql` preparada para `avg(big_air_score)` + `activity_score`
+  - tarjetas del leaderboard sincronizadas con avatar, banner, nombre y handle persistidos del perfil
+  - eliminada pantalla placeholder `community_messages_page.dart` y extraidos widgets de feed/lista para adelgazar `community_page.dart`
+- Ajustes UX adicionales cerrados en perfil/comunidad:
+  - tarjeta de alarmas de perfil alineada visualmente con spots y copy menos enganoso (`Activa y monitorizando`)
+  - selector de equipacion de perfil robustecido frente a overflows en `DropdownButtonFormField`
+  - banner/avatar de comunidad y leaderboard corregidos para rutas locales o URLs remotas
+- Replanteada la base de captura de saltos antes de seguir con estadisticas/rankings:
+  - separacion explicita entre:
+    - senales para detectar que hubo un salto
+    - senales para medir el salto
+    - senales para analizar la tecnica del salto
+  - `SessionJumpRecord` ampliado para distinguir:
+    - medicion principal
+    - apoyo barometrico separado
+    - deltas entre medicion principal y apoyo
+    - `mountType`, `measurementMode` y `measurementConfidence`
+    - campos de tecnica como `approachCourseDeg`, `approachWindOffsetDeg` y `edgeAngleDeg`
+  - el pipeline actual deja de fingir un unico modo y ahora etiqueta honestamente los saltos como `body_imu` o `board_imu` segun politica de dispositivo
+  - `board_sensor` ya no depende de barometro para ser elegible; el barometro queda tratado solo como apoyo de medicion, no como fuente principal
+  - anadida una primera senal real de tabla: `approachCourseDeg` calculada desde muestras GPS recientes previas al despegue
+  - preparado el candidato de salto para futuras metricas especificas de tabla (`peakHeightMeters`, `takeoffHeightMeters`, `approachWindOffsetDeg`, `edgeAngleDeg`) sin romper compatibilidad actual
+- Actualizada la formula y el discurso del `Big Air score` de sesion:
+  - `jumpHeightConsistency` sale del calculo
+  - `cleanLandingRate` se mantiene como senal de aterrizaje
+  - FAQ alineada con la formula real actual en la app
+- Limpieza de artefactos de trabajo: eliminado `tmp/fitcloudpro_jadx` del repo tras descartar su valor para el analisis de saltos.
+- Validaciones recurrentes ejecutadas durante el bloque:
+  - `flutter analyze` limpio en los archivos/modulos tocados
+  - solo permanece el warning externo conocido de `webview_flutter:macos`
+
 ## Proximo paso acordado
 
 - Fase 90 de `sessions` cerrada (sincronizacion multi-sesion desde dispositivo vinculado).

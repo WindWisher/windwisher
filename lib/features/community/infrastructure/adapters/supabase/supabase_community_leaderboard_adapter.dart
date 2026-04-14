@@ -19,27 +19,63 @@ class SupabaseCommunityLeaderboardAdapter implements CommunityLeaderboardPort {
     final response = await _client
         .from('community_leaderboard')
         .select()
-        .order('big_air_score', ascending: false);
+        .order('big_air_score', ascending: false)
+        .order('activity_score', ascending: false);
+
+    final rows = (response as List<dynamic>).whereType<Map<String, dynamic>>().toList(
+      growable: false,
+    );
+    final handles = rows
+        .map((row) => (row['username'] as String? ?? '').trim())
+        .where((handle) => handle.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+
+    final profileByHandle = <String, Map<String, dynamic>>{};
+    if (handles.isNotEmpty) {
+      final profiles = await _client
+          .from('public_profiles')
+          .select('handle, display_name, avatar_path, banner_path')
+          .inFilter('handle', handles);
+      for (final row in (profiles as List<dynamic>).whereType<Map<String, dynamic>>()) {
+        final handle = (row['handle'] as String? ?? '').trim();
+        if (handle.isNotEmpty) {
+          profileByHandle[handle] = row;
+        }
+      }
+    }
 
     _users
       ..clear()
-      ..addAll(
-        (response as List<dynamic>)
-            .whereType<Map<String, dynamic>>()
-            .map(_fromRow),
-      );
+      ..addAll(rows.map((row) => _fromRow(row, profileByHandle)));
     return getUsers();
   }
 
-  CommunityUserSummary _fromRow(Map<String, dynamic> row) {
-    final username = row['username'] as String? ?? 'unknown';
+  CommunityUserSummary _fromRow(
+    Map<String, dynamic> row,
+    Map<String, Map<String, dynamic>> profileByHandle,
+  ) {
+    final username = (row['username'] as String? ?? 'unknown').trim();
+    final profile = profileByHandle[username];
     return CommunityUserSummary(
       username: username,
       bigAirScore: (row['big_air_score'] as num?)?.toInt() ?? 0,
+      activityScore: (row['activity_score'] as num?)?.toInt() ?? 0,
       highestJumpMeters: (row['highest_jump_meters'] as num?)?.toDouble() ?? 0,
       mainSpot: row['main_spot'] as String? ?? '',
       avatarColorValue: _avatarColorValueForUsername(username),
+      displayName: (profile?['display_name'] as String?)?.trim(),
+      handle: _displayHandle((profile?['handle'] as String?)?.trim() ?? username),
+      avatarPath: (profile?['avatar_path'] as String?)?.trim(),
+      bannerPath: (profile?['banner_path'] as String?)?.trim(),
     );
+  }
+
+  String _displayHandle(String value) {
+    if (value.isEmpty) {
+      return '@unknown';
+    }
+    return value.startsWith('@') ? value : '@$value';
   }
 
   int _avatarColorValueForUsername(String username) {

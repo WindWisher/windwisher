@@ -23,18 +23,15 @@ class LinkedDevice {
 
   bool get hasBarometer => physicalSensorKeys.contains('barometer');
   bool get hasAltimeter => physicalSensorKeys.contains('altimeter');
-  bool get canMeasureJumpHeight => hasBarometer || hasAltimeter;
+  bool get canMeasureJumpHeight =>
+      family == 'board_sensor' || hasBarometer || hasAltimeter;
 
   static bool isSessionEligibleForDetectedDevice({
     required String family,
     required List<String> physicalSensorKeys,
   }) {
-    if (family == 'phone') {
+    if (family == 'phone' || family == 'watch' || family == 'board_sensor') {
       return true;
-    }
-    if (family == 'watch' || family == 'board_sensor') {
-      return physicalSensorKeys.contains('barometer') ||
-          physicalSensorKeys.contains('altimeter');
     }
     return false;
   }

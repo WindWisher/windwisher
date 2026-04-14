@@ -49,7 +49,7 @@ class _FaqPageState extends State<FaqPage> {
       _FaqItem(
         question: 'Que significan los valores de Big Air Score?',
         answer:
-            'El Big Air Score es una metrica que combina la altura del salto, el hangtime y la velocidad de caida para dar una puntuacion de rendimiento.',
+            'El Big Air Score es una metrica que combina la altura maxima del salto, el hangtime maximo y la tasa de aterrizajes limpios para resumir el rendimiento Big Air de una sesion.',
       ),
       _FaqItem(
         question: 'Como cambio las unidades de medicion?',

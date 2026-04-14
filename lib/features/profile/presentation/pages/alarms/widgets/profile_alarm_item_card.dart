@@ -8,24 +8,27 @@ class ProfileAlarmItemCard extends StatelessWidget {
     required this.alarm,
     required this.onEdit,
     required this.onDelete,
+    required this.onToggle,
+    required this.spotEnabled,
   });
 
   final SpotAlarmRecord alarm;
   final VoidCallback onEdit;
   final Future<void> Function() onDelete;
+  final ValueChanged<bool> onToggle;
+  final bool spotEnabled;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
     final catalog = SpotAlarmCatalog.instance;
-    final spotEnabled = catalog.isSpotEnabled(alarm.spotKey);
-    final spotColor = spotEnabled
-        ? const Color(0xFF2E7D32)
-        : colorScheme.onSurfaceVariant;
+    final evaluation = _profileAlarmEvaluation(catalog, alarm, spotEnabled);
+    final evaluationColor = _profileAlarmEvaluationColor(context, evaluation);
+    final statusBackground = evaluationColor.withValues(alpha: 0.12);
+
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: colorScheme.surface.withValues(alpha: 0.92),
@@ -52,23 +55,72 @@ class ProfileAlarmItemCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      alarm.spotName,
+                      alarm.stationName,
                       style: textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      alarm.stationName,
+                      alarm.spotName,
                       style: textTheme.bodyMedium?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
                     ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.sm,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: statusBackground,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  switch (evaluation.state) {
+                                    _ProfileAlarmEvaluationState.ready =>
+                                      Icons.notifications_active_rounded,
+                                    _ProfileAlarmEvaluationState.disabled =>
+                                      Icons.notifications_off_rounded,
+                                    _ProfileAlarmEvaluationState.triggered =>
+                                      Icons.history_toggle_off_rounded,
+                                  },
+                                  size: 16,
+                                  color: evaluationColor,
+                                ),
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    evaluation.label,
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: evaluationColor,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Switch.adaptive(
+                          value: alarm.enabled,
+                          onChanged: onToggle,
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
+              const SizedBox(width: AppSpacing.sm),
+              Column(
                 children: [
                   IconButton(
                     tooltip: 'Editar alarma',
@@ -85,34 +137,10 @@ class ProfileAlarmItemCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm,
-              vertical: 6,
-            ),
-            decoration: BoxDecoration(
-              color: spotColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  spotEnabled
-                      ? Icons.notifications_active_rounded
-                      : Icons.notifications_off_rounded,
-                  size: 16,
-                  color: spotColor,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  spotEnabled ? 'Spot activo' : 'Spot desactivado',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: spotColor,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+          Text(
+            _alarmTriggerSummary(alarm),
+            style: textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -137,6 +165,10 @@ class ProfileAlarmItemCard extends StatelessWidget {
               _ProfileAlarmMetaChip(
                 icon: Icons.repeat_rounded,
                 label: alarmRepeatWindowLabel(alarm.repeatWindow),
+              ),
+              _ProfileAlarmMetaChip(
+                icon: Icons.filter_3_rounded,
+                label: '${alarm.maxRepeats} avisos',
               ),
             ],
           ),
@@ -175,6 +207,86 @@ class _ProfileAlarmMetaChip extends StatelessWidget {
       ),
     );
   }
+}
+
+enum _ProfileAlarmEvaluationState { ready, disabled, triggered }
+
+class _ProfileAlarmEvaluation {
+  const _ProfileAlarmEvaluation({required this.state, required this.label});
+
+  final _ProfileAlarmEvaluationState state;
+  final String label;
+}
+
+_ProfileAlarmEvaluation _profileAlarmEvaluation(
+  SpotAlarmCatalog catalog,
+  SpotAlarmRecord alarm,
+  bool spotEnabled,
+) {
+  if (!catalog.globalEnabled) {
+    return const _ProfileAlarmEvaluation(
+      state: _ProfileAlarmEvaluationState.disabled,
+      label: 'Alarmas globales desactivadas',
+    );
+  }
+  if (!spotEnabled) {
+    return const _ProfileAlarmEvaluation(
+      state: _ProfileAlarmEvaluationState.disabled,
+      label: 'Spot desactivado para alertas',
+    );
+  }
+  if (!alarm.enabled) {
+    return const _ProfileAlarmEvaluation(
+      state: _ProfileAlarmEvaluationState.disabled,
+      label: 'Alarma desactivada',
+    );
+  }
+  if (alarm.lastTriggeredAt != null || alarm.triggerCount > 0) {
+    return _ProfileAlarmEvaluation(
+      state: _ProfileAlarmEvaluationState.triggered,
+      label: 'Con actividad reciente ${alarm.triggerCount}/${alarm.maxRepeats}',
+    );
+  }
+  return const _ProfileAlarmEvaluation(
+    state: _ProfileAlarmEvaluationState.ready,
+    label: 'Lista para disparar',
+  );
+}
+
+Color _profileAlarmEvaluationColor(
+  BuildContext context,
+  _ProfileAlarmEvaluation evaluation,
+) {
+  switch (evaluation.state) {
+    case _ProfileAlarmEvaluationState.ready:
+      return const Color(0xFF2E7D32);
+    case _ProfileAlarmEvaluationState.disabled:
+      return Theme.of(context).colorScheme.onSurfaceVariant;
+    case _ProfileAlarmEvaluationState.triggered:
+      return const Color(0xFFEF6C00);
+  }
+}
+
+String _alarmTriggerSummary(SpotAlarmRecord alarm) {
+  final lastTriggeredAt = alarm.lastTriggeredAt;
+  if (lastTriggeredAt == null) {
+    return 'Aun no ha disparado';
+  }
+  return 'Ultimo aviso ${_relativeTimeLabel(lastTriggeredAt)} · ${alarm.triggerCount}/${alarm.maxRepeats}';
+}
+
+String _relativeTimeLabel(DateTime timestamp) {
+  final difference = DateTime.now().difference(timestamp);
+  if (difference.inMinutes < 1) {
+    return 'ahora';
+  }
+  if (difference.inHours < 1) {
+    return 'hace ${difference.inMinutes} min';
+  }
+  if (difference.inDays < 1) {
+    return 'hace ${difference.inHours} h';
+  }
+  return 'hace ${difference.inDays} d';
 }
 
 String formatAlarmTime(int hour, int minute) {

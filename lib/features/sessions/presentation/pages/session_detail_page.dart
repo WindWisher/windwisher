@@ -257,19 +257,19 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
 
   String _jumpDetectionModeLabel(String mode) {
     switch (mode) {
-      case 'barometric':
-        return 'Saltos calculados con perfil vertical barometrico.';
-      case 'inertial_fallback':
+      case 'board_imu':
+        return 'Saltos calculados con medicion inercial en tabla.';
+      case 'body_imu':
       default:
-        return 'Saltos calculados con fallback inercial del dispositivo.';
+        return 'Saltos calculados con medicion inercial en cuerpo/dispositivo.';
     }
   }
 
   String _jumpHistoryDescription(String mode) {
     switch (mode) {
-      case 'barometric':
-        return 'Nº, altura real, hangtime, G de maniobra, G de recepcion y momento exacto del salto.';
-      case 'inertial_fallback':
+      case 'board_imu':
+        return 'Nº, altura del salto, hangtime, G de maniobra, G de recepcion y momento exacto del salto.';
+      case 'body_imu':
       default:
         return 'Nº, altura estimada, hangtime, G de maniobra, G de recepcion y momento exacto del salto.';
     }
@@ -277,21 +277,21 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
 
   String _jumpDetectionModeChipLabel(String mode) {
     switch (mode) {
-      case 'barometric':
-        return 'Modo: Barometrico';
-      case 'inertial_fallback':
+      case 'board_imu':
+        return 'Modo: Board IMU';
+      case 'body_imu':
       default:
-        return 'Modo: Inercial';
+        return 'Modo: Body IMU';
     }
   }
 
   String _jumpHistoryEmptyLabel(String mode) {
     switch (mode) {
-      case 'barometric':
-        return 'No se han detectado saltos con perfil vertical barometrico en esta sesion.';
-      case 'inertial_fallback':
+      case 'board_imu':
+        return 'No se han detectado saltos con medicion inercial en tabla en esta sesion.';
+      case 'body_imu':
       default:
-        return 'No se han detectado saltos con el fallback inercial de esta sesion.';
+        return 'No se han detectado saltos con medicion inercial de esta sesion.';
     }
   }
 
@@ -309,9 +309,9 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
 
   String _maxJumpHeightPrefix(String mode) {
     switch (mode) {
-      case 'barometric':
+      case 'board_imu':
         return 'Max:';
-      case 'inertial_fallback':
+      case 'body_imu':
       default:
         return 'Max est.:';
     }

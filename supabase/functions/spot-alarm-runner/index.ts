@@ -36,6 +36,11 @@ type PushSubscriptionRow = {
   enabled: boolean;
 };
 
+type PushFailure = {
+  reason: string;
+  disableToken: boolean;
+};
+
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const aemetApiKey = Deno.env.get("AEMET_OPENDATA_API_KEY") ?? "";
@@ -60,7 +65,9 @@ Deno.serve(async (request) => {
       { status: 500 },
     );
   }
-  if ((request.headers.get("authorization") ?? "") !== `Bearer ${runnerSecret}`) {
+  if (
+    (request.headers.get("authorization") ?? "") !== `Bearer ${runnerSecret}`
+  ) {
     return jsonResponse({ error: "unauthorized" }, { status: 401 });
   }
   if (!supabaseUrl || !anonKey) {
@@ -154,7 +161,12 @@ Deno.serve(async (request) => {
 
     const subscriptions = pushByUserId.get(alarm.user_id) ?? [];
     if (subscriptions.length == 0) {
-      await logDelivery(alarm, "ready", "no-push-subscription", evaluation.payload);
+      await logDelivery(
+        alarm,
+        "ready",
+        "no-push-subscription",
+        evaluation.payload,
+      );
       logged += 1;
       continue;
     }
@@ -247,7 +259,9 @@ type FirebaseServiceAccount = {
   private_key: string;
 };
 
-function parseFirebaseServiceAccount(raw: string): FirebaseServiceAccount | null {
+function parseFirebaseServiceAccount(
+  raw: string,
+): FirebaseServiceAccount | null {
   try {
     const parsed = JSON.parse(raw) as Partial<FirebaseServiceAccount>;
     if (
@@ -306,10 +320,6 @@ async function sendAlarmPushes({
         body: JSON.stringify({
           message: {
             token: subscription.device_token,
-            notification: {
-              title,
-              body,
-            },
             data: {
               type: "spot_alarm",
               alarmId: alarm.id,
@@ -318,26 +328,20 @@ async function sendAlarmPushes({
               stationProvider: alarm.station_provider,
               repeatWindow: alarm.repeat_window,
               maxRepeats: String(alarm.max_repeats),
+              title,
+              body,
             },
             android: {
               priority: "high",
-              notification: {
-                channel_id: "spot_alarms_v2",
-                sound: "default",
-                default_sound: true,
-                default_vibrate_timings: true,
-                notification_priority: "PRIORITY_MAX",
-              },
             },
             apns: {
               headers: {
-                "apns-priority": "10",
-                "apns-push-type": "alert",
+                "apns-priority": "5",
+                "apns-push-type": "background",
               },
               payload: {
                 aps: {
-                  sound: "default",
-                  badge: 1,
+                  "content-available": 1,
                 },
               },
             },
@@ -350,9 +354,11 @@ async function sendAlarmPushes({
     } else {
       failed += 1;
       const responseText = await response.text();
-      failureReasons.push(
-        `fcm-${response.status}:${responseText.slice(0, 180)}`,
-      );
+      const failure = classifyPushFailure(response.status, responseText);
+      failureReasons.push(failure.reason);
+      if (failure.disableToken) {
+        await disableInvalidPushSubscription(subscription);
+      }
     }
   }
   return {
@@ -363,6 +369,44 @@ async function sendAlarmPushes({
       : (failureReasons[0] ?? "push-send-failed"),
     payload,
   };
+}
+
+function classifyPushFailure(
+  status: number,
+  responseText: string,
+): PushFailure {
+  const trimmed = responseText.slice(0, 180);
+  const raw = `fcm-${status}:${trimmed}`;
+  if (
+    responseText.includes('"errorCode": "UNREGISTERED"') ||
+    responseText.includes("UNREGISTERED")
+  ) {
+    return {
+      reason: `fcm-${status}:UNREGISTERED`,
+      disableToken: true,
+    };
+  }
+  return {
+    reason: raw,
+    disableToken: false,
+  };
+}
+
+async function disableInvalidPushSubscription(
+  subscription: PushSubscriptionRow,
+) {
+  const { error } = await supabase.rpc("disable_backend_push_subscription", {
+    target_user_id: subscription.user_id,
+    target_device_token: subscription.device_token,
+  });
+  if (error) {
+    console.error("disable-invalid-push-subscription-failed", {
+      userId: subscription.user_id,
+      platform: subscription.platform,
+      provider: subscription.provider,
+      error: error.message,
+    });
+  }
 }
 
 async function getFirebaseAccessToken(
@@ -411,7 +455,10 @@ async function signJwt(unsignedJwt: string, privateKeyPem: string) {
     .replace("-----BEGIN PRIVATE KEY-----", "")
     .replace("-----END PRIVATE KEY-----", "")
     .replaceAll(/\s+/g, "");
-  const keyBytes = Uint8Array.from(atob(pemContents), (char) => char.charCodeAt(0));
+  const keyBytes = Uint8Array.from(
+    atob(pemContents),
+    (char) => char.charCodeAt(0),
+  );
   const cryptoKey = await crypto.subtle.importKey(
     "pkcs8",
     keyBytes.buffer,
@@ -439,7 +486,10 @@ function base64UrlEncodeBytes(bytes: Uint8Array) {
   for (const byte of bytes) {
     binary += String.fromCharCode(byte);
   }
-  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll(
+    "=",
+    "",
+  );
 }
 
 function formatKnots(raw: unknown) {
@@ -464,24 +514,30 @@ async function logDelivery(
   reason: string,
   payload: Record<string, unknown> | null,
 ) {
-  const { error: rpcError } = await supabase.rpc("log_backend_spot_alarm_delivery", {
-    target_alarm_id: alarm.id,
-    target_station_provider: alarm.station_provider,
-    target_station_key: alarm.station_key,
-    delivery_status: status,
-    delivery_reason: reason,
-    delivery_payload: payload,
-  });
+  const { error: rpcError } = await supabase.rpc(
+    "log_backend_spot_alarm_delivery",
+    {
+      target_alarm_id: alarm.id,
+      target_station_provider: alarm.station_provider,
+      target_station_key: alarm.station_key,
+      delivery_status: status,
+      delivery_reason: reason,
+      delivery_payload: payload,
+    },
+  );
   if (rpcError) {
     throw rpcError;
   }
 }
 
 async function resetTriggerState(alarm: AlarmRow) {
-  const { error } = await supabase.rpc("update_backend_spot_alarm_trigger_state", {
-    target_alarm_id: alarm.id,
-    reset_trigger_state: true,
-  });
+  const { error } = await supabase.rpc(
+    "update_backend_spot_alarm_trigger_state",
+    {
+      target_alarm_id: alarm.id,
+      reset_trigger_state: true,
+    },
+  );
   if (error) {
     throw error;
   }
@@ -492,12 +548,15 @@ async function updateTriggerState(
   nextTriggerCount: number,
   nextLastTriggeredAt: Date,
 ) {
-  const { error } = await supabase.rpc("update_backend_spot_alarm_trigger_state", {
-    target_alarm_id: alarm.id,
-    next_trigger_count: nextTriggerCount,
-    next_last_triggered_at: nextLastTriggeredAt.toISOString(),
-    reset_trigger_state: false,
-  });
+  const { error } = await supabase.rpc(
+    "update_backend_spot_alarm_trigger_state",
+    {
+      target_alarm_id: alarm.id,
+      next_trigger_count: nextTriggerCount,
+      next_last_triggered_at: nextLastTriggeredAt.toISOString(),
+      reset_trigger_state: false,
+    },
+  );
   if (error) {
     throw error;
   }
@@ -527,7 +586,9 @@ function supportsStationProvider(provider: string) {
 
 async function fetchAemetStationObservation(stationId: string) {
   const envelope = await fetchJsonObject(
-    `https://opendata.aemet.es/opendata/api/observacion/convencional/datos/estacion/${encodeURIComponent(stationId)}/?api_key=${aemetApiKey}`,
+    `https://opendata.aemet.es/opendata/api/observacion/convencional/datos/estacion/${
+      encodeURIComponent(stationId)
+    }/?api_key=${aemetApiKey}`,
   );
   const dataUrl = readDatosUrl(envelope);
   const data = await fetchJsonArray(dataUrl);
@@ -588,7 +649,9 @@ async function fetchInforatgeObservation(stationKey: string) {
 
 async function fetchAvametObservation(stationKey: string) {
   const stationId = extractStationId(stationKey);
-  const body = await fetchText(`https://www.avamet.org/mxo_i.php?id=${stationId}`);
+  const body = await fetchText(
+    `https://www.avamet.org/mxo_i.php?id=${stationId}`,
+  );
   const normalized = body
     .replaceAll("&nbsp;", " ")
     .replaceAll("&#160;", " ")
@@ -596,8 +659,12 @@ async function fetchAvametObservation(stationKey: string) {
     .replaceAll(/<[^>]+>/g, " ")
     .replaceAll(/\s+/g, " ")
     .trim();
-  const observedAtMatch = normalized.match(/(\d{2}-\d{2}-\d{4})\s+(\d{2}:\d{2})/);
-  const windMatch = normalized.match(/Vent[^0-9]*([0-9\.,]+)\s*km\/h\s*([A-Z]{1,3})/i);
+  const observedAtMatch = normalized.match(
+    /(\d{2}-\d{2}-\d{4})\s+(\d{2}:\d{2})/,
+  );
+  const windMatch = normalized.match(
+    /Vent[^0-9]*([0-9\.,]+)\s*km\/h\s*([A-Z]{1,3})/i,
+  );
   if (!windMatch) {
     return null;
   }
@@ -645,11 +712,9 @@ function evaluateAlarm(
     alarm.end_hour,
     alarm.end_minute,
   );
-  const windMatches =
-    observation.windKnots >= alarm.wind_range_start &&
+  const windMatches = observation.windKnots >= alarm.wind_range_start &&
     observation.windKnots <= alarm.wind_range_end;
-  const directionMatches =
-    observation.windDirectionBucket != null &&
+  const directionMatches = observation.windDirectionBucket != null &&
     alarm.directions.includes(observation.windDirectionBucket);
   const active = freshEnough && timeMatches && windMatches && directionMatches;
   const reason = active
@@ -823,7 +888,8 @@ function parseDdMmYyyyHm(datePart: string, timePart: string) {
   const [day, month, year] = datePart.split("-").map((value) => Number(value));
   const [hour, minute] = timePart.split(":").map((value) => Number(value));
   if (
-    !Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year) ||
+    !Number.isFinite(day) || !Number.isFinite(month) ||
+    !Number.isFinite(year) ||
     !Number.isFinite(hour) || !Number.isFinite(minute)
   ) {
     return null;

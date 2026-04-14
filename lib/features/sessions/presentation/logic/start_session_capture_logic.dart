@@ -12,11 +12,21 @@ class StartSessionCaptureLogic {
     double jumpMinTakeoffSpeedKnots,
     double jumpLandingMinSpeedKnots,
     String jumpDetectionMode,
-  }) captureMeasurementPolicyForDeviceKind(String? deviceKind) {
+    String mountType,
+    String measurementMode,
+  }) captureMeasurementPolicyForDevice({
+    String? deviceKind,
+    String? placement,
+  }) {
     final resolvedDeviceKind = deviceKind ?? 'Dispositivo Android';
-    final jumpDetectionMode = SessionInsightData.jumpDetectionModeForSensors(
-      SessionInsightData.physicalSensorsForDeviceKind(resolvedDeviceKind),
+    final resolvedPlacement = placement ?? 'local';
+    final jumpDetectionMode = SessionInsightData.jumpDetectionModeForDevice(
+      deviceKind: resolvedDeviceKind,
+      sensorKeys: SessionInsightData.physicalSensorsForDeviceKind(resolvedDeviceKind),
+      placement: resolvedPlacement,
     );
+    final mountType = jumpDetectionMode.startsWith('board') ? 'board' : 'body';
+    final measurementMode = jumpDetectionMode;
 
     switch (resolvedDeviceKind) {
       case 'Apple Watch':
@@ -26,14 +36,19 @@ class StartSessionCaptureLogic {
           jumpMinTakeoffSpeedKnots: 12.0,
           jumpLandingMinSpeedKnots: 7.0,
           jumpDetectionMode: jumpDetectionMode,
+          mountType: mountType,
+          measurementMode: measurementMode,
         );
       case 'Woo Sports':
       case 'SurfR':
+      case 'Sensor de tabla':
         return (
           motionEventMinSpeedKnots: 4.0,
           jumpMinTakeoffSpeedKnots: 8.0,
           jumpLandingMinSpeedKnots: 5.0,
           jumpDetectionMode: jumpDetectionMode,
+          mountType: mountType,
+          measurementMode: measurementMode,
         );
       case 'Android':
       case 'Dispositivo Android':
@@ -44,12 +59,20 @@ class StartSessionCaptureLogic {
           jumpMinTakeoffSpeedKnots: 10.0,
           jumpLandingMinSpeedKnots: 6.0,
           jumpDetectionMode: jumpDetectionMode,
+          mountType: mountType,
+          measurementMode: measurementMode,
         );
     }
   }
 
-  static String activeJumpDetectionModeForDeviceKind(String? deviceKind) {
-    return captureMeasurementPolicyForDeviceKind(deviceKind).jumpDetectionMode;
+  static String activeJumpDetectionModeForDevice({
+    String? deviceKind,
+    String? placement,
+  }) {
+    return captureMeasurementPolicyForDevice(
+      deviceKind: deviceKind,
+      placement: placement,
+    ).jumpDetectionMode;
   }
 
   static bool canRegisterMotionEvent(SessionMotionEventCooldownInput input) {
@@ -278,6 +301,8 @@ class StartSessionCaptureLogic {
       takeoffSpeedKnots: input.currentSpeedKnots,
       maxManeuverG: input.accelerationG ?? 0,
       maxRotationDegPerSec: input.rotationDegPerSec ?? 0,
+      approachCourseDeg:
+          input.mountType == 'board' ? input.approachCourseDeg : null,
     );
   }
 
@@ -316,6 +341,13 @@ class StartSessionCaptureLogic {
         index: input.nextJumpIndex,
         heightMeters: 0,
         hangtimeSeconds: hangtimeSeconds,
+        mountType: input.mountType,
+        measurementMode: input.measurementMode,
+        peakHeightMeters: candidate.peakHeightMeters,
+        takeoffHeightMeters: candidate.takeoffHeightMeters,
+        approachCourseDeg: candidate.approachCourseDeg,
+        approachWindOffsetDeg: candidate.approachWindOffsetDeg,
+        edgeAngleDeg: input.mountType == 'board' ? candidate.edgeAngleDeg : null,
         maneuverG: candidate.maxManeuverG > 0 ? candidate.maxManeuverG : null,
         maneuverRotationDegPerSec: candidate.maxRotationDegPerSec > 0
             ? candidate.maxRotationDegPerSec
@@ -345,6 +377,8 @@ class StartSessionCaptureLogic {
         jumpMinManeuverG: input.jumpMinManeuverG,
         jumpMinManeuverRotationDegPerSec:
             input.jumpMinManeuverRotationDegPerSec,
+        mountType: input.mountType,
+        measurementMode: input.measurementMode,
       ),
     );
 
@@ -381,6 +415,8 @@ class StartSessionCaptureLogic {
         currentSpeedKnots: input.currentSpeedKnots,
         accelerationG: input.accelerationG,
         rotationDegPerSec: null,
+        mountType: input.mountType,
+        approachCourseDeg: input.approachCourseDeg,
         jumpMinTakeoffSpeedKnots: input.jumpMinTakeoffSpeedKnots,
         jumpMinManeuverG: input.jumpMinManeuverG,
         jumpMinManeuverRotationDegPerSec:
@@ -421,8 +457,8 @@ class StartSessionCaptureLogic {
     SessionJumpDetectionAccelerationInput input,
   ) {
     switch (input.jumpDetectionMode) {
-      case 'barometric':
-        // Ruta provisional hasta que conectemos deteccion real por altitud relativa.
+      case 'board_imu':
+        // Ruta provisional: el apoyo barometrico aun no participa como medicion separada.
         return updateInertialJumpFromAcceleration(
           SessionInertialJumpAccelerationUpdateInput(
             pendingCandidate: input.pendingCandidate,
@@ -439,9 +475,11 @@ class StartSessionCaptureLogic {
             jumpMaxAirTime: input.jumpMaxAirTime,
             jumpLandingThresholdG: input.jumpLandingThresholdG,
             jumpLandingMinSpeedKnots: input.jumpLandingMinSpeedKnots,
+            mountType: input.mountType,
+            approachCourseDeg: input.approachCourseDeg,
           ),
         );
-      case 'inertial_fallback':
+      case 'body_imu':
         final assistiveResult = updateInertialJumpFromAcceleration(
           SessionInertialJumpAccelerationUpdateInput(
             pendingCandidate: input.pendingCandidate,
@@ -458,6 +496,8 @@ class StartSessionCaptureLogic {
             jumpMaxAirTime: input.jumpMaxAirTime,
             jumpLandingThresholdG: input.jumpLandingThresholdG,
             jumpLandingMinSpeedKnots: input.jumpLandingMinSpeedKnots,
+            mountType: input.mountType,
+            approachCourseDeg: input.approachCourseDeg,
           ),
         );
         return SessionInertialJumpUpdateResult(
@@ -495,6 +535,8 @@ class StartSessionCaptureLogic {
         currentSpeedKnots: input.currentSpeedKnots,
         accelerationG: null,
         rotationDegPerSec: input.rotationDegPerSec,
+        mountType: input.mountType,
+        approachCourseDeg: input.approachCourseDeg,
         jumpMinTakeoffSpeedKnots: input.jumpMinTakeoffSpeedKnots,
         jumpMinManeuverG: input.jumpMinManeuverG,
         jumpMinManeuverRotationDegPerSec:
@@ -530,8 +572,8 @@ class StartSessionCaptureLogic {
     SessionJumpDetectionRotationInput input,
   ) {
     switch (input.jumpDetectionMode) {
-      case 'barometric':
-        // Ruta provisional hasta que conectemos perfil vertical barometrico real.
+      case 'board_imu':
+        // Ruta provisional: el apoyo barometrico aun no participa como perfil vertical separado.
         return updateInertialJumpFromRotation(
           SessionInertialJumpRotationUpdateInput(
             pendingCandidate: input.pendingCandidate,
@@ -545,9 +587,11 @@ class StartSessionCaptureLogic {
                 input.jumpMinManeuverRotationDegPerSec,
             jumpCooldown: input.jumpCooldown,
             jumpMaxAirTime: input.jumpMaxAirTime,
+            mountType: input.mountType,
+            approachCourseDeg: input.approachCourseDeg,
           ),
         );
-      case 'inertial_fallback':
+      case 'body_imu':
         return updateInertialJumpFromRotation(
           SessionInertialJumpRotationUpdateInput(
             pendingCandidate: input.pendingCandidate,
@@ -561,6 +605,8 @@ class StartSessionCaptureLogic {
                 input.jumpMinManeuverRotationDegPerSec,
             jumpCooldown: input.jumpCooldown,
             jumpMaxAirTime: input.jumpMaxAirTime,
+            mountType: input.mountType,
+            approachCourseDeg: input.approachCourseDeg,
           ),
         );
     }

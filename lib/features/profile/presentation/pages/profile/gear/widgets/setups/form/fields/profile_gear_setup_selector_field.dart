@@ -21,8 +21,26 @@ class ProfileGearSetupSelectorField extends StatelessWidget {
     return DropdownButtonFormField<String?>(
       key: fieldKey,
       initialValue: value,
+      isExpanded: true,
+      menuMaxHeight: 360,
       decoration: InputDecoration(labelText: label),
       items: items,
+      selectedItemBuilder: (context) {
+        return items.map((item) {
+          final child = item.child;
+          if (child is Text) {
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                child.data ?? '',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            );
+          }
+          return Align(alignment: Alignment.centerLeft, child: child);
+        }).toList(growable: false);
+      },
       onChanged: (value) => onChanged(value),
     );
   }

@@ -18,6 +18,16 @@ class LocalFileCommunityFollowingPreferencesAdapter
   }
 
   @override
+  Set<String>? getFollowerUsernames() {
+    return const <String>{};
+  }
+
+  @override
+  Future<Set<String>?> loadFollowerUsernames() async {
+    return getFollowerUsernames();
+  }
+
+  @override
   Future<void> saveFollowingUsernames(Set<String> usernames) async {
     _store.saveFollowingUsernames(usernames);
   }

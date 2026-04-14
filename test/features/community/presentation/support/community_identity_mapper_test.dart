@@ -6,7 +6,7 @@ void main() {
   test('returns current profile for current username', () {
     final currentProfile = UserProfileData.initial();
 
-    final profile = CommunityIdentityMapper.profileForUsername(
+    final profile = CommunityIdentityMapper.fallbackProfileForUsername(
       username: 'rider_ks',
       currentProfile: currentProfile,
     );
@@ -18,7 +18,7 @@ void main() {
   test('generates consistent third-user profile mapping', () {
     final currentProfile = UserProfileData.initial();
 
-    final profile = CommunityIdentityMapper.profileForUsername(
+    final profile = CommunityIdentityMapper.fallbackProfileForUsername(
       username: 'sofi_wind',
       currentProfile: currentProfile,
     );

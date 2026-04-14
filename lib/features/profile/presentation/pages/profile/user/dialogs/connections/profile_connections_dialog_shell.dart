@@ -249,7 +249,7 @@ class _ConnectionUserTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final userProfile = CommunityIdentityMapper.profileForUsername(
+    final userProfile = CommunityIdentityMapper.fallbackProfileForUsername(
       username: username,
       currentProfile: profile,
     );

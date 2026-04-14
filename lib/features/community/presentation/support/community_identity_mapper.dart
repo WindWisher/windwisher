@@ -13,7 +13,7 @@ final class CommunityIdentityMapper {
         .join(' ');
   }
 
-  static UserProfileData profileForUsername({
+  static UserProfileData fallbackProfileForUsername({
     required String username,
     required UserProfileData currentProfile,
   }) {
@@ -27,15 +27,14 @@ final class CommunityIdentityMapper {
       return currentProfile;
     }
 
-    final seed = username.codeUnits.fold<int>(0, (sum, code) => sum + code);
-    return currentProfile.copyWith(
+    return UserProfileData.initial().copyWith(
       displayName: displayNameFromUsername(username),
       handle: '@$username',
-      publicTagline: 'Perfil publico de la comunidad.',
-      totalSessions: '${20 + (seed % 140)}',
-      waterHours: '${50 + (seed % 260)}h',
-      jumps: '${100 + (seed % 900)}',
-      topJump: '${(9 + (seed % 90) / 10).toStringAsFixed(1)}m',
+      publicTagline: '',
+      totalSessions: '0',
+      waterHours: '0h',
+      jumps: '0',
+      topJump: '0.0m',
       avatarLocalPath: null,
       bannerLocalPath: null,
     );

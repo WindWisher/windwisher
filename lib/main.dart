@@ -42,6 +42,7 @@ Future<void> _initializeBackgroundServices() async {
   await LocalNotificationsService.instance.initialize();
   await LocalNotificationsService.instance.ensurePermissions();
   await PushNotificationSubscriptionService.instance.initialize();
+  await Future<void>.delayed(const Duration(seconds: 2));
   await FirebasePushMessagingService.instance.initialize();
 }
 

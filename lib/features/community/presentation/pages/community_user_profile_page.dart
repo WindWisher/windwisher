@@ -1,11 +1,12 @@
-import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:flutter/material.dart';
+import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/features/community/presentation/support/community_identity_mapper.dart';
+import 'package:windwisher/features/community/presentation/support/community_public_profile_loader.dart';
 import 'package:windwisher/features/profile/di/profile_module.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/user/dialogs/preview/public_profile_preview_page.dart';
 
-class CommunityUserProfilePage extends StatelessWidget {
+class CommunityUserProfilePage extends StatefulWidget {
   const CommunityUserProfilePage({
     super.key,
     required this.username,
@@ -16,21 +17,47 @@ class CommunityUserProfilePage extends StatelessWidget {
   final bool useLocalPersistence;
 
   @override
-  Widget build(BuildContext context) {
-    final profile = _resolveProfile();
-    return PublicProfilePreviewPage(
-      profile: profile,
-      title: 'Perfil de usuario',
-    );
-  }
+  State<CommunityUserProfilePage> createState() => _CommunityUserProfilePageState();
+}
 
-  UserProfileData _resolveProfile() {
-    final currentProfile = useLocalPersistence
+class _CommunityUserProfilePageState extends State<CommunityUserProfilePage> {
+  late final UserProfileData _currentProfile;
+  UserProfileData? _profile;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentProfile = widget.useLocalPersistence
         ? ProfileModule.localFile().profileController.profile
         : ProfileModule.inMemory().profileController.profile;
-    return CommunityIdentityMapper.profileForUsername(
-      username: username,
-      currentProfile: currentProfile,
+    _profile = CommunityIdentityMapper.fallbackProfileForUsername(
+      username: widget.username,
+      currentProfile: _currentProfile,
+    );
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (EnvConfig.supabaseUrl.trim().isEmpty ||
+        EnvConfig.supabaseAnonKey.trim().isEmpty) {
+      return;
+    }
+    final profile = await CommunityPublicProfileLoader().loadByUsername(
+      widget.username,
+    );
+    if (!mounted || profile == null) {
+      return;
+    }
+    setState(() {
+      _profile = profile;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PublicProfilePreviewPage(
+      profile: _profile!,
+      title: 'Perfil de usuario',
     );
   }
 }

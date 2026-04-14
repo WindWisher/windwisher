@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:windwisher/firebase_options.dart';
 import 'package:windwisher/core/notifications/direct_message_notification_event.dart';
 import 'package:windwisher/core/notifications/local_notifications_service.dart';
@@ -13,9 +14,7 @@ import 'package:windwisher/features/spots/presentation/state/spot_alarm_catalog.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    await _ensureFirebaseInitializedIfNeeded();
     await LocalNotificationsService.instance.initialize();
     if (message.data['type'] == 'direct_message' &&
         (message.notification == null ||
@@ -52,17 +51,18 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         maxRepeats > 0) {
       await LocalNotificationsService.instance.scheduleAlarmCycleFromRemotePush(
         alarmId: alarmId,
-        title: message.notification?.title?.trim().isNotEmpty == true
-            ? message.notification!.title!.trim()
-            : 'Alarma de spot',
-        body: message.notification?.body?.trim().isNotEmpty == true
-            ? message.notification!.body!.trim()
-            : 'La alarma ya esta activa.',
+        title: message.data['title']?.trim().isNotEmpty == true
+            ? message.data['title']!.trim()
+            : 'Alarma activa',
+        body: message.data['body']?.trim().isNotEmpty == true
+            ? message.data['body']!.trim()
+            : 'Las condiciones del spot ya se estan cumpliendo.',
         repeatWindow: AlarmRepeatWindow.values.firstWhere(
           (value) => value.name == repeatWindowRaw,
           orElse: () => AlarmRepeatWindow.min10,
         ),
         maxRepeats: maxRepeats,
+        includeImmediateNotification: true,
       );
     }
   } catch (_) {
@@ -70,11 +70,27 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   }
 }
 
+
+Future<void> _ensureFirebaseInitializedIfNeeded() async {
+  if (kIsWeb || Platform.isAndroid) {
+    return;
+  }
+  if (Firebase.apps.isNotEmpty) {
+    return;
+  }
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+}
+
 class FirebasePushMessagingService {
   FirebasePushMessagingService._();
 
   static final FirebasePushMessagingService instance =
       FirebasePushMessagingService._();
+  static const MethodChannel _androidPushChannel = MethodChannel(
+    'windwisher/push',
+  );
 
   StreamSubscription<String>? _tokenRefreshSubscription;
   StreamSubscription<RemoteMessage>? _foregroundMessageSubscription;
@@ -84,9 +100,12 @@ class FirebasePushMessagingService {
       StreamController<DirectMessageNotificationEvent>.broadcast();
   DirectMessageNotificationEvent? _pendingDirectMessageOpen;
   bool _initialized = false;
+  String? _lastInitializationError;
 
   Stream<DirectMessageNotificationEvent> get directMessageOpenStream =>
       _directMessageOpenController.stream;
+
+  String? get lastInitializationError => _lastInitializationError;
 
   DirectMessageNotificationEvent? consumePendingDirectMessageOpen() {
     final pending = _pendingDirectMessageOpen;
@@ -98,15 +117,16 @@ class FirebasePushMessagingService {
     if (_initialized) {
       return;
     }
-    _initialized = true;
 
     if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
+      _initialized = true;
       await PushNotificationSubscriptionService.instance
           .setRemoteProviderConfigured(false);
       return;
     }
 
     if (_isIosSimulator()) {
+      _initialized = true;
       debugPrint(
         'FirebasePushMessagingService: iOS simulator detected; skipping Firebase Messaging initialization.',
       );
@@ -116,9 +136,25 @@ class FirebasePushMessagingService {
     }
 
     try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+      if (Platform.isAndroid) {
+        await PushNotificationSubscriptionService.instance
+            .setRemoteProviderConfigured(true);
+        _lastInitializationError = null;
+        final token = await _getAndroidFcmToken();
+        if (token != null && token.trim().isNotEmpty) {
+          await PushNotificationSubscriptionService.instance.registerDeviceToken(
+            token: token,
+            provider: 'fcm',
+            platform: _platformLabel(),
+            deviceLabel: _deviceLabel(),
+          );
+        }
+        await _bindForegroundMessagingHandlers(bestEffort: true);
+        _initialized = true;
+        return;
+      }
+
+      await _ensureFirebaseInitializedIfNeeded();
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
       final messaging = FirebaseMessaging.instance;
@@ -129,17 +165,9 @@ class FirebasePushMessagingService {
         sound: true,
       );
 
-      if (_isIosSimulator()) {
-        debugPrint(
-          'FirebasePushMessagingService: iOS simulator detected; skipping FCM token registration.',
-        );
-        await PushNotificationSubscriptionService.instance
-            .setRemoteProviderConfigured(false);
-        return;
-      }
-
       await PushNotificationSubscriptionService.instance
           .setRemoteProviderConfigured(true);
+      _lastInitializationError = null;
 
       if (Platform.isIOS) {
         final apnsToken = await _waitForApnsToken(messaging);
@@ -147,6 +175,7 @@ class FirebasePushMessagingService {
           debugPrint(
             'FirebasePushMessagingService: APNs token not available on iOS; skipping FCM token registration.',
           );
+          _initialized = true;
           return;
         }
       }
@@ -161,6 +190,99 @@ class FirebasePushMessagingService {
         );
       }
 
+      await _bindForegroundMessagingHandlers();
+
+      _initialized = true;
+    } catch (error, stackTrace) {
+      _initialized = false;
+      _lastInitializationError = error.toString();
+      debugPrint(
+        'FirebasePushMessagingService.initialize failed: $error',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+      await PushNotificationSubscriptionService.instance
+          .setRemoteProviderConfigured(false);
+    }
+  }
+
+  Future<PushSubscriptionSyncStatus> refreshDeviceRegistration() async {
+    if (!_initialized ||
+        !PushNotificationSubscriptionService.instance.remoteProviderConfigured) {
+      await initialize();
+    }
+
+    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
+      return PushSubscriptionSyncStatus.providerNotConfigured;
+    }
+
+    if (_isIosSimulator()) {
+      await PushNotificationSubscriptionService.instance
+          .setRemoteProviderConfigured(false);
+      return PushNotificationSubscriptionService.instance.currentStatus;
+    }
+
+    try {
+      if (Platform.isAndroid) {
+        await PushNotificationSubscriptionService.instance
+            .setRemoteProviderConfigured(true);
+        _lastInitializationError = null;
+        final token = await _getAndroidFcmToken();
+        if (token != null && token.trim().isNotEmpty) {
+          return await PushNotificationSubscriptionService.instance.registerDeviceToken(
+            token: token,
+            provider: 'fcm',
+            platform: _platformLabel(),
+            deviceLabel: _deviceLabel(),
+          );
+        }
+        return PushNotificationSubscriptionService.instance.currentStatus;
+      }
+
+      await _ensureFirebaseInitializedIfNeeded();
+      final messaging = FirebaseMessaging.instance;
+      await PushNotificationSubscriptionService.instance
+          .setRemoteProviderConfigured(true);
+      _lastInitializationError = null;
+      if (Platform.isIOS) {
+        final apnsToken = await _waitForApnsToken(messaging);
+        if (apnsToken == null || apnsToken.trim().isEmpty) {
+          return PushNotificationSubscriptionService.instance.currentStatus;
+        }
+      }
+      final token = await messaging.getToken();
+      if (token != null && token.trim().isNotEmpty) {
+        return await PushNotificationSubscriptionService.instance.registerDeviceToken(
+          token: token,
+          provider: 'fcm',
+          platform: _platformLabel(),
+          deviceLabel: _deviceLabel(),
+        );
+      }
+      return PushNotificationSubscriptionService.instance.currentStatus;
+    } catch (error, stackTrace) {
+      _lastInitializationError = error.toString();
+      debugPrint(
+        'FirebasePushMessagingService.refreshDeviceRegistration failed: $error',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+      await PushNotificationSubscriptionService.instance
+          .setRemoteProviderConfigured(false);
+      return PushNotificationSubscriptionService.instance.currentStatus;
+    }
+  }
+
+  Future<String?> _getAndroidFcmToken() async {
+    final token = await _androidPushChannel.invokeMethod<String>('getFcmToken');
+    return token?.trim().isEmpty ?? true ? null : token?.trim();
+  }
+
+  Future<void> _bindForegroundMessagingHandlers({bool bestEffort = false}) async {
+    try {
+      await _foregroundMessageSubscription?.cancel();
+      await _messageOpenedSubscription?.cancel();
+      await _tokenRefreshSubscription?.cancel();
+
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
       _foregroundMessageSubscription = FirebaseMessaging.onMessage.listen((
         message,
       ) async {
@@ -169,14 +291,13 @@ class FirebasePushMessagingService {
       _messageOpenedSubscription = FirebaseMessaging.onMessageOpenedApp.listen(
         _handleOpenedRemoteMessage,
       );
+
+      final messaging = FirebaseMessaging.instance;
       final initialMessage = await messaging.getInitialMessage();
       if (initialMessage != null) {
         _handleOpenedRemoteMessage(initialMessage);
       }
-
-      _tokenRefreshSubscription = messaging.onTokenRefresh.listen((
-        nextToken,
-      ) async {
+      _tokenRefreshSubscription = messaging.onTokenRefresh.listen((nextToken) async {
         if (nextToken.trim().isEmpty) {
           return;
         }
@@ -187,9 +308,14 @@ class FirebasePushMessagingService {
           deviceLabel: _deviceLabel(),
         );
       });
-    } catch (_) {
-      await PushNotificationSubscriptionService.instance
-          .setRemoteProviderConfigured(false);
+    } catch (error, stackTrace) {
+      if (!bestEffort) {
+        rethrow;
+      }
+      debugPrint(
+        'FirebasePushMessagingService: no se pudieron enlazar handlers de mensajeria en Android: $error',
+      );
+      debugPrintStack(stackTrace: stackTrace);
     }
   }
 
