@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 147h 24m`.
+- `Total historico minimo consolidado del proyecto: 163h 24m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -17,10 +17,12 @@
   - bloque consolidado adicional en `2026-04-12`: `+8h` estimadas
   - bloque consolidado adicional en `2026-04-12`: `+6h` estimadas
   - bloque consolidado adicional en `2026-04-12`: `+7h` estimadas
+  - bloque consolidado adicional en `2026-04-23`: `+12h` estimadas (`WOO reverse engineering`)
+  - bloque consolidado adicional en `2026-04-23`: `+4h` estimadas (`WOO Big Air model refinement`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-04-12`: `+7h` estimadas.
+  - ultima consolidacion manual anadida el `2026-04-23`: `+4h` estimadas (`WOO Big Air model refinement`).
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
 
@@ -245,6 +247,167 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Validaciones recurrentes ejecutadas durante el bloque:
   - `flutter analyze` limpio en los archivos/modulos tocados
   - solo permanece el warning externo conocido de `webview_flutter:macos`
+
+### 2026-04-23 - Reverse engineering WOO: BLE, `jadx`, `QhData` y modelo provisional de salto
+
+- Consolidado un bloque especifico de investigacion sobre el algoritmo de salto del dispositivo `WOO`.
+- Duracion estimada y consolidada del bloque: `12h`.
+- Objetivo del bloque:
+  - aclarar si `height` y `airtime` se calculan en Android,
+  - mapear el protocolo BLE realmente observado,
+  - reconstruir un modelo empirico usable a partir de `Air`, `QhData` y `RawDataStatic`.
+- Alcance actual acordado para este hilo:
+  - centrarse solo en `Big Air` por ahora,
+  - no intentar unificar ni extrapolar todavia a otros modos del dispositivo.
+- Artefactos de trabajo consolidados en `tmp/woo_apk_analysis/`:
+  - `capture_woo_ble.py`
+  - `analyze_woo_capture.py`
+  - `session_board_mount_02.json`
+  - `session_board_mount_02_parsed.json`
+  - `last_capture_session3.json`
+  - `last_capture_session3_parsed.json`
+  - `WOO_REVERSE_ENGINEERING.md`
+  - decompilado Android completo en `jadx_out/`
+- Captura BLE / dispositivo:
+  - endurecido el capturador para descarga completa de memoria de `WOO`,
+  - verificada la sesion nueva montada fisicamente en tabla como muestra primaria de calibracion,
+  - confirmado manualmente que esa sesion primaria de referencia (`session_board_mount_02`) fue grabada en modo `Big Air`,
+  - confirmada una sesion primaria completa con `15 Air`, `15 QhData` y `RawDataStatic` parcial para algunos saltos.
+- Hallazgos de protocolo y datos:
+  - el dispositivo entrega paquetes `Air` ya resueltos con:
+    - `height`
+    - `airtime`
+    - `height_error`
+    - `max_hor_power`
+    - `pop_ke`
+    - `crash_velocity`
+    - `crash_g_force`
+  - `QhData` queda identificado como una senal compacta muy cercana a la morfologia del salto,
+  - `RawDataStatic` se decodifica de forma provisional como:
+    - `1500 records x 44 bytes`
+    - `11 int32` por record
+    - reloj monotono en `col0`
+    - frecuencia efectiva `~335.66 Hz`
+    - `cols1-4` compatibles con cuaternion `wxyz` en `Q30`
+    - `cols8-10` compatibles con aceleracion en ejes del dispositivo.
+- Hallazgos sobre el APK Android:
+  - localizada la ruta real `GET sessions/{id}` para detalle completo de sesion via:
+    - `as/w.java`
+    - `vs/r.java`
+    - `cs/p1.java` (`SessionResponse.Full`)
+  - confirmado que `woo_data` llega dentro de `SessionResponse.Full`,
+  - confirmado que Android no parece recalcular localmente `height`, `airtime`, `jump_distance`, `board_angle` o `takeoff_speed`,
+  - la app mapea esos valores ya resueltos desde red a dominio.
+- Modelo empirico provisional actual:
+  - `height`:
+    - `double_lobe` -> mejor ajuste desde `QhData` con `even_peak`
+    - `single_lobe` -> mejor ajuste desde `QhData` con `avg_peak`
+  - `airtime`:
+    - `double_lobe` -> combo calibrado sobre sesion primaria usando `width_5 + second_lobe_length`
+    - `single_lobe` -> mejor ajuste desde `RawDataStatic abs10 span @ 0.3` con transformacion afin
+- Calidad actual del modelo:
+  - sesion primaria (`board mounted`):
+    - `height_mae = 0.03685 m`
+    - `airtime_mae = 0.03207 s`
+  - sesion comparativa:
+    - `height_mae = 0.02919 m`
+    - `airtime_mae = 0.04664 s`
+- Conclusiones tecnicas del bloque:
+  - Android no es la fuente probable del algoritmo central del salto,
+  - `height` parece reconstruible de forma bastante robusta desde `QhData`,
+  - `airtime` depende fuertemente de la morfologia del salto,
+  - `single_lobe` necesita apoyo de `RawDataStatic` para quedar realmente bien,
+  - la mejor referencia para seguir calibrando es la sesion nueva con el dispositivo montado en tabla,
+  - esa referencia primaria debe tratarse como calibracion de `Big Air`, no como verdad universal para otros modos.
+- Refinamiento orientado al firmware:
+  - `analyze_woo_capture.py` ya extrae una `phase_hypothesis` por salto desde `QhData` con:
+    - `takeoff_phase`
+    - `flight_phase`
+    - `landing_phase`
+    - `transition_valley`
+    - `airborne_window`
+  - validacion negativa util:
+    - la duracion bruta de `airborne_window` no reproduce el `airtime` oficial,
+    - sesion primaria -> `airborne_duration_mae ~= 2.62 s`,
+    - sesion comparativa -> `airborne_duration_mae ~= 2.16 s`
+  - lectura mas honesta:
+    - `QhData` parece una representacion intermedia por fases/estados del salto,
+    - no una codificacion lineal directa del tiempo de vuelo,
+    - por tanto, el siguiente paso debe centrarse en reconstruir la maquina de estados/features previas del firmware.
+- Documentacion consolidada:
+  - creado `tmp/woo_apk_analysis/WOO_REVERSE_ENGINEERING.md` con:
+    - trazabilidad `GET sessions/{id} -> SessionResponse.Full -> woo_data`,
+    - resumen del reverse engineering BLE/APK,
+    - formulas provisionales,
+    - errores actuales,
+    - huecos pendientes.
+- Siguiente paso tecnico recomendado para este hilo:
+  - seguir por una de estas dos rutas:
+    - capturar trafico real de `GET sessions/{id}` para comparar exactamente `Air/qh_data/raw_data`,
+    - o reforzar el modelo empirico con mas sesiones buenas manteniendo la sesion de tabla como referencia primaria.
+- Continuacion operativa ya preparada para la ruta `GET sessions/{id}`:
+  - addon `mitmproxy` creado en `tmp/woo_apk_analysis/mitm_capture_woo_session.py`
+  - comparador backend-vs-BLE creado en `tmp/woo_apk_analysis/compare_woo_session_response.py`
+  - documentado el flujo en `tmp/woo_apk_analysis/WOO_REVERSE_ENGINEERING.md`
+
+### 2026-04-23 - WOO `Big Air`: refinamiento del modelo recomendado y consolidacion documental
+
+- Consolidado un bloque adicional centrado ya no en el reverse engineering amplio de `WOO`, sino en afinar la salida operativa actual para `Big Air`.
+- Duracion estimada y consolidada del bloque: `4h`.
+- Alcance del bloque:
+  - mantener el foco unicamente en `Big Air`,
+  - convertir el trabajo reciente en una salida mas cercana a produccion,
+  - dejar trazabilidad clara en `SESSION_TRACKER.md` y `WOO_REVERSE_ENGINEERING.md`.
+- Decision de alcance fijada explicitamente:
+  - por ahora solo interesa `Big Air`,
+  - `session_board_mount_02` queda fijada como referencia primaria canonica y confirmada manualmente como sesion `Big Air`.
+- Refuerzo del analizador en `tmp/woo_apk_analysis/analyze_woo_capture.py`:
+  - consolidado `morphology_aware_model` como base,
+  - consolidado `big_air_raw_static_challenger_model` para medir el valor de `RawDataStatic`,
+  - anadido `big_air_production_model` como salida recomendada actual,
+  - anadido conteo de estrategias `airtime_strategy_counts` para dejar visible cuando entra cada heuristica.
+- Regla actual del `big_air_production_model`:
+  - `height` mantiene la seleccion del modelo morfologico,
+  - `single_lobe` prioriza `raw_static_abs10_span_03_affine`,
+  - `QhData` incompleto cae a `RawDataStatic`,
+  - en `double_lobe` solo se permite override a `RawDataStatic` cuando hay desacuerdo grande con el modelo morfologico (`BIG_AIR_RAW_STATIC_OVERRIDE_DELTA = 0.08`),
+  - el resto se queda en `morphology_aware_default`.
+- Resultados consolidados de la referencia primaria `session_board_mount_02`:
+  - `morphology_aware_model`
+    - `height_mae = 0.03685 m`
+    - `airtime_mae = 0.03207 s`
+  - `big_air_raw_static_challenger_model`
+    - `height_mae = 0.03685 m`
+    - `airtime_mae = 0.03164 s`
+  - `big_air_production_model`
+    - `height_mae = 0.03685 m`
+    - `airtime_mae = 0.02853 s`
+- Resultado de generalizacion en `last_capture_session3`:
+  - el `big_air_production_model` no empeora frente al modelo base,
+  - `height_mae = 0.02919 m`
+  - `airtime_mae = 0.04664 s`
+  - toda la sesion queda en `morphology_aware_default` por no haber `RawDataStatic` util.
+- Lecturas tecnicas consolidadas:
+  - `RawDataStatic` deja de tratarse solo como fallback raro,
+  - en `Big Air` pasa a ser una senal seria de `airtime` cuando aparece limpia,
+  - aun asi, `QhData` sigue siendo la base principal del modelo,
+  - el mejor compromiso actual queda como:
+    - `QhData` como base
+    - `RawDataStatic` como override puntual y justificado
+- Documentacion consolidada en `tmp/woo_apk_analysis/WOO_REVERSE_ENGINEERING.md`:
+  - fijado el alcance `Big Air only`,
+  - fijada `session_board_mount_02` como referencia canonica,
+  - documentado el `big_air_production_model` como salida recomendada actual,
+  - anadido roadmap explicito para acercarnos al `100%` del firmware:
+    - mas sesiones buenas `Big Air`
+    - backend vs BLE
+    - cierre del significado fisico de `RawDataStatic`
+    - formalizacion de maquina de estados
+    - ground truth externo
+- Siguiente paso operativo recomendado despues de este bloque:
+  - capturar otra sesion buena `Big Air`,
+  - regenerar el analisis,
+  - validar si reaparece el caso `double_lobe_large_disagreement_raw_override` o si fue especifico de `session_board_mount_02`.
 
 ## Proximo paso acordado
 
