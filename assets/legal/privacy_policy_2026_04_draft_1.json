@@ -1,0 +1,15 @@
+{
+  "version": "2026-04-draft-1",
+  "title": "Politica de privacidad",
+  "introParagraphs": [
+    "Esta politica de privacidad describe de forma provisional como WindWisher puede recoger, guardar y mostrar informacion vinculada a tu cuenta.",
+    "Este texto es una base funcional inicial y debe sustituirse por la version legal definitiva antes de considerarlo como politica de privacidad cerrada."
+  ],
+  "bullets": [
+    "La app puede almacenar datos de perfil, sesiones, material, mensajes y preferencias para prestar sus funciones principales.",
+    "Algunos datos pueden mostrarse de forma publica dentro del producto si estan asociados a superficies comunitarias, como tu handle, nombre visible o sesiones publicas.",
+    "La app puede usar servicios de terceros necesarios para autenticacion, almacenamiento, notificaciones y sincronizacion de datos.",
+    "Puedes solicitar cambios futuros sobre tu informacion a traves de las herramientas que el producto vaya incorporando en ajustes o perfil."
+  ],
+  "closingParagraph": "Si no estas de acuerdo con esta base provisional de privacidad, te recomendamos no continuar usando la app hasta disponer del texto legal definitivo."
+}

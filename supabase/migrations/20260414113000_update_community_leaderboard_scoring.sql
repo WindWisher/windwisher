@@ -1,3 +1,5 @@
+drop view if exists public.community_leaderboard;
+
 create or replace view public.community_leaderboard as
 select
   p.id as user_id,

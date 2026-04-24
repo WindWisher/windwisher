@@ -280,70 +280,84 @@ class ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _hydrateCommunityStats() async {
-    final users = await _communityModule.getCommunityUsers.load();
-    final sessions = await _communityModule.getFollowingSessions.load();
-    final followingUsernames =
-        await _communityModule.getFollowingUsernames.load() ?? const <String>{};
-    final client = Supabase.instance.client;
-    final currentUser = client.auth.currentUser;
+    try {
+      final users = await _communityModule.getCommunityUsers.load();
+      final sessions = await _communityModule.getFollowingSessions.load();
+      final followingUsernames =
+          await _communityModule.getFollowingUsernames.load() ??
+          const <String>{};
+      final client = Supabase.instance.client;
+      final currentUser = client.auth.currentUser;
 
-    List<String>? followerUsernames;
-    if (currentUser != null) {
-      final followerRows = await client
-          .from('user_follows')
-          .select('follower_user_id')
-          .eq('followed_user_id', currentUser.id);
-      final followerIds = (followerRows as List<dynamic>)
-          .whereType<Map<String, dynamic>>()
-          .map((row) => row['follower_user_id'] as String?)
-          .whereType<String>()
-          .toList(growable: false);
-      if (followerIds.isEmpty) {
-        followerUsernames = const <String>[];
-      } else {
-        final profileRows = await client
-            .from('public_profiles')
-            .select('id, handle')
-            .inFilter('id', followerIds);
-        followerUsernames = (profileRows as List<dynamic>)
+      List<String>? followerUsernames;
+      if (currentUser != null) {
+        final followerRows = await client
+            .from('user_follows')
+            .select('follower_user_id')
+            .eq('followed_user_id', currentUser.id);
+        final followerIds = (followerRows as List<dynamic>)
             .whereType<Map<String, dynamic>>()
-            .map((row) => (row['handle'] as String? ?? '').trim())
-            .where((handle) => handle.isNotEmpty)
+            .map((row) => row['follower_user_id'] as String?)
+            .whereType<String>()
             .toList(growable: false);
+        if (followerIds.isEmpty) {
+          followerUsernames = const <String>[];
+        } else {
+          final profileRows = await client
+              .from('public_profiles')
+              .select('id, handle')
+              .inFilter('id', followerIds);
+          followerUsernames = (profileRows as List<dynamic>)
+              .whereType<Map<String, dynamic>>()
+              .map((row) => (row['handle'] as String? ?? '').trim())
+              .where((handle) => handle.isNotEmpty)
+              .toList(growable: false);
+        }
       }
-    }
 
-    final commentsEntries = await Future.wait(
-      sessions.map((session) async {
-        final comments = await _communityModule.getSessionComments.load(
-          sessionId: session.id,
-        );
-        return MapEntry(session.id, comments);
-      }),
-    );
-    final likeEntries = await Future.wait(
-      sessions.map((session) async {
-        final likeState = await _communityModule.getSessionLikeState.load(
-          sessionId: session.id,
-          username: _normalizedUsername(_profileData.handle),
-        );
-        return MapEntry(session.id, likeState);
-      }),
-    );
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _communityUsers = users;
-      _communitySessions = sessions;
-      _followingUsernames = followingUsernames;
-      _followerUsernames = followerUsernames;
-      _sessionCommentsBySessionId =
-          Map<String, List<SessionComment>>.fromEntries(commentsEntries);
-      _sessionLikeStatesBySessionId = Map<String, SessionLikeState>.fromEntries(
-        likeEntries,
+      final commentsEntries = await Future.wait(
+        sessions.map((session) async {
+          final comments = await _communityModule.getSessionComments.load(
+            sessionId: session.id,
+          );
+          return MapEntry(session.id, comments);
+        }),
       );
-    });
+      final likeEntries = await Future.wait(
+        sessions.map((session) async {
+          final likeState = await _communityModule.getSessionLikeState.load(
+            sessionId: session.id,
+            username: _normalizedUsername(_profileData.handle),
+          );
+          return MapEntry(session.id, likeState);
+        }),
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _communityUsers = users;
+        _communitySessions = sessions;
+        _followingUsernames = followingUsernames;
+        _followerUsernames = followerUsernames;
+        _sessionCommentsBySessionId =
+            Map<String, List<SessionComment>>.fromEntries(commentsEntries);
+        _sessionLikeStatesBySessionId =
+            Map<String, SessionLikeState>.fromEntries(likeEntries);
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _communityUsers = const <_CommunityUser>[];
+        _communitySessions = const <_FollowingSession>[];
+        _followingUsernames = const <String>{};
+        _followerUsernames = const <String>[];
+        _sessionCommentsBySessionId = const <String, List<SessionComment>>{};
+        _sessionLikeStatesBySessionId = const <String, SessionLikeState>{};
+      });
+    }
   }
 
   String _normalizedUsername(String handle) {
@@ -902,6 +916,14 @@ class ProfilePageState extends State<ProfilePage> {
       return;
     }
     await _openDirectChat(thread);
+  }
+
+  Future<void> reloadProfileAfterExternalChange() async {
+    await _profileController.loadProfile();
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
   }
 
   Future<void> _startNewDirectChat(DirectChatUserCandidate candidate) async {

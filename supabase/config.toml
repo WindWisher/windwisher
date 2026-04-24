@@ -40,3 +40,6 @@ verify_jwt = false
 
 [functions.direct-message-push]
 verify_jwt = true
+
+[functions.account-deletion-runner]
+verify_jwt = false

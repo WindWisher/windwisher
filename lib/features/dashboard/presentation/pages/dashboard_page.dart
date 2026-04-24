@@ -6,11 +6,19 @@ import 'package:windwisher/core/notifications/direct_message_notification_event.
 import 'package:windwisher/core/notifications/firebase_push_messaging_service.dart';
 import 'package:windwisher/core/notifications/local_notifications_service.dart';
 import 'package:windwisher/app/router/app_routes.dart';
+import 'package:windwisher/core/config/env/env_config.dart';
+import 'package:windwisher/features/auth/presentation/onboarding/first_login_flow_remote_store.dart';
+import 'package:windwisher/features/auth/presentation/onboarding/first_login_flow_store.dart';
+import 'package:windwisher/features/auth/presentation/onboarding/first_login_welcome_dialog.dart';
+import 'package:windwisher/features/auth/presentation/onboarding/terms_and_conditions_dialog.dart';
 import 'package:windwisher/features/dashboard/application/services/dashboard_toolbar_service.dart';
 import 'package:windwisher/features/community/presentation/pages/community_page.dart';
+import 'package:windwisher/features/profile/di/profile_module.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/profile_page.dart';
+import 'package:windwisher/features/profile/presentation/state/profile_controller.dart';
 import 'package:windwisher/features/sessions/presentation/pages/sessions_page.dart';
 import 'package:windwisher/features/spots/presentation/pages/spots_page.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -24,18 +32,28 @@ class _DashboardPageState extends State<DashboardPage> {
   bool _isSessionStartTab = true;
   final DashboardToolbarService _toolbarService =
       const DashboardToolbarService();
+  final FirstLoginFlowStore _firstLoginFlowStore = FirstLoginFlowStore();
+  final FirstLoginFlowRemoteStore _firstLoginFlowRemoteStore =
+      FirstLoginFlowRemoteStore();
   final GlobalKey<SpotsPageState> _spotsKey = GlobalKey<SpotsPageState>();
   final GlobalKey<SessionsPageState> _sessionsKey =
       GlobalKey<SessionsPageState>();
   final GlobalKey<ProfilePageState> _profileKey = GlobalKey<ProfilePageState>();
+  late final ProfileController _onboardingProfileController;
   StreamSubscription<DirectMessageNotificationEvent>?
   _remoteDirectMessageOpenSubscription;
   StreamSubscription<DirectMessageNotificationEvent>?
   _localDirectMessageOpenSubscription;
+  bool _hasStartedFirstLoginFlow = false;
+  bool _isRunningFirstLoginFlow = false;
 
   @override
   void initState() {
     super.initState();
+    final profileModule = EnvConfig.profileLocalPersistenceEnabled
+        ? ProfileModule.auto()
+        : ProfileModule.inMemory();
+    _onboardingProfileController = profileModule.profileController;
     _remoteDirectMessageOpenSubscription = FirebasePushMessagingService
         .instance
         .directMessageOpenStream
@@ -55,6 +73,7 @@ class _DashboardPageState extends State<DashboardPage> {
       if (pendingLocal != null) {
         _handleDirectMessageNotificationOpen(pendingLocal);
       }
+      unawaited(_runFirstLoginFlowIfNeeded());
     });
   }
 
@@ -120,6 +139,131 @@ class _DashboardPageState extends State<DashboardPage> {
     switch (action) {
       case _SessionsToolbarAction.delete:
         await state.deleteSelectedDeviceFromToolbar();
+    }
+  }
+
+  Future<void> _runFirstLoginFlowIfNeeded() async {
+    if (_hasStartedFirstLoginFlow || _isRunningFirstLoginFlow || !mounted) {
+      return;
+    }
+    _hasStartedFirstLoginFlow = true;
+    _isRunningFirstLoginFlow = true;
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null || !mounted) {
+        return;
+      }
+
+      final localState = await _firstLoginFlowStore.loadForUser(user.id);
+      final remoteState = await _safeLoadRemoteFirstLoginFlowState(user.id);
+      var state = localState.merge(remoteState);
+      if (!state.hasAcceptedCurrentTerms) {
+        if (!mounted) {
+          return;
+        }
+        final accepted = await TermsAndConditionsDialog.show(context);
+        if (!mounted) {
+          return;
+        }
+        if (!accepted) {
+          await Supabase.instance.client.auth.signOut();
+          if (!mounted) {
+            return;
+          }
+          context.go(AppRoutes.login);
+          return;
+        }
+        final acceptedAt = DateTime.now().toUtc();
+        state = state.copyWith(
+          acceptedTermsVersion: FirstLoginFlowState.currentTermsVersion,
+          acceptedTermsAtIso: acceptedAt.toIso8601String(),
+        );
+        await _safePersistRemoteTermsAcceptance(
+          userId: user.id,
+          acceptedAtUtc: acceptedAt,
+        );
+        await _firstLoginFlowStore.saveForUser(user.id, state);
+      }
+
+      if (!state.hasCompletedWelcome) {
+        final profile = await _onboardingProfileController.loadProfile();
+        if (!mounted) {
+          return;
+        }
+        final completed = await FirstLoginWelcomeDialog.show(
+          context,
+          initialData: profile,
+          onSave: (updatedProfile) async {
+            await _onboardingProfileController.updateProfile(updatedProfile);
+            return true;
+          },
+          isHandleAvailable: _onboardingProfileController.isHandleAvailable,
+        );
+        if (!mounted) {
+          return;
+        }
+        if (!completed) {
+          await Supabase.instance.client.auth.signOut();
+          if (!mounted) {
+            return;
+          }
+          context.go(AppRoutes.login);
+          return;
+        }
+        final welcomeCompletedAt = DateTime.now().toUtc();
+        await _safePersistRemoteWelcomeCompleted(
+          userId: user.id,
+          completedAtUtc: welcomeCompletedAt,
+        );
+        await _firstLoginFlowStore.saveForUser(
+          user.id,
+          state.copyWith(
+            welcomeCompletedAtIso: welcomeCompletedAt.toIso8601String(),
+          ),
+        );
+        await _profileKey.currentState?.reloadProfileAfterExternalChange();
+      }
+    } finally {
+      _isRunningFirstLoginFlow = false;
+    }
+  }
+
+  Future<FirstLoginFlowState> _safeLoadRemoteFirstLoginFlowState(
+    String userId,
+  ) async {
+    try {
+      return await _firstLoginFlowRemoteStore.loadForUser(userId);
+    } catch (_) {
+      return const FirstLoginFlowState();
+    }
+  }
+
+  Future<void> _safePersistRemoteTermsAcceptance({
+    required String userId,
+    required DateTime acceptedAtUtc,
+  }) async {
+    try {
+      await _firstLoginFlowRemoteStore.saveTermsAcceptance(
+        userId: userId,
+        termsVersion: FirstLoginFlowState.currentTermsVersion,
+        acceptedAtUtc: acceptedAtUtc,
+      );
+    } catch (_) {
+      // Local persistence remains as a fallback if remote write fails.
+    }
+  }
+
+  Future<void> _safePersistRemoteWelcomeCompleted({
+    required String userId,
+    required DateTime completedAtUtc,
+  }) async {
+    try {
+      await _firstLoginFlowRemoteStore.saveWelcomeCompleted(
+        userId: userId,
+        completedAtUtc: completedAtUtc,
+      );
+    } catch (_) {
+      // Local persistence remains as a fallback if remote write fails.
     }
   }
 

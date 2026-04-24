@@ -409,6 +409,77 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
   - regenerar el analisis,
   - validar si reaparece el caso `double_lobe_large_disagreement_raw_override` o si fue especifico de `session_board_mount_02`.
 
+### 2026-04-24 / 2026-04-25 - Perfil / Ajustes: onboarding legal, cuenta y eliminacion automatizada
+
+- Consolidado un bloque amplio sobre `Perfil > Ajustes` para cerrar onboarding legal, sanear la seccion `Cuenta` y dejar operativa la eliminacion automatizada de cuenta con periodo de gracia.
+- Duracion estimada del bloque: `8h`.
+- Onboarding de primer acceso:
+  - anadido flujo de primer login con aceptacion obligatoria de `Terminos y condiciones`,
+  - anadido dialogo de bienvenida para evitar perfiles vacios al primer acceso,
+  - el flujo fuerza al menos `nombre visible` y `handle`,
+  - persistencia dual local + remota del estado de onboarding.
+- Backend de onboarding:
+  - anadidas columnas en `public.profiles` para version aceptada de terminos y finalizacion de bienvenida,
+  - aplicada migracion `20260423213000_add_profile_onboarding_columns.sql`,
+  - el onboarding ya sobrevive a reinstalaciones o cambio de dispositivo.
+- Legal en `Ajustes`:
+  - creados dialogs de solo lectura para `Terminos y condiciones`, `Politica de privacidad` y `Aviso legal`,
+  - centralizado el contenido legal en assets versionados bajo `assets/legal/`,
+  - creada shell visual comun para dialogs legales,
+  - reorganizado `Ajustes` para separar `Informacion legal` del bloque general de app.
+- Comunidad / perfil:
+  - corregida la rotura de `community_leaderboard` tras endurecer la lectura publica de `profiles`,
+  - anadido fallback defensivo en el adapter del leaderboard y blindaje en `ProfilePage`,
+  - aplicada migracion `20260423193000_fix_community_leaderboard_after_profiles_hardening.sql`.
+- Cuenta / UX:
+  - eliminada la accion redundante `Editar perfil` de `Ajustes` al existir ya en la pestana `Perfil`,
+  - `Cuenta` muestra resumen de sesion con email y proveedor de acceso,
+  - implementado dialogo real de `Cambiar contrasena`,
+  - endurecida la UX del dialogo de password:
+    - validacion en vivo,
+    - mostrar/ocultar password,
+    - requisitos visibles,
+    - correccion de overflows en vertical/horizontal,
+    - adaptacion correcta al teclado y a orientacion horizontal.
+- Eliminacion de cuenta - producto:
+  - sustituido el placeholder inicial por un flujo real de autoservicio,
+  - confirmacion fuerte escribiendo manualmente `ELIMINAR CUENTA`,
+  - al confirmar se programa la eliminacion con ventana de gracia de `7 dias`,
+  - el usuario puede anular la solicitud dentro del plazo,
+  - eliminada la idea de revision manual para dejar una logica mas directa.
+- Eliminacion de cuenta - datos y backend:
+  - creada tabla `account_deletion_requests`,
+  - simplificado el ciclo de vida a `scheduled / cancelled / completed`,
+  - endurecidas policies para que el usuario solo pueda cancelar mientras `execute_after > now`,
+  - desplegada Edge Function `account-deletion-runner`,
+  - configurado cron remoto `account-deletion-runner-every-15-min`,
+  - el runner:
+    - solo procesa solicitudes `scheduled`,
+    - exige `confirmed_at` y `execute_after`,
+    - limita lote por ejecucion (`batchSize = 10`),
+    - borra exclusivamente el `user_id` asociado a cada solicitud vencida.
+- Eliminacion de cuenta - auditoria:
+  - anadida tabla `account_deletion_audit`,
+  - cada ejecucion deja rastro persistente aunque despues se elimine `auth.users`,
+  - estados auditados:
+    - `deleted`,
+    - `delete_failed`,
+    - `skipped_invalid_row`.
+- Eliminacion de cuenta - UI final:
+  - el tile `Eliminar cuenta` ya no muestra copy fijo,
+  - si existe solicitud programada, muestra contador real del tiempo restante,
+  - la tarjeta `Cuenta` replica ese estado y el mismo contador,
+  - el dialogo de detalle muestra:
+    - estado,
+    - contador vivo,
+    - fecha de creacion y fecha prevista de ejecucion en formato legible,
+    - resaltado visual segun urgencia.
+- Verificacion:
+  - multiples `dart analyze` limpios sobre `settings_page.dart`,
+  - migraciones aplicadas remotamente con `supabase db push`,
+  - `account-deletion-runner` desplegado y probado en remoto,
+  - cron remoto verificado en `cron.job` como activo cada `15 min`.
+
 ## Proximo paso acordado
 
 - Fase 90 de `sessions` cerrada (sincronizacion multi-sesion desde dispositivo vinculado).

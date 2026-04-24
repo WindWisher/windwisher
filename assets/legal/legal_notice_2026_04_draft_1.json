@@ -1,0 +1,15 @@
+{
+  "version": "2026-04-draft-1",
+  "title": "Aviso legal",
+  "introParagraphs": [
+    "Este aviso legal resume de forma provisional algunas condiciones generales de uso e informacion basica sobre WindWisher dentro de la app.",
+    "Es un texto funcional inicial y debera sustituirse por la version legal definitiva antes de considerarlo cierre normativo."
+  ],
+  "bullets": [
+    "WindWisher es una app en evolucion y algunas funciones, datos o integraciones pueden cambiar con el tiempo.",
+    "El contenido mostrado en la app puede depender de datos aportados por usuarios, sensores, servicios conectados o proveedores externos.",
+    "La informacion mostrada por la app no sustituye recomendaciones profesionales, instrucciones del fabricante ni criterios de seguridad en el agua.",
+    "El usuario debe revisar el uso responsable del producto y valorar por si mismo las condiciones reales de navegacion antes de actuar."
+  ],
+  "closingParagraph": "Si detectas contenido incorrecto o necesitas informacion legal adicional, este bloque podra ampliarse en futuras versiones."
+}
