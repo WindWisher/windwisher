@@ -9,7 +9,7 @@ import 'package:windwisher/features/dashboard/presentation/pages/dashboard_page.
 import 'package:windwisher/features/profile/presentation/pages/admin_console_page.dart';
 import 'package:windwisher/features/profile/presentation/pages/donations_page.dart';
 import 'package:windwisher/features/profile/presentation/pages/faq_page.dart';
-import 'package:windwisher/features/profile/presentation/pages/settings_page.dart';
+import 'package:windwisher/features/profile/presentation/pages/settings/settings_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {

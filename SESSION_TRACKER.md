@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 163h 24m`.
+- `Total historico minimo consolidado del proyecto: 169h 24m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -19,10 +19,11 @@
   - bloque consolidado adicional en `2026-04-12`: `+7h` estimadas
   - bloque consolidado adicional en `2026-04-23`: `+12h` estimadas (`WOO reverse engineering`)
   - bloque consolidado adicional en `2026-04-23`: `+4h` estimadas (`WOO Big Air model refinement`)
+  - bloque consolidado adicional en `2026-04-25`: `+6h` estimadas (`Perfil > Ajustes modularization and dependency cleanup`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-04-23`: `+4h` estimadas (`WOO Big Air model refinement`).
+  - ultima consolidacion manual anadida el `2026-04-25`: `+6h` estimadas (`Perfil > Ajustes modularization and dependency cleanup`).
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
 
@@ -479,6 +480,67 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
   - migraciones aplicadas remotamente con `supabase db push`,
   - `account-deletion-runner` desplegado y probado en remoto,
   - cron remoto verificado en `cron.job` como activo cada `15 min`.
+
+### 2026-04-25 - Perfil / Ajustes: modularizacion final y saneado de dependencias
+
+- Continuado el trabajo de `Perfil > Ajustes` para dejar la pagina ya muy cerca de un coordinador puro y limpiar residuos tecnicos que seguian mezclados con UI.
+- Duracion estimada del bloque: `6h`.
+- Reorganizacion de `settings`:
+  - movida la pagina de ajustes a `lib/features/profile/presentation/pages/settings/settings_page.dart`,
+  - creada estructura por apartados dentro de `settings/`:
+    - `units`,
+    - `notifications`,
+    - `app`,
+    - `legal`,
+    - `roles`,
+    - `account`,
+    - `widgets`,
+  - extraidos widgets base compartidos para tarjetas y tiles de ajustes.
+- Cuenta / dialogs:
+  - extraido `ChangePasswordDialog` a `settings/account/dialogs/change_password_dialog.dart`,
+  - extraido `DeleteAccountDialog` a `settings/account/dialogs/delete_account_dialog.dart`,
+  - eliminado el dialogo inline legacy que seguia viviendo dentro de `settings_page.dart`.
+- Cuenta / estado y datos:
+  - centralizada la logica de estado de eliminacion de cuenta en `account_deletion_request_presenter.dart`,
+  - extraido acceso a datos de solicitudes de borrado a `account_deletion_request_repository.dart`,
+  - extraido resumen de sesion de cuenta a:
+    - `account_session_summary.dart`,
+    - `account_session_repository.dart`,
+  - `AccountSettingsSection` pasa a consumir ya un resumen semantico de sesion en vez de datos sueltos.
+- Roles / acceso:
+  - extraido acceso a roles reales a `roles/user_roles_repository.dart`,
+  - modelado el acceso visible de paneles con `roles/role_panels_access.dart`,
+  - `RolePanelsSettingsSection` deja de recibir una coleccion de booleans sueltos y pasa a consumir un objeto de acceso mas expresivo.
+- Notificaciones:
+  - movido el flujo de activacion/desactivacion push a `notifications/notifications_settings_controller.dart`,
+  - centralizados:
+    - permiso local,
+    - refresh de registro Firebase,
+    - mapeo de estado push,
+    - mensajes de resultado,
+    - ofuscado de token.
+- App / Legal:
+  - extraidos launchers para acciones de `App` y `Informacion legal`:
+    - `app/app_settings_launcher.dart`,
+    - `legal/legal_settings_launcher.dart`,
+  - `settings_page.dart` deja de importar directamente dialogs legales y `language_picker`.
+- Limpieza de obsolescencias en `Ajustes`:
+  - eliminada la version hardcodeada `2.0.0`,
+  - anadido `package_info_plus` y carga real de version desde `app/app_version_repository.dart`,
+  - reemplazadas rutas string `'/settings/faq'` y `'/settings/donations'` por `AppRoutes`,
+  - ocultados paneles de rol que seguian siendo puro placeholder (`moderator`, `manager`, `vip`) para no exponer UI provisional.
+- Dependencias / build:
+  - detectado que el fallo Android tras anadir `package_info_plus` venia de estado stale de Flutter/Gradle y no del plugin en si,
+  - ejecutada regeneracion limpia (`flutter clean` + `flutter pub get`),
+  - eliminado el `dependency_overrides` obsoleto de `webview_flutter_wkwebview`,
+  - resuelta la alineacion de la familia `webview_flutter`,
+  - desaparecen:
+    - el error de compilacion `PackageInfoPlugin`,
+    - el warning repetido de `webview_flutter_wkwebview` desalineado.
+- Verificacion:
+  - multiples `dart analyze lib/features/profile/presentation/pages/settings` limpios durante la refactorizacion,
+  - `flutter pub get` correcto tras actualizar dependencias,
+  - generado APK debug correctamente en `build/app/outputs/apk/debug/app-debug.apk`.
 
 ## Proximo paso acordado
 
