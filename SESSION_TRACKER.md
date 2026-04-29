@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 190h 24m`.
+- `Total historico minimo consolidado del proyecto: 188h 54m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -22,11 +22,12 @@
   - bloque consolidado adicional en `2026-04-25`: `+6h` estimadas (`Perfil > Ajustes modularization and dependency cleanup`)
   - bloque consolidado adicional en `2026-04-30`: `+18h` estimadas (`Onboarding legal, roles/admin panels and Puertos del Estado forecast integration`)
   - bloque consolidado adicional en `2026-04-30`: `+1h` estimada (`Live spots: AEMET Oliva check and compass correction`)
-  - bloque consolidado adicional en `2026-04-30`: `+2h` estimadas (`Local spot alarm notifications`)
+  - bloque consolidado adicional en `2026-04-30`: `+30m` reales (`Local spot alarm notifications`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-04-30`: `+2h` estimadas (`Local spot alarm notifications`).
+  - ultima consolidacion manual anadida el `2026-04-30`: `+30m` reales (`Local spot alarm notifications`).
+  - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
 
@@ -47,7 +48,7 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 
 ### 2026-04-30 - Notificaciones locales de alarmas de spots
 
-- Bloque consolidado adicional: `+2h` estimadas.
+- Bloque consolidado adicional: `+30m` reales.
 - Cableado el disparo local de alarmas desde el apartado `Live` de spots:
   - al refrescar datos live se evaluan las alarmas guardadas del spot,
   - si viento, direccion y horario coinciden, se lanza `LocalNotificationsService.showSpotAlarm`,
