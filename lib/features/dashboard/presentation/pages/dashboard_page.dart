@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:windwisher/core/notifications/direct_message_notification_event.dart';
 import 'package:windwisher/core/notifications/firebase_push_messaging_service.dart';
 import 'package:windwisher/core/notifications/local_notifications_service.dart';
+import 'package:windwisher/core/notifications/spot_alarm_notification_event.dart';
 import 'package:windwisher/app/router/app_routes.dart';
 import 'package:windwisher/features/auth/presentation/onboarding/first_login_flow_remote_store.dart';
 import 'package:windwisher/features/auth/presentation/onboarding/first_login_flow_store.dart';
@@ -42,6 +43,8 @@ class _DashboardPageState extends State<DashboardPage> {
   _remoteDirectMessageOpenSubscription;
   StreamSubscription<DirectMessageNotificationEvent>?
   _localDirectMessageOpenSubscription;
+  StreamSubscription<SpotAlarmNotificationEvent>?
+  _localSpotAlarmOpenSubscription;
   bool _hasStartedFirstLoginFlow = false;
   bool _isRunningFirstLoginFlow = false;
 
@@ -58,6 +61,10 @@ class _DashboardPageState extends State<DashboardPage> {
         .instance
         .directMessageOpenStream
         .listen(_handleDirectMessageNotificationOpen);
+    _localSpotAlarmOpenSubscription = LocalNotificationsService
+        .instance
+        .spotAlarmOpenStream
+        .listen(_handleSpotAlarmNotificationOpen);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final pendingRemote = FirebasePushMessagingService.instance
           .consumePendingDirectMessageOpen();
@@ -68,6 +75,11 @@ class _DashboardPageState extends State<DashboardPage> {
           .consumePendingDirectMessageOpen();
       if (pendingLocal != null) {
         _handleDirectMessageNotificationOpen(pendingLocal);
+      }
+      final pendingSpotAlarm = LocalNotificationsService.instance
+          .consumePendingSpotAlarmOpen();
+      if (pendingSpotAlarm != null) {
+        _handleSpotAlarmNotificationOpen(pendingSpotAlarm);
       }
       unawaited(_runFirstLoginFlowIfNeeded());
     });
@@ -119,6 +131,27 @@ class _DashboardPageState extends State<DashboardPage> {
       final profileState = _profileKey.currentState;
       if (profileState != null) {
         await profileState.openDirectChatFromNotification(event.threadId);
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+    }
+  }
+
+  Future<void> _handleSpotAlarmNotificationOpen(
+    SpotAlarmNotificationEvent event,
+  ) async {
+    if (!mounted) {
+      return;
+    }
+    if (_selectedIndex != 3) {
+      setState(() {
+        _selectedIndex = 3;
+      });
+    }
+    for (var attempt = 0; attempt < 10; attempt += 1) {
+      final profileState = _profileKey.currentState;
+      if (profileState != null) {
+        profileState.openAlarmsFromNotification();
         return;
       }
       await Future<void>.delayed(const Duration(milliseconds: 120));
@@ -219,6 +252,7 @@ class _DashboardPageState extends State<DashboardPage> {
   void dispose() {
     _remoteDirectMessageOpenSubscription?.cancel();
     _localDirectMessageOpenSubscription?.cancel();
+    _localSpotAlarmOpenSubscription?.cancel();
     super.dispose();
   }
 

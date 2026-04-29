@@ -8,6 +8,7 @@ import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:windwisher/core/notifications/direct_message_notification_event.dart';
 import 'package:windwisher/core/notifications/spot_alarm_cycle_runtime_service.dart';
+import 'package:windwisher/core/notifications/spot_alarm_notification_event.dart';
 import 'package:windwisher/features/spots/presentation/state/spot_alarm_catalog.dart';
 
 @pragma('vm:entry-point')
@@ -54,16 +55,28 @@ class LocalNotificationsService {
   final StreamController<DirectMessageNotificationEvent>
   _directMessageOpenController =
       StreamController<DirectMessageNotificationEvent>.broadcast();
+  final StreamController<SpotAlarmNotificationEvent> _spotAlarmOpenController =
+      StreamController<SpotAlarmNotificationEvent>.broadcast();
   DirectMessageNotificationEvent? _pendingDirectMessageOpen;
+  SpotAlarmNotificationEvent? _pendingSpotAlarmOpen;
   bool _initialized = false;
   bool _timezoneInitialized = false;
 
   Stream<DirectMessageNotificationEvent> get directMessageOpenStream =>
       _directMessageOpenController.stream;
 
+  Stream<SpotAlarmNotificationEvent> get spotAlarmOpenStream =>
+      _spotAlarmOpenController.stream;
+
   DirectMessageNotificationEvent? consumePendingDirectMessageOpen() {
     final pending = _pendingDirectMessageOpen;
     _pendingDirectMessageOpen = null;
+    return pending;
+  }
+
+  SpotAlarmNotificationEvent? consumePendingSpotAlarmOpen() {
+    final pending = _pendingSpotAlarmOpen;
+    _pendingSpotAlarmOpen = null;
     return pending;
   }
 
@@ -304,6 +317,8 @@ class LocalNotificationsService {
       'type': 'spot_alarm',
       'alarmId': alarmId,
       'cycleId': cycleId,
+      'title': title,
+      'body': body,
       'repeatWindow': repeatWindow.name,
       'maxRepeats': '$maxRepeats',
       'occurrenceIndex': '$occurrenceIndex',
@@ -322,8 +337,8 @@ class LocalNotificationsService {
           priority: Priority.max,
           category: AndroidNotificationCategory.alarm,
           fullScreenIntent: true,
-          autoCancel: false,
-          ongoing: true,
+          autoCancel: true,
+          ongoing: false,
           audioAttributesUsage: AudioAttributesUsage.alarm,
           vibrationPattern: Int64List.fromList(<int>[0, 900, 300, 900]),
           actions: <AndroidNotificationAction>[
@@ -388,6 +403,8 @@ class LocalNotificationsService {
         'type': 'spot_alarm',
         'alarmId': alarmId,
         'cycleId': cycleId,
+        'title': title,
+        'body': body,
         'repeatWindow': repeatWindow.name,
         'maxRepeats': '$maxRepeats',
         'occurrenceIndex': '$occurrenceIndex',
@@ -409,8 +426,8 @@ class LocalNotificationsService {
               priority: Priority.max,
               category: AndroidNotificationCategory.alarm,
               fullScreenIntent: true,
-              autoCancel: false,
-              ongoing: true,
+              autoCancel: true,
+              ongoing: false,
               audioAttributesUsage: AudioAttributesUsage.alarm,
               vibrationPattern: Int64List.fromList(<int>[0, 900, 300, 900]),
               actions: <AndroidNotificationAction>[
@@ -460,8 +477,8 @@ class LocalNotificationsService {
               priority: Priority.max,
               category: AndroidNotificationCategory.alarm,
               fullScreenIntent: true,
-              autoCancel: false,
-              ongoing: true,
+              autoCancel: true,
+              ongoing: false,
               audioAttributesUsage: AudioAttributesUsage.alarm,
               vibrationPattern: Int64List.fromList(<int>[0, 900, 300, 900]),
               actions: <AndroidNotificationAction>[
@@ -568,6 +585,12 @@ class LocalNotificationsService {
     final alarmId = decoded['alarmId'] as String?;
     final cycleId = decoded['cycleId'] as String?;
     final repeatWindowRaw = decoded['repeatWindow'] as String?;
+    final title = (decoded['title'] as String?)?.trim().isNotEmpty == true
+        ? (decoded['title'] as String).trim()
+        : 'Alarma de spot';
+    final body = (decoded['body'] as String?)?.trim().isNotEmpty == true
+        ? (decoded['body'] as String).trim()
+        : 'La alarma sigue activa.';
     final maxRepeats = int.tryParse(decoded['maxRepeats'] as String? ?? '');
     final occurrenceIndex = int.tryParse(
       decoded['occurrenceIndex'] as String? ?? '',
@@ -585,26 +608,48 @@ class LocalNotificationsService {
       alarmId: alarmId,
       cycleId: cycleId,
     )) {
+      await _cancelNotificationResponse(
+        response: response,
+        alarmId: alarmId,
+        occurrenceIndex: occurrenceIndex,
+      );
       return;
     }
     final actionId = response.actionId;
+    if (actionId == null || actionId.isEmpty) {
+      await _cancelNotificationResponse(
+        response: response,
+        alarmId: alarmId,
+        occurrenceIndex: occurrenceIndex,
+      );
+      final event = SpotAlarmNotificationEvent(alarmId: alarmId);
+      _pendingSpotAlarmOpen = event;
+      _spotAlarmOpenController.add(event);
+      return;
+    }
     if (actionId == _snoozeActionId) {
+      await _cancelNotificationResponse(
+        response: response,
+        alarmId: alarmId,
+        occurrenceIndex: occurrenceIndex,
+      );
       SpotAlarmCatalog.instance.snoozeAlarm(alarmId);
       await cancelAlarmCycle(alarmId: alarmId, maxRepeats: maxRepeats);
       await _scheduleRemainingRepeats(
         alarmId: alarmId,
         cycleId: cycleId,
-        title:
-            response.notificationResponseType ==
-                NotificationResponseType.selectedNotification
-            ? 'Alarma de spot'
-            : (response.payload ?? 'Alarma de spot'),
-        body: 'La alarma sigue activa.',
+        title: title,
+        body: body,
         repeatWindow: _repeatWindowFromName(repeatWindowRaw),
         maxRepeats: maxRepeats,
         completedOccurrences: occurrenceIndex + 1,
       );
     } else if (actionId == _stopActionId) {
+      await _cancelNotificationResponse(
+        response: response,
+        alarmId: alarmId,
+        occurrenceIndex: occurrenceIndex,
+      );
       SpotAlarmCatalog.instance.stopAlarmUntilConditionsReset(alarmId);
       SpotAlarmCycleRuntimeService.instance.stopCycle(
         alarmId: alarmId,
@@ -612,10 +657,23 @@ class LocalNotificationsService {
       );
       await cancelAlarmCycle(alarmId: alarmId, maxRepeats: maxRepeats);
     }
-    final notificationId = response.id;
-    if (notificationId != null) {
-      await _plugin.cancel(id: notificationId);
+    await _cancelNotificationResponse(
+      response: response,
+      alarmId: alarmId,
+      occurrenceIndex: occurrenceIndex,
+    );
+  }
+
+  Future<void> _cancelNotificationResponse({
+    required NotificationResponse response,
+    required String alarmId,
+    required int occurrenceIndex,
+  }) async {
+    final responseId = response.id;
+    if (responseId != null) {
+      await _plugin.cancel(id: responseId);
     }
+    await _plugin.cancel(id: notificationIdForAlarm(alarmId, occurrenceIndex));
   }
 
   @visibleForTesting

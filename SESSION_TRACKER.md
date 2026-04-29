@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 188h 24m`.
+- `Total historico minimo consolidado del proyecto: 190h 24m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -22,10 +22,11 @@
   - bloque consolidado adicional en `2026-04-25`: `+6h` estimadas (`Perfil > Ajustes modularization and dependency cleanup`)
   - bloque consolidado adicional en `2026-04-30`: `+18h` estimadas (`Onboarding legal, roles/admin panels and Puertos del Estado forecast integration`)
   - bloque consolidado adicional en `2026-04-30`: `+1h` estimada (`Live spots: AEMET Oliva check and compass correction`)
+  - bloque consolidado adicional en `2026-04-30`: `+2h` estimadas (`Local spot alarm notifications`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-04-30`: `+1h` estimada (`Live spots: AEMET Oliva check and compass correction`).
+  - ultima consolidacion manual anadida el `2026-04-30`: `+2h` estimadas (`Local spot alarm notifications`).
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
 
@@ -43,6 +44,30 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-04-30 - Notificaciones locales de alarmas de spots
+
+- Bloque consolidado adicional: `+2h` estimadas.
+- Cableado el disparo local de alarmas desde el apartado `Live` de spots:
+  - al refrescar datos live se evaluan las alarmas guardadas del spot,
+  - si viento, direccion y horario coinciden, se lanza `LocalNotificationsService.showSpotAlarm`,
+  - se evita disparo en bucle marcando el ciclo como ya lanzado,
+  - cuando las condiciones dejan de cumplirse se cancelan avisos pendientes y se resetea la alarma para futuros disparos.
+- Ajustado el ciclo de vida de notificaciones locales:
+  - al borrar una alarma se cancelan sus notificaciones programadas,
+  - una alarma desactivada ya no se evalua como activa,
+  - las notificaciones de alarma dejan de ser `ongoing` para no quedarse permanentes en Android,
+  - `autoCancel` queda activo y se cancela explicitamente por `response.id` y por id calculado.
+- Corregida la semantica de acciones de la notificacion:
+  - `Posponer` cancela solo el aviso visible actual, marca la alarma como pospuesta y reprograma los avisos restantes,
+  - `Parar` cancela el aviso visible, detiene el ciclo completo y bloquea la alarma hasta que cambien/resetee la condicion,
+  - los avisos reprogramados conservan titulo y cuerpo original desde el payload.
+- Anadida navegacion desde notificacion:
+  - al pulsar la notificacion principal, la app abre `Perfil > Alarmas`,
+  - `Posponer` y `Parar` no navegan, solo ejecutan su accion,
+  - se soporta evento pendiente si la app arranca desde la notificacion.
+- Verificaciones ejecutadas:
+  - `flutter analyze lib/core/notifications/local_notifications_service.dart lib/core/notifications/spot_alarm_notification_event.dart lib/features/dashboard/presentation/pages/dashboard_page.dart lib/features/profile/presentation/pages/profile/profile_page.dart lib/features/spots/presentation/pages/spot_detail_page.dart` limpio.
 
 ### 2026-04-30 - Live spots: chequeo AEMET Oliva y brujula
 

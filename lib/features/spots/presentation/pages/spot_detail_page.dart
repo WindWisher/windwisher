@@ -12,6 +12,7 @@ import 'package:latlong2/latlong.dart' hide Path;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
+import 'package:windwisher/core/notifications/local_notifications_service.dart';
 import 'package:windwisher/core/platform/web_compass.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
@@ -2709,7 +2710,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         }
       });
       await _refreshSelectedStationLiveData();
-      await _refreshAlarmStationsLiveData(_savedAlarmsForCurrentSpot());
+      final savedAlarms = _savedAlarmsForCurrentSpot();
+      await _refreshAlarmStationsLiveData(savedAlarms);
+      await _processLocalAlarmNotifications(savedAlarms);
       _syncAlarmMonitoring();
     } finally {
       if (mounted) {
@@ -2873,6 +2876,61 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         technicalError: currentResult.technicalError,
       );
     });
+  }
+
+  Future<void> _processLocalAlarmNotifications(
+    List<SpotAlarmRecord> alarms,
+  ) async {
+    if (alarms.isEmpty) {
+      return;
+    }
+    final catalog = SpotAlarmCatalog.instance;
+    for (final alarm in alarms) {
+      final evaluation = _evaluateAlarm(alarm);
+      if (evaluation.state == _AlarmEvaluationState.active) {
+        if (alarm.triggerCount >= alarm.maxRepeats) {
+          continue;
+        }
+        await LocalNotificationsService.instance.showSpotAlarm(
+          alarmId: alarm.id,
+          title: 'Alarma activa en ${alarm.spotName}',
+          body: _localAlarmNotificationBody(alarm),
+          repeatWindow: alarm.repeatWindow,
+          maxRepeats: alarm.maxRepeats,
+        );
+        catalog.updateTriggerState(
+          alarmId: alarm.id,
+          triggerCount: alarm.maxRepeats,
+          lastTriggeredAt: DateTime.now(),
+        );
+        continue;
+      }
+
+      final shouldReset =
+          evaluation.state == _AlarmEvaluationState.idle ||
+          evaluation.state == _AlarmEvaluationState.partial ||
+          evaluation.state == _AlarmEvaluationState.disabled;
+      if (!shouldReset ||
+          (alarm.triggerCount == 0 && alarm.lastTriggeredAt == null)) {
+        continue;
+      }
+      await LocalNotificationsService.instance.cancelAlarmCycle(
+        alarmId: alarm.id,
+        maxRepeats: alarm.maxRepeats,
+      );
+      catalog.updateTriggerState(
+        alarmId: alarm.id,
+        triggerCount: 0,
+        clearLastTriggeredAt: true,
+      );
+    }
+  }
+
+  String _localAlarmNotificationBody(SpotAlarmRecord alarm) {
+    final liveData = _resolvedLiveDataByStation()[alarm.stationKey];
+    final wind = _formatWind(liveData?.windKnots);
+    final direction = _directionBucketLabel(liveData?.windDeg) ?? 'sin dir.';
+    return '${alarm.stationName}: $wind $direction · objetivo ${_formatAlarmWindRange(alarm.windRange)}';
   }
 
   Future<_StationLiveData?> _fetchLiveDataForStation(
@@ -6821,6 +6879,12 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                           _editingAlarmId = null;
                           _syncAlarmMonitoring();
                         });
+                        await _processLocalAlarmNotifications(
+                          _savedAlarmsForCurrentSpot(),
+                        );
+                        if (!mounted) {
+                          return;
+                        }
                         if (!wasEditing) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -7020,13 +7084,32 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                                   if (!confirmed || !mounted) {
                                     return;
                                   }
+                                  await LocalNotificationsService.instance
+                                      .cancelAlarmCycle(
+                                        alarmId: alarm.id,
+                                        maxRepeats: alarm.maxRepeats,
+                                      );
+                                  final deleted = await catalog.deleteAlarm(
+                                    alarm.id,
+                                  );
+                                  if (!mounted) {
+                                    return;
+                                  }
                                   setState(() {
-                                    catalog.deleteAlarm(alarm.id);
                                     if (_editingAlarmId == alarm.id) {
                                       _editingAlarmId = null;
                                     }
                                     _syncAlarmMonitoring();
                                   });
+                                  if (!deleted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'La alarma se elimino localmente, pero no se pudo sincronizar: ${catalog.lastSyncError ?? 'error desconocido'}',
+                                        ),
+                                      ),
+                                    );
+                                  }
                                 },
                                 icon: const Icon(Icons.delete_outline_rounded),
                               ),
@@ -7197,6 +7280,12 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   _AlarmEvaluation _evaluateAlarm(SpotAlarmRecord alarm) {
     final catalog = SpotAlarmCatalog.instance;
+    if (!alarm.enabled) {
+      return const _AlarmEvaluation(
+        state: _AlarmEvaluationState.disabled,
+        label: 'Alarma desactivada',
+      );
+    }
     if (!catalog.globalEnabled) {
       return const _AlarmEvaluation(
         state: _AlarmEvaluationState.disabled,

@@ -220,7 +220,9 @@ class ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _refreshMessagesSilently() async {
-    final previousThreads = List<DirectMessageThread>.from(_directMessageThreads);
+    final previousThreads = List<DirectMessageThread>.from(
+      _directMessageThreads,
+    );
     await _messagesController.hydrate();
     if (!mounted) {
       return;
@@ -253,7 +255,8 @@ class ProfilePageState extends State<ProfilePage> {
       }
       await LocalNotificationsService.instance.showDirectMessage(
         threadId: thread.id,
-        messageId: 'foreground-${thread.id}-${thread.lastActivity.millisecondsSinceEpoch}',
+        messageId:
+            'foreground-${thread.id}-${thread.lastActivity.millisecondsSinceEpoch}',
         senderName: thread.participant,
         body: thread.preview,
       );
@@ -916,6 +919,15 @@ class ProfilePageState extends State<ProfilePage> {
       return;
     }
     await _openDirectChat(thread);
+  }
+
+  void openAlarmsFromNotification() {
+    if (_selectedTabIndex == 1) {
+      return;
+    }
+    setState(() {
+      _selectedTabIndex = 1;
+    });
   }
 
   Future<void> reloadProfileAfterExternalChange() async {
