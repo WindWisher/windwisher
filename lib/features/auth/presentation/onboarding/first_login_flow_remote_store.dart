@@ -11,7 +11,6 @@ class FirstLoginFlowRemoteStore {
 
   final SupabaseClient _client;
   final Set<String> _unsupportedSelectColumns = <String>{};
-  final Set<String> _unsupportedUpdateColumns = <String>{};
 
   Future<FirstLoginFlowState> loadForUser(String userId) async {
     final row = await _selectProfileRow(userId);
@@ -30,21 +29,25 @@ class FirstLoginFlowRemoteStore {
     required String termsVersion,
     required DateTime acceptedAtUtc,
   }) async {
-    await _upsertProfileColumns(<String, dynamic>{
-      'id': userId,
-      _acceptedTermsVersionColumn: termsVersion,
-      _acceptedTermsAtColumn: acceptedAtUtc.toUtc().toIso8601String(),
-    });
+    await _client.rpc(
+      'mark_terms_acceptance',
+      params: <String, dynamic>{
+        'terms_version': termsVersion,
+        'accepted_at_utc': acceptedAtUtc.toUtc().toIso8601String(),
+      },
+    );
   }
 
   Future<void> saveWelcomeCompleted({
     required String userId,
     required DateTime completedAtUtc,
   }) async {
-    await _upsertProfileColumns(<String, dynamic>{
-      'id': userId,
-      _welcomeCompletedAtColumn: completedAtUtc.toUtc().toIso8601String(),
-    });
+    await _client.rpc(
+      'mark_onboarding_welcome_completed',
+      params: <String, dynamic>{
+        'completed_at_utc': completedAtUtc.toUtc().toIso8601String(),
+      },
+    );
   }
 
   Future<Map<String, dynamic>?> _selectProfileRow(String userId) async {
@@ -65,30 +68,12 @@ class FirstLoginFlowRemoteStore {
           .maybeSingle();
     } catch (error) {
       final unsupportedColumn = _extractUnsupportedProfileColumn(error);
-      if (unsupportedColumn == null || !selectColumns.contains(unsupportedColumn)) {
+      if (unsupportedColumn == null ||
+          !selectColumns.contains(unsupportedColumn)) {
         rethrow;
       }
       _unsupportedSelectColumns.add(unsupportedColumn);
       return _selectProfileRow(userId);
-    }
-  }
-
-  Future<void> _upsertProfileColumns(Map<String, dynamic> payload) async {
-    final filteredPayload = Map<String, dynamic>.from(payload)
-      ..removeWhere((key, _) => _unsupportedUpdateColumns.contains(key));
-
-    try {
-      await _client.from('profiles').upsert(filteredPayload);
-    } catch (error) {
-      final unsupportedColumn = _extractUnsupportedProfileColumn(error);
-      if (unsupportedColumn == null ||
-          !filteredPayload.containsKey(unsupportedColumn)) {
-        rethrow;
-      }
-      _unsupportedUpdateColumns.add(unsupportedColumn);
-      final fallbackPayload = Map<String, dynamic>.from(filteredPayload)
-        ..remove(unsupportedColumn);
-      await _client.from('profiles').upsert(fallbackPayload);
     }
   }
 

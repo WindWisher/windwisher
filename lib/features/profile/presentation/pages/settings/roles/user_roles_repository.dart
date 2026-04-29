@@ -10,7 +10,7 @@ class UserRolesRepository {
       return const <String>{};
     }
 
-    final rows = await client.from('user_roles').select('role').eq('user_id', userId);
+    final rows = await client.rpc('current_user_roles');
 
     return (rows as List<dynamic>)
         .whereType<Map<String, dynamic>>()

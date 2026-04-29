@@ -4,6 +4,6 @@ abstract final class AppRoutes {
   static const dashboard = '/dashboard';
   static const settings = '/settings';
   static const adminConsole = '/settings/admin';
+  static const superAdminConsole = '/settings/super-admin';
   static const faq = '/settings/faq';
-  static const donations = '/settings/donations';
 }

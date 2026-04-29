@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 
-class LegalDocumentDialogShell extends StatelessWidget {
+class LegalDocumentDialogShell extends StatefulWidget {
   const LegalDocumentDialogShell({
     super.key,
     required this.title,
@@ -11,6 +11,7 @@ class LegalDocumentDialogShell extends StatelessWidget {
     required this.closingParagraph,
     this.requireAcceptance = false,
     this.isLoading = false,
+    this.requireScrollToAccept = false,
   });
 
   final String title;
@@ -20,10 +21,65 @@ class LegalDocumentDialogShell extends StatelessWidget {
   final String closingParagraph;
   final bool requireAcceptance;
   final bool isLoading;
+  final bool requireScrollToAccept;
+
+  @override
+  State<LegalDocumentDialogShell> createState() =>
+      _LegalDocumentDialogShellState();
+}
+
+class _LegalDocumentDialogShellState extends State<LegalDocumentDialogShell> {
+  late final ScrollController _scrollController;
+  bool _hasReachedEnd = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController()..addListener(_updateHasReachedEnd);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateHasReachedEnd());
+  }
+
+  @override
+  void didUpdateWidget(covariant LegalDocumentDialogShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isLoading != widget.isLoading ||
+        oldWidget.bullets.length != widget.bullets.length ||
+        oldWidget.introParagraphs.length != widget.introParagraphs.length ||
+        oldWidget.closingParagraph != widget.closingParagraph) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _updateHasReachedEnd(),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_updateHasReachedEnd)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _updateHasReachedEnd() {
+    if (!mounted || !_scrollController.hasClients) {
+      return;
+    }
+    final position = _scrollController.position;
+    final reachedEnd =
+        position.maxScrollExtent <= 0 ||
+        position.pixels >= position.maxScrollExtent - 12;
+    if (reachedEnd != _hasReachedEnd) {
+      setState(() => _hasReachedEnd = reachedEnd);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final acceptEnabled =
+        widget.requireAcceptance &&
+        !widget.isLoading &&
+        (!widget.requireScrollToAccept || _hasReachedEnd);
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
@@ -73,7 +129,7 @@ class LegalDocumentDialogShell extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          title,
+                          widget.title,
                           style: textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
@@ -82,13 +138,15 @@ class LegalDocumentDialogShell extends StatelessWidget {
                         Text(
                           'Documento legal consultable dentro de la app',
                           style: textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  if (!requireAcceptance)
+                  if (!widget.requireAcceptance)
                     IconButton(
                       tooltip: 'Cerrar',
                       onPressed: () => Navigator.of(context).pop(),
@@ -100,21 +158,26 @@ class LegalDocumentDialogShell extends StatelessWidget {
             const Divider(height: 1),
             Expanded(
               child: ListView(
+                controller: _scrollController,
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 children: [
-                  if (isLoading) ...[
+                  if (widget.isLoading) ...[
                     const LinearProgressIndicator(),
                     const SizedBox(height: AppSpacing.md),
                   ],
-                  for (var index = 0; index < introParagraphs.length; index++) ...[
-                    _LegalParagraph(introParagraphs[index]),
-                    if (index < introParagraphs.length - 1)
+                  for (
+                    var index = 0;
+                    index < widget.introParagraphs.length;
+                    index++
+                  ) ...[
+                    _LegalParagraph(widget.introParagraphs[index]),
+                    if (index < widget.introParagraphs.length - 1)
                       const SizedBox(height: AppSpacing.sm),
                   ],
                   const SizedBox(height: AppSpacing.md),
-                  for (final bullet in bullets) _LegalBullet(bullet),
+                  for (final bullet in widget.bullets) _LegalBullet(bullet),
                   const SizedBox(height: AppSpacing.md),
-                  _LegalParagraph(closingParagraph),
+                  _LegalParagraph(widget.closingParagraph),
                   const SizedBox(height: AppSpacing.md),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -122,11 +185,13 @@ class LegalDocumentDialogShell extends StatelessWidget {
                       vertical: AppSpacing.xs,
                     ),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
-                      'Version: $version',
+                      'Version: ${widget.version}',
                       style: textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -143,13 +208,17 @@ class LegalDocumentDialogShell extends StatelessWidget {
                   TextButton(
                     onPressed: () => Navigator.of(
                       context,
-                    ).pop(requireAcceptance ? false : null),
-                    child: Text(requireAcceptance ? 'Salir' : 'Cerrar'),
+                    ).pop(widget.requireAcceptance ? false : null),
+                    child: Text(
+                      widget.requireAcceptance ? 'Cancelar' : 'Cerrar',
+                    ),
                   ),
                   const Spacer(),
-                  if (requireAcceptance)
+                  if (widget.requireAcceptance)
                     FilledButton(
-                      onPressed: () => Navigator.of(context).pop(true),
+                      onPressed: acceptEnabled
+                          ? () => Navigator.of(context).pop(true)
+                          : null,
                       child: const Text('Aceptar y continuar'),
                     ),
                 ],

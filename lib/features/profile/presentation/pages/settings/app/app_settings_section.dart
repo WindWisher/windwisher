@@ -3,7 +3,7 @@ import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/features/profile/presentation/pages/settings/widgets/settings_section_card.dart';
 import 'package:windwisher/features/profile/presentation/pages/settings/widgets/settings_tile.dart';
 
-class AppSettingsSection extends StatelessWidget {
+class AppSettingsSection extends StatefulWidget {
   const AppSettingsSection({
     super.key,
     required this.languageTitle,
@@ -11,7 +11,6 @@ class AppSettingsSection extends StatelessWidget {
     required this.versionLabel,
     required this.onLanguageTap,
     required this.onFaqTap,
-    required this.onDonationsTap,
   });
 
   final String languageTitle;
@@ -19,21 +18,40 @@ class AppSettingsSection extends StatelessWidget {
   final String versionLabel;
   final VoidCallback onLanguageTap;
   final VoidCallback onFaqTap;
-  final VoidCallback onDonationsTap;
+
+  @override
+  State<AppSettingsSection> createState() => _AppSettingsSectionState();
+}
+
+class _AppSettingsSectionState extends State<AppSettingsSection> {
+  bool _isExpanded = false;
 
   @override
   Widget build(BuildContext context) {
     return SettingsSectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: ExpansionTile(
+        initiallyExpanded: _isExpanded,
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: EdgeInsets.zero,
+        maintainState: true,
+        leading: const Icon(Icons.apps_outlined),
+        title: Text('App', style: Theme.of(context).textTheme.titleMedium),
+        subtitle: Text(
+          _isExpanded ? 'Preferencias y ayuda' : widget.versionLabel,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        onExpansionChanged: (value) {
+          setState(() => _isExpanded = value);
+        },
         children: [
-          Text('App', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.xs),
           SettingsTile(
-            title: languageTitle,
-            subtitle: languageLabel,
+            title: widget.languageTitle,
+            subtitle: widget.languageLabel,
             icon: Icons.language,
-            onTap: onLanguageTap,
+            onTap: widget.onLanguageTap,
           ),
           const SettingsTile(
             title: 'Tema',
@@ -42,18 +60,13 @@ class AppSettingsSection extends StatelessWidget {
           ),
           SettingsTile(
             title: 'Version',
-            subtitle: versionLabel,
+            subtitle: widget.versionLabel,
             icon: Icons.info_outline,
           ),
           SettingsTile(
             title: 'FAQ',
             icon: Icons.help_outline,
-            onTap: onFaqTap,
-          ),
-          SettingsTile(
-            title: 'Donaciones',
-            icon: Icons.favorite,
-            onTap: onDonationsTap,
+            onTap: widget.onFaqTap,
           ),
         ],
       ),

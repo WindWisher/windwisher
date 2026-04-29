@@ -1,0 +1,18 @@
+{
+  "version": "2026-05-draft-1",
+  "title": "Terminos y condiciones",
+  "introParagraphs": [
+    "Estos terminos regulan el acceso y uso de WindWisher como app orientada a viento, spots, sesiones, comunidad y herramientas de apoyo para actividades en el agua.",
+    "Se trata de un borrador de producto mucho mas alineado con el funcionamiento real de la app en Espana. Sigue siendo una version de trabajo y debe pasar revision legal final antes de considerarse texto definitivo."
+  ],
+  "bullets": [
+    "Para usar ciertas funciones de WindWisher necesitas una cuenta y eres responsable de custodiar tus credenciales, asi como de la actividad realizada desde tu acceso.",
+    "La app puede permitir crear perfil, guardar sesiones, registrar material, participar en rankings, seguir a otros usuarios, enviar mensajes, comentar y compartir contenido o metricas deportivas.",
+    "Parte de la informacion de tu cuenta o de tus sesiones puede mostrarse dentro de superficies publicas o comunitarias del producto si asi lo permite la configuracion y el diseno funcional de la app.",
+    "No puedes usar WindWisher para manipular rankings, falsear sesiones, suplantar identidad, subir contenido ilicito, acosar a otros usuarios ni interferir tecnicamente con el servicio.",
+    "WindWisher puede suspender funciones, moderar contenido o limitar cuentas cuando sea necesario para seguridad, cumplimiento normativo, integridad del producto o proteccion de la comunidad.",
+    "Las metricas, rankings, integraciones, sesiones y resultados mostrados por la app pueden incluir calculos automaticos, estimaciones o datos de terceros, por lo que no constituyen una garantia tecnica absoluta.",
+    "El uso de la app no sustituye el criterio personal del usuario, la observacion del entorno, las normas locales, las instrucciones del fabricante ni las decisiones de seguridad en el agua."
+  ],
+  "closingParagraph": "Si no aceptas estos terminos, no debes usar WindWisher ni completar el acceso inicial a la app."
+}

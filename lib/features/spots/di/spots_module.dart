@@ -12,6 +12,7 @@ import 'package:windwisher/features/spots/infrastructure/adapters/meteoblue/mete
 import 'package:windwisher/features/spots/infrastructure/adapters/meteostat/meteostat_spots_forecast_adapter.dart';
 import 'package:windwisher/features/spots/infrastructure/adapters/meteosource/meteosource_spots_forecast_adapter.dart';
 import 'package:windwisher/features/spots/infrastructure/adapters/open_meteo/open_meteo_spots_forecast_adapter.dart';
+import 'package:windwisher/features/spots/infrastructure/adapters/portus/portus_spots_forecast_adapter.dart';
 import 'package:windwisher/features/spots/infrastructure/adapters/supabase/supabase_spots_catalog_adapter.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 
@@ -41,6 +42,7 @@ class SpotsModule {
       meteoblueAdapter: MeteoblueSpotsForecastAdapter(),
       meteosourceAdapter: MeteosourceSpotsForecastAdapter(),
       meteostatAdapter: MeteostatSpotsForecastAdapter(),
+      portusAdapter: PortusSpotsForecastAdapter(),
     );
     final remoteMediaPort = InMemorySpotsRemoteMediaAdapter();
     return SpotsModule(
@@ -66,6 +68,7 @@ class SpotsModule {
       meteoblueAdapter: MeteoblueSpotsForecastAdapter(),
       meteosourceAdapter: MeteosourceSpotsForecastAdapter(),
       meteostatAdapter: MeteostatSpotsForecastAdapter(),
+      portusAdapter: PortusSpotsForecastAdapter(),
     );
     final remoteMediaPort = InMemorySpotsRemoteMediaAdapter();
     return SpotsModule(
@@ -93,6 +96,7 @@ class SpotsModule {
       meteoblueAdapter: MeteoblueSpotsForecastAdapter(),
       meteosourceAdapter: MeteosourceSpotsForecastAdapter(),
       meteostatAdapter: MeteostatSpotsForecastAdapter(),
+      portusAdapter: PortusSpotsForecastAdapter(),
     );
     final remoteMediaPort = InMemorySpotsRemoteMediaAdapter();
     return SpotsModule(

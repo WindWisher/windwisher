@@ -12,24 +12,56 @@ class AdminConsolePage extends StatefulWidget {
 }
 
 class _AdminConsolePageState extends State<AdminConsolePage> {
-  late final Future<_AdminConsoleSnapshot> _snapshotFuture = _loadSnapshot();
+  late Future<_AdminConsoleSnapshot> _snapshotFuture = _loadSnapshot();
 
   Future<_AdminConsoleSnapshot> _loadSnapshot() async {
     final client = Supabase.instance.client;
-    final roleDirectoryResponse = await client.rpc('get_role_directory');
-    final auditResponse = await client.rpc(
-      'get_admin_action_audit',
-      params: <String, dynamic>{'limit_count': 50, 'offset_count': 0},
+    final roleDirectoryResponse = await _safeRpcList(
+      () => client.rpc('get_role_directory'),
+    );
+    final auditResponse = await _safeRpcList(
+      () => client.rpc(
+        'get_admin_action_audit',
+        params: <String, dynamic>{'limit_count': 50, 'offset_count': 0},
+      ),
+    );
+    final feedbackResponse = await _safeRpcList(
+      () => client.rpc(
+        'get_user_feedback_admin',
+        params: <String, dynamic>{'limit_count': 100, 'offset_count': 0},
+      ),
     );
 
-    final roles = (roleDirectoryResponse as List<dynamic>)
+    final roles = roleDirectoryResponse
         .whereType<Map<String, dynamic>>()
         .toList(growable: false);
-    final audit = (auditResponse as List<dynamic>)
-        .whereType<Map<String, dynamic>>()
-        .toList(growable: false);
+    final audit = auditResponse.whereType<Map<String, dynamic>>().toList(
+      growable: false,
+    );
+    final feedback = feedbackResponse.whereType<Map<String, dynamic>>().toList(
+      growable: false,
+    );
 
-    return _AdminConsoleSnapshot(roles: roles, audit: audit);
+    return _AdminConsoleSnapshot(
+      roles: roles,
+      audit: audit,
+      feedback: feedback,
+    );
+  }
+
+  Future<List<dynamic>> _safeRpcList(Future<dynamic> Function() loader) async {
+    try {
+      final response = await loader();
+      return response is List<dynamic> ? response : const <dynamic>[];
+    } catch (_) {
+      return const <dynamic>[];
+    }
+  }
+
+  void _reloadSnapshot() {
+    setState(() {
+      _snapshotFuture = _loadSnapshot();
+    });
   }
 
   @override
@@ -88,10 +120,26 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
                         'Eventos auditados: ${data.audit.length}',
                         style: textTheme.bodyMedium,
                       ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        'Sugerencias abiertas: ${data.openFeedbackCount}',
+                        style: textTheme.bodyMedium,
+                      ),
                     ],
                   ),
                 ),
               ),
+              const SizedBox(height: AppSpacing.md),
+              Text('Buzon de sugerencias', style: textTheme.titleLarge),
+              const SizedBox(height: AppSpacing.sm),
+              if (data.feedback.isEmpty)
+                const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(AppSpacing.md),
+                    child: Text('No hay sugerencias pendientes.'),
+                  ),
+                ),
+              ...data.feedback.map(_buildFeedbackCard),
               const SizedBox(height: AppSpacing.md),
               Text('Directorio de roles', style: textTheme.titleLarge),
               const SizedBox(height: AppSpacing.sm),
@@ -196,6 +244,121 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     );
   }
 
+  Widget _buildFeedbackCard(Map<String, dynamic> row) {
+    final id = row['id'] as String?;
+    final userHandle = (row['user_handle'] as String?)?.trim();
+    final userDisplayName = (row['user_display_name'] as String?)?.trim();
+    final message = (row['message'] as String?)?.trim() ?? '';
+    final status = (row['status'] as String?)?.trim() ?? 'open';
+    final adminNote = (row['admin_note'] as String?)?.trim();
+    final createdAt = DateTime.tryParse((row['created_at'] as String?) ?? '');
+    final author = userDisplayName?.isNotEmpty == true
+        ? userDisplayName!
+        : (userHandle?.isNotEmpty == true ? '@$userHandle' : 'Usuario');
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    author,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Chip(label: Text(_feedbackStatusLabel(status))),
+              ],
+            ),
+            if (createdAt != null) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text('Fecha: ${_formatDateTime(createdAt)}'),
+            ],
+            const SizedBox(height: AppSpacing.sm),
+            SelectableText(message),
+            if (adminNote != null && adminNote.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Nota admin: $adminNote',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: [
+                OutlinedButton(
+                  onPressed: id == null || status == 'reviewed'
+                      ? null
+                      : () => _updateFeedbackStatus(id, 'reviewed'),
+                  child: const Text('Revisado'),
+                ),
+                FilledButton.tonal(
+                  onPressed: id == null || status == 'resolved'
+                      ? null
+                      : () => _updateFeedbackStatus(id, 'resolved'),
+                  child: const Text('Resuelto'),
+                ),
+                TextButton(
+                  onPressed: id == null || status == 'archived'
+                      ? null
+                      : () => _updateFeedbackStatus(id, 'archived'),
+                  child: const Text('Archivar'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _updateFeedbackStatus(String feedbackId, String status) async {
+    try {
+      await Supabase.instance.client.rpc(
+        'update_user_feedback_status',
+        params: <String, dynamic>{
+          'feedback_id': feedbackId,
+          'next_status': status,
+          'next_admin_note': null,
+        },
+      );
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Sugerencia marcada como ${_feedbackStatusLabel(status)}.',
+          ),
+        ),
+      );
+      _reloadSnapshot();
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo actualizar la sugerencia.')),
+      );
+    }
+  }
+
+  String _feedbackStatusLabel(String status) {
+    return switch (status) {
+      'open' => 'Abierta',
+      'reviewed' => 'Revisada',
+      'resolved' => 'Resuelta',
+      'archived' => 'Archivada',
+      _ => status,
+    };
+  }
+
   String _formatDateTime(DateTime value) {
     final local = value.toLocal();
     final month = local.month.toString().padLeft(2, '0');
@@ -207,8 +370,17 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
 }
 
 class _AdminConsoleSnapshot {
-  const _AdminConsoleSnapshot({required this.roles, required this.audit});
+  const _AdminConsoleSnapshot({
+    required this.roles,
+    required this.audit,
+    required this.feedback,
+  });
 
   final List<Map<String, dynamic>> roles;
   final List<Map<String, dynamic>> audit;
+  final List<Map<String, dynamic>> feedback;
+
+  int get openFeedbackCount {
+    return feedback.where((row) => row['status'] == 'open').length;
+  }
 }

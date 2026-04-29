@@ -4,7 +4,7 @@ class SpotForecastEntry {
     required this.windKnots,
     this.gustKnots,
     required this.windDeg,
-    required this.airTempC,
+    this.airTempC,
     this.waterTempC,
     this.pressureHpa,
     this.cloudCoverPct,
@@ -16,7 +16,7 @@ class SpotForecastEntry {
   final int windKnots;
   final int? gustKnots;
   final int windDeg;
-  final int airTempC;
+  final int? airTempC;
   final int? waterTempC;
   final int? pressureHpa;
   final int? cloudCoverPct;
@@ -44,7 +44,7 @@ class SpotForecastEntry {
       windKnots: (json['windKnots'] as num).round(),
       gustKnots: (json['gustKnots'] as num?)?.round(),
       windDeg: (json['windDeg'] as num).round(),
-      airTempC: (json['airTempC'] as num).round(),
+      airTempC: (json['airTempC'] as num?)?.round(),
       waterTempC: (json['waterTempC'] as num?)?.round(),
       pressureHpa: (json['pressureHpa'] as num?)?.round(),
       cloudCoverPct: (json['cloudCoverPct'] as num?)?.round(),

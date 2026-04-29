@@ -3,10 +3,7 @@ import 'package:windwisher/features/auth/presentation/onboarding/legal_document_
 import 'package:windwisher/features/auth/presentation/onboarding/terms_and_conditions_content.dart';
 
 class TermsAndConditionsDialog extends StatelessWidget {
-  const TermsAndConditionsDialog({
-    super.key,
-    this.requireAcceptance = true,
-  });
+  const TermsAndConditionsDialog({super.key, this.requireAcceptance = true});
 
   final bool requireAcceptance;
 
@@ -40,6 +37,7 @@ class TermsAndConditionsDialog extends StatelessWidget {
           bullets: content.bullets,
           closingParagraph: content.closingParagraph,
           requireAcceptance: requireAcceptance,
+          requireScrollToAccept: requireAcceptance,
           isLoading: snapshot.connectionState == ConnectionState.waiting,
         );
       },

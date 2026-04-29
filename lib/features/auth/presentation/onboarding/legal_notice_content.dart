@@ -15,22 +15,24 @@ class LegalNoticeContent {
     version: currentVersion,
     title: 'Aviso legal',
     introParagraphs: [
-      'Este aviso legal resume de forma provisional algunas condiciones generales de uso e informacion basica sobre WindWisher dentro de la app.',
-      'Es un texto funcional inicial y debera sustituirse por la version legal definitiva antes de considerarlo cierre normativo.',
+      'Este aviso legal informa de forma general sobre las condiciones de acceso a WindWisher, la naturaleza del servicio y algunas limitaciones de responsabilidad asociadas al uso de la app.',
+      'Es una version de trabajo pensada para aproximarse a un aviso legal conforme al entorno espanol. Debe completarse con la identificacion definitiva del responsable, contacto juridico y cualquier dato mercantil que resulte exigible.',
     ],
     bullets: [
-      'WindWisher es una app en evolucion y algunas funciones, datos o integraciones pueden cambiar con el tiempo.',
-      'El contenido mostrado en la app puede depender de datos aportados por usuarios, sensores, servicios conectados o proveedores externos.',
-      'La informacion mostrada por la app no sustituye recomendaciones profesionales, instrucciones del fabricante ni criterios de seguridad en el agua.',
-      'El usuario debe revisar el uso responsable del producto y valorar por si mismo las condiciones reales de navegacion antes de actuar.',
+      'WindWisher es una aplicacion digital en evolucion y puede modificar funciones, integraciones, disponibilidad, contenidos, estructura de pantallas o criterios internos de producto con el tiempo.',
+      'Parte del contenido visible en la app puede proceder de usuarios, sensores, algoritmos, calculos propios, integraciones tecnicas o proveedores externos, por lo que puede no ser completo, exacto o continuo en todo momento.',
+      'Los textos, elementos visuales, nombre de producto, logotipos, interfaces y demas contenidos propios de la app estan sujetos a los derechos que correspondan a sus titulares y no pueden reutilizarse sin base legitima suficiente.',
+      'El usuario accede y usa la app bajo su propia responsabilidad, especialmente cuando la informacion mostrada influya en decisiones relacionadas con navegacion, viento, mar, desplazamientos o seguridad en el agua.',
+      'WindWisher no sustituye fuentes oficiales, instrucciones tecnicas, formacion especializada, normativa local ni la comprobacion directa de las condiciones reales del entorno.',
+      'La app puede enlazar, consumir o mostrar servicios, datos o materiales de terceros y dichos elementos quedan sometidos tambien a las condiciones, disponibilidad y licencias de sus respectivos titulares.',
     ],
     closingParagraph:
-        'Si detectas contenido incorrecto o necesitas informacion legal adicional, este bloque podra ampliarse en futuras versiones.',
+        'Si necesitas informacion legal adicional o ejercer derechos relacionados con el servicio, la version final de este aviso legal debera incluir un canal de contacto identificable y estable.',
   );
 
-  static const currentVersion = '2026-04-draft-1';
+  static const currentVersion = '2026-05-draft-1';
   static const currentAssetPath =
-      'assets/legal/legal_notice_2026_04_draft_1.json';
+      'assets/legal/legal_notice_2026_05_draft_1.json';
 
   final String version;
   final String title;

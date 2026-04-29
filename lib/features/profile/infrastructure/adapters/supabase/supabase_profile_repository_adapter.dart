@@ -63,14 +63,11 @@ class SupabaseProfileRepositoryAdapter implements ProfileRepositoryPort {
     }
 
     final normalizedHandle = _normalizeHandle(handle);
-    final response = await _client
-        .from('profiles')
-        .select('id')
-        .ilike('handle', normalizedHandle)
-        .neq('id', user.id)
-        .limit(1)
-        .maybeSingle();
-    return response == null;
+    final response = await _client.rpc(
+      'is_profile_handle_available',
+      params: <String, dynamic>{'candidate_handle': normalizedHandle},
+    );
+    return response == true;
   }
 
   @override

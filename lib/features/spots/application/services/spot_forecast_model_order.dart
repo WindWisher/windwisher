@@ -2,6 +2,7 @@ import 'package:windwisher/features/spots/infrastructure/services/aemet_coastal_
 import 'package:windwisher/features/spots/infrastructure/services/aemet_beach_forecast_client.dart';
 
 const kAemetMunicipalForecastModel = 'Prediccion municipal';
+const kAemetPortusAtmosphereForecastModel = 'Portus Atmosfera';
 
 const Map<String, List<String>> baseForecastModelsByProvider = {
   'Open-Meteo': [
@@ -15,7 +16,7 @@ const Map<String, List<String>> baseForecastModelsByProvider = {
     'ARPEGE World',
     'GFS',
   ],
-  'AEMET': [kAemetMunicipalForecastModel],
+  'AEMET': [kAemetMunicipalForecastModel, kAemetPortusAtmosphereForecastModel],
   'Windguru': ['Widget'],
   'Meteoblue': ['Basic', 'Current', 'Day', 'Sea'],
   'Meteostat': ['Hourly', 'Day'],

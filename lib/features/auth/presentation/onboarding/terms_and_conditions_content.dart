@@ -15,22 +15,25 @@ class TermsAndConditionsContent {
     version: currentVersion,
     title: 'Terminos y condiciones',
     introParagraphs: [
-      'Para continuar usando WindWisher debes aceptar los terminos y condiciones de la app.',
-      'Este texto es una base funcional provisional para poder cerrar el flujo de primer acceso. Debe sustituirse por la version legal definitiva antes de considerar este paso como compliance final.',
+      'Estos terminos regulan el acceso y uso de WindWisher como app orientada a viento, spots, sesiones, comunidad y herramientas de apoyo para actividades en el agua.',
+      'Se trata de un borrador de producto mucho mas alineado con el funcionamiento real de la app en Espana. Sigue siendo una version de trabajo y debe pasar revision legal final antes de considerarse texto definitivo.',
     ],
     bullets: [
-      'La app puede guardar y mostrar informacion de perfil, sesiones, material y preferencias vinculadas a tu cuenta.',
-      'Parte de la informacion puede mostrarse de forma publica si asi lo permite el producto, como tu handle, nombre visible, estadisticas o sesiones publicas.',
-      'Eres responsable de revisar la informacion que compartes y de mantener tus credenciales de acceso bajo control.',
-      'La app puede enviar notificaciones y usar servicios conectados para mejorar la experiencia.',
+      'Para usar ciertas funciones de WindWisher necesitas una cuenta y eres responsable de custodiar tus credenciales, asi como de la actividad realizada desde tu acceso.',
+      'La app puede permitir crear perfil, guardar sesiones, registrar material, participar en rankings, seguir a otros usuarios, enviar mensajes, comentar y compartir contenido o metricas deportivas.',
+      'Parte de la informacion de tu cuenta o de tus sesiones puede mostrarse dentro de superficies publicas o comunitarias del producto si asi lo permite la configuracion y el diseno funcional de la app.',
+      'No puedes usar WindWisher para manipular rankings, falsear sesiones, suplantar identidad, subir contenido ilicito, acosar a otros usuarios ni interferir tecnicamente con el servicio.',
+      'WindWisher puede suspender funciones, moderar contenido o limitar cuentas cuando sea necesario para seguridad, cumplimiento normativo, integridad del producto o proteccion de la comunidad.',
+      'Las metricas, rankings, integraciones, sesiones y resultados mostrados por la app pueden incluir calculos automaticos, estimaciones o datos de terceros, por lo que no constituyen una garantia tecnica absoluta.',
+      'El uso de la app no sustituye el criterio personal del usuario, la observacion del entorno, las normas locales, las instrucciones del fabricante ni las decisiones de seguridad en el agua.',
     ],
     closingParagraph:
-        'Si no aceptas estos terminos, no podras completar el acceso inicial a la app.',
+        'Si no aceptas estos terminos, no debes usar WindWisher ni completar el acceso inicial a la app.',
   );
 
-  static const currentVersion = '2026-04-draft-1';
+  static const currentVersion = '2026-05-draft-1';
   static const currentAssetPath =
-      'assets/legal/terms_and_conditions_2026_04_draft_1.json';
+      'assets/legal/terms_and_conditions_2026_05_draft_1.json';
 
   final String version;
   final String title;

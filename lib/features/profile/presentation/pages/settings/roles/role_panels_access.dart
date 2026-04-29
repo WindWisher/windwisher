@@ -19,19 +19,19 @@ class RolePanelsAccess {
       hasModeratorPanel ||
       hasManagerPanel ||
       hasAdminPanel ||
-      hasSuperAdminPanel ||
-      hasVipPanel;
+      hasSuperAdminPanel;
 
   static RolePanelsAccess fromRoles(Set<String> roles) {
     final hasSuperAdminPanel = roles.contains('super_admin');
+    final hasAdminPanel = roles.contains('admin') || hasSuperAdminPanel;
     return RolePanelsAccess(
       roles: roles,
       hasModeratorPanel:
-          roles.contains('moderator') || hasSuperAdminPanel,
+          roles.contains('moderator') || hasAdminPanel || hasSuperAdminPanel,
       hasManagerPanel: roles.contains('manager') || hasSuperAdminPanel,
-      hasAdminPanel: roles.contains('admin') || hasSuperAdminPanel,
-      hasSuperAdminPanel: hasSuperAdminPanel,
-      hasVipPanel: roles.contains('vip') || hasSuperAdminPanel,
+      hasAdminPanel: hasAdminPanel,
+      hasSuperAdminPanel: roles.contains('super_admin'),
+      hasVipPanel: false,
     );
   }
 }

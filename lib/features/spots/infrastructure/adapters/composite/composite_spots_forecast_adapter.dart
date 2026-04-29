@@ -9,17 +9,20 @@ class CompositeSpotsForecastAdapter implements SpotsForecastPort {
     required SpotsForecastPort meteoblueAdapter,
     required SpotsForecastPort meteosourceAdapter,
     required SpotsForecastPort meteostatAdapter,
+    required SpotsForecastPort portusAdapter,
   }) : _openMeteoAdapter = openMeteoAdapter,
        _aemetAdapter = aemetAdapter,
        _meteoblueAdapter = meteoblueAdapter,
        _meteosourceAdapter = meteosourceAdapter,
-       _meteostatAdapter = meteostatAdapter;
+       _meteostatAdapter = meteostatAdapter,
+       _portusAdapter = portusAdapter;
 
   final SpotsForecastPort _openMeteoAdapter;
   final SpotsForecastPort _aemetAdapter;
   final SpotsForecastPort _meteoblueAdapter;
   final SpotsForecastPort _meteosourceAdapter;
   final SpotsForecastPort _meteostatAdapter;
+  final SpotsForecastPort _portusAdapter;
 
   @override
   Future<List<SpotForecastEntry>> getForecast({
@@ -29,6 +32,13 @@ class CompositeSpotsForecastAdapter implements SpotsForecastPort {
   }) {
     switch (provider) {
       case 'AEMET':
+        if (model == 'Portus Atmosfera') {
+          return _portusAdapter.getForecast(
+            spot: spot,
+            provider: 'Portus',
+            model: model,
+          );
+        }
         return _aemetAdapter.getForecast(
           spot: spot,
           provider: provider,

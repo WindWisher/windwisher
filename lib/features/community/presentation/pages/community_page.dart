@@ -211,7 +211,9 @@ class _CommunityPageState extends State<CommunityPage> {
   void _applyCurrentProfile(UserProfileData profile) {
     _myUsername = _normalizedUsername(profile.handle);
     _myDisplayName = profile.displayName;
-    _myHandle = profile.handle.trim().isEmpty ? '@$_myUsername' : profile.handle;
+    _myHandle = profile.handle.trim().isEmpty
+        ? '@$_myUsername'
+        : profile.handle;
     _myAvatarLocalPath = profile.avatarLocalPath;
     _myBannerLocalPath = profile.bannerLocalPath;
   }
@@ -222,7 +224,9 @@ class _CommunityPageState extends State<CommunityPage> {
 
   void _upsertCurrentUserSummary(UserProfileData profile) {
     final currentUsername = _normalizedUsername(profile.handle);
-    final existingMatches = _users.where((user) => user.username == currentUsername);
+    final existingMatches = _users.where(
+      (user) => user.username == currentUsername,
+    );
     final existing = existingMatches.isEmpty ? null : existingMatches.first;
     _users.removeWhere((user) => user.username == currentUsername);
 
@@ -237,9 +241,11 @@ class _CommunityPageState extends State<CommunityPage> {
         activityScore: existing?.activityScore ?? 0,
         highestJumpMeters:
             existing?.highestJumpMeters ??
-            double.tryParse(profile.topJump.replaceAll('m', '').trim()) ?? 0,
+            double.tryParse(profile.topJump.replaceAll('m', '').trim()) ??
+            0,
         mainSpot: existing?.mainSpot ?? '',
-        avatarColorValue: existing?.avatarColorValue ?? 0xFF455A64 + (seed % 0x00020202),
+        avatarColorValue:
+            existing?.avatarColorValue ?? 0xFF455A64 + (seed % 0x00020202),
         displayName: profile.displayName,
         handle: profile.handle,
         avatarPath: profile.avatarLocalPath,
@@ -291,7 +297,9 @@ class _CommunityPageState extends State<CommunityPage> {
   }
 
   String _displayNameForUser(String username) {
-    final matchedUser = _users.where((user) => user.username == username).firstOrNull;
+    final matchedUser = _users
+        .where((user) => user.username == username)
+        .firstOrNull;
     final persisted = matchedUser?.displayName?.trim();
     if (username == _myUsername) {
       return _myDisplayName;
@@ -303,7 +311,9 @@ class _CommunityPageState extends State<CommunityPage> {
   }
 
   String _handleForUser(String username) {
-    final matchedUser = _users.where((user) => user.username == username).firstOrNull;
+    final matchedUser = _users
+        .where((user) => user.username == username)
+        .firstOrNull;
     final persisted = matchedUser?.handle?.trim();
     if (username == _myUsername) {
       return _myHandle.startsWith('@') ? _myHandle : '@$_myHandle';
@@ -740,12 +750,13 @@ class _CommunityPageState extends State<CommunityPage> {
   }
 
   List<String> _leaderboardSpotOptions() {
-    final spots = _users
-        .map((user) => user.mainSpot.trim())
-        .where((spot) => spot.isNotEmpty)
-        .toSet()
-        .toList(growable: false)
-      ..sort();
+    final spots =
+        _users
+            .map((user) => user.mainSpot.trim())
+            .where((spot) => spot.isNotEmpty)
+            .toSet()
+            .toList(growable: false)
+          ..sort();
     return ['Todos', ...spots];
   }
 
@@ -810,7 +821,6 @@ class _CommunityPageState extends State<CommunityPage> {
     return '${option.label} (${option.unit})';
   }
 
-
   DecorationImage? _leaderboardBannerDecoration(String? bannerPath) {
     final image = profileMediaImageProvider(bannerPath);
     if (image == null) {
@@ -819,10 +829,7 @@ class _CommunityPageState extends State<CommunityPage> {
     return DecorationImage(
       image: image,
       fit: BoxFit.cover,
-      colorFilter: const ColorFilter.mode(
-        Color(0x73FFFFFF),
-        BlendMode.lighten,
-      ),
+      colorFilter: const ColorFilter.mode(Color(0x73FFFFFF), BlendMode.lighten),
     );
   }
 
@@ -902,10 +909,11 @@ class _CommunityPageState extends State<CommunityPage> {
                   const SizedBox(width: AppSpacing.xs),
                   Text(
                     _leaderboardMetricText(row),
-                    style: (isLeader
-                            ? Theme.of(context).textTheme.titleMedium
-                            : Theme.of(context).textTheme.bodyLarge)
-                        ?.copyWith(fontWeight: FontWeight.w700),
+                    style:
+                        (isLeader
+                                ? Theme.of(context).textTheme.titleMedium
+                                : Theme.of(context).textTheme.bodyLarge)
+                            ?.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -998,175 +1006,192 @@ class _CommunityPageState extends State<CommunityPage> {
 
     return Stack(
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Card(
-              key: const ValueKey<String>(
-                'community_leaderboard_identity_card',
-              ),
-              margin: const EdgeInsets.only(bottom: AppSpacing.xs),
-              clipBehavior: Clip.antiAlias,
+        CustomScrollView(
+          controller: _leaderboardScrollController,
+          physics: kAppBouncingScrollPhysics,
+          slivers: [
+            SliverToBoxAdapter(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
+                  Card(
                     key: const ValueKey<String>(
-                      'community_leaderboard_identity_banner',
+                      'community_leaderboard_identity_card',
                     ),
-                    height: 40,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      gradient: _myBannerLocalPath == null
-                          ? const LinearGradient(
-                              colors: [Color(0xFF81D4FA), Color(0xFF4DB6AC)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            )
-                          : null,
-                      image: profileMediaImageProvider(_myBannerLocalPath) == null
-                          ? null
-                          : DecorationImage(
-                              image: profileMediaImageProvider(_myBannerLocalPath)!,
-                              fit: BoxFit.cover,
-                            ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(AppSpacing.sm),
-                    child: Row(
+                    margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildUserAvatar(
-                          username: _myUsername,
-                          avatarColorValue: 0xFF1E88E5,
-                          radius: 16,
+                        Container(
+                          key: const ValueKey<String>(
+                            'community_leaderboard_identity_banner',
+                          ),
+                          height: 40,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            gradient: _myBannerLocalPath == null
+                                ? const LinearGradient(
+                                    colors: [
+                                      Color(0xFF81D4FA),
+                                      Color(0xFF4DB6AC),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  )
+                                : null,
+                            image:
+                                profileMediaImageProvider(_myBannerLocalPath) ==
+                                    null
+                                ? null
+                                : DecorationImage(
+                                    image: profileMediaImageProvider(
+                                      _myBannerLocalPath,
+                                    )!,
+                                    fit: BoxFit.cover,
+                                  ),
+                          ),
                         ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Expanded(
-                          child: Text(
-                            '$_myDisplayName · $_myHandle',
-                            key: const ValueKey<String>(
-                              'community_leaderboard_identity_display_name',
-                            ),
-                            style: Theme.of(context).textTheme.titleSmall,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        Padding(
+                          padding: const EdgeInsets.all(AppSpacing.sm),
+                          child: Row(
+                            children: [
+                              _buildUserAvatar(
+                                username: _myUsername,
+                                avatarColorValue: 0xFF1E88E5,
+                                radius: 16,
+                              ),
+                              const SizedBox(width: AppSpacing.xs),
+                              Expanded(
+                                child: Text(
+                                  '$_myDisplayName · $_myHandle',
+                                  key: const ValueKey<String>(
+                                    'community_leaderboard_identity_display_name',
+                                  ),
+                                  style: Theme.of(context).textTheme.titleSmall,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: AppSpacing.xs,
+                    runSpacing: 6,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _showLeaderboardFilters = !_showLeaderboardFilters;
+                          });
+                        },
+                        icon: Icon(
+                          _showLeaderboardFilters
+                              ? Icons.expand_less_rounded
+                              : Icons.tune_rounded,
+                        ),
+                        label: Text(
+                          _showLeaderboardFilters
+                              ? 'Ocultar filtros'
+                              : 'Mostrar filtros',
+                        ),
+                      ),
+                      FilledButton.icon(
+                        onPressed: hasPendingFilterChanges
+                            ? _applyFilters
+                            : null,
+                        icon: const Icon(Icons.filter_alt_rounded),
+                        label: const Text('Aplicar filtros'),
+                      ),
+                    ],
+                  ),
+                  if (_showLeaderboardFilters) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isNarrow = constraints.maxWidth < 760;
+                        final controls = [
+                          _CommunityFilterField(
+                            label: 'Spot',
+                            value: _draftSpot,
+                            values: _leaderboardSpotOptions(),
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setState(() => _draftSpot = value);
+                            },
+                          ),
+                          _CommunityFilterField(
+                            label: 'Scope',
+                            value: _draftScope,
+                            values: const ['Global', 'Friends'],
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setState(() => _draftScope = value);
+                            },
+                          ),
+                          _KpiOrderFilterField(
+                            label: 'Orden',
+                            value: _draftOrder,
+                            options: _kpiOrderOptions,
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setState(() => _draftOrder = value);
+                            },
+                          ),
+                        ];
+
+                        if (isNarrow) {
+                          return Column(
+                            children: [
+                              for (var i = 0; i < controls.length; i++) ...[
+                                controls[i],
+                                if (i != controls.length - 1)
+                                  const SizedBox(height: AppSpacing.xs),
+                              ],
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          children: [
+                            for (var i = 0; i < controls.length; i++) ...[
+                              Expanded(child: controls[i]),
+                              if (i != controls.length - 1)
+                                const SizedBox(width: AppSpacing.xs),
+                            ],
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    _leaderboardMetricHeader(),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
                 ],
               ),
             ),
-            Wrap(
-              alignment: WrapAlignment.end,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: AppSpacing.xs,
-              runSpacing: 6,
-              children: [
-                TextButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _showLeaderboardFilters = !_showLeaderboardFilters;
-                    });
-                  },
-                  icon: Icon(
-                    _showLeaderboardFilters
-                        ? Icons.expand_less_rounded
-                        : Icons.tune_rounded,
-                  ),
-                  label: Text(
-                    _showLeaderboardFilters
-                        ? 'Ocultar filtros'
-                        : 'Mostrar filtros',
-                  ),
-                ),
-                FilledButton.icon(
-                  onPressed: hasPendingFilterChanges ? _applyFilters : null,
-                  icon: const Icon(Icons.filter_alt_rounded),
-                  label: const Text('Aplicar filtros'),
-                ),
-              ],
-            ),
-            if (_showLeaderboardFilters) ...[
-              const SizedBox(height: AppSpacing.xs),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final isNarrow = constraints.maxWidth < 760;
-                  final controls = [
-                    _CommunityFilterField(
-                      label: 'Spot',
-                      value: _draftSpot,
-                      values: _leaderboardSpotOptions(),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _draftSpot = value);
-                      },
-                    ),
-                    _CommunityFilterField(
-                      label: 'Scope',
-                      value: _draftScope,
-                      values: const ['Global', 'Friends'],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _draftScope = value);
-                      },
-                    ),
-                    _KpiOrderFilterField(
-                      label: 'Orden',
-                      value: _draftOrder,
-                      options: _kpiOrderOptions,
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _draftOrder = value);
-                      },
-                    ),
-                  ];
-
-                  if (isNarrow) {
-                    return Column(
-                      children: [
-                        for (var i = 0; i < controls.length; i++) ...[
-                          controls[i],
-                          if (i != controls.length - 1)
-                            const SizedBox(height: AppSpacing.xs),
-                        ],
-                      ],
-                    );
-                  }
-
-                  return Row(
-                    children: [
-                      for (var i = 0; i < controls.length; i++) ...[
-                        Expanded(child: controls[i]),
-                        if (i != controls.length - 1)
-                          const SizedBox(width: AppSpacing.xs),
-                      ],
-                    ],
-                  );
-                },
-              ),
-            ],
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              _leaderboardMetricHeader(),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: AppSpacing.xs),
             if (rows.isEmpty)
-              const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(AppSpacing.md),
-                  child: Text('No hay usuarios para los filtros actuales.'),
+              const SliverToBoxAdapter(
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(AppSpacing.md),
+                    child: Text('No hay usuarios para los filtros actuales.'),
+                  ),
                 ),
               )
             else
-              Expanded(
-                child: ListView.builder(
-                  controller: _leaderboardScrollController,
-                  physics: kAppBouncingScrollPhysics,
-                  padding: const EdgeInsets.only(bottom: 56),
+              SliverPadding(
+                padding: const EdgeInsets.only(bottom: 56),
+                sliver: SliverList.builder(
                   itemCount: visibleRows.length,
                   itemBuilder: (context, index) {
                     final row = visibleRows[index];
@@ -1573,7 +1598,6 @@ class _KpiOrderFilterField extends StatelessWidget {
     );
   }
 }
-
 
 class _NoStretchScrollBehavior extends MaterialScrollBehavior {
   const _NoStretchScrollBehavior();

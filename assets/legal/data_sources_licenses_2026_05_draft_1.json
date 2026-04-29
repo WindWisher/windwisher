@@ -1,0 +1,17 @@
+{
+  "version": "2026-05-draft-1",
+  "title": "Fuentes de datos y licencias",
+  "introParagraphs": [
+    "WindWisher puede apoyarse en datos propios, datos aportados por usuarios, sensores, dispositivos conectados, servicios meteorologicos, mapas, integraciones tecnicas y otros proveedores externos.",
+    "Este documento resume como debe entenderse el uso de esas fuentes dentro de la app y que limites generales existen sobre disponibilidad, atribucion y reutilizacion."
+  ],
+  "bullets": [
+    "Los datos meteorologicos, de spots, mapas, sensores, sesiones o terceros pueden estar sujetos a condiciones, licencias, restricciones tecnicas o politicas de disponibilidad de sus respectivos titulares.",
+    "Cuando un proveedor exija atribucion, limitaciones de uso o condiciones especificas, WindWisher debera mostrarlas o enlazarlas de forma razonable dentro del producto o de su documentacion legal.",
+    "La presencia de datos de terceros en la app no implica que WindWisher controle su exactitud, continuidad, actualizacion, disponibilidad ni cambios futuros de licencia o acceso.",
+    "Los usuarios no deben reutilizar, extraer masivamente, revender, redistribuir o automatizar el acceso a datos mostrados en WindWisher salvo que tengan autorizacion suficiente y respeten las licencias aplicables.",
+    "El contenido generado por usuarios, como fotos, comentarios, sesiones o descripciones de spots, puede estar sujeto a derechos propios o de terceros y debe compartirse solo cuando exista permiso o base legitima.",
+    "Si una fuente externa cambia, falla, deja de estar disponible o modifica sus condiciones, WindWisher puede adaptar, suspender o retirar las funciones que dependan de ella."
+  ],
+  "closingParagraph": "La version final de este documento debera listar las fuentes concretas usadas por WindWisher, sus atribuciones obligatorias y cualquier condicion especifica relevante para la app."
+}

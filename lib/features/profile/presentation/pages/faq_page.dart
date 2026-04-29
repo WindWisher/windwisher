@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
 
@@ -11,23 +12,50 @@ class FaqPage extends StatefulWidget {
 
 class _FaqPageState extends State<FaqPage> {
   final TextEditingController _suggestionController = TextEditingController();
-  final List<_Suggestion> _suggestions = [];
+  bool _isSendingSuggestion = false;
 
-  void _sendSuggestion() {
-    if (_suggestionController.text.trim().isEmpty) return;
-    setState(() {
-      _suggestions.add(
-        _Suggestion(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          content: _suggestionController.text.trim(),
-          timestamp: DateTime.now(),
+  Future<void> _sendSuggestion() async {
+    final message = _suggestionController.text.trim();
+    if (message.isEmpty || _isSendingSuggestion) {
+      return;
+    }
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Inicia sesion para enviar sugerencias.')),
+      );
+      return;
+    }
+
+    setState(() => _isSendingSuggestion = true);
+    try {
+      await Supabase.instance.client.from('user_feedback').insert({
+        'user_id': user.id,
+        'message': message,
+      });
+      _suggestionController.clear();
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sugerencia enviada. El equipo podra revisarla.'),
         ),
       );
-    });
-    _suggestionController.clear();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Sugerencia enviada. Gracias!')),
-    );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo enviar la sugerencia. Intentalo de nuevo.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSendingSuggestion = false);
+      }
+    }
   }
 
   @override
@@ -129,55 +157,23 @@ class _FaqPageState extends State<FaqPage> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: _sendSuggestion,
-                      child: const Text('Enviar sugerencia'),
+                      onPressed: _isSendingSuggestion ? null : _sendSuggestion,
+                      child: _isSendingSuggestion
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Enviar sugerencia'),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          if (_suggestions.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.md),
-            Text('Tus sugerencias', style: textTheme.titleSmall),
-            const SizedBox(height: AppSpacing.sm),
-            ..._suggestions.map(
-              (suggestion) => Card(
-                margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(suggestion.content),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        _formatTimestamp(suggestion.timestamp),
-                        style: textTheme.bodySmall?.copyWith(
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
-  }
-
-  String _formatTimestamp(DateTime timestamp) {
-    final now = DateTime.now();
-    final diff = now.difference(timestamp);
-    if (diff.inMinutes < 60) {
-      return '${diff.inMinutes}m';
-    } else if (diff.inHours < 24) {
-      return '${diff.inHours}h';
-    } else {
-      return '${diff.inDays}d';
-    }
   }
 }
 
@@ -186,16 +182,4 @@ class _FaqItem {
   final String answer;
 
   _FaqItem({required this.question, required this.answer});
-}
-
-class _Suggestion {
-  final String id;
-  final String content;
-  final DateTime timestamp;
-
-  _Suggestion({
-    required this.id,
-    required this.content,
-    required this.timestamp,
-  });
 }

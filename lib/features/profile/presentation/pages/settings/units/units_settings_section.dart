@@ -3,17 +3,37 @@ import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/features/profile/presentation/pages/settings/widgets/settings_section_card.dart';
 import 'package:windwisher/features/profile/presentation/pages/settings/widgets/settings_tile.dart';
 
-class UnitsSettingsSection extends StatelessWidget {
+class UnitsSettingsSection extends StatefulWidget {
   const UnitsSettingsSection({super.key});
 
   @override
+  State<UnitsSettingsSection> createState() => _UnitsSettingsSectionState();
+}
+
+class _UnitsSettingsSectionState extends State<UnitsSettingsSection> {
+  bool _isExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
-    return const SettingsSectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Unidades'),
-          SizedBox(height: AppSpacing.sm),
+    return SettingsSectionCard(
+      child: ExpansionTile(
+        initiallyExpanded: _isExpanded,
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: EdgeInsets.zero,
+        maintainState: true,
+        leading: const Icon(Icons.straighten),
+        title: Text('Unidades', style: Theme.of(context).textTheme.titleMedium),
+        subtitle: Text(
+          _isExpanded ? 'Preferencias de medida' : 'kt, km, C, m',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        onExpansionChanged: (value) {
+          setState(() => _isExpanded = value);
+        },
+        children: const [
+          SizedBox(height: AppSpacing.xs),
           SettingsTile(
             title: 'Velocidad',
             subtitle: 'Nudos (kt)',

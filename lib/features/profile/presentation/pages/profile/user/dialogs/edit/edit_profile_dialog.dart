@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
+import 'package:windwisher/features/profile/domain/errors/profile_handle_taken_exception.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/user/widgets/profile_media_image_provider.dart';
 
 class EditProfileDialog extends StatefulWidget {
@@ -49,6 +51,10 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
   late final TextEditingController _displayName;
   late final TextEditingController _handle;
   late final TextEditingController _publicTagline;
+  Timer? _handleAvailabilityDebounce;
+  _HandleAvailabilityState _handleAvailabilityState =
+      _HandleAvailabilityState.idle;
+  String? _lastCheckedHandle;
   String? _avatarPath;
   String? _bannerPath;
   bool _isSaving = false;
@@ -66,10 +72,12 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
     _publicTagline = TextEditingController(text: data.publicTagline);
     _avatarPath = data.avatarLocalPath;
     _bannerPath = data.bannerLocalPath;
+    _scheduleHandleAvailabilityCheck();
   }
 
   @override
   void dispose() {
+    _handleAvailabilityDebounce?.cancel();
     _displayName.dispose();
     _handle.removeListener(_syncHandleInput);
     _handle.dispose();
@@ -93,6 +101,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
       selection: TextSelection.collapsed(offset: sanitized.length),
     );
     _isSyncingHandle = false;
+    _scheduleHandleAvailabilityCheck();
   }
 
   String _sanitizedHandleInput(String raw) {
@@ -159,6 +168,12 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
     if (_isSaving || !_validate()) {
       return;
     }
+    if (_handleAvailabilityState != _HandleAvailabilityState.available) {
+      setState(() {
+        _handleError = 'Comprueba que el handle este disponible.';
+      });
+      return;
+    }
     setState(() {
       _isSaving = true;
     });
@@ -191,7 +206,29 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
       }
     }
 
-    final saved = await widget.onSave(_buildUpdatedProfile());
+    bool saved;
+    try {
+      saved = await widget.onSave(_buildUpdatedProfile());
+    } on ProfileHandleTakenException {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _handleAvailabilityState = _HandleAvailabilityState.taken;
+        _handleError = 'Este nombre de usuario ya esta ocupado.';
+        _isSaving = false;
+      });
+      return;
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _handleError = 'No se pudo guardar el perfil. Intentalo de nuevo.';
+        _isSaving = false;
+      });
+      return;
+    }
     if (!mounted) {
       return;
     }
@@ -202,6 +239,84 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
     setState(() {
       _isSaving = false;
     });
+  }
+
+  void _scheduleHandleAvailabilityCheck() {
+    _handleAvailabilityDebounce?.cancel();
+    final normalizedHandle = _normalizedHandle(_handle.text);
+    final formatError = _validateHandle(normalizedHandle);
+    if (formatError != null) {
+      setState(() {
+        _handleAvailabilityState = _HandleAvailabilityState.idle;
+        _lastCheckedHandle = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _handleAvailabilityState = _HandleAvailabilityState.checking;
+      _lastCheckedHandle = normalizedHandle;
+    });
+
+    _handleAvailabilityDebounce = Timer(
+      const Duration(milliseconds: 450),
+      () => unawaited(_checkHandleAvailability(normalizedHandle)),
+    );
+  }
+
+  Future<void> _checkHandleAvailability(String normalizedHandle) async {
+    final initialHandle = _normalizedHandle(widget.initialData.handle);
+    final bool available;
+    try {
+      available = normalizedHandle == initialHandle
+          ? true
+          : await widget.isHandleAvailable(normalizedHandle);
+    } catch (_) {
+      if (!mounted || _lastCheckedHandle != normalizedHandle) {
+        return;
+      }
+      setState(() {
+        _handleAvailabilityState = _HandleAvailabilityState.idle;
+        _handleError = 'No se pudo validar el handle. Intentalo de nuevo.';
+      });
+      return;
+    }
+    if (!mounted || _lastCheckedHandle != normalizedHandle) {
+      return;
+    }
+    setState(() {
+      _handleAvailabilityState = available
+          ? _HandleAvailabilityState.available
+          : _HandleAvailabilityState.taken;
+      _handleError = available
+          ? null
+          : 'Este nombre de usuario ya esta ocupado.';
+    });
+  }
+
+  bool get _canSave {
+    return !_isSaving &&
+        _handleAvailabilityState == _HandleAvailabilityState.available;
+  }
+
+  String? get _handleHelperText {
+    return switch (_handleAvailabilityState) {
+      _HandleAvailabilityState.idle =>
+        'Sera tu identidad publica dentro de la comunidad.',
+      _HandleAvailabilityState.checking => 'Comprobando disponibilidad...',
+      _HandleAvailabilityState.available => 'Handle disponible.',
+      _HandleAvailabilityState.taken => null,
+    };
+  }
+
+  Color? _handleHelperColor(BuildContext context) {
+    return switch (_handleAvailabilityState) {
+      _HandleAvailabilityState.available => Colors.green.shade700,
+      _HandleAvailabilityState.checking => Theme.of(
+        context,
+      ).colorScheme.primary,
+      _ => null,
+    };
   }
 
   Future<void> _pickProfileMedia({required bool isBanner}) async {
@@ -253,6 +368,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
     String? errorText,
     String? hintText,
     String? helperText,
+    Color? helperColor,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -271,11 +387,17 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
               _handleError = null;
             });
           }
+          if (label == 'Handle') {
+            _scheduleHandleAvailabilityCheck();
+          }
         },
         decoration: InputDecoration(
           labelText: label,
           hintText: hintText,
           helperText: helperText,
+          helperStyle: helperColor == null
+              ? null
+              : TextStyle(color: helperColor),
           errorText: errorText,
           border: const OutlineInputBorder(),
         ),
@@ -433,10 +555,12 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                     _handle,
                     errorText: _handleError,
                     hintText: '@tu_handle',
+                    helperText: _handleHelperText,
+                    helperColor: _handleHelperColor(context),
                   ),
                   _field('Tagline publica', _publicTagline, lines: 2),
                   FilledButton(
-                    onPressed: _isSaving ? null : _save,
+                    onPressed: _canSave ? _save : null,
                     child: _isSaving
                         ? const SizedBox(
                             width: 18,
@@ -454,3 +578,5 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
     );
   }
 }
+
+enum _HandleAvailabilityState { idle, checking, available, taken }

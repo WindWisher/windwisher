@@ -3,13 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:windwisher/app/router/app_routes.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
+import 'package:windwisher/features/auth/presentation/onboarding/terms_acceptance_gate.dart';
 import 'package:windwisher/features/auth/presentation/pages/login_page.dart';
 import 'package:windwisher/features/auth/presentation/pages/reset_password_page.dart';
 import 'package:windwisher/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:windwisher/features/profile/presentation/pages/admin_console_page.dart';
-import 'package:windwisher/features/profile/presentation/pages/donations_page.dart';
 import 'package:windwisher/features/profile/presentation/pages/faq_page.dart';
 import 'package:windwisher/features/profile/presentation/pages/settings/settings_page.dart';
+import 'package:windwisher/features/profile/presentation/pages/super_admin_console_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -36,9 +37,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       return isLogin ? AppRoutes.dashboard : null;
     },
-    errorBuilder: (context, state) => _RouterFallbackPage(
-      hasSupabase: hasSupabase,
-    ),
+    errorBuilder: (context, state) =>
+        _RouterFallbackPage(hasSupabase: hasSupabase),
     routes: [
       GoRoute(
         path: '/',
@@ -49,14 +49,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return hasSession ? AppRoutes.dashboard : AppRoutes.login;
         },
       ),
-      GoRoute(
-        path: '/Home',
-        redirect: (_, state) => AppRoutes.dashboard,
-      ),
-      GoRoute(
-        path: '/home',
-        redirect: (_, state) => AppRoutes.dashboard,
-      ),
+      GoRoute(path: '/Home', redirect: (_, state) => AppRoutes.dashboard),
+      GoRoute(path: '/home', redirect: (_, state) => AppRoutes.dashboard),
       GoRoute(
         path: AppRoutes.login,
         builder: (context, state) => const LoginPage(),
@@ -67,23 +61,28 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.dashboard,
-        builder: (context, state) => const DashboardPage(),
+        builder: (context, state) =>
+            const TermsAcceptanceGate(child: DashboardPage()),
       ),
       GoRoute(
         path: AppRoutes.settings,
-        builder: (context, state) => const SettingsPage(),
+        builder: (context, state) =>
+            const TermsAcceptanceGate(child: SettingsPage()),
       ),
       GoRoute(
         path: AppRoutes.adminConsole,
-        builder: (context, state) => const AdminConsolePage(),
+        builder: (context, state) =>
+            const TermsAcceptanceGate(child: AdminConsolePage()),
+      ),
+      GoRoute(
+        path: AppRoutes.superAdminConsole,
+        builder: (context, state) =>
+            const TermsAcceptanceGate(child: SuperAdminConsolePage()),
       ),
       GoRoute(
         path: AppRoutes.faq,
-        builder: (context, state) => const FaqPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.donations,
-        builder: (context, state) => const DonationsPage(),
+        builder: (context, state) =>
+            const TermsAcceptanceGate(child: FaqPage()),
       ),
     ],
   );

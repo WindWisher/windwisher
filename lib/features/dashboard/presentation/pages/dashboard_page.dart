@@ -6,11 +6,9 @@ import 'package:windwisher/core/notifications/direct_message_notification_event.
 import 'package:windwisher/core/notifications/firebase_push_messaging_service.dart';
 import 'package:windwisher/core/notifications/local_notifications_service.dart';
 import 'package:windwisher/app/router/app_routes.dart';
-import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/features/auth/presentation/onboarding/first_login_flow_remote_store.dart';
 import 'package:windwisher/features/auth/presentation/onboarding/first_login_flow_store.dart';
 import 'package:windwisher/features/auth/presentation/onboarding/first_login_welcome_dialog.dart';
-import 'package:windwisher/features/auth/presentation/onboarding/terms_and_conditions_dialog.dart';
 import 'package:windwisher/features/dashboard/application/services/dashboard_toolbar_service.dart';
 import 'package:windwisher/features/community/presentation/pages/community_page.dart';
 import 'package:windwisher/features/profile/di/profile_module.dart';
@@ -50,9 +48,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void initState() {
     super.initState();
-    final profileModule = EnvConfig.profileLocalPersistenceEnabled
-        ? ProfileModule.auto()
-        : ProfileModule.inMemory();
+    final profileModule = ProfileModule.auto();
     _onboardingProfileController = profileModule.profileController;
     _remoteDirectMessageOpenSubscription = FirebasePushMessagingService
         .instance
@@ -156,41 +152,14 @@ class _DashboardPageState extends State<DashboardPage> {
 
       final localState = await _firstLoginFlowStore.loadForUser(user.id);
       final remoteState = await _safeLoadRemoteFirstLoginFlowState(user.id);
-      var state = localState.merge(remoteState);
-      if (!state.hasAcceptedCurrentTerms) {
-        if (!mounted) {
-          return;
-        }
-        final accepted = await TermsAndConditionsDialog.show(context);
-        if (!mounted) {
-          return;
-        }
-        if (!accepted) {
-          await Supabase.instance.client.auth.signOut();
-          if (!mounted) {
-            return;
-          }
-          context.go(AppRoutes.login);
-          return;
-        }
-        final acceptedAt = DateTime.now().toUtc();
-        state = state.copyWith(
-          acceptedTermsVersion: FirstLoginFlowState.currentTermsVersion,
-          acceptedTermsAtIso: acceptedAt.toIso8601String(),
-        );
-        await _safePersistRemoteTermsAcceptance(
-          userId: user.id,
-          acceptedAtUtc: acceptedAt,
-        );
-        await _firstLoginFlowStore.saveForUser(user.id, state);
-      }
+      final state = localState.merge(remoteState);
 
       if (!state.hasCompletedWelcome) {
         final profile = await _onboardingProfileController.loadProfile();
         if (!mounted) {
           return;
         }
-        final completed = await FirstLoginWelcomeDialog.show(
+        final welcomeResult = await FirstLoginWelcomeDialog.show(
           context,
           initialData: profile,
           onSave: (updatedProfile) async {
@@ -200,14 +169,6 @@ class _DashboardPageState extends State<DashboardPage> {
           isHandleAvailable: _onboardingProfileController.isHandleAvailable,
         );
         if (!mounted) {
-          return;
-        }
-        if (!completed) {
-          await Supabase.instance.client.auth.signOut();
-          if (!mounted) {
-            return;
-          }
-          context.go(AppRoutes.login);
           return;
         }
         final welcomeCompletedAt = DateTime.now().toUtc();
@@ -221,7 +182,9 @@ class _DashboardPageState extends State<DashboardPage> {
             welcomeCompletedAtIso: welcomeCompletedAt.toIso8601String(),
           ),
         );
-        await _profileKey.currentState?.reloadProfileAfterExternalChange();
+        if (welcomeResult == FirstLoginWelcomeResult.completed) {
+          await _profileKey.currentState?.reloadProfileAfterExternalChange();
+        }
       }
     } finally {
       _isRunningFirstLoginFlow = false;
@@ -235,21 +198,6 @@ class _DashboardPageState extends State<DashboardPage> {
       return await _firstLoginFlowRemoteStore.loadForUser(userId);
     } catch (_) {
       return const FirstLoginFlowState();
-    }
-  }
-
-  Future<void> _safePersistRemoteTermsAcceptance({
-    required String userId,
-    required DateTime acceptedAtUtc,
-  }) async {
-    try {
-      await _firstLoginFlowRemoteStore.saveTermsAcceptance(
-        userId: userId,
-        termsVersion: FirstLoginFlowState.currentTermsVersion,
-        acceptedAtUtc: acceptedAtUtc,
-      );
-    } catch (_) {
-      // Local persistence remains as a fallback if remote write fails.
     }
   }
 

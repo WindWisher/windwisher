@@ -69,7 +69,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final pushService = PushNotificationSubscriptionService.instance;
     final pushStatus = pushService.currentStatus;
     final pushToken = pushService.deviceToken;
-    final pushInitError = FirebasePushMessagingService.instance.lastInitializationError;
+    final pushInitError =
+        FirebasePushMessagingService.instance.lastInitializationError;
     final rolesAccess = RolePanelsAccess.fromRoles(_myRoles);
     final sessionSummary = AccountSessionRepository.currentSummary();
     final deletionStatusRaw = (_accountDeletionRequest?['status'] as String?)
@@ -77,9 +78,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final deletionStatusLabel = AccountDeletionRequestPresenter.statusLabel(
       deletionStatusRaw,
     );
-    final deletionCountdownLabel = AccountDeletionRequestPresenter.countdownLabel(
-      _accountDeletionRequest?['execute_after'],
-    );
+    final deletionCountdownLabel =
+        AccountDeletionRequestPresenter.countdownLabel(
+          _accountDeletionRequest?['execute_after'],
+        );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Ajustes')),
@@ -101,9 +103,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 return;
               }
               setState(() => _notificationsEnabled = result.enabled);
-              messenger.showSnackBar(
-                SnackBar(content: Text(result.message)),
-              );
+              messenger.showSnackBar(SnackBar(content: Text(result.message)));
             },
             remoteProviderConfigured: PushNotificationSubscriptionService
                 .instance
@@ -124,21 +124,28 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             onLanguageTap: () =>
                 AppSettingsLauncher.showLanguagePickerDialog(context, ref),
             onFaqTap: () => AppSettingsLauncher.openFaq(context),
-            onDonationsTap: () => AppSettingsLauncher.openDonations(context),
           ),
           const SizedBox(height: AppSpacing.md),
           LegalSettingsSection(
             onTermsTap: () => LegalSettingsLauncher.showTerms(context),
             onPrivacyTap: () => LegalSettingsLauncher.showPrivacy(context),
-            onLegalNoticeTap: () => LegalSettingsLauncher.showLegalNotice(context),
+            onLegalNoticeTap: () =>
+                LegalSettingsLauncher.showLegalNotice(context),
+            onWeatherSafetyTap: () =>
+                LegalSettingsLauncher.showWeatherSafetyDisclaimer(context),
+            onCommunityGuidelinesTap: () =>
+                LegalSettingsLauncher.showCommunityGuidelines(context),
+            onDataSourcesLicensesTap: () =>
+                LegalSettingsLauncher.showDataSourcesLicenses(context),
           ),
-          if (_isLoadingRoles || rolesAccess.hasAnyPanel || rolesAccess.roles.isNotEmpty) ...[
+          if (!_isLoadingRoles && rolesAccess.hasAnyPanel) ...[
             const SizedBox(height: AppSpacing.md),
             RolePanelsSettingsSection(
-              isLoading: _isLoadingRoles,
               access: rolesAccess,
+              onModeratorTap: _showRolePanelComingSoon,
+              onManagerTap: _showRolePanelComingSoon,
               onAdminTap: () => context.push(AppRoutes.adminConsole),
-              onSuperAdminTap: () => context.push(AppRoutes.adminConsole),
+              onSuperAdminTap: () => context.push(AppRoutes.superAdminConsole),
             ),
           ],
           const SizedBox(height: AppSpacing.md),
@@ -204,7 +211,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Future<void> _loadAccountDeletionRequest() async {
     setState(() => _isLoadingDeletionRequest = true);
     try {
-      final row = await AccountDeletionRequestRepository.fetchLatestScheduledRequest();
+      final row =
+          await AccountDeletionRequestRepository.fetchLatestScheduledRequest();
       if (!mounted) {
         return;
       }
@@ -270,6 +278,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         }
         setState(() {});
       },
+    );
+  }
+
+  void _showRolePanelComingSoon() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Este panel todavia no esta disponible.')),
     );
   }
 

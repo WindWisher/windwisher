@@ -381,8 +381,11 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     });
   }
 
-  bool _providerUsesModelForFetch(String provider) {
-    return provider != 'AEMET' && provider != 'Windguru';
+  bool _providerUsesModelForFetch(String provider, [String? model]) {
+    if (provider == 'AEMET') {
+      return (model ?? _forecastModel) == kAemetPortusAtmosphereForecastModel;
+    }
+    return provider != 'Windguru';
   }
 
   bool _usesAemetBeachForecastModel([String? model]) {
@@ -393,6 +396,11 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   bool _usesAemetCoastalForecastModel([String? model]) {
     return _forecastProvider == 'AEMET' &&
         (model ?? _forecastModel) == kAemetCoastalForecastModel;
+  }
+
+  bool _usesAemetPortusForecastModel([String? model]) {
+    return _forecastProvider == 'AEMET' &&
+        (model ?? _forecastModel) == kAemetPortusAtmosphereForecastModel;
   }
 
   bool _usesMeteoblueProvider() {
@@ -456,7 +464,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       );
       if (entries.isEmpty) {
         final fallbackMessage =
-            requestedProvider == 'AEMET' && !EnvConfig.aemetAccessConfigured
+            requestedProvider == 'AEMET' &&
+                requestedModel != kAemetPortusAtmosphereForecastModel &&
+                !EnvConfig.aemetAccessConfigured
             ? 'AEMET sin API key cargada.'
             : requestedProvider == 'Meteoblue' &&
                   !EnvConfig.meteoblueAccessConfigured
@@ -1241,8 +1251,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   }
 
   Widget _buildWindguruForecastSection() {
-    final controller =
-        _isFlutterTest || kIsWeb
+    final controller = _isFlutterTest || kIsWeb
         ? _windguruController
         : (_windguruController ??= _createWindguruController());
     if (_isFlutterTest || (!kIsWeb && controller == null)) {
@@ -1266,7 +1275,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
           height: _windguruWidgetHeight,
           controller: controller,
           webEmbedHtml: kIsWeb ? _windguruWidgetHtml : null,
-          isFullscreenActive: _fullscreenMode == _ForecastFullscreenMode.windguru,
+          isFullscreenActive:
+              _fullscreenMode == _ForecastFullscreenMode.windguru,
           onOpenFullscreen: _openWindguruFullscreen,
         ),
       ],
@@ -1462,7 +1472,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   }
 
   void _handleForecastModelChanged(String value) {
-    final shouldRefresh = _providerUsesModelForFetch(_forecastProvider);
+    final shouldRefresh = _providerUsesModelForFetch(_forecastProvider, value);
     setState(() {
       _forecastModel = value;
     });
@@ -1579,7 +1589,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         DropdownMenuItem(value: 'Windguru', child: Text('Windguru')),
         DropdownMenuItem(value: 'Meteoblue', child: Text('Meteoblue')),
         DropdownMenuItem(value: 'Meteosource', child: Text('Meteosource')),
-        DropdownMenuItem(value: 'Meteostat', child: Text('Meteostat')),
+        DropdownMenuItem<String>(value: 'Meteostat', child: Text('Meteostat')),
       ],
       onChanged: (value) {
         if (value == null) {
@@ -2708,7 +2718,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _refreshAlarmStationsLiveData(List<SpotAlarmRecord> alarms) async {
+  Future<void> _refreshAlarmStationsLiveData(
+    List<SpotAlarmRecord> alarms,
+  ) async {
     final stationKeys = alarms.map((alarm) => alarm.stationKey).toSet();
     if (stationKeys.isEmpty) {
       return;
@@ -2759,7 +2771,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     });
   }
 
-  Future<_StationLiveData?> _fetchLiveDataForStation(_NearbyStation station) async {
+  Future<_StationLiveData?> _fetchLiveDataForStation(
+    _NearbyStation station,
+  ) async {
     if (station.provider == 'AVAMET') {
       final snapshot = await _avametObservationClient.fetchStationObservation(
         stationId: station.stationId!,
@@ -3654,6 +3668,10 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       return const [_ForecastResolution.h1];
     }
 
+    if (_usesAemetPortusForecastModel()) {
+      return const [_ForecastResolution.h1];
+    }
+
     switch (range) {
       case _ForecastRange.d15:
         return const [_ForecastResolution.h6];
@@ -3687,6 +3705,10 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     }
 
     if (_forecastProvider == 'Meteostat') {
+      return _ForecastResolution.h1;
+    }
+
+    if (_usesAemetPortusForecastModel()) {
       return _ForecastResolution.h1;
     }
 
@@ -3769,7 +3791,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
               next.windDeg.toDouble(),
               t,
             ).round(),
-            tempC: (current.tempC + (next.tempC - current.tempC) * t).round(),
+            tempC: _lerpNullableInt(current.tempC, next.tempC, t),
             waterTempC: _lerpNullableInt(
               current.waterTempC,
               next.waterTempC,
@@ -5372,12 +5394,10 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     _HistoricalBucketOption? selectedBucketOption,
     Duration gridDuration,
     Duration arrowDuration,
-    ({
-      DateTime startInclusive,
-      DateTime endExclusive,
-    })? intradayBounds,
+    ({DateTime startInclusive, DateTime endExclusive})? intradayBounds,
     List<_HistoricalWindPoint> points,
-  }) _prepareHistorySeriesWindow() {
+  })
+  _prepareHistorySeriesWindow() {
     final realHistory = _selectedHistoricalWindPoints();
     final intraday = _isIntradayHistoricalSeries(realHistory);
     final selectedBucketOption = intraday
@@ -5565,13 +5585,12 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     }
 
     return _HistoricalForecastAccuracySummary(
-      totalPercentage:
-          (speedComparable + directionComparable) == 0
-              ? null
-              : (((speedMatched + directionMatched) /
-                          (speedComparable + directionComparable)) *
-                      100)
-                  .round(),
+      totalPercentage: (speedComparable + directionComparable) == 0
+          ? null
+          : (((speedMatched + directionMatched) /
+                        (speedComparable + directionComparable)) *
+                    100)
+                .round(),
       windPercentage: speedComparable == 0
           ? null
           : ((speedMatched / speedComparable) * 100).round(),
@@ -6013,8 +6032,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                 totalPercentage: forecastAccuracy.totalPercentage,
                 windPercentage: forecastAccuracy.windPercentage,
                 directionPercentage: forecastAccuracy.directionPercentage,
-                meanAbsoluteErrorKnots:
-                    forecastAccuracy.meanAbsoluteErrorKnots,
+                meanAbsoluteErrorKnots: forecastAccuracy.meanAbsoluteErrorKnots,
               ),
             ],
             const SizedBox(height: AppSpacing.sm),
@@ -6092,8 +6110,6 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       ),
     );
   }
-
-
 
   Widget _buildCustomAlarmsSection() {
     final catalog = SpotAlarmCatalog.instance;
@@ -6384,82 +6400,87 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                                   bottom: row == rows.last ? 0 : AppSpacing.xs,
                                 ),
                                 child: Row(
-                                  children: row.map((direction) {
-                                    final selected = _alarmDirections.contains(
-                                      direction,
-                                    );
-                                    return Expanded(
-                                      child: Padding(
-                                        padding: EdgeInsets.only(
-                                          right: direction == row.last
-                                              ? 0
-                                              : AppSpacing.xs,
-                                        ),
-                                        child: FilterChip(
-                                          showCheckmark: false,
-                                          materialTapTargetSize:
-                                              MaterialTapTargetSize.shrinkWrap,
-                                          visualDensity:
-                                              VisualDensity.compact,
-                                          labelPadding:
-                                              const EdgeInsets.symmetric(
-                                                horizontal: 2,
-                                              ),
-                                          label: FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Transform.rotate(
-                                                  angle:
-                                                      _alarmDirectionRotation(
-                                                        direction,
+                                  children: row
+                                      .map((direction) {
+                                        final selected = _alarmDirections
+                                            .contains(direction);
+                                        return Expanded(
+                                          child: Padding(
+                                            padding: EdgeInsets.only(
+                                              right: direction == row.last
+                                                  ? 0
+                                                  : AppSpacing.xs,
+                                            ),
+                                            child: FilterChip(
+                                              showCheckmark: false,
+                                              materialTapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                              labelPadding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 2,
+                                                  ),
+                                              label: FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Transform.rotate(
+                                                      angle:
+                                                          _alarmDirectionRotation(
+                                                            direction,
+                                                          ),
+                                                      child: Icon(
+                                                        Icons
+                                                            .navigation_rounded,
+                                                        size: 14,
+                                                        color: selected
+                                                            ? colorScheme
+                                                                  .onSecondaryContainer
+                                                            : colorScheme
+                                                                  .onSurfaceVariant,
                                                       ),
-                                                  child: Icon(
-                                                    Icons.navigation_rounded,
-                                                    size: 14,
-                                                    color: selected
-                                                        ? colorScheme
-                                                              .onSecondaryContainer
-                                                        : colorScheme
-                                                              .onSurfaceVariant,
-                                                  ),
+                                                    ),
+                                                    const SizedBox(width: 3),
+                                                    Text(
+                                                      direction,
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                                const SizedBox(width: 3),
-                                                Text(
-                                                  direction,
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
-                                              ],
+                                              ),
+                                              selected: selected,
+                                              onSelected: (value) {
+                                                setState(() {
+                                                  if (value) {
+                                                    _alarmDirections = <String>{
+                                                      ..._alarmDirections,
+                                                      direction,
+                                                    };
+                                                  } else {
+                                                    _alarmDirections =
+                                                        _alarmDirections
+                                                            .where(
+                                                              (entry) =>
+                                                                  entry !=
+                                                                  direction,
+                                                            )
+                                                            .toSet();
+                                                  }
+                                                });
+                                              },
                                             ),
                                           ),
-                                          selected: selected,
-                                          onSelected: (value) {
-                                            setState(() {
-                                              if (value) {
-                                                _alarmDirections = <String>{
-                                                  ..._alarmDirections,
-                                                  direction,
-                                                };
-                                              } else {
-                                                _alarmDirections =
-                                                    _alarmDirections
-                                                        .where(
-                                                          (entry) =>
-                                                              entry != direction,
-                                                        )
-                                                        .toSet();
-                                              }
-                                            });
-                                          },
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(growable: false),
+                                        );
+                                      })
+                                      .toList(growable: false),
                                 ),
                               );
                             })
@@ -8023,7 +8044,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   Future<void> _publishReply() async {
     final text = _socialReplyController.text.trim();
     final editingReplyId = _editingReplyId;
-    final postId = editingReplyId != null ? _editingReplyPostId : _replyingPostId;
+    final postId = editingReplyId != null
+        ? _editingReplyPostId
+        : _replyingPostId;
     if ((text.isEmpty && _pendingSocialReplyAttachments.isEmpty) ||
         postId == null ||
         _isSocialSubmitting) {
@@ -8059,7 +8082,10 @@ class _SpotDetailPageState extends State<SpotDetailPage>
           attachments: optimisticAttachments,
         );
       } else {
-        await _spotSocialClient.updateReply(replyId: editingReplyId, message: text);
+        await _spotSocialClient.updateReply(
+          replyId: editingReplyId,
+          message: text,
+        );
       }
       _socialReplyController.clear();
       _editingReplyId = null;
@@ -8204,7 +8230,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     final pendingAttachments = usesReplyComposer
         ? _pendingSocialReplyAttachments
         : _pendingSocialPostAttachments;
-    final canSend = usesReplyComposer ? _canSendSocialReply : _canSendSocialPost;
+    final canSend = usesReplyComposer
+        ? _canSendSocialReply
+        : _canSendSocialPost;
     final replyEntry = isReplying ? _activeReplyEntry() : null;
     final focusNode = usesReplyComposer
         ? _socialReplyFocusNode
@@ -8494,7 +8522,11 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                           controller: _socialFeedScrollController,
                           primary: false,
                           children: [
-                            for (var index = 0; index < chatEntries.length; index += 1)
+                            for (
+                              var index = 0;
+                              index < chatEntries.length;
+                              index += 1
+                            )
                               Padding(
                                 key: index == chatEntries.length - 1
                                     ? _lastSocialMessageKey
@@ -8506,238 +8538,244 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                                   builder: (context) {
                                     final entry = chatEntries[index];
                                     return Row(
-                                  mainAxisAlignment: entry.isMine
-                                      ? MainAxisAlignment.end
-                                      : MainAxisAlignment.start,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    if (!entry.isMine) ...[
-                                      _buildSocialMiniAvatar(entry),
-                                      const SizedBox(width: AppSpacing.xs),
-                                    ],
-                                    Flexible(
-                                      child: Align(
-                                        alignment: entry.isMine
-                                            ? Alignment.centerRight
-                                            : Alignment.centerLeft,
-                                        child: ConstrainedBox(
-                                          constraints: const BoxConstraints(
-                                            maxWidth: 420,
-                                          ),
-                                          child: Builder(
-                                            builder: (context) {
-                                              final bubbleColor = entry.isMine
-                                                  ? colorScheme.primaryContainer
-                                                  : colorScheme
-                                                        .surfaceContainerHighest;
-                                              final bubbleTextColor =
-                                                  entry.isMine
-                                                  ? colorScheme
-                                                        .onPrimaryContainer
-                                                  : colorScheme.onSurface;
-                                              return _SwipeReplyMessageWrapper(
-                                                accentColor: entry.isMine
-                                                    ? colorScheme
-                                                          .onPrimaryContainer
-                                                    : colorScheme.primary,
-                                                manageColor: colorScheme.error,
-                                                onReplyTriggered: () =>
-                                                    entry.isReply
-                                                    ? _openReplyComposerForReply(
-                                                        entry.postId,
-                                                        entry.id,
-                                                      )
-                                                    : _openReplyComposerForPost(
-                                                        entry.id,
-                                                      ),
-                                                onManageTriggered:
-                                                    _canManageSocialEntry(entry)
-                                                    ? () => _showSocialMessageActions(
-                                                        entry,
-                                                      )
-                                                    : null,
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.fromLTRB(
-                                                        AppSpacing.sm,
-                                                        AppSpacing.xs,
-                                                        AppSpacing.sm,
-                                                        AppSpacing.xs,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: bubbleColor,
-                                                    borderRadius: BorderRadius.only(
-                                                      topLeft:
-                                                          const Radius.circular(
-                                                            20,
+                                      mainAxisAlignment: entry.isMine
+                                          ? MainAxisAlignment.end
+                                          : MainAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        if (!entry.isMine) ...[
+                                          _buildSocialMiniAvatar(entry),
+                                          const SizedBox(width: AppSpacing.xs),
+                                        ],
+                                        Flexible(
+                                          child: Align(
+                                            alignment: entry.isMine
+                                                ? Alignment.centerRight
+                                                : Alignment.centerLeft,
+                                            child: ConstrainedBox(
+                                              constraints: const BoxConstraints(
+                                                maxWidth: 420,
+                                              ),
+                                              child: Builder(
+                                                builder: (context) {
+                                                  final bubbleColor =
+                                                      entry.isMine
+                                                      ? colorScheme
+                                                            .primaryContainer
+                                                      : colorScheme
+                                                            .surfaceContainerHighest;
+                                                  final bubbleTextColor =
+                                                      entry.isMine
+                                                      ? colorScheme
+                                                            .onPrimaryContainer
+                                                      : colorScheme.onSurface;
+                                                  return _SwipeReplyMessageWrapper(
+                                                    accentColor: entry.isMine
+                                                        ? colorScheme
+                                                              .onPrimaryContainer
+                                                        : colorScheme.primary,
+                                                    manageColor:
+                                                        colorScheme.error,
+                                                    onReplyTriggered: () =>
+                                                        entry.isReply
+                                                        ? _openReplyComposerForReply(
+                                                            entry.postId,
+                                                            entry.id,
+                                                          )
+                                                        : _openReplyComposerForPost(
+                                                            entry.id,
                                                           ),
-                                                      topRight:
-                                                          const Radius.circular(
-                                                            20,
+                                                    onManageTriggered:
+                                                        _canManageSocialEntry(
+                                                          entry,
+                                                        )
+                                                        ? () =>
+                                                              _showSocialMessageActions(
+                                                                entry,
+                                                              )
+                                                        : null,
+                                                    child: Container(
+                                                      padding:
+                                                          const EdgeInsets.fromLTRB(
+                                                            AppSpacing.sm,
+                                                            AppSpacing.xs,
+                                                            AppSpacing.sm,
+                                                            AppSpacing.xs,
                                                           ),
-                                                      bottomLeft:
-                                                          Radius.circular(
-                                                            entry.isMine
-                                                                ? 20
-                                                                : 6,
-                                                          ),
-                                                      bottomRight:
-                                                          Radius.circular(
-                                                            entry.isMine
-                                                                ? 6
-                                                                : 20,
-                                                          ),
-                                                    ),
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: Colors.black
-                                                            .withValues(
-                                                              alpha: 0.04,
-                                                            ),
-                                                        blurRadius: 10,
-                                                        offset: const Offset(
-                                                          0,
-                                                          4,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    children: [
-                                                      Row(
-                                                        children: [
-                                                          Expanded(
-                                                            child: Text(
-                                                              '${entry.authorDisplayName} · ${_relativeTimeLabel(entry.createdAt)}',
-                                                              style: textTheme.bodySmall?.copyWith(
-                                                                color:
-                                                                    entry.isMine
-                                                                    ? colorScheme
-                                                                          .onPrimaryContainer
-                                                                          .withValues(
-                                                                            alpha:
-                                                                                0.72,
-                                                                          )
-                                                                : colorScheme
-                                                                      .onSurfaceVariant,
+                                                      decoration: BoxDecoration(
+                                                        color: bubbleColor,
+                                                        borderRadius: BorderRadius.only(
+                                                          topLeft:
+                                                              const Radius.circular(
+                                                                20,
                                                               ),
-                                                            ),
+                                                          topRight:
+                                                              const Radius.circular(
+                                                                20,
+                                                              ),
+                                                          bottomLeft:
+                                                              Radius.circular(
+                                                                entry.isMine
+                                                                    ? 20
+                                                                    : 6,
+                                                              ),
+                                                          bottomRight:
+                                                              Radius.circular(
+                                                                entry.isMine
+                                                                    ? 6
+                                                                    : 20,
+                                                              ),
+                                                        ),
+                                                        boxShadow: [
+                                                          BoxShadow(
+                                                            color: Colors.black
+                                                                .withValues(
+                                                                  alpha: 0.04,
+                                                                ),
+                                                            blurRadius: 10,
+                                                            offset:
+                                                                const Offset(
+                                                                  0,
+                                                                  4,
+                                                                ),
                                                           ),
                                                         ],
                                                       ),
-                                                      if (entry.parentMessage
-                                                              ?.trim()
-                                                              .isNotEmpty ??
-                                                          false) ...[
-                                                        const SizedBox(
-                                                          height: 4,
-                                                        ),
-                                                        Container(
-                                                          width:
-                                                              double.infinity,
-                                                          margin:
-                                                              const EdgeInsets.only(
-                                                                bottom:
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                          Row(
+                                                            children: [
+                                                              Expanded(
+                                                                child: Text(
+                                                                  '${entry.authorDisplayName} · ${_relativeTimeLabel(entry.createdAt)}',
+                                                                  style: textTheme
+                                                                      .bodySmall
+                                                                      ?.copyWith(
+                                                                        color:
+                                                                            entry.isMine
+                                                                            ? colorScheme.onPrimaryContainer.withValues(
+                                                                                alpha: 0.72,
+                                                                              )
+                                                                            : colorScheme.onSurfaceVariant,
+                                                                      ),
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                          if (entry
+                                                                  .parentMessage
+                                                                  ?.trim()
+                                                                  .isNotEmpty ??
+                                                              false) ...[
+                                                            const SizedBox(
+                                                              height: 4,
+                                                            ),
+                                                            Container(
+                                                              width: double
+                                                                  .infinity,
+                                                              margin:
+                                                                  const EdgeInsets.only(
+                                                                    bottom:
+                                                                        AppSpacing
+                                                                            .xs,
+                                                                  ),
+                                                              padding:
+                                                                  const EdgeInsets.all(
                                                                     AppSpacing
                                                                         .xs,
-                                                              ),
-                                                          padding:
-                                                              const EdgeInsets.all(
-                                                                AppSpacing.xs,
-                                                              ),
-                                                          decoration: BoxDecoration(
-                                                            color: colorScheme
-                                                                .surfaceContainerHighest,
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  12,
-                                                                ),
-                                                            border: Border(
-                                                              left: BorderSide(
-                                                                color:
-                                                                    colorScheme
+                                                                  ),
+                                                              decoration: BoxDecoration(
+                                                                color: colorScheme
+                                                                    .surfaceContainerHighest,
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      12,
+                                                                    ),
+                                                                border: Border(
+                                                                  left: BorderSide(
+                                                                    color: colorScheme
                                                                         .primary,
-                                                                width: 3,
+                                                                    width: 3,
+                                                                  ),
+                                                                ),
                                                               ),
-                                                            ),
-                                                          ),
-                                                          child: Column(
-                                                            crossAxisAlignment:
-                                                                CrossAxisAlignment
-                                                                    .start,
-                                                            children: [
-                                                              Text(
-                                                                entry.parentAuthor ??
-                                                                    '',
-                                                                style: textTheme
-                                                                    .labelSmall
-                                                                    ?.copyWith(
+                                                              child: Column(
+                                                                crossAxisAlignment:
+                                                                    CrossAxisAlignment
+                                                                        .start,
+                                                                children: [
+                                                                  Text(
+                                                                    entry.parentAuthor ??
+                                                                        '',
+                                                                    style: textTheme.labelSmall?.copyWith(
                                                                       color: colorScheme
                                                                           .primary,
                                                                       fontWeight:
                                                                           FontWeight
                                                                               .w700,
                                                                     ),
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    height: 2,
+                                                                  ),
+                                                                  Text(
+                                                                    entry
+                                                                        .parentMessage!,
+                                                                    maxLines: 2,
+                                                                    overflow:
+                                                                        TextOverflow
+                                                                            .ellipsis,
+                                                                    style: textTheme
+                                                                        .bodySmall
+                                                                        ?.copyWith(
+                                                                          color:
+                                                                              colorScheme.onSurfaceVariant,
+                                                                        ),
+                                                                  ),
+                                                                ],
                                                               ),
-                                                              const SizedBox(
-                                                                height: 2,
-                                                              ),
-                                                              Text(
-                                                                entry
-                                                                    .parentMessage!,
-                                                                maxLines: 2,
-                                                                overflow:
-                                                                    TextOverflow
-                                                                        .ellipsis,
-                                                                style: textTheme
-                                                                    .bodySmall
-                                                                    ?.copyWith(
-                                                                      color: colorScheme
-                                                                          .onSurfaceVariant,
-                                                                    ),
-                                                              ),
-                                                            ],
+                                                            ),
+                                                          ],
+                                                          if (entry
+                                                              .message
+                                                              .isNotEmpty) ...[
+                                                            const SizedBox(
+                                                              height: 4,
+                                                            ),
+                                                            Text(
+                                                              entry.message,
+                                                              style: textTheme
+                                                                  .bodyMedium
+                                                                  ?.copyWith(
+                                                                    color:
+                                                                        bubbleTextColor,
+                                                                  ),
+                                                            ),
+                                                          ],
+                                                          _buildSocialAttachments(
+                                                            entry.attachments,
+                                                            compact:
+                                                                entry.isReply,
                                                           ),
-                                                        ),
-                                                      ],
-                                                      if (entry
-                                                          .message
-                                                          .isNotEmpty) ...[
-                                                        const SizedBox(
-                                                          height: 4,
-                                                        ),
-                                                        Text(
-                                                          entry.message,
-                                                          style: textTheme
-                                                              .bodyMedium
-                                                              ?.copyWith(
-                                                                color:
-                                                                    bubbleTextColor,
-                                                              ),
-                                                        ),
-                                                      ],
-                                                      _buildSocialAttachments(
-                                                        entry.attachments,
-                                                        compact: entry.isReply,
+                                                        ],
                                                       ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              );
-                                            },
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ),
-                                    if (entry.isMine) ...[
-                                      const SizedBox(width: AppSpacing.xs),
-                                      _buildSocialMiniAvatar(entry),
-                                    ],
-                                  ],
-                                );
+                                        if (entry.isMine) ...[
+                                          const SizedBox(width: AppSpacing.xs),
+                                          _buildSocialMiniAvatar(entry),
+                                        ],
+                                      ],
+                                    );
                                   },
                                 ),
                               ),
@@ -9191,8 +9229,14 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                 (entry) => _forecastColumnCell(
                   isDayStart: _isForecastDayStart(rows, entry.key),
                   child: _compactValueCell(
-                    '${entry.value.tempC}$_degreeSymbol',
-                    color: _airTempColor(entry.value.tempC),
+                    _nullableMetricText(
+                      entry.value.tempC == null
+                          ? null
+                          : '${entry.value.tempC}$_degreeSymbol',
+                    ),
+                    color: entry.value.tempC == null
+                        ? null
+                        : _airTempColor(entry.value.tempC!),
                     minHeight: fullscreenRowHeight,
                   ),
                 ),
@@ -9617,7 +9661,7 @@ class _ForecastRow {
     required this.windKnots,
     this.gustKnots,
     required this.windDeg,
-    required this.tempC,
+    this.tempC,
     this.waterTempC,
     this.pressureHpa,
     this.cloudCoverPct,
@@ -9630,7 +9674,7 @@ class _ForecastRow {
   final int windKnots;
   final int? gustKnots;
   final int windDeg;
-  final int tempC;
+  final int? tempC;
   final int? waterTempC;
   final int? pressureHpa;
   final int? cloudCoverPct;
@@ -11608,7 +11652,9 @@ class _SwipeReplyMessageWrapperState extends State<_SwipeReplyMessageWrapper> {
         _crossedThresholdAction = null;
       },
       onHorizontalDragUpdate: (details) {
-        final minOffset = widget.onManageTriggered == null ? -_maxReveal : -_maxReveal;
+        final minOffset = widget.onManageTriggered == null
+            ? -_maxReveal
+            : -_maxReveal;
         final maxOffset = widget.onManageTriggered == null ? 0.0 : _maxReveal;
         final nextOffset = (_dragOffset + details.delta.dx).clamp(
           minOffset,
@@ -11619,7 +11665,8 @@ class _SwipeReplyMessageWrapperState extends State<_SwipeReplyMessageWrapper> {
         }
         final crossedThresholdAction = nextOffset <= -_triggerThreshold
             ? _SwipeMessageAction.reply
-            : (nextOffset >= _triggerThreshold && widget.onManageTriggered != null)
+            : (nextOffset >= _triggerThreshold &&
+                  widget.onManageTriggered != null)
             ? _SwipeMessageAction.manage
             : null;
         if (crossedThresholdAction != null &&

@@ -14,8 +14,4 @@ class AppSettingsLauncher {
   static void openFaq(BuildContext context) {
     context.push(AppRoutes.faq);
   }
-
-  static void openDonations(BuildContext context) {
-    context.push(AppRoutes.donations);
-  }
 }

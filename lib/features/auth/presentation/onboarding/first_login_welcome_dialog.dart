@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/features/profile/domain/errors/profile_handle_taken_exception.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
 
 class FirstLoginWelcomeDialog extends StatefulWidget {
@@ -14,13 +17,13 @@ class FirstLoginWelcomeDialog extends StatefulWidget {
   final Future<bool> Function(UserProfileData) onSave;
   final Future<bool> Function(String handle) isHandleAvailable;
 
-  static Future<bool> show(
+  static Future<FirstLoginWelcomeResult> show(
     BuildContext context, {
     required UserProfileData initialData,
     required Future<bool> Function(UserProfileData) onSave,
     required Future<bool> Function(String handle) isHandleAvailable,
   }) async {
-    final completed = await showDialog<bool>(
+    final result = await showDialog<FirstLoginWelcomeResult>(
       context: context,
       barrierDismissible: false,
       builder: (_) => FirstLoginWelcomeDialog(
@@ -29,7 +32,7 @@ class FirstLoginWelcomeDialog extends StatefulWidget {
         isHandleAvailable: isHandleAvailable,
       ),
     );
-    return completed ?? false;
+    return result ?? FirstLoginWelcomeResult.skipped;
   }
 
   @override
@@ -43,6 +46,10 @@ class _FirstLoginWelcomeDialogState extends State<FirstLoginWelcomeDialog> {
 
   late final TextEditingController _displayName;
   late final TextEditingController _handle;
+  Timer? _handleAvailabilityDebounce;
+  _HandleAvailabilityState _handleAvailabilityState =
+      _HandleAvailabilityState.idle;
+  String? _lastCheckedHandle;
   bool _isSaving = false;
   bool _isSyncingHandle = false;
   String? _displayNameError;
@@ -52,12 +59,16 @@ class _FirstLoginWelcomeDialogState extends State<FirstLoginWelcomeDialog> {
   void initState() {
     super.initState();
     _displayName = TextEditingController(text: widget.initialData.displayName);
-    _handle = TextEditingController(text: _sanitizedHandleInput(widget.initialData.handle));
+    _handle = TextEditingController(
+      text: _sanitizedHandleInput(widget.initialData.handle),
+    );
     _handle.addListener(_syncHandleInput);
+    _scheduleHandleAvailabilityCheck();
   }
 
   @override
   void dispose() {
+    _handleAvailabilityDebounce?.cancel();
     _displayName.dispose();
     _handle.removeListener(_syncHandleInput);
     _handle.dispose();
@@ -78,6 +89,7 @@ class _FirstLoginWelcomeDialogState extends State<FirstLoginWelcomeDialog> {
       selection: TextSelection.collapsed(offset: sanitized.length),
     );
     _isSyncingHandle = false;
+    _scheduleHandleAvailabilityCheck();
   }
 
   String _sanitizedHandleInput(String raw) {
@@ -96,18 +108,24 @@ class _FirstLoginWelcomeDialogState extends State<FirstLoginWelcomeDialog> {
     return trimmed.isEmpty ? '' : '@$trimmed';
   }
 
+  String? _validateHandleFormat(String handle) {
+    final value = handle.replaceFirst('@', '');
+    if (value.isEmpty) {
+      return 'Introduce un handle publico.';
+    }
+    if (_handleInvalidCharacters.hasMatch(value)) {
+      return 'El handle no puede contener espacios en blanco.';
+    }
+    return null;
+  }
+
   bool _validate() {
     final displayName = _displayName.text.trim();
     final handle = _normalizedHandle(_handle.text);
     final displayNameError = displayName.isEmpty
         ? 'Introduce un nombre visible.'
         : null;
-    String? handleError;
-    if (handle.replaceFirst('@', '').isEmpty) {
-      handleError = 'Introduce un handle publico.';
-    } else if (_handleInvalidCharacters.hasMatch(handle.replaceFirst('@', ''))) {
-      handleError = 'El handle no puede contener espacios en blanco.';
-    }
+    final handleError = _validateHandleFormat(handle);
     setState(() {
       _displayNameError = displayNameError;
       _handleError = handleError;
@@ -126,6 +144,12 @@ class _FirstLoginWelcomeDialogState extends State<FirstLoginWelcomeDialog> {
     if (_isSaving || !_validate()) {
       return;
     }
+    if (_handleAvailabilityState != _HandleAvailabilityState.available) {
+      setState(() {
+        _handleError = 'Comprueba que el handle este disponible.';
+      });
+      return;
+    }
     setState(() {
       _isSaving = true;
     });
@@ -133,7 +157,19 @@ class _FirstLoginWelcomeDialogState extends State<FirstLoginWelcomeDialog> {
     final normalizedHandle = _normalizedHandle(_handle.text);
     final initialHandle = _normalizedHandle(widget.initialData.handle);
     if (normalizedHandle != initialHandle) {
-      final available = await widget.isHandleAvailable(normalizedHandle);
+      final bool available;
+      try {
+        available = await widget.isHandleAvailable(normalizedHandle);
+      } catch (_) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _handleError = 'No se pudo validar el handle. Intentalo de nuevo.';
+          _isSaving = false;
+        });
+        return;
+      }
       if (!mounted) {
         return;
       }
@@ -146,17 +182,117 @@ class _FirstLoginWelcomeDialogState extends State<FirstLoginWelcomeDialog> {
       }
     }
 
-    final saved = await widget.onSave(_buildUpdatedProfile());
+    bool saved;
+    try {
+      saved = await widget.onSave(_buildUpdatedProfile());
+    } on ProfileHandleTakenException {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _handleAvailabilityState = _HandleAvailabilityState.taken;
+        _handleError = 'Este nombre de usuario ya esta ocupado.';
+        _isSaving = false;
+      });
+      return;
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _handleError = 'No se pudo guardar el perfil. Intentalo de nuevo.';
+        _isSaving = false;
+      });
+      return;
+    }
     if (!mounted) {
       return;
     }
     if (saved) {
-      Navigator.of(context).pop(true);
+      Navigator.of(context).pop(FirstLoginWelcomeResult.completed);
       return;
     }
     setState(() {
       _isSaving = false;
     });
+  }
+
+  void _scheduleHandleAvailabilityCheck() {
+    _handleAvailabilityDebounce?.cancel();
+    final normalizedHandle = _normalizedHandle(_handle.text);
+    final formatError = _validateHandleFormat(normalizedHandle);
+    if (formatError != null) {
+      setState(() {
+        _handleAvailabilityState = _HandleAvailabilityState.idle;
+        _lastCheckedHandle = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _handleAvailabilityState = _HandleAvailabilityState.checking;
+      _lastCheckedHandle = normalizedHandle;
+    });
+
+    _handleAvailabilityDebounce = Timer(
+      const Duration(milliseconds: 450),
+      () => unawaited(_checkHandleAvailability(normalizedHandle)),
+    );
+  }
+
+  Future<void> _checkHandleAvailability(String normalizedHandle) async {
+    final initialHandle = _normalizedHandle(widget.initialData.handle);
+    final bool available;
+    try {
+      available = normalizedHandle == initialHandle
+          ? true
+          : await widget.isHandleAvailable(normalizedHandle);
+    } catch (_) {
+      if (!mounted || _lastCheckedHandle != normalizedHandle) {
+        return;
+      }
+      setState(() {
+        _handleAvailabilityState = _HandleAvailabilityState.idle;
+        _handleError = 'No se pudo validar el handle. Intentalo de nuevo.';
+      });
+      return;
+    }
+    if (!mounted || _lastCheckedHandle != normalizedHandle) {
+      return;
+    }
+    setState(() {
+      _handleAvailabilityState = available
+          ? _HandleAvailabilityState.available
+          : _HandleAvailabilityState.taken;
+      _handleError = available
+          ? null
+          : 'Este nombre de usuario ya esta ocupado.';
+    });
+  }
+
+  bool get _canSave {
+    return !_isSaving &&
+        _handleAvailabilityState == _HandleAvailabilityState.available;
+  }
+
+  String? get _handleHelperText {
+    return switch (_handleAvailabilityState) {
+      _HandleAvailabilityState.idle =>
+        'Sera tu identidad publica dentro de la comunidad.',
+      _HandleAvailabilityState.checking => 'Comprobando disponibilidad...',
+      _HandleAvailabilityState.available => 'Handle disponible.',
+      _HandleAvailabilityState.taken => null,
+    };
+  }
+
+  Color? _handleHelperColor(BuildContext context) {
+    return switch (_handleAvailabilityState) {
+      _HandleAvailabilityState.available => Colors.green.shade700,
+      _HandleAvailabilityState.checking => Theme.of(
+        context,
+      ).colorScheme.primary,
+      _ => null,
+    };
   }
 
   @override
@@ -195,17 +331,14 @@ class _FirstLoginWelcomeDialogState extends State<FirstLoginWelcomeDialog> {
                     'Antes de empezar, completa lo minimo de tu perfil para que no entres con datos vacios en la app.',
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  _field(
-                    'Nombre',
-                    _displayName,
-                    errorText: _displayNameError,
-                  ),
+                  _field('Nombre', _displayName, errorText: _displayNameError),
                   _field(
                     'Handle',
                     _handle,
                     errorText: _handleError,
                     hintText: '@tu_handle',
-                    helperText: 'Sera tu identidad publica dentro de la comunidad.',
+                    helperText: _handleHelperText,
+                    helperColor: _handleHelperColor(context),
                   ),
                 ],
               ),
@@ -218,12 +351,14 @@ class _FirstLoginWelcomeDialogState extends State<FirstLoginWelcomeDialog> {
                   TextButton(
                     onPressed: _isSaving
                         ? null
-                        : () => Navigator.of(context).pop(false),
-                    child: const Text('Salir'),
+                        : () => Navigator.of(
+                            context,
+                          ).pop(FirstLoginWelcomeResult.skipped),
+                    child: const Text('Saltar'),
                   ),
                   const Spacer(),
                   FilledButton(
-                    onPressed: _isSaving ? null : _save,
+                    onPressed: _canSave ? _save : null,
                     child: _isSaving
                         ? const SizedBox(
                             width: 18,
@@ -247,6 +382,7 @@ class _FirstLoginWelcomeDialogState extends State<FirstLoginWelcomeDialog> {
     String? errorText,
     String? hintText,
     String? helperText,
+    Color? helperColor,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -263,11 +399,17 @@ class _FirstLoginWelcomeDialogState extends State<FirstLoginWelcomeDialog> {
               _handleError = null;
             });
           }
+          if (label == 'Handle') {
+            _scheduleHandleAvailabilityCheck();
+          }
         },
         decoration: InputDecoration(
           labelText: label,
           hintText: hintText,
           helperText: helperText,
+          helperStyle: helperColor == null
+              ? null
+              : TextStyle(color: helperColor),
           errorText: errorText,
           border: const OutlineInputBorder(),
         ),
@@ -275,3 +417,7 @@ class _FirstLoginWelcomeDialogState extends State<FirstLoginWelcomeDialog> {
     );
   }
 }
+
+enum _HandleAvailabilityState { idle, checking, available, taken }
+
+enum FirstLoginWelcomeResult { completed, skipped }
