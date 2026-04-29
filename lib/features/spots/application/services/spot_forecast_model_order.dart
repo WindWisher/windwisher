@@ -107,6 +107,10 @@ String? getSpotDefaultForecastModel({
     return 'Best match';
   }
 
+  if (provider == 'AEMET') {
+    return kAemetPortusAtmosphereForecastModel;
+  }
+
   if (provider == 'Meteoblue') {
     return 'Basic';
   }

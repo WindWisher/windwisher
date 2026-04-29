@@ -21,3 +21,4 @@ ios/Flutter/ephemeral/
 macos/Pods/
 macos/Flutter/ephemeral/
 secrets/
+supabase/.temp/

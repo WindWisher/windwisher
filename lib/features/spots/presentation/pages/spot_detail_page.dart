@@ -2446,7 +2446,92 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   }
 
   Widget _buildLiveActionsRow(_NearbyStation station) {
-    return _buildLiveStationMapLink(station);
+    return Wrap(
+      spacing: AppSpacing.xs,
+      runSpacing: AppSpacing.xs,
+      children: [
+        _buildLiveStationMapLink(station),
+        if (_isOlivaAemetOfficialStation(station))
+          OutlinedButton.icon(
+            onPressed: _isLiveRefreshing
+                ? null
+                : () => _checkAemetOlivaStation(station),
+            icon: _isLiveRefreshing
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.fact_check_outlined),
+            label: const Text('Chequear AEMET Oliva'),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _checkAemetOlivaStation(_NearbyStation station) async {
+    if (!_isOlivaAemetOfficialStation(station)) {
+      return;
+    }
+    setState(() {
+      _isLiveRefreshing = true;
+    });
+    try {
+      final refreshed = await _fetchLiveDataForStation(station);
+      if (!mounted) {
+        return;
+      }
+      if (refreshed == null) {
+        _showLiveRefreshFeedback(
+          'AEMET Oliva no ha devuelto datos live ahora mismo.',
+        );
+        return;
+      }
+      setState(() {
+        final current = _liveStationsLoadResult;
+        if (current == null) {
+          return;
+        }
+        final updatedLiveData = Map<String, _StationLiveData>.from(
+          current.liveDataByStation,
+        );
+        updatedLiveData[_stationKey(station)] = refreshed;
+        _liveStationsLoadResult = _LiveStationsLoadResult(
+          stations: current.stations,
+          liveDataByStation: updatedLiveData,
+          historicalSeriesByStation: current.historicalSeriesByStation,
+          source: current.source,
+          message: current.message,
+          technicalError: current.technicalError,
+        );
+      });
+      _showLiveRefreshFeedback(_formatAemetOlivaCheckMessage(refreshed));
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      _showLiveRefreshFeedback('No se pudo chequear AEMET Oliva: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLiveRefreshing = false;
+        });
+      }
+    }
+  }
+
+  String _formatAemetOlivaCheckMessage(_StationLiveData liveData) {
+    final observedAt = liveData.observedAt == null
+        ? 'sin hora'
+        : _formatObservedAt(liveData.observedAt!);
+    final wind = _formatWind(liveData.windKnots);
+    final direction = liveData.windDeg == null
+        ? ''
+        : ' · dir ${liveData.windDeg}';
+    final gust = liveData.gustKnots == null
+        ? ''
+        : ' · racha ${_formatWind(liveData.gustKnots)}';
+    return 'AEMET Oliva OK · $observedAt · $wind$direction$gust';
   }
 
   Future<void> _showLiveStationMapDialog(_NearbyStation station) async {
@@ -4561,6 +4646,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     final normalizedHeading = compassHeadingDeg == null
         ? null
         : _normalizeDegrees(compassHeadingDeg);
+    final compassScreenNorth = normalizedHeading == null
+        ? null
+        : _headingToScreenNorthDegrees(normalizedHeading);
     final headingDelta = normalizedHeading == null || windDirection == null
         ? null
         : _headingDelta(windDirection, normalizedHeading);
@@ -4600,7 +4688,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                     ),
                   if (normalizedHeading != null)
                     _buildCompassNeedle(
-                      directionDeg: normalizedHeading,
+                      directionDeg: compassScreenNorth!,
                       northColor: const Color(0xFFD32F2F),
                       southColor: const Color(0xFF263238),
                       showPoleLabels: true,
@@ -4784,6 +4872,12 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   double _headingDelta(double a, double b) {
     final diff = (_normalizeDegrees(a) - _normalizeDegrees(b)).abs();
     return diff > 180 ? 360 - diff : diff;
+  }
+
+  double _headingToScreenNorthDegrees(double headingDeg) {
+    // FlutterCompass reports where the top of the device is pointing.
+    // The visible north needle has to move in the opposite direction.
+    return -_normalizeDegrees(headingDeg);
   }
 
   String _degreesToCardinal(double degrees) {

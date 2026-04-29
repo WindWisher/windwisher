@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 187h 24m`.
+- `Total historico minimo consolidado del proyecto: 188h 24m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -21,10 +21,11 @@
   - bloque consolidado adicional en `2026-04-23`: `+4h` estimadas (`WOO Big Air model refinement`)
   - bloque consolidado adicional en `2026-04-25`: `+6h` estimadas (`Perfil > Ajustes modularization and dependency cleanup`)
   - bloque consolidado adicional en `2026-04-30`: `+18h` estimadas (`Onboarding legal, roles/admin panels and Puertos del Estado forecast integration`)
+  - bloque consolidado adicional en `2026-04-30`: `+1h` estimada (`Live spots: AEMET Oliva check and compass correction`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-04-30`: `+18h` estimadas (`Onboarding legal, roles/admin panels and Puertos del Estado forecast integration`).
+  - ultima consolidacion manual anadida el `2026-04-30`: `+1h` estimada (`Live spots: AEMET Oliva check and compass correction`).
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
 
@@ -42,6 +43,30 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-04-30 - Live spots: chequeo AEMET Oliva y brujula
+
+- Bloque consolidado adicional: `+1h` estimada.
+- Anadido chequeo manual en el apartado `Live` para la estacion oficial `AEMET Oliva` (`8058X`):
+  - accion visible solo cuando la estacion seleccionada es `AEMET Oliva`,
+  - consulta real a AEMET OpenData,
+  - actualizacion de la tarjeta live,
+  - feedback con hora, viento, direccion y racha.
+- Comprobada la estacion real `8058X / OLIVA`:
+  - el endpoint devuelve `12` observaciones,
+  - la cadencia observada es horaria (`60 min` entre muestras),
+  - se detecta posible retraso de publicacion respecto a la hora actual.
+- Corregida la brujula de la rosa de los vientos:
+  - compensado el `heading` en sentido contrario para representar el norte en pantalla,
+  - retirada la rotacion conjunta de rosa/viento que hacia la lectura visual rara,
+  - la rosa vuelve a quedar estable para leer la direccion de viento,
+  - la aguja roja de brujula apunta al norte real de forma mas natural.
+- Ajustes pendientes incorporados al mismo bloque de spots:
+  - `AEMET` selecciona por defecto el modelo `Puertos del Estado`,
+  - `supabase/.temp/` queda ignorado como artefacto local,
+  - se retira del repositorio el artefacto temporal `supabase/.temp/cli-latest`.
+- Verificaciones ejecutadas:
+  - `flutter analyze lib/features/spots/presentation/pages/spot_detail_page.dart` limpio.
 
 ### 2026-04-30 - Onboarding legal, roles/admin y Puertos del Estado como modelo AEMET
 
