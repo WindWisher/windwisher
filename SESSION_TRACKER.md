@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 188h 54m`.
+- `Total historico minimo consolidado del proyecto: 189h 48m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -23,10 +23,11 @@
   - bloque consolidado adicional en `2026-04-30`: `+18h` estimadas (`Onboarding legal, roles/admin panels and Puertos del Estado forecast integration`)
   - bloque consolidado adicional en `2026-04-30`: `+1h` estimada (`Live spots: AEMET Oliva check and compass correction`)
   - bloque consolidado adicional en `2026-04-30`: `+30m` reales (`Local spot alarm notifications`)
+  - bloque consolidado adicional en `2026-04-30`: `+54m` reales (`Live spots: Puertos del Estado Gandia realtime/history and web deploy`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-04-30`: `+30m` reales (`Local spot alarm notifications`).
+  - ultima consolidacion manual anadida el `2026-04-30`: `+54m` reales (`Live spots: Puertos del Estado Gandia realtime/history and web deploy`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -45,6 +46,38 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-04-30 - Live spots: Puertos del Estado Gandia y deploy web
+
+- Bloque consolidado adicional: `+54m` reales.
+- Medicion real usada:
+  - inicio del tramo: `2026-04-30 00:49 CEST`, justo despues del ultimo cierre/commit del tracker,
+  - cierre del tramo: `2026-04-30 01:43 CEST`,
+  - duracion transcurrida: `54m`.
+- Integracion `Live` de Puertos del Estado:
+  - anadido cliente `PortusRealtimeWindClient` para estaciones reales de Puertos del Estado,
+  - conectada la estacion `Estacion Meteorologica Gandia Serpis` (`4634`) solo a spots donde corresponde, no como estacion global para todos los spots,
+  - calculada la distancia real desde las coordenadas de la estacion al spot,
+  - eliminada la etiqueta de cadencia como proximidad para que la tarjeta muestre distancia igual que el resto de estaciones,
+  - al seleccionar `AEMET` se mantiene `Puertos del Estado` como modelo preferente cuando corresponde.
+- Tarjetas live de Gandia:
+  - el endpoint `lastData/station/4634` se consulta con `WIND`, `AIR_TEMP` y `AIR_PRESURE`,
+  - se rellenan viento, direccion, racha, temperatura y presion cuando el endpoint las devuelve,
+  - humedad y lluvia quedan sin datos porque la estacion no los expone en el endpoint real usado.
+- Historico real de Gandia:
+  - descubierto y probado el endpoint oficial `RTData/station/4634?locale=es`,
+  - validado que devuelve alrededor de `286` registros de unos dos dias con cadencia de `10 min`,
+  - creado parseo de historico de viento, direccion y racha,
+  - conectado el historico de estaciones `PUERTOS` a la grafica historica de `Live`,
+  - el refresco de historico ya actualiza tambien estaciones de Puertos.
+- Rebuild y deploy:
+  - ejecutado `./scripts/deploy_firebase_hosting.sh`,
+  - `flutter build web` correcto,
+  - Firebase Hosting publico nueva version en el proyecto `windwisherapp-5ed22`,
+  - comprobado `https://windwisher.com` con respuesta `HTTP/2 200`.
+- Verificaciones ejecutadas:
+  - `flutter analyze lib/features/spots/infrastructure/services/portus_realtime_wind_client.dart lib/features/spots/application/services/spots_external_data_clients.dart lib/features/spots/presentation/pages/spot_detail_page.dart` limpio,
+  - deploy completo en Firebase Hosting sin errores.
 
 ### 2026-04-30 - Notificaciones locales de alarmas de spots
 

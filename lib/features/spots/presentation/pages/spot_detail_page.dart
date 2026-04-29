@@ -68,6 +68,7 @@ class SpotDetailPage extends StatefulWidget {
     this.meteoblueCurrentDayClient,
     this.meteostatDayClient,
     this.meteosourceCurrentDayClient,
+    this.portusRealtimeWindClient,
     this.useLocalPersistence = EnvConfig.spotsLocalPersistenceEnabled,
   });
 
@@ -92,6 +93,7 @@ class SpotDetailPage extends StatefulWidget {
   final MeteoblueCurrentDayClient? meteoblueCurrentDayClient;
   final MeteostatDayClient? meteostatDayClient;
   final MeteosourceCurrentDayClient? meteosourceCurrentDayClient;
+  final PortusRealtimeWindClient? portusRealtimeWindClient;
   final bool useLocalPersistence;
 
   SpotItem get spot => SpotItem(
@@ -259,6 +261,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   late final MeteostatDayClient _meteostatDayClient;
   late final MeteosourceCurrentDayClient _meteosourceCurrentDayClient;
   late final OpenMeteoWindMapGridClient _openMeteoWindMapGridClient;
+  late final PortusRealtimeWindClient _portusRealtimeWindClient;
   late Future<_ForecastLoadResult> _forecastRowsFuture;
   _ForecastLoadResult? _historyForecastRowsResult;
   bool _historyForecastLoadRequested = false;
@@ -299,6 +302,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     _meteostatDayClient = widget.meteostatDayClient ?? MeteostatDayClient();
     _meteosourceCurrentDayClient =
         widget.meteosourceCurrentDayClient ?? MeteosourceCurrentDayClient();
+    _portusRealtimeWindClient =
+        widget.portusRealtimeWindClient ?? PortusRealtimeWindClient();
     _openMeteoWindMapGridClient = OpenMeteoWindMapGridClient();
     _spotSocialClient = SpotSocialClient.auto();
     _profileModule = ProfileModule.auto();
@@ -638,6 +643,27 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       } else if (station.provider == 'AIGUABLANCA') {
         final feed = await _aiguaBlancaMeteoClient.fetchFeed();
         refreshedHistory = feed.points
+            .map(
+              (point) => _HistoricalWindPoint(
+                time: point.time,
+                windKnots: point.windKnots,
+                gustKnots: point.gustKnots,
+                windDirectionDeg: point.windDirectionDeg,
+                directionKind: point.windDirectionDeg == null
+                    ? null
+                    : _HistoricalDirectionKind.exact,
+              ),
+            )
+            .toList(growable: false);
+      } else if (station.provider == 'PUERTOS') {
+        final stationId = int.tryParse(station.stationId ?? '');
+        if (stationId == null) {
+          return false;
+        }
+        final history = await _portusRealtimeWindClient.fetchWindHistory(
+          stationId: stationId,
+        );
+        refreshedHistory = history
             .map(
               (point) => _HistoricalWindPoint(
                 time: point.time,
@@ -2696,11 +2722,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         final stationKeys = result.stations.map(_stationKey).toSet();
         if (result.stations.isNotEmpty &&
             !stationKeys.contains(_selectedStation)) {
-          final preferredStation = _findPreferredLiveStation(
-            result.stations,
-            result.historicalSeriesByStation,
-          );
-          final resolvedStation = preferredStation ?? result.stations.first;
+          final resolvedStation = result.stations.first;
           _selectedStation = _stationKey(resolvedStation);
           _applyHistoricalDefaultsForStation(resolvedStation);
         }
@@ -2995,6 +3017,28 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         observedAt: snapshot.observedAt,
       );
     }
+    if (station.provider == 'PUERTOS') {
+      final stationId = int.tryParse(station.stationId ?? '');
+      if (stationId == null) {
+        return null;
+      }
+      final snapshot = await _portusRealtimeWindClient.fetchWindStation(
+        stationId: stationId,
+      );
+      if (snapshot == null) {
+        return null;
+      }
+      return _StationLiveData(
+        windKnots: snapshot.windKnots,
+        windDeg: snapshot.windDirectionDeg,
+        gustKnots: snapshot.gustKnots,
+        tempC: snapshot.tempC,
+        pressureHpa: snapshot.pressureHpa,
+        humidityPct: null,
+        rainMm: null,
+        observedAt: snapshot.observedAt,
+      );
+    }
     if (station.stationId == null) {
       return null;
     }
@@ -3016,16 +3060,6 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       rainMm: snapshot.rainMm,
       observedAt: snapshot.observedAt,
     );
-  }
-
-  _NearbyStation? _findPreferredLiveStation(
-    List<_NearbyStation> stations,
-    Map<String, List<_HistoricalWindPoint>> historicalSeriesByStation,
-  ) {
-    if (stations.isEmpty) {
-      return null;
-    }
-    return stations.first;
   }
 
   Future<_LiveStationsLoadResult> _resolveLiveStations() async {
@@ -3107,6 +3141,68 @@ class _SpotDetailPageState extends State<SpotDetailPage>
           rainMm: snapshot.rainMm,
           observedAt: snapshot.observedAt,
         );
+      }
+      try {
+        final portusStationIds = _portusRealtimeStationIdsForSpot();
+        for (final stationId in portusStationIds) {
+          final snapshot = await _portusRealtimeWindClient.fetchWindStation(
+            stationId: stationId,
+          );
+          if (snapshot == null) {
+            continue;
+          }
+          final stationKey = _portusStationKey(snapshot.stationId);
+          if (seenKeys.contains(stationKey)) {
+            continue;
+          }
+          seenKeys.add(stationKey);
+          stations.add(
+            _NearbyStation(
+              name: snapshot.stationName,
+              distanceKm: _distanceKm(
+                latitudeA: latitude,
+                longitudeA: longitude,
+                latitudeB: snapshot.latitude,
+                longitudeB: snapshot.longitude,
+              ),
+              provider: 'PUERTOS',
+              sourceKind: _StationSourceKind.observation,
+              stationId: snapshot.stationId.toString(),
+              proximityLabel: null,
+              stationKey: stationKey,
+              latitude: snapshot.latitude,
+              longitude: snapshot.longitude,
+            ),
+          );
+          liveDataByStation[stationKey] = _StationLiveData(
+            windKnots: snapshot.windKnots,
+            windDeg: snapshot.windDirectionDeg,
+            gustKnots: snapshot.gustKnots,
+            tempC: snapshot.tempC,
+            pressureHpa: snapshot.pressureHpa,
+            humidityPct: null,
+            rainMm: null,
+            observedAt: snapshot.observedAt,
+          );
+          final history = await _portusRealtimeWindClient.fetchWindHistory(
+            stationId: snapshot.stationId,
+          );
+          historyByStation[stationKey] = history
+              .map(
+                (point) => _HistoricalWindPoint(
+                  time: point.time,
+                  windKnots: point.windKnots,
+                  gustKnots: point.gustKnots,
+                  windDirectionDeg: point.windDirectionDeg,
+                  directionKind: point.windDirectionDeg == null
+                      ? null
+                      : _HistoricalDirectionKind.exact,
+                ),
+              )
+              .toList(growable: false);
+        }
+      } catch (error) {
+        technicalError ??= '$error';
       }
       if (isOlivaSpot) {
         try {
@@ -3514,6 +3610,33 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     }
     return null;
   }
+
+  List<int> _portusRealtimeStationIdsForSpot() {
+    final normalized = '${widget.name} ${widget.area}'.toLowerCase();
+    if (normalized.contains('gandia') || normalized.contains('gandía')) {
+      return const <int>[4634];
+    }
+    if (normalized.contains('oliva')) {
+      return const <int>[4634];
+    }
+    if (normalized.contains('valencia') || normalized.contains('malvarrosa')) {
+      return const <int>[4635];
+    }
+    if (normalized.contains('sagunto')) {
+      return const <int>[4632, 4633];
+    }
+    if (normalized.contains('alicante')) {
+      return const <int>[4651, 4652, 4653];
+    }
+    if (normalized.contains('castellon') ||
+        normalized.contains('castelló') ||
+        normalized.contains('castello')) {
+      return const <int>[4660, 4661, 4662, 4663, 4664, 4665];
+    }
+    return const <int>[];
+  }
+
+  String _portusStationKey(int stationId) => 'puertos:$stationId';
 
   String _formatObservedAt(DateTime value) {
     String two(int input) => input.toString().padLeft(2, '0');

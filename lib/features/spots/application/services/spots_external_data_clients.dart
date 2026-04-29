@@ -10,3 +10,4 @@ export 'package:windwisher/features/spots/infrastructure/services/meteoblue_curr
 export 'package:windwisher/features/spots/infrastructure/services/meteostat_day_client.dart';
 export 'package:windwisher/features/spots/infrastructure/services/meteosource_current_day_client.dart';
 export 'package:windwisher/features/spots/infrastructure/services/open_meteo_wind_map_grid_client.dart';
+export 'package:windwisher/features/spots/infrastructure/services/portus_realtime_wind_client.dart';
