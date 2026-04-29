@@ -21,7 +21,7 @@ SpotItem _spot({
 void main() {
   group('PortusSpotsForecastAdapter', () {
     test(
-      'maps nearest Portus atmosphere point into hourly wind entries',
+      'maps nearest Portus points into hourly wind and marine entries',
       () async {
         final requestedUrls = <String>[];
         final adapter = PortusSpotsForecastAdapter(
@@ -31,6 +31,30 @@ void main() {
               return [
                 {'id': 'far-point', 'latitud': 41.0, 'longitud': 2.0},
                 {'id': 'near-point', 'latitud': 38.935, 'longitud': -0.099},
+              ];
+            }
+            if (url.contains('/puntosMalla/portus/pred/Wana')) {
+              return [
+                {'id': 'far-wave', 'latitud': 41.0, 'longitud': 2.0},
+                {'id': 'near-wave', 'latitud': 38.936, 'longitud': -0.1},
+              ];
+            }
+            if (url.contains('/puntosMalla/portus/pred/Cirana')) {
+              return [
+                {'id': 'far-current', 'latitud': 41.0, 'longitud': 2.0},
+                {'id': 'near-current', 'latitud': 38.937, 'longitud': -0.1},
+              ];
+            }
+            if (url.contains('/ForecastData/Siwana/forecast')) {
+              return [
+                [1777381200.0, 0.9, 4.7, 3.5, 273.0],
+                [1777384800.0, 1.1, 5.1, 3.7, 276.0],
+              ];
+            }
+            if (url.contains('/ForecastData/Cirana/forecast')) {
+              return [
+                [1777381200.0, 18.4, 0.16, 241.0, 37.8],
+                [1777384800.0, 18.6, 0.18, 244.0, 37.9],
               ];
             }
             return [
@@ -56,15 +80,24 @@ void main() {
         expect(result.first.windDeg, 71);
         expect(result.first.airTempC, isNull);
         expect(result.first.gustKnots, isNull);
+        expect(result.first.waveM, 0.9);
+        expect(result.first.wavePeriodSeconds, 4.7);
+        expect(result.first.waveDirDeg, 93);
+        expect(result.first.waterTempC, 18);
+        expect(result.first.currentMps, 0.16);
+        expect(result.first.currentDirDeg, 241);
+        expect(result.first.salinityPsu, 37.8);
         expect(
           requestedUrls.first,
           contains('/puntosMalla/portus/pred/Atmosfera'),
         );
-        expect(requestedUrls.last, contains('code=near-point'));
         expect(
           requestedUrls.last,
-          contains('fields=Datetime,WindSpeed,WindDir180'),
+          contains('WaterTemp,CurrentSpeed,CurrentDir,Salinity'),
         );
+        expect(requestedUrls, contains(contains('code=near-point')));
+        expect(requestedUrls, contains(contains('code=near-wave')));
+        expect(requestedUrls, contains(contains('code=near-current')));
       },
     );
 

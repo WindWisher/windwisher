@@ -137,13 +137,14 @@ SpotForecastModelInfo getSpotForecastModelInfo({
             horizon: 'Aprox. 24 horas + tendencia',
           );
         case kAemetPortusAtmosphereForecastModel:
+        case kLegacyAemetPortusAtmosphereForecastModel:
           return const SpotForecastModelInfo(
             title: kAemetPortusAtmosphereForecastModel,
             description:
-                'Prediccion de viento publicada en Portus/Puertos del Estado con campos meteorologicos facilitados por AEMET. WindWisher consume el punto de malla atmosferico mas cercano al spot.',
-            scope: 'Malla costera Portus con viento AEMET',
+                'Prediccion de viento publicada por Puertos del Estado con campos meteorologicos facilitados por AEMET. WindWisher consume el punto de malla atmosferico mas cercano al spot.',
+            scope: 'Malla costera de Puertos del Estado',
             resolution: '1 hora',
-            horizon: 'Corto plazo segun Portus',
+            horizon: 'Corto plazo segun Puertos del Estado',
           );
       }
       if (isAemetBeachForecastModelLabel(model)) {

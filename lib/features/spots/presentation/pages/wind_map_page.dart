@@ -145,7 +145,7 @@ class _UnsupportedPortusMap extends StatelessWidget {
             Icon(Icons.blur_on_rounded, size: 42, color: colorScheme.primary),
             const SizedBox(height: 14),
             Text(
-              'Mapa Portus no disponible en esta plataforma',
+              'Mapa de Puertos del Estado no disponible en esta plataforma',
               textAlign: TextAlign.center,
               style: textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w800,

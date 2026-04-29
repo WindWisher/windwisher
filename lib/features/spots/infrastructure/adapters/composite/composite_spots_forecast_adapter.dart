@@ -1,6 +1,7 @@
 import 'package:windwisher/features/spots/domain/entities/spot_forecast_entry.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_item.dart';
 import 'package:windwisher/features/spots/domain/ports/out/spots_forecast_port.dart';
+import 'package:windwisher/features/spots/application/services/spot_forecast_model_order.dart';
 
 class CompositeSpotsForecastAdapter implements SpotsForecastPort {
   const CompositeSpotsForecastAdapter({
@@ -32,7 +33,7 @@ class CompositeSpotsForecastAdapter implements SpotsForecastPort {
   }) {
     switch (provider) {
       case 'AEMET':
-        if (model == 'Portus Atmosfera') {
+        if (isAemetPortusAtmosphereForecastModel(model)) {
           return _portusAdapter.getForecast(
             spot: spot,
             provider: 'Portus',

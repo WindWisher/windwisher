@@ -383,7 +383,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   bool _providerUsesModelForFetch(String provider, [String? model]) {
     if (provider == 'AEMET') {
-      return (model ?? _forecastModel) == kAemetPortusAtmosphereForecastModel;
+      return isAemetPortusAtmosphereForecastModel(model ?? _forecastModel);
     }
     return provider != 'Windguru';
   }
@@ -400,7 +400,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   bool _usesAemetPortusForecastModel([String? model]) {
     return _forecastProvider == 'AEMET' &&
-        (model ?? _forecastModel) == kAemetPortusAtmosphereForecastModel;
+        isAemetPortusAtmosphereForecastModel(model ?? _forecastModel);
   }
 
   bool _usesMeteoblueProvider() {
@@ -465,7 +465,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       if (entries.isEmpty) {
         final fallbackMessage =
             requestedProvider == 'AEMET' &&
-                requestedModel != kAemetPortusAtmosphereForecastModel &&
+                !isAemetPortusAtmosphereForecastModel(requestedModel) &&
                 !EnvConfig.aemetAccessConfigured
             ? 'AEMET sin API key cargada.'
             : requestedProvider == 'Meteoblue' &&
@@ -1031,6 +1031,17 @@ class _SpotDetailPageState extends State<SpotDetailPage>
             waveM: entry.waveM == null
                 ? null
                 : double.parse(entry.waveM!.toStringAsFixed(1)),
+            wavePeriodSeconds: entry.wavePeriodSeconds == null
+                ? null
+                : double.parse(entry.wavePeriodSeconds!.toStringAsFixed(1)),
+            waveDirDeg: entry.waveDirDeg,
+            currentMps: entry.currentMps == null
+                ? null
+                : double.parse(entry.currentMps!.toStringAsFixed(2)),
+            currentDirDeg: entry.currentDirDeg,
+            salinityPsu: entry.salinityPsu == null
+                ? null
+                : double.parse(entry.salinityPsu!.toStringAsFixed(1)),
             rainMm: entry.rainMm == null
                 ? null
                 : double.parse(entry.rainMm!.toStringAsFixed(1)),
@@ -1190,7 +1201,10 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   void _updateForecastResolution(_ForecastResolution resolution) {
     setState(() {
-      _forecastResolution = resolution;
+      _forecastResolution = _effectiveForecastResolution(
+        _forecastRange,
+        resolution,
+      );
     });
   }
 
@@ -1205,6 +1219,10 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       );
     }
 
+    final effectiveResolution = _effectiveForecastResolution(
+      _forecastRange,
+      _forecastResolution,
+    );
     return Column(
       children: [
         Row(children: [Expanded(child: _buildForecastTableTitle())]),
@@ -1218,11 +1236,11 @@ class _SpotDetailPageState extends State<SpotDetailPage>
               provider: _forecastProvider,
               range: _forecastRange,
             ),
-            _forecastResolution,
+            effectiveResolution,
           ),
           onOpenFullscreen: _openForecastTableFullscreen,
           selectedRange: _forecastRange,
-          fullscreenResolution: _forecastResolution,
+          fullscreenResolution: effectiveResolution,
           showResolutionSelector: true,
           onRangeChanged: _updateForecastRange,
           onResolutionChanged: _updateForecastResolution,
@@ -1475,6 +1493,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     final shouldRefresh = _providerUsesModelForFetch(_forecastProvider, value);
     setState(() {
       _forecastModel = value;
+      _syncForecastRangeWithProvider();
     });
     if (_usesAemetBeachForecastModel(value)) {
       _refreshAemetBeachForecast();
@@ -3669,7 +3688,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     }
 
     if (_usesAemetPortusForecastModel()) {
-      return const [_ForecastResolution.h1];
+      return const [_ForecastResolution.h1, _ForecastResolution.h3];
     }
 
     switch (range) {
@@ -3753,6 +3772,11 @@ class _SpotDetailPageState extends State<SpotDetailPage>
             pressureHpa: row.pressureHpa,
             cloudCoverPct: row.cloudCoverPct,
             waveM: row.waveM,
+            wavePeriodSeconds: row.wavePeriodSeconds,
+            waveDirDeg: row.waveDirDeg,
+            currentMps: row.currentMps,
+            currentDirDeg: row.currentDirDeg,
+            salinityPsu: row.salinityPsu,
             rainMm: row.rainMm,
           ),
         );
@@ -3760,7 +3784,11 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       return rows;
     }
 
-    if (resolution == _ForecastResolution.h3 || baseRows.length < 2) {
+    if (resolution == _ForecastResolution.h3) {
+      return _selectRowsAtNativeResolution(baseRows, resolution);
+    }
+
+    if (baseRows.length < 2) {
       return baseRows;
     }
 
@@ -3808,6 +3836,31 @@ class _SpotDetailPageState extends State<SpotDetailPage>
               t,
             ),
             waveM: _lerpNullableDouble(current.waveM, next.waveM, t),
+            wavePeriodSeconds: _lerpNullableDouble(
+              current.wavePeriodSeconds,
+              next.wavePeriodSeconds,
+              t,
+            ),
+            waveDirDeg: _lerpNullableAngle(
+              current.waveDirDeg,
+              next.waveDirDeg,
+              t,
+            ),
+            currentMps: _lerpNullableDouble(
+              current.currentMps,
+              next.currentMps,
+              t,
+            ),
+            currentDirDeg: _lerpNullableAngle(
+              current.currentDirDeg,
+              next.currentDirDeg,
+              t,
+            ),
+            salinityPsu: _lerpNullableDouble(
+              current.salinityPsu,
+              next.salinityPsu,
+              t,
+            ),
             rainMm: _lerpNullableDouble(current.rainMm, next.rainMm, t),
           ),
         );
@@ -3827,6 +3880,11 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         pressureHpa: last.pressureHpa,
         cloudCoverPct: last.cloudCoverPct,
         waveM: last.waveM,
+        wavePeriodSeconds: last.wavePeriodSeconds,
+        waveDirDeg: last.waveDirDeg,
+        currentMps: last.currentMps,
+        currentDirDeg: last.currentDirDeg,
+        salinityPsu: last.salinityPsu,
         rainMm: last.rainMm,
       ),
     );
@@ -3854,6 +3912,11 @@ class _SpotDetailPageState extends State<SpotDetailPage>
             pressureHpa: row.pressureHpa,
             cloudCoverPct: row.cloudCoverPct,
             waveM: row.waveM,
+            wavePeriodSeconds: row.wavePeriodSeconds,
+            waveDirDeg: row.waveDirDeg,
+            currentMps: row.currentMps,
+            currentDirDeg: row.currentDirDeg,
+            salinityPsu: row.salinityPsu,
             rainMm: row.rainMm,
           ),
         )
@@ -3868,6 +3931,45 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     return nativeRows;
   }
 
+  List<_ForecastRow> _selectRowsAtNativeResolution(
+    List<_ForecastRow> baseRows,
+    _ForecastResolution resolution,
+  ) {
+    if (baseRows.isEmpty) {
+      return const <_ForecastRow>[];
+    }
+    final start = baseRows.first.slotTime;
+    return baseRows
+        .where((row) {
+          final diffMinutes = row.slotTime.difference(start).inMinutes;
+          return diffMinutes % resolution.minutes == 0;
+        })
+        .map(
+          (row) => _ForecastRow(
+            slotTime: row.slotTime,
+            hour: _formatForecastSlot(
+              row.slotTime,
+              stepMinutes: resolution.minutes,
+            ),
+            windKnots: row.windKnots,
+            gustKnots: row.gustKnots,
+            windDeg: row.windDeg,
+            tempC: row.tempC,
+            waterTempC: row.waterTempC,
+            pressureHpa: row.pressureHpa,
+            cloudCoverPct: row.cloudCoverPct,
+            waveM: row.waveM,
+            wavePeriodSeconds: row.wavePeriodSeconds,
+            waveDirDeg: row.waveDirDeg,
+            currentMps: row.currentMps,
+            currentDirDeg: row.currentDirDeg,
+            salinityPsu: row.salinityPsu,
+            rainMm: row.rainMm,
+          ),
+        )
+        .toList(growable: false);
+  }
+
   int? _lerpNullableInt(int? current, int? next, double t) {
     if (current == null || next == null) {
       return null;
@@ -3880,6 +3982,13 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       return null;
     }
     return double.parse((current + (next - current) * t).toStringAsFixed(1));
+  }
+
+  int? _lerpNullableAngle(int? current, int? next, double t) {
+    if (current == null || next == null) {
+      return null;
+    }
+    return _lerpAngle(current.toDouble(), next.toDouble(), t).round();
   }
 
   String _nullableMetricText(String? value) {
@@ -3927,7 +4036,20 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   }
 
   List<_ForecastRange> _availableForecastRanges(String provider) {
-    if (provider == 'Meteoblue') {
+    if (provider == 'AEMET' && _usesAemetPortusForecastModel()) {
+      final rows = _rowsForProvider(provider);
+      if (rows.isEmpty) {
+        return const [_ForecastRange.d1];
+      }
+      final totalHours =
+          rows.last.slotTime.difference(rows.first.slotTime).inHours + 1;
+      return const [
+        _ForecastRange.d1,
+        _ForecastRange.d3,
+      ].where((range) => totalHours >= range.days * 24).toList();
+    }
+
+    if (provider == 'Meteoblue' || provider == 'Meteostat') {
       final rows = _rowsForProvider(provider);
       if (rows.isEmpty) {
         return const [_ForecastRange.d1];
@@ -3943,17 +4065,6 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     }
     if (provider == 'Windguru') {
       return const [_ForecastRange.d1];
-    }
-    if (provider == 'Meteostat') {
-      final rows = _rowsForProvider(provider);
-      if (rows.isEmpty) {
-        return const [_ForecastRange.d1];
-      }
-      final totalHours =
-          rows.last.slotTime.difference(rows.first.slotTime).inHours + 1;
-      return _ForecastRange.values
-          .where((range) => totalHours >= range.days * 24)
-          .toList();
     }
     final availableDays = (_rowsForProvider(provider).length / 8).floor();
     return _ForecastRange.values
@@ -3974,6 +4085,17 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     if (!allowed.contains(_forecastResolution)) {
       _forecastResolution = _preferredForecastResolution(_forecastRange);
     }
+  }
+
+  _ForecastResolution _effectiveForecastResolution(
+    _ForecastRange range,
+    _ForecastResolution requested,
+  ) {
+    final allowed = _allowedForecastResolutions(range);
+    if (allowed.contains(requested)) {
+      return requested;
+    }
+    return _preferredForecastResolution(range);
   }
 
   double _forecastColumnWidth(_ForecastResolution? resolution) {
@@ -9021,6 +9143,13 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     );
   }
 
+  Widget _compactNullableDirectionCell(int? degrees, {double? minHeight}) {
+    if (degrees == null) {
+      return _compactValueCell('-', minHeight: minHeight);
+    }
+    return _compactDirectionCell(degrees, minHeight: minHeight);
+  }
+
   Widget _buildForecastRangeSelector({
     _ForecastRange? selectedRange,
     ValueChanged<_ForecastRange>? onRangeChanged,
@@ -9085,7 +9214,13 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     final rows =
         rowsOverride ?? _rowsForSelectedForecastRange(_forecastProvider);
     final colorScheme = Theme.of(context).colorScheme;
-    final columnWidth = _forecastColumnWidth(fullscreenResolution);
+    final selectedResolution = fullscreenResolution == null
+        ? null
+        : _effectiveForecastResolution(
+            selectedRange ?? _forecastRange,
+            fullscreenResolution,
+          );
+    final columnWidth = _forecastColumnWidth(selectedResolution);
 
     final tableScroll = SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -9136,23 +9271,24 @@ class _SpotDetailPageState extends State<SpotDetailPage>
               ),
             ],
           ),
-          TableRow(
-            children: [
-              _compactLabelCell('Racha', minHeight: fullscreenRowHeight),
-              ...rows.asMap().entries.map(
-                (entry) => _forecastColumnCell(
-                  isDayStart: _isForecastDayStart(rows, entry.key),
-                  child: _compactValueCell(
-                    _nullableMetricText(entry.value.gustKnots?.toString()),
-                    color: entry.value.gustKnots == null
-                        ? null
-                        : _windColor(entry.value.gustKnots!),
-                    minHeight: fullscreenRowHeight,
+          if (rows.any((row) => row.gustKnots != null))
+            TableRow(
+              children: [
+                _compactLabelCell('Racha', minHeight: fullscreenRowHeight),
+                ...rows.asMap().entries.map(
+                  (entry) => _forecastColumnCell(
+                    isDayStart: _isForecastDayStart(rows, entry.key),
+                    child: _compactValueCell(
+                      _nullableMetricText(entry.value.gustKnots?.toString()),
+                      color: entry.value.gustKnots == null
+                          ? null
+                          : _windColor(entry.value.gustKnots!),
+                      minHeight: fullscreenRowHeight,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
           TableRow(
             children: [
               _compactLabelCell('Dir', minHeight: fullscreenRowHeight),
@@ -9167,128 +9303,220 @@ class _SpotDetailPageState extends State<SpotDetailPage>
               ),
             ],
           ),
-          TableRow(
-            children: [
-              _compactLabelCell('Olas', minHeight: fullscreenRowHeight),
-              ...rows.asMap().entries.map(
-                (entry) => _forecastColumnCell(
-                  isDayStart: _isForecastDayStart(rows, entry.key),
-                  child: _compactValueCell(
-                    _nullableMetricText(entry.value.waveM?.toStringAsFixed(1)),
-                    color: entry.value.waveM == null
-                        ? null
-                        : const Color(0xFFB3E5FC).withValues(alpha: 0.75),
-                    minHeight: fullscreenRowHeight,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          TableRow(
-            children: [
-              _compactLabelCell('Presion', minHeight: fullscreenRowHeight),
-              ...rows.asMap().entries.map(
-                (entry) => _forecastColumnCell(
-                  isDayStart: _isForecastDayStart(rows, entry.key),
-                  child: _compactValueCell(
-                    _nullableMetricText(entry.value.pressureHpa?.toString()),
-                    textColor: entry.value.pressureHpa == null
-                        ? colorScheme.onSurfaceVariant.withValues(alpha: 0.55)
-                        : colorScheme.onSurfaceVariant,
-                    minHeight: fullscreenRowHeight,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          TableRow(
-            children: [
-              _compactLabelCell('Agua', minHeight: fullscreenRowHeight),
-              ...rows.asMap().entries.map(
-                (entry) => _forecastColumnCell(
-                  isDayStart: _isForecastDayStart(rows, entry.key),
-                  child: _compactValueCell(
-                    _nullableMetricText(
-                      entry.value.waterTempC == null
+          if (rows.any((row) => row.waveM != null))
+            TableRow(
+              children: [
+                _compactLabelCell('Olas', minHeight: fullscreenRowHeight),
+                ...rows.asMap().entries.map(
+                  (entry) => _forecastColumnCell(
+                    isDayStart: _isForecastDayStart(rows, entry.key),
+                    child: _compactValueCell(
+                      _nullableMetricText(
+                        entry.value.waveM?.toStringAsFixed(1),
+                      ),
+                      color: entry.value.waveM == null
                           ? null
-                          : '${entry.value.waterTempC}$_degreeSymbol',
+                          : const Color(0xFFB3E5FC).withValues(alpha: 0.75),
+                      minHeight: fullscreenRowHeight,
                     ),
-                    color: entry.value.waterTempC == null
-                        ? null
-                        : _waterTempColor(entry.value.waterTempC!),
-                    minHeight: fullscreenRowHeight,
                   ),
                 ),
-              ),
-            ],
-          ),
-          TableRow(
-            children: [
-              _compactLabelCell('Aire', minHeight: fullscreenRowHeight),
-              ...rows.asMap().entries.map(
-                (entry) => _forecastColumnCell(
-                  isDayStart: _isForecastDayStart(rows, entry.key),
-                  child: _compactValueCell(
-                    _nullableMetricText(
-                      entry.value.tempC == null
+              ],
+            ),
+          if (rows.any((row) => row.wavePeriodSeconds != null))
+            TableRow(
+              children: [
+                _compactLabelCell('Periodo', minHeight: fullscreenRowHeight),
+                ...rows.asMap().entries.map(
+                  (entry) => _forecastColumnCell(
+                    isDayStart: _isForecastDayStart(rows, entry.key),
+                    child: _compactValueCell(
+                      _nullableMetricText(
+                        entry.value.wavePeriodSeconds?.toStringAsFixed(1),
+                      ),
+                      minHeight: fullscreenRowHeight,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          if (rows.any((row) => row.waveDirDeg != null))
+            TableRow(
+              children: [
+                _compactLabelCell('Dir ola', minHeight: fullscreenRowHeight),
+                ...rows.asMap().entries.map(
+                  (entry) => _forecastColumnCell(
+                    isDayStart: _isForecastDayStart(rows, entry.key),
+                    child: _compactNullableDirectionCell(
+                      entry.value.waveDirDeg,
+                      minHeight: fullscreenRowHeight,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          if (rows.any((row) => row.pressureHpa != null))
+            TableRow(
+              children: [
+                _compactLabelCell('Presion', minHeight: fullscreenRowHeight),
+                ...rows.asMap().entries.map(
+                  (entry) => _forecastColumnCell(
+                    isDayStart: _isForecastDayStart(rows, entry.key),
+                    child: _compactValueCell(
+                      _nullableMetricText(entry.value.pressureHpa?.toString()),
+                      textColor: entry.value.pressureHpa == null
+                          ? colorScheme.onSurfaceVariant.withValues(alpha: 0.55)
+                          : colorScheme.onSurfaceVariant,
+                      minHeight: fullscreenRowHeight,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          if (rows.any((row) => row.waterTempC != null))
+            TableRow(
+              children: [
+                _compactLabelCell('Agua', minHeight: fullscreenRowHeight),
+                ...rows.asMap().entries.map(
+                  (entry) => _forecastColumnCell(
+                    isDayStart: _isForecastDayStart(rows, entry.key),
+                    child: _compactValueCell(
+                      _nullableMetricText(
+                        entry.value.waterTempC == null
+                            ? null
+                            : '${entry.value.waterTempC}$_degreeSymbol',
+                      ),
+                      color: entry.value.waterTempC == null
                           ? null
-                          : '${entry.value.tempC}$_degreeSymbol',
+                          : _waterTempColor(entry.value.waterTempC!),
+                      minHeight: fullscreenRowHeight,
                     ),
-                    color: entry.value.tempC == null
-                        ? null
-                        : _airTempColor(entry.value.tempC!),
-                    minHeight: fullscreenRowHeight,
                   ),
                 ),
-              ),
-            ],
-          ),
-          TableRow(
-            children: [
-              _compactLabelCell('Nubes', minHeight: fullscreenRowHeight),
-              ...rows.asMap().entries.map(
-                (entry) => _forecastColumnCell(
-                  isDayStart: _isForecastDayStart(rows, entry.key),
-                  child: _compactValueCell(
-                    _nullableMetricText(
-                      entry.value.cloudCoverPct == null
+              ],
+            ),
+          if (rows.any((row) => row.currentMps != null))
+            TableRow(
+              children: [
+                _compactLabelCell('Corr.', minHeight: fullscreenRowHeight),
+                ...rows.asMap().entries.map(
+                  (entry) => _forecastColumnCell(
+                    isDayStart: _isForecastDayStart(rows, entry.key),
+                    child: _compactValueCell(
+                      _nullableMetricText(
+                        entry.value.currentMps?.toStringAsFixed(2),
+                      ),
+                      color: entry.value.currentMps == null
                           ? null
-                          : '${entry.value.cloudCoverPct}%',
+                          : const Color(0xFF80CBC4).withValues(alpha: 0.65),
+                      minHeight: fullscreenRowHeight,
                     ),
-                    color: entry.value.cloudCoverPct == null
-                        ? null
-                        : colorScheme.surfaceContainerHighest.withValues(
-                            alpha: 0.24,
-                          ),
-                    minHeight: fullscreenRowHeight,
                   ),
                 ),
-              ),
-            ],
-          ),
-          TableRow(
-            children: [
-              _compactLabelCell('Lluvia', minHeight: fullscreenRowHeight),
-              ...rows.asMap().entries.map(
-                (entry) => _forecastColumnCell(
-                  isDayStart: _isForecastDayStart(rows, entry.key),
-                  child: _compactValueCell(
-                    entry.value.rainMm == null
-                        ? '-'
-                        : entry.value.rainMm! > 0
-                        ? entry.value.rainMm!.toStringAsFixed(1)
-                        : '-',
-                    color: entry.value.rainMm == null
-                        ? null
-                        : _rainColor(
-                            entry.value.rainMm!,
-                          ).withValues(alpha: 0.8),
-                    minHeight: fullscreenRowHeight,
+              ],
+            ),
+          if (rows.any((row) => row.currentDirDeg != null))
+            TableRow(
+              children: [
+                _compactLabelCell('Dir corr.', minHeight: fullscreenRowHeight),
+                ...rows.asMap().entries.map(
+                  (entry) => _forecastColumnCell(
+                    isDayStart: _isForecastDayStart(rows, entry.key),
+                    child: _compactNullableDirectionCell(
+                      entry.value.currentDirDeg,
+                      minHeight: fullscreenRowHeight,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          if (rows.any((row) => row.salinityPsu != null))
+            TableRow(
+              children: [
+                _compactLabelCell('Sal.', minHeight: fullscreenRowHeight),
+                ...rows.asMap().entries.map(
+                  (entry) => _forecastColumnCell(
+                    isDayStart: _isForecastDayStart(rows, entry.key),
+                    child: _compactValueCell(
+                      _nullableMetricText(
+                        entry.value.salinityPsu?.toStringAsFixed(1),
+                      ),
+                      minHeight: fullscreenRowHeight,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          if (rows.any((row) => row.tempC != null))
+            TableRow(
+              children: [
+                _compactLabelCell('Aire', minHeight: fullscreenRowHeight),
+                ...rows.asMap().entries.map(
+                  (entry) => _forecastColumnCell(
+                    isDayStart: _isForecastDayStart(rows, entry.key),
+                    child: _compactValueCell(
+                      _nullableMetricText(
+                        entry.value.tempC == null
+                            ? null
+                            : '${entry.value.tempC}$_degreeSymbol',
+                      ),
+                      color: entry.value.tempC == null
+                          ? null
+                          : _airTempColor(entry.value.tempC!),
+                      minHeight: fullscreenRowHeight,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          if (rows.any((row) => row.cloudCoverPct != null))
+            TableRow(
+              children: [
+                _compactLabelCell('Nubes', minHeight: fullscreenRowHeight),
+                ...rows.asMap().entries.map(
+                  (entry) => _forecastColumnCell(
+                    isDayStart: _isForecastDayStart(rows, entry.key),
+                    child: _compactValueCell(
+                      _nullableMetricText(
+                        entry.value.cloudCoverPct == null
+                            ? null
+                            : '${entry.value.cloudCoverPct}%',
+                      ),
+                      color: entry.value.cloudCoverPct == null
+                          ? null
+                          : colorScheme.surfaceContainerHighest.withValues(
+                              alpha: 0.24,
+                            ),
+                      minHeight: fullscreenRowHeight,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          if (rows.any((row) => row.rainMm != null))
+            TableRow(
+              children: [
+                _compactLabelCell('Lluvia', minHeight: fullscreenRowHeight),
+                ...rows.asMap().entries.map(
+                  (entry) => _forecastColumnCell(
+                    isDayStart: _isForecastDayStart(rows, entry.key),
+                    child: _compactValueCell(
+                      entry.value.rainMm == null
+                          ? '-'
+                          : entry.value.rainMm! > 0
+                          ? entry.value.rainMm!.toStringAsFixed(1)
+                          : '-',
+                      color: entry.value.rainMm == null
+                          ? null
+                          : _rainColor(
+                              entry.value.rainMm!,
+                            ).withValues(alpha: 0.8),
+                      minHeight: fullscreenRowHeight,
+                    ),
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -9350,7 +9578,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
                             );
                           }).toList(),
                       selected: {
-                        fullscreenResolution ??
+                        selectedResolution ??
                             _preferredForecastResolution(
                               selectedRange ?? _forecastRange,
                             ),
@@ -9666,6 +9894,11 @@ class _ForecastRow {
     this.pressureHpa,
     this.cloudCoverPct,
     this.waveM,
+    this.wavePeriodSeconds,
+    this.waveDirDeg,
+    this.currentMps,
+    this.currentDirDeg,
+    this.salinityPsu,
     this.rainMm,
   });
 
@@ -9679,6 +9912,11 @@ class _ForecastRow {
   final int? pressureHpa;
   final int? cloudCoverPct;
   final double? waveM;
+  final double? wavePeriodSeconds;
+  final int? waveDirDeg;
+  final double? currentMps;
+  final int? currentDirDeg;
+  final double? salinityPsu;
   final double? rainMm;
 }
 

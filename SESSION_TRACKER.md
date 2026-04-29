@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 169h 24m`.
+- `Total historico minimo consolidado del proyecto: 187h 24m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -20,10 +20,11 @@
   - bloque consolidado adicional en `2026-04-23`: `+12h` estimadas (`WOO reverse engineering`)
   - bloque consolidado adicional en `2026-04-23`: `+4h` estimadas (`WOO Big Air model refinement`)
   - bloque consolidado adicional en `2026-04-25`: `+6h` estimadas (`Perfil > Ajustes modularization and dependency cleanup`)
+  - bloque consolidado adicional en `2026-04-30`: `+18h` estimadas (`Onboarding legal, roles/admin panels and Puertos del Estado forecast integration`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-04-25`: `+6h` estimadas (`Perfil > Ajustes modularization and dependency cleanup`).
+  - ultima consolidacion manual anadida el `2026-04-30`: `+18h` estimadas (`Onboarding legal, roles/admin panels and Puertos del Estado forecast integration`).
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
 
@@ -41,6 +42,76 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-04-30 - Onboarding legal, roles/admin y Puertos del Estado como modelo AEMET
+
+- Bloque consolidado adicional: `+18h` estimadas.
+- Consolidado el flujo de primer acceso:
+  - dialogos legales obligatorios en primer login,
+  - aceptacion persistida por usuario en backend,
+  - cancelacion con cierre de sesion,
+  - dialogo de bienvenida posterior con nombre/handle,
+  - comprobacion real de disponibilidad de handle tambien en editar perfil,
+  - proteccion contra cierre accidental de dialogos criticos.
+- Avanzado el apartado legal:
+  - inventario inicial de documentos legales,
+  - contenidos base versionados en `assets/legal`,
+  - mapa legal/documental en `docs/legal`,
+  - bloque legal del login retirado para dejar el acceso mas limpio,
+  - se aplaza el cierre legal definitivo para una fase posterior.
+- Reorganizado y limpiado `Ajustes`:
+  - settings extraido en secciones/directorios por area (`unidades`, `notificaciones`, `app`, `legal`, `roles`, `cuenta`),
+  - tarjetas desplegables donde habia demasiada densidad visual,
+  - retirado `Editar perfil` redundante desde ajustes,
+  - retirada la pantalla/flujo de donaciones,
+  - corregidos overflows de dialogos y tarjetas con teclado/orientacion.
+- Implementado y refinado `Panel de roles`:
+  - visible solo para usuarios con rol operativo real,
+  - reglas de visibilidad por rol:
+    - `user`, `pro`, `vip`: sin panel,
+    - `moderator`: panel moderador,
+    - `manager`: panel manager,
+    - `admin`: panel admin + moderador,
+    - `superadmin`: todos los paneles,
+  - creada pantalla de `Super Admin` para gestionar roles,
+  - buscador con listado incremental y usuario seleccionado persistente,
+  - auditoria/admin con carga paginada para evitar cargar tablas completas.
+- Conectado y ajustado el buzon de sugerencias:
+  - envio real de feedback a Supabase,
+  - base de panel/admin para gestionarlo desde roles,
+  - migracion `20260425143000_add_user_feedback.sql`.
+- Revisado el mapa de viento:
+  - reemplazado el mapa propio por el visor oficial de Puertos del Estado,
+  - retirado boton externo del appbar y barra inferior para no tapar controles del visor,
+  - documentado que el play del visor depende de la cadencia oficial publicada por Portus.
+- Integrado `Puertos del Estado` como modelo dentro de `AEMET`:
+  - se elimina `Portus` como proveedor visible independiente,
+  - el modelo visible pasa a llamarse `Puertos del Estado`,
+  - se mantiene compatibilidad interna con el nombre legacy `Portus Atmosfera`,
+  - se conserva el adaptador tecnico `PortusSpotsForecastAdapter` porque los endpoints son `portus.puertos.es` / `poem.puertos.es`.
+- Enriquecida la tabla de forecast de `AEMET > Puertos del Estado` con datos reales de Portus:
+  - viento y direccion desde `Atmosfera`,
+  - altura de ola, periodo y direccion de ola desde `Siwana/Wana`,
+  - temperatura del agua, corriente, direccion de corriente y salinidad desde `Cirana`,
+  - las filas no soportadas por el modelo se ocultan en vez de mostrar placeholders.
+- Ajustados filtros de la tabla de `Puertos del Estado`:
+  - el endpoint real devuelve `72` filas horarias, aproximadamente `3 dias`,
+  - rangos disponibles limitados a `1 dia` y `3 dias`,
+  - resoluciones disponibles limitadas a `1h` y `3h`,
+  - corregido estado fantasma de `20m`,
+  - corregido `3h` para que seleccione realmente una fila cada tres horas cuando la serie base es horaria.
+- Investigacion tecnica de Portus/Puertos del Estado:
+  - diferenciados `puntos de malla` frente a `boyas`,
+  - conteo aproximado en Comunidad Valenciana:
+    - `Atmosfera`: `392` puntos de malla,
+    - `Wana/Siwana`: `327` puntos de malla,
+    - `Cirana`: `218` puntos de malla,
+  - conclusion operativa: no llamarlos boyas en UI, sino puntos de modelo/malla.
+- Verificaciones ejecutadas durante el bloque:
+  - `flutter analyze` limpio en los archivos tocados de spots y settings,
+  - `flutter test test/features/spots/infrastructure/adapters/portus/portus_spots_forecast_adapter_test.dart` limpio,
+  - se mantiene fuera de commit el artefacto local `-h.zip`,
+  - se mantiene fuera de commit `supabase/.temp/cli-latest`.
 
 ### 2026-02-21 - Bootstrap de contexto y preparacion
 

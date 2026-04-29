@@ -18,6 +18,8 @@ class PortusSpotsForecastAdapter implements SpotsForecastPort {
   final Future<dynamic> Function(String url)? _fetchJsonOverride;
 
   static List<_PortusGridPoint>? _cachedAtmospherePoints;
+  static List<_PortusGridPoint>? _cachedWavePoints;
+  static List<_PortusGridPoint>? _cachedCurrentPoints;
 
   @override
   Future<List<SpotForecastEntry>> getForecast({
@@ -30,15 +32,26 @@ class PortusSpotsForecastAdapter implements SpotsForecastPort {
     }
 
     final location = _resolveLocation(spot);
-    final point = await _nearestAtmospherePoint(location);
-    final rawRows = await _fetchJson(_forecastUrl(point.id));
-    if (rawRows is! List) {
+    final atmospherePoint = await _nearestPoint(
+      location,
+      pointsLoader: _fetchAtmospherePoints,
+      emptyMessage: 'Portus no ha devuelto puntos de malla atmosfericos.',
+    );
+    final rawWindRows = await _fetchJson(_windForecastUrl(atmospherePoint.id));
+    if (rawWindRows is! List) {
       return const <SpotForecastEntry>[];
     }
 
+    final waveByTimestamp = await _safeFetchWaveByTimestamp(location);
+    final marineByTimestamp = await _safeFetchMarineByTimestamp(location);
+
     final rows = <SpotForecastEntry>[];
-    for (final rawRow in rawRows) {
-      final row = _parseForecastRow(rawRow);
+    for (final rawRow in rawWindRows) {
+      final row = _parseWindForecastRow(
+        rawRow,
+        waveByTimestamp: waveByTimestamp,
+        marineByTimestamp: marineByTimestamp,
+      );
       if (row != null) {
         rows.add(row);
       }
@@ -55,12 +68,14 @@ class PortusSpotsForecastAdapter implements SpotsForecastPort {
     return (lat: latitude, lon: longitude);
   }
 
-  Future<_PortusGridPoint> _nearestAtmospherePoint(
-    ({double lat, double lon}) location,
-  ) async {
-    final points = await _fetchAtmospherePoints();
+  Future<_PortusGridPoint> _nearestPoint(
+    ({double lat, double lon}) location, {
+    required Future<List<_PortusGridPoint>> Function() pointsLoader,
+    required String emptyMessage,
+  }) async {
+    final points = await pointsLoader();
     if (points.isEmpty) {
-      throw StateError('Portus no ha devuelto puntos de malla.');
+      throw StateError(emptyMessage);
     }
 
     _PortusGridPoint nearest = points.first;
@@ -86,7 +101,7 @@ class PortusSpotsForecastAdapter implements SpotsForecastPort {
       return cached;
     }
 
-    final rawPoints = await _fetchJson(_pointsUrl);
+    final rawPoints = await _fetchJson(_atmospherePointsUrl);
     if (rawPoints is! List) {
       return const <_PortusGridPoint>[];
     }
@@ -100,7 +115,89 @@ class PortusSpotsForecastAdapter implements SpotsForecastPort {
     return points;
   }
 
-  SpotForecastEntry? _parseForecastRow(dynamic rawRow) {
+  Future<List<_PortusGridPoint>> _fetchWavePoints() async {
+    final cached = _cachedWavePoints;
+    if (cached != null) {
+      return cached;
+    }
+
+    final rawPoints = await _fetchJson(_wavePointsUrl);
+    if (rawPoints is! List) {
+      return const <_PortusGridPoint>[];
+    }
+
+    final points = rawPoints
+        .whereType<Map<String, dynamic>>()
+        .map(_PortusGridPoint.tryParse)
+        .nonNulls
+        .toList(growable: false);
+    _cachedWavePoints = points;
+    return points;
+  }
+
+  Future<List<_PortusGridPoint>> _fetchCurrentPoints() async {
+    final cached = _cachedCurrentPoints;
+    if (cached != null) {
+      return cached;
+    }
+
+    final rawPoints = await _fetchJson(_currentPointsUrl);
+    if (rawPoints is! List) {
+      return const <_PortusGridPoint>[];
+    }
+
+    final points = rawPoints
+        .whereType<Map<String, dynamic>>()
+        .map(_PortusGridPoint.tryParse)
+        .nonNulls
+        .toList(growable: false);
+    _cachedCurrentPoints = points;
+    return points;
+  }
+
+  Future<Map<int, _PortusWaveForecast>> _safeFetchWaveByTimestamp(
+    ({double lat, double lon}) location,
+  ) async {
+    try {
+      final point = await _nearestPoint(
+        location,
+        pointsLoader: _fetchWavePoints,
+        emptyMessage: 'Portus no ha devuelto puntos de malla de oleaje.',
+      );
+      final rawRows = await _fetchJson(_waveForecastUrl(point.id));
+      if (rawRows is! List) {
+        return const <int, _PortusWaveForecast>{};
+      }
+      return _parseWaveForecastRows(rawRows);
+    } catch (_) {
+      return const <int, _PortusWaveForecast>{};
+    }
+  }
+
+  Future<Map<int, _PortusMarineForecast>> _safeFetchMarineByTimestamp(
+    ({double lat, double lon}) location,
+  ) async {
+    try {
+      final point = await _nearestPoint(
+        location,
+        pointsLoader: _fetchCurrentPoints,
+        emptyMessage: 'Portus no ha devuelto puntos de malla oceanicos.',
+      );
+      final rawRows = await _fetchJson(_marineForecastUrl(point.id));
+      if (rawRows is! List) {
+        return const <int, _PortusMarineForecast>{};
+      }
+      return _parseMarineForecastRows(rawRows);
+    } catch (_) {
+      return const <int, _PortusMarineForecast>{};
+    }
+  }
+
+  SpotForecastEntry? _parseWindForecastRow(
+    dynamic rawRow, {
+    required Map<int, _PortusWaveForecast> waveByTimestamp,
+    required Map<int, _PortusMarineForecast> marineByTimestamp,
+  }) {
     if (rawRow is! List || rawRow.length < 3) {
       return null;
     }
@@ -113,7 +210,10 @@ class PortusSpotsForecastAdapter implements SpotsForecastPort {
     }
 
     final timestampMillis = (timestampSeconds * 1000).round();
+    final timestampKey = timestampSeconds.round();
     final windFromDeg = (propagationDeg.round() + 180) % 360;
+    final wave = waveByTimestamp[timestampKey];
+    final marine = marineByTimestamp[timestampKey];
     return SpotForecastEntry(
       time: DateTime.fromMillisecondsSinceEpoch(
         timestampMillis,
@@ -121,7 +221,66 @@ class PortusSpotsForecastAdapter implements SpotsForecastPort {
       ).toLocal(),
       windKnots: _mpsToKnots(windMps).round(),
       windDeg: windFromDeg,
+      waterTempC: marine?.waterTempC?.round(),
+      waveM: wave?.heightM,
+      wavePeriodSeconds: wave?.peakPeriodSeconds,
+      waveDirDeg: wave?.directionDeg,
+      currentMps: marine?.currentMps,
+      currentDirDeg: marine?.currentDirDeg,
+      salinityPsu: marine?.salinityPsu,
     );
+  }
+
+  Map<int, _PortusWaveForecast> _parseWaveForecastRows(List<dynamic> rawRows) {
+    final rows = <int, _PortusWaveForecast>{};
+    for (final rawRow in rawRows) {
+      if (rawRow is! List || rawRow.length < 5) {
+        continue;
+      }
+      final timestampSeconds = _toDouble(rawRow[0]);
+      final heightM = _toDouble(rawRow[1]);
+      final peakPeriodSeconds = _toDouble(rawRow[2]);
+      final meanPeriodSeconds = _toDouble(rawRow[3]);
+      final propagationDeg = _toDouble(rawRow[4]);
+      if (timestampSeconds == null || heightM == null) {
+        continue;
+      }
+      rows[timestampSeconds.round()] = _PortusWaveForecast(
+        heightM: heightM,
+        peakPeriodSeconds: peakPeriodSeconds,
+        meanPeriodSeconds: meanPeriodSeconds,
+        directionDeg: propagationDeg == null
+            ? null
+            : (propagationDeg.round() + 180) % 360,
+      );
+    }
+    return rows;
+  }
+
+  Map<int, _PortusMarineForecast> _parseMarineForecastRows(
+    List<dynamic> rawRows,
+  ) {
+    final rows = <int, _PortusMarineForecast>{};
+    for (final rawRow in rawRows) {
+      if (rawRow is! List || rawRow.length < 5) {
+        continue;
+      }
+      final timestampSeconds = _toDouble(rawRow[0]);
+      final waterTempC = _toDouble(rawRow[1]);
+      final currentMps = _toDouble(rawRow[2]);
+      final currentDir = _toDouble(rawRow[3]);
+      final salinityPsu = _toDouble(rawRow[4]);
+      if (timestampSeconds == null) {
+        continue;
+      }
+      rows[timestampSeconds.round()] = _PortusMarineForecast(
+        waterTempC: waterTempC,
+        currentMps: currentMps,
+        currentDirDeg: currentDir?.round(),
+        salinityPsu: salinityPsu,
+      );
+    }
+    return rows;
   }
 
   Future<dynamic> _fetchJson(String url) async {
@@ -156,13 +315,27 @@ class PortusSpotsForecastAdapter implements SpotsForecastPort {
     return httpClient;
   }
 
-  String _forecastUrl(String pointId) {
+  String _windForecastUrl(String pointId) {
     return 'https://poem.puertos.es/portus/ForecastData/Atmosfera/forecast'
         '?code=$pointId&fields=Datetime,WindSpeed,WindDir180';
   }
 
-  static const _pointsUrl =
+  String _waveForecastUrl(String pointId) {
+    return 'https://poem.puertos.es/portus/ForecastData/Siwana/forecast'
+        '?code=$pointId&fields=Datetime,Hm0,Tp,Tm02,MeanDir180';
+  }
+
+  String _marineForecastUrl(String pointId) {
+    return 'https://poem.puertos.es/portus/ForecastData/Cirana/forecast'
+        '?code=$pointId&fields=Datetime,WaterTemp,CurrentSpeed,CurrentDir,Salinity';
+  }
+
+  static const _atmospherePointsUrl =
       'https://portus.puertos.es/portussvr/api/puntosMalla/portus/pred/Atmosfera';
+  static const _wavePointsUrl =
+      'https://portus.puertos.es/portussvr/api/puntosMalla/portus/pred/Wana';
+  static const _currentPointsUrl =
+      'https://portus.puertos.es/portussvr/api/puntosMalla/portus/pred/Cirana';
 
   double _mpsToKnots(double value) => value * 1.9438444924406;
 
@@ -188,6 +361,34 @@ class PortusSpotsForecastAdapter implements SpotsForecastPort {
   }
 
   double _degreesToRadians(double value) => value * math.pi / 180;
+}
+
+class _PortusWaveForecast {
+  const _PortusWaveForecast({
+    required this.heightM,
+    this.peakPeriodSeconds,
+    this.meanPeriodSeconds,
+    this.directionDeg,
+  });
+
+  final double heightM;
+  final double? peakPeriodSeconds;
+  final double? meanPeriodSeconds;
+  final int? directionDeg;
+}
+
+class _PortusMarineForecast {
+  const _PortusMarineForecast({
+    this.waterTempC,
+    this.currentMps,
+    this.currentDirDeg,
+    this.salinityPsu,
+  });
+
+  final double? waterTempC;
+  final double? currentMps;
+  final int? currentDirDeg;
+  final double? salinityPsu;
 }
 
 class _PortusGridPoint {

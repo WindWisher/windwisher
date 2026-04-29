@@ -2,7 +2,8 @@ import 'package:windwisher/features/spots/infrastructure/services/aemet_coastal_
 import 'package:windwisher/features/spots/infrastructure/services/aemet_beach_forecast_client.dart';
 
 const kAemetMunicipalForecastModel = 'Prediccion municipal';
-const kAemetPortusAtmosphereForecastModel = 'Portus Atmosfera';
+const kAemetPortusAtmosphereForecastModel = 'Puertos del Estado';
+const kLegacyAemetPortusAtmosphereForecastModel = 'Portus Atmosfera';
 
 const Map<String, List<String>> baseForecastModelsByProvider = {
   'Open-Meteo': [
@@ -123,4 +124,9 @@ String? getSpotDefaultForecastModel({
   }
 
   return models.first;
+}
+
+bool isAemetPortusAtmosphereForecastModel(String model) {
+  return model == kAemetPortusAtmosphereForecastModel ||
+      model == kLegacyAemetPortusAtmosphereForecastModel;
 }

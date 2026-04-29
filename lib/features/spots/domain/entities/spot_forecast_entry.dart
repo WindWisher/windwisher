@@ -9,6 +9,11 @@ class SpotForecastEntry {
     this.pressureHpa,
     this.cloudCoverPct,
     this.waveM,
+    this.wavePeriodSeconds,
+    this.waveDirDeg,
+    this.currentMps,
+    this.currentDirDeg,
+    this.salinityPsu,
     this.rainMm,
   });
 
@@ -21,6 +26,11 @@ class SpotForecastEntry {
   final int? pressureHpa;
   final int? cloudCoverPct;
   final double? waveM;
+  final double? wavePeriodSeconds;
+  final int? waveDirDeg;
+  final double? currentMps;
+  final int? currentDirDeg;
+  final double? salinityPsu;
   final double? rainMm;
 
   Map<String, dynamic> toJson() {
@@ -34,6 +44,11 @@ class SpotForecastEntry {
       'pressureHpa': pressureHpa,
       'cloudCoverPct': cloudCoverPct,
       'waveM': waveM,
+      'wavePeriodSeconds': wavePeriodSeconds,
+      'waveDirDeg': waveDirDeg,
+      'currentMps': currentMps,
+      'currentDirDeg': currentDirDeg,
+      'salinityPsu': salinityPsu,
       'rainMm': rainMm,
     };
   }
@@ -49,6 +64,11 @@ class SpotForecastEntry {
       pressureHpa: (json['pressureHpa'] as num?)?.round(),
       cloudCoverPct: (json['cloudCoverPct'] as num?)?.round(),
       waveM: (json['waveM'] as num?)?.toDouble(),
+      wavePeriodSeconds: (json['wavePeriodSeconds'] as num?)?.toDouble(),
+      waveDirDeg: (json['waveDirDeg'] as num?)?.round(),
+      currentMps: (json['currentMps'] as num?)?.toDouble(),
+      currentDirDeg: (json['currentDirDeg'] as num?)?.round(),
+      salinityPsu: (json['salinityPsu'] as num?)?.toDouble(),
       rainMm: (json['rainMm'] as num?)?.toDouble(),
     );
   }
