@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 189h 48m`.
+- `Total historico minimo consolidado del proyecto: 202h 19m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -24,10 +24,11 @@
   - bloque consolidado adicional en `2026-04-30`: `+1h` estimada (`Live spots: AEMET Oliva check and compass correction`)
   - bloque consolidado adicional en `2026-04-30`: `+30m` reales (`Local spot alarm notifications`)
   - bloque consolidado adicional en `2026-04-30`: `+54m` reales (`Live spots: Puertos del Estado Gandia realtime/history and web deploy`)
+  - bloque consolidado adicional en `2026-05-02`: `+12h 31m` reales observables (`Spots: extraccion del tab Chat de spot_detail_page`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-04-30`: `+54m` reales (`Live spots: Puertos del Estado Gandia realtime/history and web deploy`).
+  - ultima consolidacion manual anadida el `2026-05-02`: `+12h 31m` reales observables (`Spots: extraccion del tab Chat de spot_detail_page`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -46,6 +47,46 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-05-02 - Spots: extraccion del tab Chat de spot_detail_page
+
+- Bloque consolidado adicional: `+12h 31m` reales observables.
+- Medicion real usada:
+  - inicio observable del tramo: `2026-05-01 12:07 CEST`, primera marca local de modificacion de los archivos creados para la refactorizacion del chat,
+  - cierre del tramo: `2026-05-02 00:38 CEST`,
+  - duracion transcurrida observable: `12h 31m`,
+  - nota de honestidad: esta medicion usa la ventana real observable en el filesystem; si hubo pausas fuera de terminal, no pretende ser un cronometro perfecto de tiempo activo.
+- Objetivo:
+  - empezar a descomponer la pestana de `Spots`, comenzando por el tab `Chat` de `SpotDetailPage`,
+  - reducir el tamano y responsabilidad de `lib/features/spots/presentation/pages/spot_detail_page.dart`,
+  - mantener comportamiento existente del chat sin cambiar producto.
+- Extraccion visual del chat:
+  - creado el paquete `lib/features/spots/presentation/widgets/chat/`,
+  - extraidos widgets de avatar, burbuja, feed, header, composer, swipe-to-reply, lista de mensajes, seccion completa y cards/listas de adjuntos,
+  - creado `spot_chat_widgets.dart` como barrel para reducir imports en la pagina principal.
+- Helpers y modelos de chat:
+  - extraidos helpers de adjuntos (`fileName`, mime type, draft desde `XFile`, append/remove pending, adjuntos optimistas),
+  - extraida construccion de entradas del feed (`SpotChatEntry` y `buildSpotChatEntries`),
+  - extraidos helpers de identidad, busqueda de post/reply y construccion de mensajes optimistas,
+  - extraido estado derivado del composer en `spot_chat_composer_state.dart`,
+  - extraido modelo de preparacion de envio en `spot_chat_submission.dart`.
+- Realtime y lifecycle:
+  - creado `SpotChatRealtimeController` para encapsular subscriptions de feed, presencia y typing,
+  - movida la logica social a `part` files:
+    - `social_chat_actions.dart`,
+    - `social_chat_attachments.dart`,
+    - `social_chat_lifecycle.dart`,
+    - `social_chat_section.dart`,
+  - `spot_detail_page.dart` conserva solo wiring de alto nivel (`initialize`, `hydrate`, `enter/leave/resume/dispose`) y campos compartidos.
+- Limpieza de flujo:
+  - centralizados resets de composer de post/reply,
+  - centralizado wrapper de envio (`_runSocialSubmission`),
+  - centralizado wrapper de borrado (`_runSocialDelete`),
+  - separados handlers de acciones para post y reply,
+  - agrupado el estado social en un bloque marcado dentro de `SpotDetailPage`.
+- Verificacion:
+  - `dart format` ejecutado sobre `spot_detail_page.dart`, `spot_detail_page/*.dart` y `widgets/chat/*.dart`,
+  - `flutter analyze lib/features/spots/presentation/pages/spot_detail_page.dart lib/features/spots/presentation/pages/spot_detail_page lib/features/spots/presentation/widgets/chat` limpio.
 
 ### 2026-04-30 - Live spots: Puertos del Estado Gandia y deploy web
 
