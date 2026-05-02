@@ -16,7 +16,7 @@ import 'package:windwisher/features/profile/di/profile_module.dart';
 import 'package:windwisher/features/profile/presentation/pages/profile/profile_page.dart';
 import 'package:windwisher/features/profile/presentation/state/profile_controller.dart';
 import 'package:windwisher/features/sessions/presentation/pages/sessions_page.dart';
-import 'package:windwisher/features/spots/presentation/pages/spots_page.dart';
+import 'package:windwisher/features/spots/presentation/pages/spots/spots_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DashboardPage extends StatefulWidget {

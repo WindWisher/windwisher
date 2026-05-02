@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:windwisher/features/spots/presentation/pages/spots_page.dart';
+import 'package:windwisher/features/spots/presentation/pages/spots/spots_page.dart';
 
 void main() {
   testWidgets('adds a spot from floating action button', (tester) async {
@@ -71,7 +71,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Oliva Canal - Platja dels Gorgs'), findsOneWidget);
-    expect(find.text('Selecciona un punto en el mapa para guardar.'), findsOneWidget);
+    expect(
+      find.text('Selecciona un punto en el mapa para guardar.'),
+      findsOneWidget,
+    );
 
     await tester.tap(find.text('Oliva Canal - Platja dels Gorgs'));
     await tester.pumpAndSettle();

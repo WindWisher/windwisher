@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:windwisher/features/spots/application/use_cases/spots_catalog_use_cases.dart';
 import 'package:windwisher/features/spots/application/use_cases/spots_forecast_use_cases.dart';
@@ -20,7 +20,7 @@ import 'package:windwisher/features/spots/infrastructure/services/inforatge_oliv
 import 'package:windwisher/features/spots/infrastructure/services/meteoblue_current_day_client.dart';
 import 'package:windwisher/features/spots/infrastructure/services/meteostat_day_client.dart';
 import 'package:windwisher/features/spots/infrastructure/services/meteosource_current_day_client.dart';
-import 'package:windwisher/features/spots/presentation/pages/spot_detail_page.dart';
+import 'package:windwisher/features/spots/presentation/pages/spot_detail/spot_detail_page.dart';
 
 void main() {
   testWidgets(
@@ -242,11 +242,7 @@ void main() {
           widget.decoration.labelText == 'Estacion meteorologica cercana',
     );
 
-    final state = tester
-        .state<FormFieldState<String>>(
-          stationDropdown,
-        )
-        .value;
+    final state = tester.state<FormFieldState<String>>(stationDropdown).value;
     expect(state, 'avamet:c25m181e07');
   });
 
@@ -315,7 +311,9 @@ void main() {
     expect(find.text('12-14 m'), findsOneWidget);
   });
 
-  testWidgets('live history falls back to AEMET official before AVAMET', (tester) async {
+  testWidgets('live history falls back to AEMET official before AVAMET', (
+    tester,
+  ) async {
     await _pumpSpotDetailPage(
       tester,
       SpotDetailPage(
@@ -377,10 +375,7 @@ void main() {
       findsNothing,
     );
     expect(
-      find.widgetWithText(
-        DropdownButtonFormField<String>,
-        'Fuente prevision',
-      ),
+      find.widgetWithText(DropdownButtonFormField<String>, 'Fuente prevision'),
       findsNothing,
     );
   });
@@ -454,10 +449,7 @@ void main() {
       findsNothing,
     );
     expect(
-      find.widgetWithText(
-        DropdownButtonFormField<String>,
-        'Fuente prevision',
-      ),
+      find.widgetWithText(DropdownButtonFormField<String>, 'Fuente prevision'),
       findsNothing,
     );
     expect(
@@ -495,14 +487,12 @@ void main() {
     await tester.tap(find.text('1d'));
     await tester.pumpAndSettle();
 
-  expect(find.text('20 min'), findsOneWidget);
-  expect(find.text('1 h'), findsWidgets);
-  expect(find.text('3 h'), findsWidgets);
+    expect(find.text('20 min'), findsOneWidget);
+    expect(find.text('1 h'), findsWidgets);
+    expect(find.text('3 h'), findsWidgets);
   });
 
-  testWidgets('live section adds Oliva realtime stations', (
-    tester,
-  ) async {
+  testWidgets('live section adds Oliva realtime stations', (tester) async {
     await _pumpSpotDetailPage(
       tester,
       SpotDetailPage(
@@ -627,7 +617,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.textContaining('Oliva Nova Beach & Golf Resort').last);
+    await tester.tap(
+      find.textContaining('Oliva Nova Beach & Golf Resort').last,
+    );
     await tester.pumpAndSettle();
 
     expect(

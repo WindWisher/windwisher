@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 202h 19m`.
+- `Total historico minimo consolidado del proyecto: 215h 12m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -25,10 +25,11 @@
   - bloque consolidado adicional en `2026-04-30`: `+30m` reales (`Local spot alarm notifications`)
   - bloque consolidado adicional en `2026-04-30`: `+54m` reales (`Live spots: Puertos del Estado Gandia realtime/history and web deploy`)
   - bloque consolidado adicional en `2026-05-02`: `+12h 31m` reales observables (`Spots: extraccion del tab Chat de spot_detail_page`)
+  - bloque consolidado adicional en `2026-05-02`: `+12h 53m` reales observables (`Spots: reorganizacion completa de Spot Detail y Spots por tabs/widgets`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-05-02`: `+12h 31m` reales observables (`Spots: extraccion del tab Chat de spot_detail_page`).
+  - ultima consolidacion manual anadida el `2026-05-02`: `+12h 53m` reales observables (`Spots: reorganizacion completa de Spot Detail y Spots por tabs/widgets`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -47,6 +48,61 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-05-02 - Spots: reorganizacion completa de Spot Detail y Spots por tabs/widgets
+
+- Bloque consolidado adicional: `+12h 53m` reales observables.
+- Medicion real usada:
+  - inicio observable del tramo: `2026-05-02 10:31 CEST`, primera marca local de modificacion del bloque de reorganizacion pendiente,
+  - cierre del tramo: `2026-05-02 23:24 CEST`, momento de cierre del tracker antes de commit,
+  - duracion transcurrida observable: `12h 53m`,
+  - nota de honestidad: esta medicion usa la ventana real observable en el filesystem y en el flujo de trabajo; no pretende inflar horas ni actuar como cronometro perfecto si hubo pausas fuera de terminal.
+- Objetivo:
+  - continuar la descomposicion de la pestana `Spots`,
+  - separar la pagina general de spots de `SpotDetailPage`,
+  - alojar los tabs `Forecast`, `Live`, `Webcam` y `Chat` dentro del directorio `spot_detail/tabs`,
+  - reducir `spot_detail_page.dart` y `spots_page.dart` a wiring de alto nivel.
+- Reorganizacion de rutas:
+  - movida la pagina general a `lib/features/spots/presentation/pages/spots/spots_page.dart`,
+  - movido `SpotDetailPage` a `lib/features/spots/presentation/pages/spot_detail/spot_detail_page.dart`,
+  - reubicados widgets y helpers de chat dentro de `spot_detail/tabs/chat/widgets`,
+  - reubicados widgets de forecast dentro de `spot_detail/tabs/forecast/widgets`,
+  - reubicados widgets de webcam dentro de `spot_detail/tabs/webcam/widgets`,
+  - actualizados imports en dashboard, tests y piezas dependientes.
+- Spot Detail / tabs:
+  - extraidos controllers y secciones del tab `Forecast`:
+    - `forecast_actions_controller.dart`,
+    - `forecast_data_controller.dart`,
+    - `forecast_rows_controller.dart`,
+    - `forecast_section.dart`,
+    - `forecast_table_section.dart`,
+    - `forecast_supplements_section.dart`,
+    - `forecast_fullscreen_section.dart`,
+    - `forecast_status_widgets.dart`,
+    - `forecast_supplement_loaders.dart`,
+    - modelos de forecast bajo `tabs/forecast/models`,
+  - extraido el tab `Live` a su propio arbol con modelos, formatters, acciones, historico, estacion activa y widgets auxiliares,
+  - extraido `webcam_section.dart` y movido el player/embed al arbol del tab `Webcam`,
+  - `spot_detail_page.dart` queda como contenedor principal con estado compartido y wiring de tabs.
+- Spots / pagina principal:
+  - creada la estructura `lib/features/spots/presentation/pages/spots/`,
+  - extraido el catalogo de spots oficiales a `available_spots_catalog.dart`,
+  - extraido el sheet de alta a `add_spot_sheet.dart`,
+  - extraido el dialogo de mapa custom a `custom_map_picker_dialog.dart`,
+  - extraido el controlador de acciones a `spots_actions_controller.dart`,
+  - extraida la lista/tarjetas/filtros/busqueda a `spots_list_section.dart`,
+  - corregido el aviso `invalid_use_of_protected_member` moviendo mutaciones con `setState` a metodos propios de `SpotsPageState`.
+- Sheets y widgets de Spots:
+  - extraido el sheet de edicion a `edit_spot_sheet.dart`,
+  - creado `spot_background_image_picker.dart` reutilizado por alta y edicion,
+  - creado `spot_suggestions_list.dart` para sugerencias oficiales,
+  - creado `spot_add_status_messages.dart` para estados/errores del alta,
+  - creado `spot_add_form_fields.dart` para campos de nombre/zona y sugerencias,
+  - creado `spot_add_header.dart` para cabecera y accion de spot personalizado.
+- Verificacion:
+  - ejecutado `dart format` sobre los archivos tocados,
+  - ejecutado `flutter analyze` sobre `spots_page.dart`, `spot_detail_page.dart`, tests relacionados y `dashboard_page.dart`,
+  - resultado: `No issues found`.
 
 ### 2026-05-02 - Spots: extraccion del tab Chat de spot_detail_page
 
