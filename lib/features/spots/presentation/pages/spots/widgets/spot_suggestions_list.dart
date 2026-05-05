@@ -1,4 +1,4 @@
-part of 'spots_page.dart';
+part of '../spots_page.dart';
 
 class _SpotSuggestionsList extends StatelessWidget {
   const _SpotSuggestionsList({required this.spots, required this.onSelected});

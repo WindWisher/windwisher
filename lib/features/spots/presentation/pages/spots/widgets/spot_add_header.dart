@@ -1,4 +1,4 @@
-part of 'spots_page.dart';
+part of '../spots_page.dart';
 
 class _SpotAddHeader extends StatelessWidget {
   const _SpotAddHeader({

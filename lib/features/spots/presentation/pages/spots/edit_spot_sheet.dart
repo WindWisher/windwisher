@@ -81,37 +81,14 @@ class _EditSpotSheetState extends State<_EditSpotSheet> {
         AppSpacing.md,
         AppSpacing.md + inset,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Editar spot', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: AppSpacing.sm),
-          _SpotBackgroundImagePicker(
-            imagePath: _backgroundImagePath,
-            onPick: _pickBackgroundImage,
-            onRemove: _removeBackgroundImage,
-          ),
-          TextField(
-            controller: _nameController,
-            enabled: widget.spot.isCustom,
-            decoration: const InputDecoration(labelText: 'Nombre del spot'),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          TextField(
-            controller: _areaController,
-            enabled: widget.spot.isCustom,
-            decoration: const InputDecoration(labelText: 'Zona / provincia'),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _save,
-              child: const Text('Guardar cambios'),
-            ),
-          ),
-        ],
+      child: _SpotEditSheetContent(
+        spot: widget.spot,
+        nameController: _nameController,
+        areaController: _areaController,
+        backgroundImagePath: _backgroundImagePath,
+        onPickBackgroundImage: _pickBackgroundImage,
+        onRemoveBackgroundImage: _removeBackgroundImage,
+        onSave: _save,
       ),
     );
   }

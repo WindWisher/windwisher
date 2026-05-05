@@ -32,11 +32,8 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
 
   void _onNameChanged() {
     final query = _nameController.text.trim().toLowerCase();
-    final selectedOfficialSpot = _selectedOfficialSpot;
-    if (selectedOfficialSpot != null &&
-        selectedOfficialSpot.name.toLowerCase() != query) {
-      _selectedOfficialSpot = null;
-    }
+    _clearSelectedOfficialSpotIfNeeded(query);
+
     if (query.isEmpty) {
       if (_suggestedSpots.isNotEmpty) {
         setState(() {
@@ -47,19 +44,28 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
       return;
     }
 
-    final next = _availableSpots
-        .where(
-          (spot) =>
-              spot.name.toLowerCase().contains(query) &&
-              !widget.existingSpotNames.contains(spot.name.toLowerCase()),
-        )
-        .take(5)
-        .toList();
-
     setState(() {
-      _suggestedSpots = next;
+      _suggestedSpots = _findSuggestedSpots(query);
       _error = null;
     });
+  }
+
+  void _clearSelectedOfficialSpotIfNeeded(String query) {
+    final selectedOfficialSpot = _selectedOfficialSpot;
+    if (!_shouldClearSelectedOfficialSpot(
+      selectedOfficialSpot: selectedOfficialSpot,
+      query: query,
+    )) {
+      return;
+    }
+    _selectedOfficialSpot = null;
+  }
+
+  List<_AvailableSpot> _findSuggestedSpots(String query) {
+    return _findAvailableSpotSuggestions(
+      query: query,
+      existingSpotNames: widget.existingSpotNames,
+    );
   }
 
   void _selectSuggestedSpot(_AvailableSpot spot) {
@@ -127,51 +133,27 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
     final name = _nameController.text.trim();
     final area = _areaController.text.trim();
     final selectedOfficialSpot = _selectedOfficialSpot;
-    final normalized = (selectedOfficialSpot?.name ?? name).toLowerCase();
+    final error = _validateSpotForAdd(
+      name: name,
+      allowCustomMode: widget.allowCustomMode,
+      existingSpotNames: widget.existingSpotNames,
+      selectedOfficialSpot: selectedOfficialSpot,
+      customPoint: _customPoint,
+    );
 
-    if (name.isEmpty) {
+    if (error != null) {
       setState(() {
-        _error = 'El nombre del spot es obligatorio';
-      });
-      return;
-    }
-
-    if (widget.existingSpotNames.contains(normalized)) {
-      setState(() {
-        _error = 'Ese spot ya esta agregado';
-      });
-      return;
-    }
-
-    if (selectedOfficialSpot == null && _customPoint == null) {
-      setState(() {
-        _error = widget.allowCustomMode
-            ? 'Para un spot personalizado debes seleccionar coordenadas.'
-            : 'Debes seleccionar uno de los spots oficiales sugeridos.';
-      });
-      return;
-    }
-
-    if (!widget.allowCustomMode &&
-        (selectedOfficialSpot == null || _customPoint != null)) {
-      setState(() {
-        _error = 'Con el plan user solo puedes guardar spots oficiales.';
+        _error = error;
       });
       return;
     }
 
     Navigator.of(context).pop(
-      _SpotItem(
-        name: selectedOfficialSpot?.name ?? name,
-        area: area.isEmpty ? 'Sin zona definida' : area,
-        isCustom: _customPoint != null || selectedOfficialSpot == null,
-        createdAt: DateTime.now(),
-        latitude: _customPoint?.latitude ?? selectedOfficialSpot?.latitude,
-        longitude: _customPoint?.longitude ?? selectedOfficialSpot?.longitude,
-        aemetMunicipalityCode: selectedOfficialSpot?.aemetMunicipalityCode,
-        aemetBeachCode: selectedOfficialSpot?.aemetBeachCode,
-        aemetBeachCodes:
-            selectedOfficialSpot?.aemetBeachCodes ?? const <String>[],
+      _buildAddedSpotItem(
+        name: name,
+        area: area,
+        selectedOfficialSpot: selectedOfficialSpot,
+        customPoint: _customPoint,
         backgroundImagePath: _backgroundImagePath,
       ),
     );
@@ -180,14 +162,12 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    final name = _nameController.text.trim();
-    final selectedOfficialSpot = _selectedOfficialSpot;
-    final hasSelectedOfficialSpot =
-        name.isNotEmpty && selectedOfficialSpot != null;
-    final requiresCoordinates = name.isNotEmpty && !hasSelectedOfficialSpot;
-    final canSave =
-        name.isNotEmpty && (!requiresCoordinates || _customPoint != null);
-    final allowTextFields = !_customMode || _customPoint != null;
+    final snapshot = _SpotAddSheetStateSnapshot(
+      name: _nameController.text.trim(),
+      selectedOfficialSpot: _selectedOfficialSpot,
+      customPoint: _customPoint,
+      customMode: _customMode,
+    );
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -196,55 +176,25 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
         AppSpacing.md,
         AppSpacing.md + bottomInset,
       ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _SpotAddHeader(
-              allowCustomMode: widget.allowCustomMode,
-              onPickCustomPoint: _pickCustomPoint,
-            ),
-            _SpotAddStatusMessages(
-              customPoint: _customPoint,
-              selectedOfficialSpot: selectedOfficialSpot,
-              hasSelectedOfficialSpot: hasSelectedOfficialSpot,
-              requiresCoordinates: requiresCoordinates,
-              allowTextFields: allowTextFields,
-            ),
-            if (allowTextFields && _customMode) ...[
-              const SizedBox(height: AppSpacing.sm),
-              _SpotBackgroundImagePicker(
-                imagePath: _backgroundImagePath,
-                onPick: _pickBackgroundImage,
-                onRemove: () {
-                  setState(() {
-                    _backgroundImagePath = null;
-                  });
-                },
-              ),
-            ],
-            const SizedBox(height: AppSpacing.sm),
-            _SpotAddFormFields(
-              nameController: _nameController,
-              areaController: _areaController,
-              allowTextFields: allowTextFields,
-              suggestedSpots: _suggestedSpots,
-              onSuggestedSpotSelected: _selectSuggestedSpot,
-              onSubmitted: _save,
-            ),
-            _SpotAddErrorMessage(error: _error),
-            const SizedBox(height: AppSpacing.md),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: canSave ? _save : null,
-                icon: const Icon(Icons.add_location_alt_outlined),
-                label: const Text('Guardar spot'),
-              ),
-            ),
-          ],
-        ),
+      child: _SpotAddSheetContent(
+        allowCustomMode: widget.allowCustomMode,
+        snapshot: snapshot,
+        customMode: _customMode,
+        customPoint: _customPoint,
+        backgroundImagePath: _backgroundImagePath,
+        nameController: _nameController,
+        areaController: _areaController,
+        suggestedSpots: _suggestedSpots,
+        error: _error,
+        onPickCustomPoint: _pickCustomPoint,
+        onPickBackgroundImage: _pickBackgroundImage,
+        onRemoveBackgroundImage: () {
+          setState(() {
+            _backgroundImagePath = null;
+          });
+        },
+        onSuggestedSpotSelected: _selectSuggestedSpot,
+        onSave: _save,
       ),
     );
   }

@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 215h 12m`.
+- `Total historico minimo consolidado del proyecto: 216h 07m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -26,10 +26,11 @@
   - bloque consolidado adicional en `2026-04-30`: `+54m` reales (`Live spots: Puertos del Estado Gandia realtime/history and web deploy`)
   - bloque consolidado adicional en `2026-05-02`: `+12h 31m` reales observables (`Spots: extraccion del tab Chat de spot_detail_page`)
   - bloque consolidado adicional en `2026-05-02`: `+12h 53m` reales observables (`Spots: reorganizacion completa de Spot Detail y Spots por tabs/widgets`)
+  - bloque consolidado adicional en `2026-05-06`: `+55m` reales observables (`Spots: modularizacion de pagina Spots, sheets y mapa custom`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-05-02`: `+12h 53m` reales observables (`Spots: reorganizacion completa de Spot Detail y Spots por tabs/widgets`).
+  - ultima consolidacion manual anadida el `2026-05-06`: `+55m` reales observables (`Spots: modularizacion de pagina Spots, sheets y mapa custom`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -48,6 +49,52 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-05-06 - Spots: modularizacion de pagina Spots, sheets y mapa custom
+
+- Bloque consolidado adicional: `+55m` reales observables.
+- Medicion real usada:
+  - ventanas locales observables del bloque:
+    - `2026-05-02 23:34-2026-05-03 00:05 CEST`,
+    - `2026-05-03 11:12-11:25 CEST`,
+    - `2026-05-06 00:04-00:09 CEST`,
+  - duracion efectiva conservadora registrada: `55m`,
+  - nota de honestidad: no se cuenta el tiempo calendario entre dias porque hubo pausas; se registra solo tiempo observable de trabajo/procesos sobre el bloque.
+- Objetivo:
+  - terminar de ordenar la nueva estructura de `lib/features/spots/presentation/pages/spots/`,
+  - dejar `spots_page.dart`, `spots_list_section.dart`, los sheets de alta/edicion y el dialogo de mapa custom como piezas pequenas y mantenibles,
+  - mantener comportamiento existente sin cambiar producto.
+- Pagina principal de Spots:
+  - `spots_page.dart` queda como wiring principal del modulo,
+  - extraida la logica de acceso/roles a `spots_access_controller.dart`,
+  - extraida la hidratacion/auth a `spots_catalog_controller.dart`,
+  - extraida la logica de alta a `spots_add_controller.dart`,
+  - extraida la edicion a `spots_edit_controller.dart`,
+  - extraido el borrado/seleccion multiple a `spots_delete_controller.dart`,
+  - extraido filtrado/ordenacion a `spots_filter_controller.dart`,
+  - extraido calculo de webcams cercanas/distancia a `spots_webcam_distance_helper.dart`.
+- Lista de spots:
+  - `spots_list_section.dart` queda como composicion de widgets,
+  - creados widgets para filtros/sort, busqueda, tarjeta de accion pendiente, tarjetas de estado y tarjeta individual de spot,
+  - movidos los widgets presentacionales a `spots/widgets/`.
+- Alta y edicion de spots:
+  - extraido el contenido visual del alta a `widgets/spot_add_sheet_content.dart`,
+  - extraidos campos, cabecera, mensajes de estado/error, sugerencias y picker de imagen,
+  - extraida validacion/construccion de spot a `spot_add_builder.dart`,
+  - extraido estado derivado del alta a `spot_add_sheet_state.dart`,
+  - extraidas sugerencias/autocompletado a `spot_add_suggestions_helper.dart`,
+  - extraido contenido visual de edicion a `widgets/spot_edit_sheet_content.dart`.
+- Mapa custom:
+  - `custom_map_picker_dialog.dart` queda centrado en estado y callbacks,
+  - extraidos controles de coordenadas y acciones a `widgets/spot_custom_map_controls.dart`,
+  - extraido mapa visual a `widgets/spot_custom_map_view.dart`,
+  - extraido layout general del dialogo a `widgets/spot_custom_map_dialog_content.dart`,
+  - extraido parser/validador de coordenadas a `spot_custom_map_coordinate_parser.dart`,
+  - extraido modelo `_CustomSpotPoint` a `spot_custom_map_models.dart`.
+- Verificacion:
+  - ejecutado `dart format` sobre archivos tocados durante el bloque,
+  - ejecutado `flutter analyze` sobre `spots_page.dart`, `spot_detail_page.dart`, tests relacionados y `dashboard_page.dart`,
+  - resultado: `No issues found`.
 
 ### 2026-05-02 - Spots: reorganizacion completa de Spot Detail y Spots por tabs/widgets
 

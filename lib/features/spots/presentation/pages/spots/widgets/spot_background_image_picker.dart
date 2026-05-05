@@ -1,4 +1,4 @@
-part of 'spots_page.dart';
+part of '../spots_page.dart';
 
 class _SpotBackgroundImagePicker extends StatelessWidget {
   const _SpotBackgroundImagePicker({
