@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 216h 07m`.
+- `Total historico minimo consolidado del proyecto: 217h 32m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -27,10 +27,11 @@
   - bloque consolidado adicional en `2026-05-02`: `+12h 31m` reales observables (`Spots: extraccion del tab Chat de spot_detail_page`)
   - bloque consolidado adicional en `2026-05-02`: `+12h 53m` reales observables (`Spots: reorganizacion completa de Spot Detail y Spots por tabs/widgets`)
   - bloque consolidado adicional en `2026-05-06`: `+55m` reales observables (`Spots: modularizacion de pagina Spots, sheets y mapa custom`)
+  - bloque consolidado adicional en `2026-05-06`: `+1h 25m` reales observables (`Spots: spot patron Oliva Canal, capacidades replicables y tablas forecast por proveedor`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-05-06`: `+55m` reales observables (`Spots: modularizacion de pagina Spots, sheets y mapa custom`).
+  - ultima consolidacion manual anadida el `2026-05-06`: `+1h 25m` reales observables (`Spots: spot patron Oliva Canal, capacidades replicables y tablas forecast por proveedor`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -49,6 +50,38 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-05-06 - Spots: spot patron Oliva Canal, capacidades replicables y tablas forecast
+
+- Bloque consolidado adicional: `+1h 25m` reales observables.
+- Medicion real usada:
+  - duracion efectiva conservadora registrada: `1h 25m`,
+  - nota de honestidad: se registra el tiempo real observable de trabajo/procesos de este tramo, no una estimacion amplia ni el tiempo calendario entre pausas.
+- Objetivo:
+  - dejar `Oliva Canal - Platja dels Gorgs` como spot patron replicable para futuros spots,
+  - separar capacidades por spot para evitar hardcodes por nombre,
+  - ordenar las tablas de `Forecast` por proveedor/modelo sin cambiar el comportamiento de Windguru.
+- Capacidades por spot:
+  - anadida la entidad `SpotCapabilities` dentro de `SpotItem`,
+  - creado el catalogo `spot_capabilities_catalog.dart` para centralizar perfiles de live, webcams, forecast por defecto y estaciones preferidas,
+  - configurado `Oliva Canal - Platja dels Gorgs` con `AEMET > Puertos del Estado` como forecast inicial,
+  - configurada la estacion live preferida `Club Nautico de Oliva` y la estacion realtime de Puertos del Estado `4634`,
+  - adaptado el catalogo Supabase para aplicar capacidades por defecto a spots oficiales existentes segun nombre, sin exigir migracion inmediata.
+- Forecast:
+  - creada la estructura `forecast/widgets/tables/` con carpetas por proveedor,
+  - movidas las tablas de `AEMET`, `Meteoblue`, `Meteosource`, `Meteostat` y `Windguru` a sus carpetas propias,
+  - creados widgets compartidos para chrome, chips, resumen diario y celdas compactas reutilizables,
+  - corregidos avisos de variables locales sin uso en tablas suplementarias.
+- Live y webcams:
+  - `Live` usa capacidades del spot para decidir estaciones especiales, estaciones de Puertos y seleccion preferida,
+  - la seleccion inicial prioriza la estacion preferida cuando existe y si no cae al criterio general de distancia,
+  - el catalogo de webcams pasa a trabajar por `webcamProfile`,
+  - eliminados fallbacks genericos de webcams que podian mostrar recursos no pertenecientes al spot.
+- Verificacion:
+  - ejecutado `dart format` sobre los archivos tocados,
+  - ejecutado `flutter analyze` sobre las piezas de `SpotDetail`, `Spots`, tablas forecast y tests relacionados,
+  - resultado de analisis: `No issues found`,
+  - los tests completos de spots no se reejecutan en este cierre porque siguen dependiendo de inicializacion de Supabase en `SpotAlarmCatalog`, incidencia ya conocida del entorno de test.
 
 ### 2026-05-06 - Spots: modularizacion de pagina Spots, sheets y mapa custom
 

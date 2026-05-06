@@ -11,6 +11,7 @@ class SpotWebcam {
     this.locationLabel,
     this.latitude,
     this.longitude,
+    this.referencePages = const <WebcamReferencePage>[],
   });
 
   final String name;
@@ -24,6 +25,7 @@ class SpotWebcam {
   final String? locationLabel;
   final double? latitude;
   final double? longitude;
+  final List<WebcamReferencePage> referencePages;
 }
 
 class WebcamReferencePage {

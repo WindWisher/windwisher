@@ -20,13 +20,16 @@ extension _SpotDetailLiveStationsController on _SpotDetailPageState {
         final stationKeys = result.stations.map(_stationKey).toSet();
         if (result.stations.isNotEmpty &&
             !stationKeys.contains(_selectedStation)) {
-          final resolvedStation = result.stations.first;
+          final resolvedStation =
+              _preferredLiveStation(result.stations) ?? result.stations.first;
           _selectedStation = _stationKey(resolvedStation);
           _applyHistoricalDefaultsForStation(resolvedStation);
         }
         if (result.stations.isNotEmpty &&
             !stationKeys.contains(_alarmStation)) {
-          _alarmStation = _stationKey(result.stations.first);
+          final resolvedAlarmStation =
+              _preferredLiveStation(result.stations) ?? result.stations.first;
+          _alarmStation = _stationKey(resolvedAlarmStation);
         }
       });
       await _refreshSelectedStationLiveData();
@@ -102,5 +105,18 @@ extension _SpotDetailLiveStationsController on _SpotDetailPageState {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  _NearbyStation? _preferredLiveStation(List<_NearbyStation> stations) {
+    final preferredKey = widget.capabilities.preferredLiveStationKey;
+    if (preferredKey == null) {
+      return null;
+    }
+    for (final station in stations) {
+      if (_stationKey(station) == preferredKey) {
+        return station;
+      }
+    }
+    return null;
   }
 }

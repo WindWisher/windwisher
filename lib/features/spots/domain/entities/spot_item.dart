@@ -1,3 +1,27 @@
+class SpotCapabilities {
+  const SpotCapabilities({
+    this.liveStationProfile,
+    this.webcamProfile,
+    this.defaultForecastProvider,
+    this.defaultForecastModel,
+    this.preferredLiveStationKey,
+    this.preferredAemetLiveStationId,
+    this.portusRealtimeStationIds = const <int>[],
+    this.includeOlivaReferenceLiveStations = false,
+  });
+
+  static const empty = SpotCapabilities();
+
+  final String? liveStationProfile;
+  final String? webcamProfile;
+  final String? defaultForecastProvider;
+  final String? defaultForecastModel;
+  final String? preferredLiveStationKey;
+  final String? preferredAemetLiveStationId;
+  final List<int> portusRealtimeStationIds;
+  final bool includeOlivaReferenceLiveStations;
+}
+
 class SpotItem {
   const SpotItem({
     required this.name,
@@ -10,6 +34,7 @@ class SpotItem {
     this.aemetBeachCode,
     this.aemetBeachCodes = const <String>[],
     this.backgroundImagePath,
+    this.capabilities = SpotCapabilities.empty,
   });
 
   final String name;
@@ -22,6 +47,9 @@ class SpotItem {
   final String? aemetBeachCode;
   final List<String> aemetBeachCodes;
   final String? backgroundImagePath;
+  final SpotCapabilities capabilities;
+
+  String? get liveStationProfile => capabilities.liveStationProfile;
 
   List<String> get resolvedAemetBeachCodes {
     final values = <String>[];

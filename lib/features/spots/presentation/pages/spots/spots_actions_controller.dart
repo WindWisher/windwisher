@@ -43,6 +43,7 @@ extension SpotsActionsController on SpotsPageState {
             aemetBeachCode: spot.aemetBeachCode,
             aemetBeachCodes: spot.aemetBeachCodes,
             backgroundImagePath: spot.backgroundImagePath,
+            capabilities: spot.capabilities,
             spotsModule: _spotsModule,
           ),
         ),

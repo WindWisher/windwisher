@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:windwisher/features/spots/domain/entities/spot_item.dart';
 import 'package:windwisher/features/spots/domain/ports/out/spots_catalog_port.dart';
+import 'package:windwisher/features/spots/infrastructure/data/spot_capabilities_catalog.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseSpotsCatalogAdapter implements SpotsCatalogPort {
@@ -114,12 +115,13 @@ class SupabaseSpotsCatalogAdapter implements SpotsCatalogPort {
   }
 
   SpotItem _mapRow(Map<String, dynamic> row) {
+    final name = (row['custom_name'] as String?) ?? '';
     final rawBeachCodes = row['aemet_beach_codes'];
     final beachCodes = rawBeachCodes is List
         ? rawBeachCodes.whereType<String>().toList(growable: false)
         : const <String>[];
     return SpotItem(
-      name: (row['custom_name'] as String?) ?? '',
+      name: name,
       area: (row['area'] as String?) ?? '',
       isCustom: (row['is_custom'] as bool?) ?? false,
       createdAt:
@@ -131,6 +133,7 @@ class SupabaseSpotsCatalogAdapter implements SpotsCatalogPort {
       aemetBeachCode: row['aemet_beach_code'] as String?,
       aemetBeachCodes: beachCodes,
       backgroundImagePath: row['background_image_path'] as String?,
+      capabilities: defaultSpotCapabilitiesForName(name),
     );
   }
 }

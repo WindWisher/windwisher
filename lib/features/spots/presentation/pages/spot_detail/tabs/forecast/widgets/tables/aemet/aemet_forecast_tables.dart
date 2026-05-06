@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/features/spots/application/services/spots_presentation_forecast_support.dart';
+import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/tables/shared/forecast_table_chrome.dart';
 
 class AemetBeachForecastTable extends StatelessWidget {
   const AemetBeachForecastTable({super.key, required this.data});
@@ -89,12 +90,8 @@ class AemetBeachForecastTable extends StatelessWidget {
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.outlineVariant),
-      ),
+    return ForecastTableCard(
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -256,56 +253,6 @@ class AemetCoastalForecastTable extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    Widget infoCard({
-      required IconData icon,
-      required String title,
-      required String value,
-      required Color tint,
-    }) {
-      return Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: tint.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: tint.withValues(alpha: 0.18)),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 18, color: tint),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: tint,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(value, style: textTheme.bodySmall),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    Widget bulletinChip(String label) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(label, style: textTheme.labelSmall),
-      );
-    }
-
     Widget bulletPoint(String text) {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -327,34 +274,13 @@ class AemetCoastalForecastTable extends StatelessWidget {
       );
     }
 
-    Widget zoneTag(String label) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        decoration: BoxDecoration(
-          color: colorScheme.secondaryContainer,
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(
-          label,
-          style: textTheme.labelSmall?.copyWith(
-            color: colorScheme.onSecondaryContainer,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      );
-    }
-
     final validity = _formatDateTimeRange(data.validFrom, data.validTo);
     final issued = data.issuedAt == null
         ? 'No disponible'
         : _formatDateTimeRange(data.issuedAt, data.issuedAt);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.outlineVariant),
-      ),
+    return ForecastTableCard(
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -371,9 +297,9 @@ class AemetCoastalForecastTable extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    bulletinChip('Validez: $validity'),
-                    bulletinChip('Emitido: $issued'),
-                    bulletinChip('${data.zones.length} zona(s)'),
+                    ForecastPillChip(label: 'Validez: $validity'),
+                    ForecastPillChip(label: 'Emitido: $issued'),
+                    ForecastPillChip(label: '${data.zones.length} zona(s)'),
                   ],
                 ),
               ],
@@ -385,21 +311,21 @@ class AemetCoastalForecastTable extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                infoCard(
+                ForecastInfoCard(
                   icon: Icons.warning_amber_rounded,
                   title: 'Aviso',
                   value: data.noticeText,
                   tint: colorScheme.error,
                 ),
                 const SizedBox(height: 10),
-                infoCard(
+                ForecastInfoCard(
                   icon: Icons.public_rounded,
                   title: 'Situacion general',
                   value: data.situationText,
                   tint: colorScheme.primary,
                 ),
                 const SizedBox(height: 10),
-                infoCard(
+                ForecastInfoCard(
                   icon: Icons.trending_up_rounded,
                   title: 'Tendencia',
                   value: data.trendText,
@@ -452,7 +378,18 @@ class AemetCoastalForecastTable extends StatelessWidget {
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
-                            children: tags.map(zoneTag).toList(growable: false),
+                            children: tags
+                                .map(
+                                  (tag) => ForecastPillChip(
+                                    label: tag,
+                                    backgroundColor:
+                                        colorScheme.secondaryContainer,
+                                    foregroundColor:
+                                        colorScheme.onSecondaryContainer,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                )
+                                .toList(growable: false),
                           ),
                         ],
                         const SizedBox(height: 10),

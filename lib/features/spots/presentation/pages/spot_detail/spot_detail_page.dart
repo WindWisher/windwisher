@@ -25,15 +25,16 @@ import 'package:windwisher/features/spots/domain/entities/spot_forecast_entry.da
 import 'package:windwisher/features/spots/domain/entities/spot_item.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_social_post.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_webcam.dart';
+import 'package:windwisher/features/spots/infrastructure/data/spot_capabilities_catalog.dart';
 import 'package:windwisher/features/spots/presentation/state/spot_alarm_catalog.dart';
 import 'package:windwisher/features/spots/presentation/pages/wind_map_page.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/chat/widgets/spot_chat_widgets.dart';
-import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/aemet_forecast_tables.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/forecast_accuracy_card.dart';
-import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/meteoblue_forecast_supplement_card.dart';
-import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/meteosource_forecast_supplement_card.dart';
-import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/meteostat_day_supplement_card.dart';
-import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/windguru_forecast_card.dart';
+import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/tables/aemet/aemet_forecast_tables.dart';
+import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/tables/meteoblue/meteoblue_forecast_supplement_card.dart';
+import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/tables/meteosource/meteosource_forecast_supplement_card.dart';
+import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/tables/meteostat/meteostat_day_supplement_card.dart';
+import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/tables/windguru/windguru_forecast_card.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/webcam/webcam_player_page.dart';
 import 'package:windwisher/features/spots/infrastructure/services/spot_social_client.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -50,6 +51,7 @@ part 'tabs/forecast/forecast_status_widgets.dart';
 part 'tabs/forecast/forecast_supplement_loaders.dart';
 part 'tabs/forecast/forecast_supplements_section.dart';
 part 'tabs/forecast/forecast_table_section.dart';
+part 'tabs/forecast/widgets/tables/shared/forecast_table_selectors.dart';
 part 'tabs/live/models/live_history_models.dart';
 part 'tabs/live/models/live_station_models.dart';
 part 'tabs/live/models/live_station_registry.dart';
@@ -92,6 +94,7 @@ class SpotDetailPage extends StatefulWidget {
     this.aemetBeachCode,
     this.aemetBeachCodes = const <String>[],
     this.backgroundImagePath,
+    this.capabilities = SpotCapabilities.empty,
     this.spotsModule,
     this.aemetBeachForecastClient,
     this.aemetCoastalForecastClient,
@@ -117,6 +120,7 @@ class SpotDetailPage extends StatefulWidget {
   final String? aemetBeachCode;
   final List<String> aemetBeachCodes;
   final String? backgroundImagePath;
+  final SpotCapabilities capabilities;
   final SpotsModule? spotsModule;
   final AemetBeachForecastClient? aemetBeachForecastClient;
   final AemetCoastalForecastClient? aemetCoastalForecastClient;
@@ -143,6 +147,7 @@ class SpotDetailPage extends StatefulWidget {
     aemetBeachCode: aemetBeachCode,
     aemetBeachCodes: aemetBeachCodes,
     backgroundImagePath: backgroundImagePath,
+    capabilities: capabilities,
   );
 
   @override
@@ -286,7 +291,10 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         widget.portusRealtimeWindClient ?? PortusRealtimeWindClient();
     _openMeteoWindMapGridClient = OpenMeteoWindMapGridClient();
     _initializeSocialChat();
+    _forecastProvider =
+        widget.capabilities.defaultForecastProvider ?? _forecastProvider;
     _forecastModel =
+        _defaultForecastModelFromCapabilities(_forecastProvider) ??
         getSpotDefaultForecastModel(
           spotName: widget.name,
           spotArea: widget.area,

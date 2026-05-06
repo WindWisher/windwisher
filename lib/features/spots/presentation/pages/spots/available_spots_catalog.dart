@@ -9,6 +9,7 @@ class _AvailableSpot {
     this.aemetMunicipalityCode,
     this.aemetBeachCode,
     this.aemetBeachCodes = const <String>[],
+    this.capabilities = SpotCapabilities.empty,
   });
 
   final String name;
@@ -18,17 +19,19 @@ class _AvailableSpot {
   final String? aemetMunicipalityCode;
   final String? aemetBeachCode;
   final List<String> aemetBeachCodes;
+  final SpotCapabilities capabilities;
 }
 
 const _availableSpots = <_AvailableSpot>[
   _AvailableSpot(
-    name: 'Oliva Canal - Platja dels Gorgs',
+    name: olivaCanalGorgsSpotName,
     area: 'Valencia',
     latitude: 38.91397175799847,
     longitude: -0.07335473217682421,
     aemetMunicipalityCode: '46181',
     aemetBeachCode: '4618102',
     aemetBeachCodes: ['4618103'],
+    capabilities: olivaCanalGorgsSpotCapabilities,
   ),
   _AvailableSpot(
     name: 'Piles',

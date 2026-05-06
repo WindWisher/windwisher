@@ -136,51 +136,50 @@ extension _SpotDetailForecastTableSection on _SpotDetailPageState {
     return _compactDirectionCell(degrees, minHeight: minHeight);
   }
 
+  TableRow _forecastMetricRow({
+    required String label,
+    required List<_ForecastRow> rows,
+    required String Function(_ForecastRow row) valueText,
+    Color? Function(_ForecastRow row)? color,
+    Color? Function(_ForecastRow row)? textColor,
+    bool bold = false,
+    double? minHeight,
+  }) {
+    return TableRow(
+      children: [
+        _compactLabelCell(label, minHeight: minHeight),
+        ...rows.asMap().entries.map(
+          (entry) => _forecastColumnCell(
+            isDayStart: _isForecastDayStart(rows, entry.key),
+            child: _compactValueCell(
+              valueText(entry.value),
+              color: color?.call(entry.value),
+              textColor: textColor?.call(entry.value),
+              bold: bold,
+              minHeight: minHeight,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildForecastRangeSelector({
     _ForecastRange? selectedRange,
     ValueChanged<_ForecastRange>? onRangeChanged,
   }) {
-    final effectiveRange = selectedRange ?? _forecastRange;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SegmentedButton<_ForecastRange>(
-        showSelectedIcon: false,
-        style: SegmentedButton.styleFrom(
-          visualDensity: VisualDensity.compact,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          side: BorderSide(
-            color: Theme.of(
-              context,
-            ).colorScheme.primary.withValues(alpha: 0.35),
-          ),
-          shape: const StadiumBorder(),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.xs,
-          ),
-          foregroundColor: Theme.of(context).colorScheme.primary,
-          selectedForegroundColor: Colors.white,
-          selectedBackgroundColor: Theme.of(context).colorScheme.primary,
-        ),
-        segments: _availableForecastRanges(_forecastProvider)
-            .map(
-              (range) => ButtonSegment<_ForecastRange>(
-                value: range,
-                label: Text(range.label),
-              ),
-            )
-            .toList(),
-        selected: {effectiveRange},
-        onSelectionChanged: (value) {
-          if (onRangeChanged != null) {
-            onRangeChanged(value.first);
-          } else {
-            setState(() {
-              _forecastRange = value.first;
-            });
-          }
-        },
-      ),
+    return _ForecastRangeSelector(
+      ranges: _availableForecastRanges(_forecastProvider),
+      selectedRange: selectedRange ?? _forecastRange,
+      onRangeChanged: (range) {
+        if (onRangeChanged != null) {
+          onRangeChanged(range);
+        } else {
+          setState(() {
+            _forecastRange = range;
+          });
+        }
+      },
     );
   }
 
@@ -241,39 +240,23 @@ extension _SpotDetailForecastTableSection on _SpotDetailPageState {
               ),
             ],
           ),
-          TableRow(
-            children: [
-              _compactLabelCell('Viento', minHeight: fullscreenRowHeight),
-              ...rows.asMap().entries.map(
-                (entry) => _forecastColumnCell(
-                  isDayStart: _isForecastDayStart(rows, entry.key),
-                  child: _compactValueCell(
-                    '${entry.value.windKnots}',
-                    color: _windColor(entry.value.windKnots),
-                    bold: true,
-                    minHeight: fullscreenRowHeight,
-                  ),
-                ),
-              ),
-            ],
+          _forecastMetricRow(
+            label: 'Viento',
+            rows: rows,
+            valueText: (row) => '${row.windKnots}',
+            color: (row) => _windColor(row.windKnots),
+            bold: true,
+            minHeight: fullscreenRowHeight,
           ),
           if (rows.any((row) => row.gustKnots != null))
-            TableRow(
-              children: [
-                _compactLabelCell('Racha', minHeight: fullscreenRowHeight),
-                ...rows.asMap().entries.map(
-                  (entry) => _forecastColumnCell(
-                    isDayStart: _isForecastDayStart(rows, entry.key),
-                    child: _compactValueCell(
-                      _nullableMetricText(entry.value.gustKnots?.toString()),
-                      color: entry.value.gustKnots == null
-                          ? null
-                          : _windColor(entry.value.gustKnots!),
-                      minHeight: fullscreenRowHeight,
-                    ),
-                  ),
-                ),
-              ],
+            _forecastMetricRow(
+              label: 'Racha',
+              rows: rows,
+              valueText: (row) =>
+                  _nullableMetricText(row.gustKnots?.toString()),
+              color: (row) =>
+                  row.gustKnots == null ? null : _windColor(row.gustKnots!),
+              minHeight: fullscreenRowHeight,
             ),
           TableRow(
             children: [
@@ -290,41 +273,24 @@ extension _SpotDetailForecastTableSection on _SpotDetailPageState {
             ],
           ),
           if (rows.any((row) => row.waveM != null))
-            TableRow(
-              children: [
-                _compactLabelCell('Olas', minHeight: fullscreenRowHeight),
-                ...rows.asMap().entries.map(
-                  (entry) => _forecastColumnCell(
-                    isDayStart: _isForecastDayStart(rows, entry.key),
-                    child: _compactValueCell(
-                      _nullableMetricText(
-                        entry.value.waveM?.toStringAsFixed(1),
-                      ),
-                      color: entry.value.waveM == null
-                          ? null
-                          : const Color(0xFFB3E5FC).withValues(alpha: 0.75),
-                      minHeight: fullscreenRowHeight,
-                    ),
-                  ),
-                ),
-              ],
+            _forecastMetricRow(
+              label: 'Olas',
+              rows: rows,
+              valueText: (row) =>
+                  _nullableMetricText(row.waveM?.toStringAsFixed(1)),
+              color: (row) => row.waveM == null
+                  ? null
+                  : const Color(0xFFB3E5FC).withValues(alpha: 0.75),
+              minHeight: fullscreenRowHeight,
             ),
           if (rows.any((row) => row.wavePeriodSeconds != null))
-            TableRow(
-              children: [
-                _compactLabelCell('Periodo', minHeight: fullscreenRowHeight),
-                ...rows.asMap().entries.map(
-                  (entry) => _forecastColumnCell(
-                    isDayStart: _isForecastDayStart(rows, entry.key),
-                    child: _compactValueCell(
-                      _nullableMetricText(
-                        entry.value.wavePeriodSeconds?.toStringAsFixed(1),
-                      ),
-                      minHeight: fullscreenRowHeight,
-                    ),
-                  ),
-                ),
-              ],
+            _forecastMetricRow(
+              label: 'Periodo',
+              rows: rows,
+              valueText: (row) => _nullableMetricText(
+                row.wavePeriodSeconds?.toStringAsFixed(1),
+              ),
+              minHeight: fullscreenRowHeight,
             ),
           if (rows.any((row) => row.waveDirDeg != null))
             TableRow(
@@ -342,22 +308,15 @@ extension _SpotDetailForecastTableSection on _SpotDetailPageState {
               ],
             ),
           if (rows.any((row) => row.pressureHpa != null))
-            TableRow(
-              children: [
-                _compactLabelCell('Presion', minHeight: fullscreenRowHeight),
-                ...rows.asMap().entries.map(
-                  (entry) => _forecastColumnCell(
-                    isDayStart: _isForecastDayStart(rows, entry.key),
-                    child: _compactValueCell(
-                      _nullableMetricText(entry.value.pressureHpa?.toString()),
-                      textColor: entry.value.pressureHpa == null
-                          ? colorScheme.onSurfaceVariant.withValues(alpha: 0.55)
-                          : colorScheme.onSurfaceVariant,
-                      minHeight: fullscreenRowHeight,
-                    ),
-                  ),
-                ),
-              ],
+            _forecastMetricRow(
+              label: 'Presion',
+              rows: rows,
+              valueText: (row) =>
+                  _nullableMetricText(row.pressureHpa?.toString()),
+              textColor: (row) => row.pressureHpa == null
+                  ? colorScheme.onSurfaceVariant.withValues(alpha: 0.55)
+                  : colorScheme.onSurfaceVariant,
+              minHeight: fullscreenRowHeight,
             ),
           if (rows.any((row) => row.waterTempC != null))
             TableRow(
@@ -531,48 +490,16 @@ extension _SpotDetailForecastTableSection on _SpotDetailPageState {
               if (showResolutionSelector)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: SegmentedButton<_ForecastResolution>(
-                      showSelectedIcon: false,
-                      style: SegmentedButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        side: BorderSide(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.primary.withValues(alpha: 0.35),
-                        ),
-                        shape: const StadiumBorder(),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md,
-                          vertical: AppSpacing.xs,
-                        ),
-                        foregroundColor: Theme.of(context).colorScheme.primary,
-                        selectedForegroundColor: Colors.white,
-                        selectedBackgroundColor: Theme.of(
-                          context,
-                        ).colorScheme.primary,
-                      ),
-                      segments:
-                          _allowedForecastResolutions(
-                            selectedRange ?? _forecastRange,
-                          ).map((resolution) {
-                            return ButtonSegment<_ForecastResolution>(
-                              value: resolution,
-                              label: Text(resolution.label),
-                            );
-                          }).toList(),
-                      selected: {
-                        selectedResolution ??
-                            _preferredForecastResolution(
-                              selectedRange ?? _forecastRange,
-                            ),
-                      },
-                      onSelectionChanged: (value) {
-                        onResolutionChanged?.call(value.first);
-                      },
+                  child: _ForecastResolutionSelector(
+                    resolutions: _allowedForecastResolutions(
+                      selectedRange ?? _forecastRange,
                     ),
+                    selectedResolution:
+                        selectedResolution ??
+                        _preferredForecastResolution(
+                          selectedRange ?? _forecastRange,
+                        ),
+                    onResolutionChanged: onResolutionChanged,
                   ),
                 ),
               if (showRangeSelector) const Divider(height: 1),

@@ -3,6 +3,16 @@
 part of '../../spot_detail_page.dart';
 
 extension _SpotDetailForecastDataController on _SpotDetailPageState {
+  String? _defaultForecastModelFromCapabilities(String provider) {
+    final model = widget.capabilities.defaultForecastModel;
+    if (model == null ||
+        widget.capabilities.defaultForecastProvider != provider) {
+      return null;
+    }
+    final models = _modelsForProvider(provider);
+    return models.contains(model) ? model : null;
+  }
+
   List<String> _modelsForProvider(String provider) {
     return getSpotForecastModels(
       spotName: widget.name,

@@ -49,5 +49,6 @@ _SpotItem _buildAddedSpotItem({
     aemetBeachCode: selectedOfficialSpot?.aemetBeachCode,
     aemetBeachCodes: selectedOfficialSpot?.aemetBeachCodes ?? const <String>[],
     backgroundImagePath: backgroundImagePath,
+    capabilities: selectedOfficialSpot?.capabilities ?? SpotCapabilities.empty,
   );
 }

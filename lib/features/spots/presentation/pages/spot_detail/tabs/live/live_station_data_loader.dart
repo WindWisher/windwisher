@@ -123,7 +123,7 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
     }
 
     try {
-      final isOlivaSpot = widget.name.trim().toLowerCase().contains('oliva');
+      final usesOlivaCanalLiveProfile = _usesOlivaCanalLiveProfile();
       final stations = <_NearbyStation>[];
       final liveDataByStation = <String, _StationLiveData>{};
       final historyByStation = <String, List<_HistoricalWindPoint>>{};
@@ -138,7 +138,7 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
           latitude: latitude,
           longitude: longitude,
           limit: 20,
-          maxDistanceKm: isOlivaSpot ? 5 : 5,
+          maxDistanceKm: 5,
           preferredStationId: _preferredLiveStationId(),
         );
       } catch (error) {
@@ -251,7 +251,7 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
         technicalError ??= '$error';
       }
 
-      if (isOlivaSpot) {
+      if (usesOlivaCanalLiveProfile) {
         await _addOlivaLiveStations(
           latitude: latitude,
           longitude: longitude,
@@ -684,19 +684,17 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
   }
 
   String? _preferredLiveStationId() {
-    final normalized = widget.name.trim().toLowerCase();
-    if (normalized.contains('oliva')) {
-      return '8058X';
-    }
-    return null;
+    return _resolvedSpotCapabilities().preferredAemetLiveStationId;
   }
 
   List<int> _portusRealtimeStationIdsForSpot() {
+    final configuredStationIds =
+        _resolvedSpotCapabilities().portusRealtimeStationIds;
+    if (configuredStationIds.isNotEmpty) {
+      return configuredStationIds;
+    }
     final normalized = '${widget.name} ${widget.area}'.toLowerCase();
     if (normalized.contains('gandia') || normalized.contains('gandía')) {
-      return const <int>[4634];
-    }
-    if (normalized.contains('oliva')) {
       return const <int>[4634];
     }
     if (normalized.contains('valencia') || normalized.contains('malvarrosa')) {
@@ -714,6 +712,25 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
       return const <int>[4660, 4661, 4662, 4663, 4664, 4665];
     }
     return const <int>[];
+  }
+
+  bool _usesOlivaCanalLiveProfile() {
+    final capabilities = _resolvedSpotCapabilities();
+    return capabilities.includeOlivaReferenceLiveStations;
+  }
+
+  SpotCapabilities _resolvedSpotCapabilities() {
+    final capabilities = widget.capabilities;
+    if (capabilities.liveStationProfile == olivaCanalGorgsLiveStationProfile) {
+      return olivaCanalGorgsSpotCapabilities;
+    }
+
+    final defaultCapabilities = defaultSpotCapabilitiesForName(widget.name);
+    if (defaultCapabilities.liveStationProfile != null) {
+      return defaultCapabilities;
+    }
+
+    return capabilities;
   }
 
   String _portusStationKey(int stationId) => 'puertos:$stationId';

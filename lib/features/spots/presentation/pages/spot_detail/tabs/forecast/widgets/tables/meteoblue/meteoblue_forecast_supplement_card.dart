@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/features/spots/application/services/spots_presentation_forecast_support.dart';
+import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/tables/shared/forecast_table_chrome.dart';
 
 class MeteoblueForecastSupplementCard extends StatelessWidget {
   const MeteoblueForecastSupplementCard({
@@ -46,14 +47,9 @@ class MeteoblueForecastSupplementCard extends StatelessWidget {
         return Stack(
           fit: expandToFill ? StackFit.expand : StackFit.loose,
           children: [
-            Container(
-              width: double.infinity,
+            ForecastTableCard(
               padding: EdgeInsets.all(isNarrow ? 10 : 12),
-              decoration: BoxDecoration(
-                color: colorScheme.surface,
-                borderRadius: BorderRadius.circular(expandToFill ? 0 : 16),
-                border: Border.all(color: colorScheme.outlineVariant),
-              ),
+              borderRadius: expandToFill ? 0 : 16,
               child: _buildCardBody(
                 context,
                 isNarrow: isNarrow,
@@ -219,10 +215,9 @@ class MeteoblueForecastSupplementCard extends StatelessWidget {
                       ),
                     ),
                     children: [
-                      _compactLabelCell(context, 'Hora'),
+                      const ForecastCompactLabelCell('Hora'),
                       ...seaRows.map(
-                        (row) => _compactValueCell(
-                          context,
+                        (row) => ForecastCompactValueCell(
                           row.time == null
                               ? '-'
                               : row.time!.hour.toString().padLeft(2, '0'),
@@ -232,14 +227,12 @@ class MeteoblueForecastSupplementCard extends StatelessWidget {
                     ],
                   ),
                   _buildSeaRow(
-                    context,
                     label: 'Agua º',
                     values: seaRows
                         .map((row) => _formatFixed(row.surfaceWaterTempC))
                         .toList(),
                   ),
                   _buildSeaRow(
-                    context,
                     label: 'Surf(wave)',
                     values: seaRows
                         .map((row) => _formatFixed(row.surfWaveHeightM))
@@ -247,7 +240,6 @@ class MeteoblueForecastSupplementCard extends StatelessWidget {
                     color: const Color(0xFFB3E5FC).withValues(alpha: 0.75),
                   ),
                   _buildSeaRow(
-                    context,
                     label: 'Oleaje(m)',
                     values: seaRows
                         .map((row) => _formatFixed(row.significantWaveHeightM))
@@ -255,7 +247,6 @@ class MeteoblueForecastSupplementCard extends StatelessWidget {
                     color: const Color(0xFF80DEEA).withValues(alpha: 0.75),
                   ),
                   _buildSeaRow(
-                    context,
                     label: 'Mar de fondo',
                     values: seaRows
                         .map((row) => _formatFixed(row.swellWaveHeightM))
@@ -263,7 +254,6 @@ class MeteoblueForecastSupplementCard extends StatelessWidget {
                     color: const Color(0xFFBBDEFB).withValues(alpha: 0.75),
                   ),
                   _buildSeaRow(
-                    context,
                     label: 'Windsea',
                     values: seaRows
                         .map((row) => _formatFixed(row.windWaveHeightM))
@@ -271,14 +261,12 @@ class MeteoblueForecastSupplementCard extends StatelessWidget {
                     color: const Color(0xFFC8E6C9).withValues(alpha: 0.75),
                   ),
                   _buildSeaRow(
-                    context,
                     label: 'Periodo(oleaje)',
                     values: seaRows
                         .map((row) => _formatFixed(row.meanWavePeriodS))
                         .toList(),
                   ),
                   _buildSeaRow(
-                    context,
                     label: 'Periodo(mar de viento)',
                     values: seaRows
                         .map((row) => _formatFixed(row.windWaveMeanPeriodS))
@@ -286,43 +274,42 @@ class MeteoblueForecastSupplementCard extends StatelessWidget {
                   ),
                   TableRow(
                     children: [
-                      _compactLabelCell(context, 'Sea dir.'),
+                      const ForecastCompactLabelCell('Sea dir.'),
                       ...seaRows.map(
-                        (row) => _compactNullableDirectionCell(
-                          context,
-                          row.meanWaveDirectionDeg,
+                        (row) => ForecastCompactDirectionCell(
+                          degrees: row.meanWaveDirectionDeg,
+                          cardinalLabel: _degreesToCardinal,
                         ),
                       ),
                     ],
                   ),
                   TableRow(
                     children: [
-                      _compactLabelCell(context, 'Dir(Mar de fondo)'),
+                      const ForecastCompactLabelCell('Dir(Mar de fondo)'),
                       ...seaRows.map(
-                        (row) => _compactNullableDirectionCell(
-                          context,
-                          row.swellMeanDirectionDeg,
+                        (row) => ForecastCompactDirectionCell(
+                          degrees: row.swellMeanDirectionDeg,
+                          cardinalLabel: _degreesToCardinal,
                         ),
                       ),
                     ],
                   ),
                   TableRow(
                     children: [
-                      _compactLabelCell(context, 'Dir(Wind)'),
+                      const ForecastCompactLabelCell('Dir(Wind)'),
                       ...seaRows.map(
-                        (row) => _compactNullableDirectionCell(
-                          context,
-                          row.windWaveDirectionDeg,
+                        (row) => ForecastCompactDirectionCell(
+                          degrees: row.windWaveDirectionDeg,
+                          cardinalLabel: _degreesToCardinal,
                         ),
                       ),
                     ],
                   ),
                   TableRow(
                     children: [
-                      _compactLabelCell(context, 'Sea status'),
+                      const ForecastCompactLabelCell('Sea status'),
                       ...seaRows.map(
-                        (row) => _compactValueCell(
-                          context,
+                        (row) => ForecastCompactValueCell(
                           row.douglasSeaState == null
                               ? '-'
                               : _douglasSeaStateLabel(row.douglasSeaState!),
@@ -353,47 +340,18 @@ class MeteoblueForecastSupplementCard extends StatelessWidget {
               spacing: isNarrow ? 6 : 8,
               runSpacing: isNarrow ? 6 : 8,
               children: days.map((day) {
-                return Container(
+                return ForecastDailySummaryCard(
+                  title: _dayLabel(day.date),
                   width: isNarrow ? 144 : 156,
                   padding: EdgeInsets.all(isNarrow ? 8 : 10),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerLowest,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: colorScheme.outlineVariant),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _dayLabel(day.date),
-                        style: textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Temp: ${_formatFixed(day.tempMinC)} / ${_formatFixed(day.tempMaxC)} C',
-                        style: textTheme.bodySmall,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Viento medio: ${_formatFixed(day.windMeanKnots)} kt',
-                        style: textTheme.bodySmall,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Lluvia: ${_formatFixed(day.precipitationMm)} mm',
-                        style: textTheme.bodySmall,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Predict.: ${day.predictabilityPct == null ? '-' : '${day.predictabilityPct}%'}',
-                        style: textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
+                  lines: [
+                    'Temp: ${_formatFixed(day.tempMinC)} / ${_formatFixed(day.tempMaxC)} C',
+                    'Viento medio: ${_formatFixed(day.windMeanKnots)} kt',
+                    'Lluvia: ${_formatFixed(day.precipitationMm)} mm',
+                  ],
+                  mutedLines: [
+                    'Predict.: ${day.predictabilityPct == null ? '-' : '${day.predictabilityPct}%'}',
+                  ],
                 );
               }).toList(),
             ),
@@ -411,18 +369,16 @@ class MeteoblueForecastSupplementCard extends StatelessWidget {
     );
   }
 
-  TableRow _buildSeaRow(
-    BuildContext context, {
+  TableRow _buildSeaRow({
     required String label,
     required List<String> values,
     Color? color,
   }) {
     return TableRow(
       children: [
-        _compactLabelCell(context, label),
+        ForecastCompactLabelCell(label),
         ...values.map(
-          (value) => _compactValueCell(
-            context,
+          (value) => ForecastCompactValueCell(
             value,
             color: value == '-' ? null : color,
           ),
@@ -463,90 +419,7 @@ Widget _sectionHeader(
 }
 
 Widget _metricChip(BuildContext context, String label, String value) {
-  final colorScheme = Theme.of(context).colorScheme;
-  final textTheme = Theme.of(context).textTheme;
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-    decoration: BoxDecoration(
-      color: colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: textTheme.labelSmall),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
-        ),
-      ],
-    ),
-  );
-}
-
-Widget _compactLabelCell(BuildContext context, String text) {
-  final textTheme = Theme.of(context).textTheme;
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-    child: Text(
-      text,
-      style: textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
-    ),
-  );
-}
-
-Widget _compactValueCell(
-  BuildContext context,
-  String text, {
-  Color? color,
-  bool bold = false,
-}) {
-  final textTheme = Theme.of(context).textTheme;
-  final child = Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-    child: Center(
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: textTheme.bodySmall?.copyWith(
-          fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
-        ),
-      ),
-    ),
-  );
-
-  if (color == null) {
-    return child;
-  }
-
-  return Container(color: color, child: child);
-}
-
-Widget _compactNullableDirectionCell(BuildContext context, int? degrees) {
-  if (degrees == null) {
-    return _compactValueCell(context, '-');
-  }
-
-  final normalizedDegrees = ((degrees % 360) + 360) % 360;
-  final textTheme = Theme.of(context).textTheme;
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Transform.rotate(
-          angle: ((normalizedDegrees - 45 + 180) * 3.1415926535897932) / 180,
-          child: const Icon(Icons.near_me_rounded, size: 18),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          _degreesToCardinal(normalizedDegrees.toDouble()),
-          style: textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
-        ),
-      ],
-    ),
-  );
+  return ForecastMetricChip(label: label, value: value);
 }
 
 String _formatDateTimeCompact(DateTime? value) {

@@ -13,6 +13,7 @@ import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
 import 'package:windwisher/features/spots/di/spots_module.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_item.dart';
+import 'package:windwisher/features/spots/infrastructure/data/spot_capabilities_catalog.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/spot_detail_page.dart';
 
 part 'available_spots_catalog.dart';

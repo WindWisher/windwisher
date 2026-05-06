@@ -67,6 +67,7 @@ class _EditSpotSheetState extends State<_EditSpotSheet> {
         aemetBeachCode: widget.spot.aemetBeachCode,
         aemetBeachCodes: widget.spot.aemetBeachCodes,
         backgroundImagePath: _backgroundImagePath,
+        capabilities: widget.spot.capabilities,
       ),
     );
   }
