@@ -1,5 +1,11 @@
 part of '../../../spot_detail_page.dart';
 
+const String _aemetOlivaStationId = '8058X';
+const String _aemetOlivaStationKey = '8058X';
+const String _aemetOlivaStationName = 'AEMET Oliva';
+const double _aemetOlivaStationLat = 38.9196;
+const double _aemetOlivaStationLon = -0.1193;
+
 const String _avametOlivaStationId = 'c25m181e07';
 const String _avametOlivaStationKey = 'avamet:c25m181e07';
 const String _avametOlivaStationName = 'Club Nautico de Oliva';

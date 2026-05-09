@@ -6,6 +6,25 @@ extension _SpotDetailLiveFormatters on _SpotDetailPageState {
     return '${two(value.day)}/${two(value.month)} ${two(value.hour)}:${two(value.minute)}';
   }
 
+  String _formatObservedAtWithAge(DateTime value, {String? label}) {
+    final formatted = label ?? _formatObservedAt(value);
+    final difference = DateTime.now().difference(value);
+    if (difference.isNegative) {
+      return formatted;
+    }
+    if (difference.inMinutes < 1) {
+      return '$formatted · ahora';
+    }
+    if (difference.inHours < 1) {
+      return '$formatted · hace ${difference.inMinutes} min';
+    }
+    final minutes = difference.inMinutes.remainder(60);
+    if (minutes == 0) {
+      return '$formatted · hace ${difference.inHours} h';
+    }
+    return '$formatted · hace ${difference.inHours} h $minutes min';
+  }
+
   String _formatWind(double? knots) {
     if (knots == null) {
       return '-';

@@ -50,7 +50,8 @@ class SpotAlarmSyncClient {
       throw StateError(_lastError!);
     }
     if (client.auth.currentUser == null) {
-      _lastError = 'No hay una sesion iniciada en Supabase para sincronizar alarmas.';
+      _lastError =
+          'No hay una sesion iniciada en Supabase para sincronizar alarmas.';
       throw StateError(_lastError!);
     }
   }
@@ -64,6 +65,7 @@ class SpotAlarmSyncClient {
         .from('spot_alarms')
         .select()
         .order('created_at', ascending: false);
+    final runtimeRows = await _client.from('spot_alarm_runtime').select();
     final preferenceRows = await _client
         .from('spot_alarm_preferences')
         .select();
@@ -82,9 +84,18 @@ class SpotAlarmSyncClient {
       }
     }
 
+    final runtimeByAlarmId = <String, Map<String, dynamic>>{};
+    for (final row
+        in (runtimeRows as List<dynamic>).whereType<Map<String, dynamic>>()) {
+      final alarmId = row['alarm_id'] as String? ?? '';
+      if (alarmId.isNotEmpty) {
+        runtimeByAlarmId[alarmId] = row;
+      }
+    }
+
     final alarms = (alarmRows as List<dynamic>)
         .whereType<Map<String, dynamic>>()
-        .map(_alarmFromRow)
+        .map((row) => _alarmFromRow(row, runtimeByAlarmId[row['id']]))
         .toList(growable: false);
     return SpotAlarmSyncSnapshot(
       globalEnabled: globalEnabled,
@@ -120,6 +131,7 @@ class SpotAlarmSyncClient {
         'enabled': alarm.enabled,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       });
+      await _saveAlarmRuntime(alarm);
     } catch (error) {
       _lastError = error.toString();
       rethrow;
@@ -138,6 +150,29 @@ class SpotAlarmSyncClient {
     }
   }
 
+  Future<void> saveAlarmRuntimeControls({
+    required String alarmId,
+    DateTime? snoozedUntil,
+    required bool stoppedUntilReset,
+  }) async {
+    _ensureSyncAvailable();
+    final client = _client!;
+    try {
+      _lastError = null;
+      await client.rpc(
+        'set_backend_spot_alarm_runtime_controls',
+        params: <String, dynamic>{
+          'target_alarm_id': alarmId,
+          'next_snoozed_until': snoozedUntil?.toUtc().toIso8601String(),
+          'next_stopped_until_reset': stoppedUntilReset,
+        },
+      );
+    } catch (error) {
+      _lastError = error.toString();
+      rethrow;
+    }
+  }
+
   Future<void> saveGlobalEnabled(bool enabled) async {
     await _savePreference(scopeKey: _globalScopeKey, enabled: enabled);
   }
@@ -149,7 +184,10 @@ class SpotAlarmSyncClient {
     await _savePreference(scopeKey: spotKey, enabled: enabled);
   }
 
-  SpotAlarmRecord _alarmFromRow(Map<String, dynamic> row) {
+  SpotAlarmRecord _alarmFromRow(
+    Map<String, dynamic> row,
+    Map<String, dynamic>? runtime,
+  ) {
     final rawDirections = row['directions'] as List<dynamic>? ?? const [];
     return SpotAlarmRecord(
       id: row['id'] as String? ?? '',
@@ -176,11 +214,57 @@ class SpotAlarmSyncClient {
         orElse: () => AlarmRepeatWindow.min10,
       ),
       maxRepeats: (row['max_repeats'] as num?)?.toInt() ?? 3,
-      triggerCount: (row['trigger_count'] as num?)?.toInt() ?? 0,
+      triggerCount:
+          (runtime?['trigger_count'] as num?)?.toInt() ??
+          (row['trigger_count'] as num?)?.toInt() ??
+          0,
       lastTriggeredAt: DateTime.tryParse(
-        row['last_triggered_at'] as String? ?? '',
+        runtime?['last_triggered_at'] as String? ??
+            row['last_triggered_at'] as String? ??
+            '',
       )?.toLocal(),
+      snoozedUntil: DateTime.tryParse(
+        runtime?['snoozed_until'] as String? ?? '',
+      )?.toLocal(),
+      stoppedUntilReset:
+          runtime?['stopped_until_reset'] as bool? ??
+          row['stopped_until_reset'] as bool? ??
+          false,
       enabled: row['enabled'] as bool? ?? true,
+    );
+  }
+
+  Future<void> _saveAlarmRuntime(SpotAlarmRecord alarm) async {
+    final client = _client!;
+    final shouldReset =
+        alarm.triggerCount == 0 &&
+        alarm.lastTriggeredAt == null &&
+        alarm.snoozedUntil == null &&
+        !alarm.stoppedUntilReset;
+
+    await client.rpc(
+      'update_backend_spot_alarm_trigger_state',
+      params: <String, dynamic>{
+        'target_alarm_id': alarm.id,
+        'next_trigger_count': alarm.triggerCount,
+        'next_last_triggered_at': alarm.lastTriggeredAt
+            ?.toUtc()
+            .toIso8601String(),
+        'reset_trigger_state': shouldReset,
+      },
+    );
+
+    if (shouldReset) {
+      return;
+    }
+
+    await client.rpc(
+      'set_backend_spot_alarm_runtime_controls',
+      params: <String, dynamic>{
+        'target_alarm_id': alarm.id,
+        'next_snoozed_until': alarm.snoozedUntil?.toUtc().toIso8601String(),
+        'next_stopped_until_reset': alarm.stoppedUntilReset,
+      },
     );
   }
 

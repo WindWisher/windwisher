@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:windwisher/core/notifications/push_notification_subscription_service.dart';
 import 'package:windwisher/features/auth/domain/ports/out/auth_session_port.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -128,6 +129,8 @@ class SupabaseAuthSessionAdapter implements AuthSessionPort {
 
   @override
   Future<void> signOut() async {
+    await PushNotificationSubscriptionService.instance
+        .disableCurrentDeviceSubscriptionForSignedInUser();
     await _client.auth.signOut();
   }
 

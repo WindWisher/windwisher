@@ -157,14 +157,35 @@ extension _SpotDetailLiveHistorySection on _SpotDetailPageState {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Historico $sourceLabel no disponible · ${_selectedStationName()}',
+                'Historico $sourceLabel · ${_selectedStationName()}',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                'Este bloque solo se muestra cuando hay historico real cargado para la estacion seleccionada.',
+                'Carga el historico real solo cuando quieras consultar la grafica.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.icon(
+                  onPressed: _isHistoricalLoading
+                      ? null
+                      : _loadSelectedStationHistoricalData,
+                  icon: _isHistoricalLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.show_chart_rounded),
+                  label: Text(
+                    _isHistoricalLoading
+                        ? 'Cargando historico'
+                        : 'Cargar historico',
+                  ),
                 ),
               ),
             ],
@@ -173,14 +194,24 @@ extension _SpotDetailLiveHistorySection on _SpotDetailPageState {
       );
     }
 
-    _ensureHistoryForecastRowsLoaded();
     final series = _historySeriesWindowed();
     final preparedHistory = _prepareHistorySeriesWindow();
     final intraday = series.intraday;
     final diagnosticLabel = series.diagnosticLabel;
     final historyProviderLabel = _historicalSeriesDisplayLabel();
     final usesFixedAemetOlivaWindow = _usesFixedAemetOlivaHistoryWindow();
-    final showsHistoricalForecastSelectors = series.forecast != null;
+    final selectedHistoryForecastProvider = _historyForecastProvider;
+    final selectedHistoryForecastModel = _historyForecastModel;
+    final historyForecastModels = selectedHistoryForecastProvider == null
+        ? const <String>[]
+        : _historyForecastModelsForProvider(selectedHistoryForecastProvider);
+    final canLoadHistoricalForecast =
+        selectedHistoryForecastProvider != null &&
+        selectedHistoryForecastModel != null &&
+        _supportsHistoricalForecastOverlay(
+          provider: selectedHistoryForecastProvider,
+          model: selectedHistoryForecastModel,
+        );
     final historicalCoverageLabel = _historicalCoverageLabel(
       _selectedHistoricalWindPoints(),
     );
@@ -268,70 +299,88 @@ extension _SpotDetailLiveHistorySection on _SpotDetailPageState {
                 ),
               ),
             ],
-            if (showsHistoricalForecastSelectors) ...[
-              const SizedBox(height: AppSpacing.sm),
-              Wrap(
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.sm,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 170,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _historyForecastProvider,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Proveedor forecast',
-                        isDense: true,
-                      ),
-                      items: _historyForecastProviders()
-                          .map(
-                            (provider) => DropdownMenuItem<String>(
-                              value: provider,
-                              child: Text(provider),
-                            ),
-                          )
-                          .toList(growable: false),
-                      onChanged: (value) {
-                        if (value == null ||
-                            value == _historyForecastProvider) {
-                          return;
-                        }
-                        _handleHistoryForecastProviderChanged(value);
-                      },
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                SizedBox(
+                  width: 180,
+                  child: DropdownButtonFormField<String>(
+                    initialValue: selectedHistoryForecastProvider,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Proveedor forecast',
+                      hintText: 'Seleccionar',
+                      isDense: true,
                     ),
+                    items: _historyForecastProviders()
+                        .map(
+                          (provider) => DropdownMenuItem<String>(
+                            value: provider,
+                            child: Text(provider),
+                          ),
+                        )
+                        .toList(growable: false),
+                    onChanged: (value) {
+                      if (value == null || value == _historyForecastProvider) {
+                        return;
+                      }
+                      _handleHistoryForecastProviderChanged(value);
+                    },
                   ),
-                  SizedBox(
-                    width: 170,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _historyForecastModel,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Modelo forecast',
-                        isDense: true,
-                      ),
-                      items:
-                          _historyForecastModelsForProvider(
-                                _historyForecastProvider,
-                              )
-                              .map((model) {
-                                return DropdownMenuItem<String>(
-                                  value: model,
-                                  child: Text(model),
-                                );
-                              })
-                              .toList(growable: false),
-                      onChanged: (value) {
-                        if (value == null || value == _historyForecastModel) {
-                          return;
-                        }
-                        _handleHistoryForecastModelChanged(value);
-                      },
+                ),
+                SizedBox(
+                  width: 180,
+                  child: DropdownButtonFormField<String>(
+                    initialValue: selectedHistoryForecastModel,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Modelo forecast',
+                      hintText: 'Seleccionar',
+                      isDense: true,
                     ),
+                    items: historyForecastModels
+                        .map((model) {
+                          return DropdownMenuItem<String>(
+                            value: model,
+                            child: Text(model),
+                          );
+                        })
+                        .toList(growable: false),
+                    onChanged: historyForecastModels.isEmpty
+                        ? null
+                        : (value) {
+                            if (value == null ||
+                                value == _historyForecastModel) {
+                              return;
+                            }
+                            _handleHistoryForecastModelChanged(value);
+                          },
                   ),
-                ],
-              ),
-            ],
+                ),
+                OutlinedButton.icon(
+                  onPressed:
+                      _historyForecastLoadRequested ||
+                          !canLoadHistoricalForecast
+                      ? null
+                      : _ensureHistoryForecastRowsLoaded,
+                  icon: _historyForecastLoadRequested
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.compare_arrows_rounded),
+                  label: Text(
+                    _historyForecastLoadRequested
+                        ? 'Cargando comparativa'
+                        : 'Cargar comparativa',
+                  ),
+                ),
+              ],
+            ),
             if (forecastAccuracy != null) ...[
               const SizedBox(height: AppSpacing.sm),
               ForecastAccuracyCard(

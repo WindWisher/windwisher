@@ -28,17 +28,18 @@ class AvametIntradayHistoryClient {
   final HttpClient? _httpClient;
   final Future<String> Function(String url)? _fetchTextOverride;
   final SupabaseForecastProxyClient? _forecastProxyClient;
+  static const Duration _historyRequestTimeout = Duration(seconds: 6);
 
   Future<List<AvametIntradayHistoryPoint>> fetchIntradayWindHistory({
     required String stationId,
   }) async {
-    final body = _forecastProxyClient != null
-        ? await _forecastProxyClient.fetchAvametIntradayHistoryHtml(
-            stationId: stationId,
-          )
-        : await _fetchText(
-            'https://www.avamet.org/mxo_i.php?id=$stationId',
-          );
+    final body =
+        await (_forecastProxyClient != null
+                ? _forecastProxyClient.fetchAvametIntradayHistoryHtml(
+                    stationId: stationId,
+                  )
+                : _fetchText('https://www.avamet.org/mxo_i.php?id=$stationId'))
+            .timeout(_historyRequestTimeout);
     return _parseIntradayWindHistory(body);
   }
 
@@ -199,10 +200,7 @@ class AvametIntradayHistoryClient {
 }
 
 class _SeriesPoint {
-  const _SeriesPoint({
-    required this.timestampMillis,
-    required this.value,
-  });
+  const _SeriesPoint({required this.timestampMillis, required this.value});
 
   final int timestampMillis;
   final double value;

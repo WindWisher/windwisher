@@ -26,7 +26,10 @@ class NotificationsSettingsSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Notificaciones', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Notificaciones',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: AppSpacing.sm),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -41,7 +44,7 @@ class NotificationsSettingsSection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Las push remotas para alarmas con la app cerrada siguen pendientes de configurar.',
+                    'Push remoto no disponible en este dispositivo o build.',
                     style: TextStyle(color: Colors.grey),
                   ),
                   if (pushInitError != null && pushInitError!.isNotEmpty)

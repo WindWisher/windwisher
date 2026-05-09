@@ -17,22 +17,49 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
       }
 
       setState(() {
+        final latest = _liveStationsLoadResult;
+        if (latest == null) {
+          return;
+        }
         final updatedHistory = Map<String, List<_HistoricalWindPoint>>.from(
-          current.historicalSeriesByStation,
+          latest.historicalSeriesByStation,
         );
         updatedHistory[station.stationKey] = refreshedHistory;
         _liveStationsLoadResult = _LiveStationsLoadResult(
-          stations: current.stations,
-          liveDataByStation: current.liveDataByStation,
+          stations: latest.stations,
+          liveDataByStation: latest.liveDataByStation,
           historicalSeriesByStation: updatedHistory,
-          source: current.source,
-          message: current.message,
-          technicalError: current.technicalError,
+          source: latest.source,
+          message: latest.message,
+          technicalError: latest.technicalError,
         );
       });
       return true;
     } catch (_) {
       return false;
+    }
+  }
+
+  Future<void> _loadSelectedStationHistoricalData() async {
+    if (_isHistoricalLoading) {
+      return;
+    }
+    setState(() {
+      _isHistoricalLoading = true;
+    });
+    try {
+      final historyUpdated = await _refreshSelectedStationHistoricalData();
+      if (!historyUpdated && mounted) {
+        _showLiveRefreshFeedback(
+          'No se pudo cargar el historico de ${_stationDisplayName(_selectedStation)}.',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isHistoricalLoading = false;
+        });
+      }
     }
   }
 
@@ -859,12 +886,16 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
 
   List<_ForecastRow> _historicalForecastOverlayRows() {
     final latestResult = _historyForecastRowsResult;
+    final selectedProvider = _historyForecastProvider;
+    final selectedModel = _historyForecastModel;
     if (latestResult == null ||
         latestResult.source != _ForecastDataSource.live ||
         latestResult.rows.isEmpty ||
+        selectedProvider == null ||
+        selectedModel == null ||
         !_supportsHistoricalForecastOverlay(
-          provider: _historyForecastProvider,
-          model: _historyForecastModel,
+          provider: selectedProvider,
+          model: selectedModel,
         )) {
       return const <_ForecastRow>[];
     }

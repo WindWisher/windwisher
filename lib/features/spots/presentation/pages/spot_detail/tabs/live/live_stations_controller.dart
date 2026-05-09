@@ -7,6 +7,7 @@ extension _SpotDetailLiveStationsController on _SpotDetailPageState {
     if (_isLiveRefreshing) {
       return;
     }
+    var handedOffRefreshState = false;
     setState(() {
       _isLiveRefreshing = true;
     });
@@ -31,18 +32,23 @@ extension _SpotDetailLiveStationsController on _SpotDetailPageState {
               _preferredLiveStation(result.stations) ?? result.stations.first;
           _alarmStation = _stationKey(resolvedAlarmStation);
         }
+        _isLiveRefreshing = false;
       });
-      await _refreshSelectedStationLiveData();
-      final savedAlarms = _savedAlarmsForCurrentSpot();
-      await _refreshAlarmStationsLiveData(savedAlarms);
-      await _processLocalAlarmNotifications(savedAlarms);
-      _syncAlarmMonitoring();
+      handedOffRefreshState = true;
+      unawaited(_hydrateSelectedLiveStationPayload());
     } finally {
-      if (mounted) {
+      if (mounted && !handedOffRefreshState) {
         setState(() {
           _isLiveRefreshing = false;
         });
       }
+    }
+  }
+
+  Future<void> _hydrateSelectedLiveStationPayload() async {
+    await _refreshSelectedStationLiveData();
+    if (!mounted) {
+      return;
     }
   }
 

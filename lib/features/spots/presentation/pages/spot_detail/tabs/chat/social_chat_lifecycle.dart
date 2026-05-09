@@ -67,9 +67,11 @@ extension _SpotDetailSocialChatLifecycle on _SpotDetailPageState {
     _scheduleFocusSocialSection();
   }
 
-  void _enterSocialChatSection() {
+  void _enterSocialChatSection({bool loadFeed = true}) {
     _spotChatRealtimeController.bindAll();
-    unawaited(_loadSocialFeed());
+    if (loadFeed) {
+      unawaited(_loadSocialFeed());
+    }
     _scheduleFocusSocialSection();
   }
 

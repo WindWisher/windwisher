@@ -20,6 +20,11 @@ class PortusSpotsForecastAdapter implements SpotsForecastPort {
   static List<_PortusGridPoint>? _cachedAtmospherePoints;
   static List<_PortusGridPoint>? _cachedWavePoints;
   static List<_PortusGridPoint>? _cachedCurrentPoints;
+  static final Map<String, _CachedPortusForecast> _forecastCache =
+      <String, _CachedPortusForecast>{};
+  static final Map<String, Future<List<SpotForecastEntry>>> _inFlightForecasts =
+      <String, Future<List<SpotForecastEntry>>>{};
+  static const Duration _forecastCacheTtl = Duration(minutes: 10);
 
   @override
   Future<List<SpotForecastEntry>> getForecast({
@@ -32,18 +37,52 @@ class PortusSpotsForecastAdapter implements SpotsForecastPort {
     }
 
     final location = _resolveLocation(spot);
-    final atmospherePoint = await _nearestPoint(
+    final cacheKey = _forecastCacheKey(location);
+    final cached = _cachedForecast(cacheKey);
+    if (cached != null) {
+      return cached;
+    }
+
+    final inFlight = _inFlightForecasts[cacheKey];
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    final request = _fetchForecastRows(location);
+    _inFlightForecasts[cacheKey] = request;
+    try {
+      final rows = await request;
+      if (rows.isNotEmpty) {
+        _forecastCache[cacheKey] = _CachedPortusForecast(
+          createdAt: DateTime.now(),
+          entries: rows,
+        );
+      }
+      return rows;
+    } finally {
+      _inFlightForecasts.remove(cacheKey);
+    }
+  }
+
+  Future<List<SpotForecastEntry>> _fetchForecastRows(
+    ({double lat, double lon}) location,
+  ) async {
+    final atmospherePointFuture = _nearestPoint(
       location,
       pointsLoader: _fetchAtmospherePoints,
       emptyMessage: 'Portus no ha devuelto puntos de malla atmosfericos.',
     );
+    final waveByTimestampFuture = _safeFetchWaveByTimestamp(location);
+    final marineByTimestampFuture = _safeFetchMarineByTimestamp(location);
+
+    final atmospherePoint = await atmospherePointFuture;
     final rawWindRows = await _fetchJson(_windForecastUrl(atmospherePoint.id));
     if (rawWindRows is! List) {
       return const <SpotForecastEntry>[];
     }
 
-    final waveByTimestamp = await _safeFetchWaveByTimestamp(location);
-    final marineByTimestamp = await _safeFetchMarineByTimestamp(location);
+    final waveByTimestamp = await waveByTimestampFuture;
+    final marineByTimestamp = await marineByTimestampFuture;
 
     final rows = <SpotForecastEntry>[];
     for (final rawRow in rawWindRows) {
@@ -57,6 +96,26 @@ class PortusSpotsForecastAdapter implements SpotsForecastPort {
       }
     }
     return rows;
+  }
+
+  List<SpotForecastEntry>? _cachedForecast(String cacheKey) {
+    final cached = _forecastCache[cacheKey];
+    if (cached == null) {
+      return null;
+    }
+    final isFresh =
+        DateTime.now().difference(cached.createdAt) <= _forecastCacheTtl;
+    if (!isFresh) {
+      _forecastCache.remove(cacheKey);
+      return null;
+    }
+    return cached.entries;
+  }
+
+  String _forecastCacheKey(({double lat, double lon}) location) {
+    final lat = location.lat.toStringAsFixed(4);
+    final lon = location.lon.toStringAsFixed(4);
+    return 'Portus|$lat|$lon';
   }
 
   ({double lat, double lon}) _resolveLocation(SpotItem spot) {
@@ -389,6 +448,13 @@ class _PortusMarineForecast {
   final double? currentMps;
   final int? currentDirDeg;
   final double? salinityPsu;
+}
+
+class _CachedPortusForecast {
+  const _CachedPortusForecast({required this.createdAt, required this.entries});
+
+  final DateTime createdAt;
+  final List<SpotForecastEntry> entries;
 }
 
 class _PortusGridPoint {

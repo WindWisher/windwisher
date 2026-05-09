@@ -25,6 +25,7 @@ extension _SpotDetailForecastDataController on _SpotDetailPageState {
 
   List<String> _historyForecastProviders() {
     return const <String>[
+      'AEMET',
       'Open-Meteo',
       'Meteoblue',
       'Meteosource',
@@ -35,6 +36,10 @@ extension _SpotDetailForecastDataController on _SpotDetailPageState {
   List<String> _historyForecastModelsForProvider(String provider) {
     final models = _modelsForProvider(provider);
     switch (provider) {
+      case 'AEMET':
+        return models
+            .where(isAemetPortusAtmosphereForecastModel)
+            .toList(growable: false);
       case 'Open-Meteo':
         return models;
       case 'Meteoblue':
@@ -55,10 +60,20 @@ extension _SpotDetailForecastDataController on _SpotDetailPageState {
   }
 
   void _ensureHistoryForecastRowsLoaded() {
-    if (_historyForecastLoadRequested) {
+    final selectedProvider = _historyForecastProvider;
+    final selectedModel = _historyForecastModel;
+    if (_historyForecastLoadRequested ||
+        selectedProvider == null ||
+        selectedModel == null ||
+        !_supportsHistoricalForecastOverlay(
+          provider: selectedProvider,
+          model: selectedModel,
+        )) {
       return;
     }
-    _historyForecastLoadRequested = true;
+    setState(() {
+      _historyForecastLoadRequested = true;
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
         return;
@@ -182,6 +197,13 @@ extension _SpotDetailForecastDataController on _SpotDetailPageState {
   Future<_ForecastLoadResult> _loadHistoryForecastRows() async {
     final requestedProvider = _historyForecastProvider;
     final requestedModel = _historyForecastModel;
+    if (requestedProvider == null || requestedModel == null) {
+      return const _ForecastLoadResult(
+        rows: <_ForecastRow>[],
+        source: _ForecastDataSource.fallback,
+        message: 'Selecciona un modelo forecast compatible.',
+      );
+    }
     try {
       final entries = await _runForecastRequest(
         () => _spotsModule.getSpotForecast(
@@ -205,6 +227,7 @@ extension _SpotDetailForecastDataController on _SpotDetailPageState {
           _historyForecastModel == requestedModel) {
         setState(() {
           _historyForecastRowsResult = result;
+          _historyForecastLoadRequested = false;
         });
       }
       return result;
@@ -220,6 +243,7 @@ extension _SpotDetailForecastDataController on _SpotDetailPageState {
           _historyForecastModel == requestedModel) {
         setState(() {
           _historyForecastRowsResult = result;
+          _historyForecastLoadRequested = false;
         });
       }
       return result;
@@ -299,17 +323,15 @@ extension _SpotDetailForecastDataController on _SpotDetailPageState {
       _historyForecastProvider = value;
       _historyForecastModel = models.isNotEmpty ? models.first : '';
       _historyForecastRowsResult = null;
-      _historyForecastLoadRequested = true;
+      _historyForecastLoadRequested = false;
     });
-    _loadHistoryForecastRows();
   }
 
   void _handleHistoryForecastModelChanged(String value) {
     setState(() {
       _historyForecastModel = value;
       _historyForecastRowsResult = null;
-      _historyForecastLoadRequested = true;
+      _historyForecastLoadRequested = false;
     });
-    _loadHistoryForecastRows();
   }
 }

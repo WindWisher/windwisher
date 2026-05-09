@@ -83,6 +83,7 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
         humidityPct: null,
         rainMm: null,
         observedAt: snapshot.observedAt,
+        observedAtLabel: snapshot.observedAtLabel,
       );
     }
     if (station.stationId == null) {
@@ -133,19 +134,21 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
 
       List<AemetObservationStationSnapshot> snapshots =
           const <AemetObservationStationSnapshot>[];
-      try {
-        snapshots = await _aemetObservationClient.fetchNearestStations(
-          latitude: latitude,
-          longitude: longitude,
-          limit: 20,
-          maxDistanceKm: 5,
-          preferredStationId: _preferredLiveStationId(),
-        );
-      } catch (error) {
-        errorMessage = !EnvConfig.aemetAccessConfigured
-            ? 'AEMET sin API key cargada para observaciones reales.'
-            : 'No se han podido cargar observaciones reales de AEMET.';
-        technicalError = '$error';
+      if (!usesOlivaCanalLiveProfile) {
+        try {
+          snapshots = await _aemetObservationClient.fetchNearestStations(
+            latitude: latitude,
+            longitude: longitude,
+            limit: 20,
+            maxDistanceKm: 5,
+            preferredStationId: _preferredLiveStationId(),
+          );
+        } catch (error) {
+          errorMessage = !EnvConfig.aemetAccessConfigured
+              ? 'AEMET sin API key cargada para observaciones reales.'
+              : 'No se han podido cargar observaciones reales de AEMET.';
+          technicalError = '$error';
+        }
       }
 
       for (final snapshot in snapshots) {
@@ -189,77 +192,22 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
       }
 
       try {
-        final portusStationIds = _portusRealtimeStationIdsForSpot();
-        for (final stationId in portusStationIds) {
-          final snapshot = await _portusRealtimeWindClient.fetchWindStation(
-            stationId: stationId,
-          );
-          if (snapshot == null) {
-            continue;
-          }
-          final stationKey = _portusStationKey(snapshot.stationId);
-          if (seenKeys.contains(stationKey)) {
-            continue;
-          }
-          seenKeys.add(stationKey);
-          stations.add(
-            _NearbyStation(
-              name: snapshot.stationName,
-              distanceKm: _distanceKm(
-                latitudeA: latitude,
-                longitudeA: longitude,
-                latitudeB: snapshot.latitude,
-                longitudeB: snapshot.longitude,
-              ),
-              provider: 'PUERTOS',
-              sourceKind: _StationSourceKind.observation,
-              stationId: snapshot.stationId.toString(),
-              proximityLabel: null,
-              stationKey: stationKey,
-              latitude: snapshot.latitude,
-              longitude: snapshot.longitude,
-            ),
-          );
-          liveDataByStation[stationKey] = _StationLiveData(
-            windKnots: snapshot.windKnots,
-            windDeg: snapshot.windDirectionDeg,
-            gustKnots: snapshot.gustKnots,
-            tempC: snapshot.tempC,
-            pressureHpa: snapshot.pressureHpa,
-            humidityPct: null,
-            rainMm: null,
-            observedAt: snapshot.observedAt,
-          );
-          final history = await _portusRealtimeWindClient.fetchWindHistory(
-            stationId: snapshot.stationId,
-          );
-          historyByStation[stationKey] = history
-              .map(
-                (point) => _HistoricalWindPoint(
-                  time: point.time,
-                  windKnots: point.windKnots,
-                  gustKnots: point.gustKnots,
-                  windDirectionDeg: point.windDirectionDeg,
-                  directionKind: point.windDirectionDeg == null
-                      ? null
-                      : _HistoricalDirectionKind.exact,
-                ),
-              )
-              .toList(growable: false);
-        }
+        await _addConfiguredPortusStationMetadata(
+          latitude: latitude,
+          longitude: longitude,
+          stations: stations,
+          seenKeys: seenKeys,
+        );
       } catch (error) {
         technicalError ??= '$error';
       }
 
       if (usesOlivaCanalLiveProfile) {
-        await _addOlivaLiveStations(
+        _addOlivaLiveStations(
           latitude: latitude,
           longitude: longitude,
           stations: stations,
-          liveDataByStation: liveDataByStation,
-          historyByStation: historyByStation,
           seenKeys: seenKeys,
-          setTechnicalError: (error) => technicalError ??= error,
         );
       }
 
@@ -304,223 +252,126 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
     }
   }
 
-  Future<void> _addOlivaLiveStations({
+  void _addOlivaLiveStations({
     required double latitude,
     required double longitude,
     required List<_NearbyStation> stations,
-    required Map<String, _StationLiveData> liveDataByStation,
-    required Map<String, List<_HistoricalWindPoint>> historyByStation,
     required Set<String> seenKeys,
-    required void Function(String error) setTechnicalError,
-  }) async {
-    try {
-      final aemetOlivaHistory = await _aemetObservationClient
-          .fetchStationObservations(
-            stationId: '8058X',
-            referenceLatitude: latitude,
-            referenceLongitude: longitude,
-          );
-      historyByStation['8058X'] = aemetOlivaHistory
-          .where((snapshot) => snapshot.observedAt != null)
-          .map(
-            (snapshot) => _HistoricalWindPoint(
-              time: snapshot.observedAt!,
-              windKnots: snapshot.windKnots ?? 0,
-              gustKnots: snapshot.gustKnots,
-              windDirectionDeg: snapshot.windDirectionDeg,
-              directionKind: snapshot.windDirectionDeg == null
-                  ? null
-                  : _HistoricalDirectionKind.exact,
-            ),
-          )
-          .toList(growable: false);
-    } catch (error) {
-      setTechnicalError('$error');
-    }
-
-    InforatgeOlivaNovaFeed inforatgePoliesportiuFeed =
-        const InforatgeOlivaNovaFeed(
-          points: <InforatgeOlivaNovaPoint>[],
-          latestSnapshot: null,
-        );
-    try {
-      inforatgePoliesportiuFeed = await _inforatgeOlivaNovaClient.fetchFeed(
-        stationCode: '01',
-        liveUrl: InforatgeOlivaNovaClient.livePoliesportiuUrl,
-      );
-    } catch (error) {
-      setTechnicalError('$error');
-    }
-
-    InforatgeOlivaNovaFeed inforatgeFeed = const InforatgeOlivaNovaFeed(
-      points: <InforatgeOlivaNovaPoint>[],
-      latestSnapshot: null,
-    );
-    try {
-      inforatgeFeed = await _inforatgeOlivaNovaClient.fetchFeed(
-        stationCode: '02',
-        liveUrl: InforatgeOlivaNovaClient.liveOlivaNovaUrl,
-      );
-    } catch (error) {
-      setTechnicalError('$error');
-    }
-
-    AiguaBlancaMeteoFeed aiguaBlancaFeed = const AiguaBlancaMeteoFeed(
-      points: <AiguaBlancaMeteoPoint>[],
-      latestSnapshot: null,
-    );
-    try {
-      aiguaBlancaFeed = await _aiguaBlancaMeteoClient.fetchFeed();
-    } catch (error) {
-      setTechnicalError('$error');
-    }
-
-    AvametObservationSnapshot? avametSnapshot;
-    try {
-      avametSnapshot = await _avametObservationClient.fetchStationObservation(
-        stationId: _avametOlivaStationId,
-      );
-    } catch (error) {
-      setTechnicalError('$error');
-    }
-
-    AvametObservationSnapshot? avametOlivaPlayaSnapshot;
-    try {
-      avametOlivaPlayaSnapshot = await _avametObservationClient
-          .fetchStationObservation(stationId: _avametOlivaPlayaStationId);
-    } catch (error) {
-      setTechnicalError('$error');
-    }
-
-    final avametHistory = await _loadAvametHistory(_avametOlivaStationId);
-    final avametOlivaPlayaHistory = await _loadAvametHistory(
-      _avametOlivaPlayaStationId,
-    );
-
-    _addInforatgeStation(
+  }) {
+    _addLiveStationMetadata(
       stations: stations,
-      liveDataByStation: liveDataByStation,
-      historyByStation: historyByStation,
+      seenKeys: seenKeys,
+      stationKey: _aemetOlivaStationKey,
+      stationName: _aemetOlivaStationName,
+      provider: 'AEMET',
+      stationId: _aemetOlivaStationId,
+      latitude: _aemetOlivaStationLat,
+      longitude: _aemetOlivaStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
       seenKeys: seenKeys,
       stationKey: _inforatgePoliesportiuStationKey,
       stationName: _inforatgePoliesportiuStationName,
+      provider: 'INFORATGE',
       stationId: _inforatgePoliesportiuStationId,
       latitude: _inforatgePoliesportiuLat,
       longitude: _inforatgePoliesportiuLon,
       referenceLatitude: latitude,
       referenceLongitude: longitude,
-      feed: inforatgePoliesportiuFeed,
     );
-    _addInforatgeStation(
+    _addLiveStationMetadata(
       stations: stations,
-      liveDataByStation: liveDataByStation,
-      historyByStation: historyByStation,
       seenKeys: seenKeys,
       stationKey: _meteoclimaticOlivaNovaStationKey,
       stationName: _meteoclimaticOlivaNovaStationName,
+      provider: 'INFORATGE',
       stationId: _meteoclimaticOlivaNovaStationId,
       latitude: _meteoclimaticOlivaNovaLat,
       longitude: _meteoclimaticOlivaNovaLon,
       referenceLatitude: latitude,
       referenceLongitude: longitude,
-      feed: inforatgeFeed,
     );
-    _addAiguaBlancaStation(
+    _addLiveStationMetadata(
       stations: stations,
-      liveDataByStation: liveDataByStation,
-      historyByStation: historyByStation,
       seenKeys: seenKeys,
+      stationKey: _aiguaBlancaStationKey,
+      stationName: _aiguaBlancaStationName,
+      provider: 'AIGUABLANCA',
+      stationId: _aiguaBlancaStationId,
+      latitude: _aiguaBlancaStationLat,
+      longitude: _aiguaBlancaStationLon,
       referenceLatitude: latitude,
       referenceLongitude: longitude,
-      feed: aiguaBlancaFeed,
     );
-    _addAvametStation(
+    _addLiveStationMetadata(
       stations: stations,
-      liveDataByStation: liveDataByStation,
-      historyByStation: historyByStation,
       seenKeys: seenKeys,
       stationKey: _avametOlivaStationKey,
       stationName: _avametOlivaStationName,
+      provider: 'AVAMET',
       stationId: _avametOlivaStationId,
       latitude: _avametOlivaStationLat,
       longitude: _avametOlivaStationLon,
       referenceLatitude: latitude,
       referenceLongitude: longitude,
-      snapshot: avametSnapshot,
-      history: avametHistory,
-      requireWindData: false,
     );
-    _addAvametStation(
+    _addLiveStationMetadata(
       stations: stations,
-      liveDataByStation: liveDataByStation,
-      historyByStation: historyByStation,
       seenKeys: seenKeys,
       stationKey: _avametOlivaPlayaStationKey,
       stationName: _avametOlivaPlayaStationName,
+      provider: 'AVAMET',
       stationId: _avametOlivaPlayaStationId,
       latitude: _avametOlivaPlayaStationLat,
       longitude: _avametOlivaPlayaStationLon,
       referenceLatitude: latitude,
       referenceLongitude: longitude,
-      snapshot: avametOlivaPlayaSnapshot,
-      history: avametOlivaPlayaHistory,
-      requireWindData: true,
     );
   }
 
-  Future<List<_HistoricalWindPoint>> _loadAvametHistory(
-    String stationId,
-  ) async {
-    try {
-      final intradayHistory = await _avametIntradayHistoryClient
-          .fetchIntradayWindHistory(stationId: stationId);
-      final mappedIntraday = intradayHistory
-          .map(
-            (point) => _HistoricalWindPoint(
-              time: point.time,
-              windKnots: point.windKnots,
-              windDirectionDeg: point.windDirectionDeg,
-              directionKind: point.windDirectionDeg == null
-                  ? null
-                  : _HistoricalDirectionKind.exact,
-            ),
-          )
-          .toList(growable: false);
-      if (mappedIntraday.isNotEmpty) {
-        return mappedIntraday;
+  Future<void> _addConfiguredPortusStationMetadata({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) async {
+    final portusStationIds = _portusRealtimeStationIdsForSpot();
+    for (final stationId in portusStationIds) {
+      final station = await _portusRealtimeWindClient.fetchWindStationMetadata(
+        stationId: stationId,
+      );
+      if (station == null) {
+        continue;
       }
-    } catch (_) {
-      // Fall back to daily history below.
-    }
-    try {
-      final dailyHistory = await _avametDailyHistoryClient
-          .fetchDailyWindHistory(stationId: stationId);
-      return dailyHistory
-          .map(
-            (point) => _HistoricalWindPoint(
-              time: point.time,
-              windKnots: point.windKnots,
-            ),
-          )
-          .toList(growable: false);
-    } catch (_) {
-      return const <_HistoricalWindPoint>[];
+      _addLiveStationMetadata(
+        stations: stations,
+        seenKeys: seenKeys,
+        stationKey: _portusStationKey(station.id),
+        stationName: station.name,
+        provider: 'PUERTOS',
+        stationId: station.id.toString(),
+        latitude: station.latitude,
+        longitude: station.longitude,
+        referenceLatitude: latitude,
+        referenceLongitude: longitude,
+      );
     }
   }
 
-  void _addInforatgeStation({
+  void _addLiveStationMetadata({
     required List<_NearbyStation> stations,
-    required Map<String, _StationLiveData> liveDataByStation,
-    required Map<String, List<_HistoricalWindPoint>> historyByStation,
     required Set<String> seenKeys,
     required String stationKey,
     required String stationName,
+    required String provider,
     required String stationId,
     required double latitude,
     required double longitude,
     required double referenceLatitude,
     required double referenceLongitude,
-    required InforatgeOlivaNovaFeed feed,
   }) {
     if (seenKeys.contains(stationKey)) {
       return;
@@ -535,7 +386,7 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
           latitudeB: latitude,
           longitudeB: longitude,
         ),
-        provider: 'INFORATGE',
+        provider: provider,
         sourceKind: _StationSourceKind.observation,
         stationId: stationId,
         proximityLabel: null,
@@ -544,143 +395,6 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
         longitude: longitude,
       ),
     );
-    final snapshot = feed.latestSnapshot;
-    liveDataByStation[stationKey] = _StationLiveData(
-      windKnots: snapshot?.windKnots?.toDouble(),
-      windDeg: snapshot?.windDirectionDeg,
-      gustKnots: snapshot?.gustKnots?.toDouble(),
-      tempC: snapshot?.tempC,
-      pressureHpa: snapshot?.pressureHpa,
-      humidityPct: snapshot?.humidityPct,
-      rainMm: snapshot?.rainMm,
-      observedAt: snapshot?.observedAt,
-    );
-    historyByStation[stationKey] = feed.points
-        .map(
-          (point) => _HistoricalWindPoint(
-            time: point.time,
-            windKnots: point.windKnots,
-            windDirectionDeg: point.windDirectionDeg,
-            directionKind: point.windDirectionDeg == null
-                ? null
-                : _HistoricalDirectionKind.exact,
-          ),
-        )
-        .toList(growable: false);
-  }
-
-  void _addAiguaBlancaStation({
-    required List<_NearbyStation> stations,
-    required Map<String, _StationLiveData> liveDataByStation,
-    required Map<String, List<_HistoricalWindPoint>> historyByStation,
-    required Set<String> seenKeys,
-    required double referenceLatitude,
-    required double referenceLongitude,
-    required AiguaBlancaMeteoFeed feed,
-  }) {
-    final stationKey = _aiguaBlancaStationKey;
-    if (seenKeys.contains(stationKey)) {
-      return;
-    }
-    seenKeys.add(stationKey);
-    stations.add(
-      _NearbyStation(
-        name: _aiguaBlancaStationName,
-        distanceKm: _distanceKm(
-          latitudeA: referenceLatitude,
-          longitudeA: referenceLongitude,
-          latitudeB: _aiguaBlancaStationLat,
-          longitudeB: _aiguaBlancaStationLon,
-        ),
-        provider: 'AIGUABLANCA',
-        sourceKind: _StationSourceKind.observation,
-        stationId: _aiguaBlancaStationId,
-        proximityLabel: null,
-        stationKey: stationKey,
-        latitude: _aiguaBlancaStationLat,
-        longitude: _aiguaBlancaStationLon,
-      ),
-    );
-    final snapshot = feed.latestSnapshot;
-    liveDataByStation[stationKey] = _StationLiveData(
-      windKnots: snapshot?.windKnots?.toDouble(),
-      windDeg: snapshot?.windDirectionDeg,
-      gustKnots: snapshot?.gustKnots?.toDouble(),
-      tempC: snapshot?.tempC,
-      pressureHpa: snapshot?.pressureHpa,
-      humidityPct: snapshot?.humidityPct,
-      rainMm: snapshot?.rainMm,
-      observedAt: snapshot?.observedAt,
-    );
-    historyByStation[stationKey] = feed.points
-        .map(
-          (point) => _HistoricalWindPoint(
-            time: point.time,
-            windKnots: point.windKnots,
-            gustKnots: point.gustKnots,
-            windDirectionDeg: point.windDirectionDeg,
-            directionKind: point.windDirectionDeg == null
-                ? null
-                : _HistoricalDirectionKind.exact,
-          ),
-        )
-        .toList(growable: false);
-  }
-
-  void _addAvametStation({
-    required List<_NearbyStation> stations,
-    required Map<String, _StationLiveData> liveDataByStation,
-    required Map<String, List<_HistoricalWindPoint>> historyByStation,
-    required Set<String> seenKeys,
-    required String stationKey,
-    required String stationName,
-    required String stationId,
-    required double latitude,
-    required double longitude,
-    required double referenceLatitude,
-    required double referenceLongitude,
-    required AvametObservationSnapshot? snapshot,
-    required List<_HistoricalWindPoint> history,
-    required bool requireWindData,
-  }) {
-    final hasWindData =
-        snapshot?.windKnots != null ||
-        snapshot?.windDirectionDeg != null ||
-        snapshot?.gustKnots != null ||
-        history.isNotEmpty;
-    if (seenKeys.contains(stationKey) || (requireWindData && !hasWindData)) {
-      return;
-    }
-    seenKeys.add(stationKey);
-    stations.add(
-      _NearbyStation(
-        name: stationName,
-        distanceKm: _distanceKm(
-          latitudeA: referenceLatitude,
-          longitudeA: referenceLongitude,
-          latitudeB: latitude,
-          longitudeB: longitude,
-        ),
-        provider: 'AVAMET',
-        sourceKind: _StationSourceKind.observation,
-        stationId: stationId,
-        proximityLabel: null,
-        stationKey: stationKey,
-        latitude: latitude,
-        longitude: longitude,
-      ),
-    );
-    liveDataByStation[stationKey] = _StationLiveData(
-      windKnots: snapshot?.windKnots,
-      windDeg: snapshot?.windDirectionDeg,
-      gustKnots: snapshot?.gustKnots,
-      tempC: snapshot?.tempC,
-      pressureHpa: snapshot?.pressureHpa?.round(),
-      humidityPct: snapshot?.humidityPct,
-      rainMm: snapshot?.rainMm,
-      observedAt: snapshot?.observedAt,
-    );
-    historyByStation[stationKey] = history;
   }
 
   String? _preferredLiveStationId() {

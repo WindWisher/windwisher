@@ -1,6 +1,14 @@
 part of '../../../spot_detail_page.dart';
 
-enum _AlarmEvaluationState { active, partial, idle, noData, disabled }
+enum _AlarmEvaluationState {
+  active,
+  partial,
+  idle,
+  noData,
+  disabled,
+  snoozed,
+  stopped,
+}
 
 class _AlarmEvaluation {
   const _AlarmEvaluation({required this.state, required this.label});

@@ -43,6 +43,7 @@ class _StationLiveData {
     required this.humidityPct,
     required this.rainMm,
     required this.observedAt,
+    this.observedAtLabel,
   });
 
   final double? windKnots;
@@ -53,6 +54,7 @@ class _StationLiveData {
   final int? humidityPct;
   final double? rainMm;
   final DateTime? observedAt;
+  final String? observedAtLabel;
 }
 
 class _LiveStationsLoadResult {

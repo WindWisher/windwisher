@@ -9,11 +9,13 @@ import 'package:windwisher/firebase_options.dart';
 import 'package:windwisher/core/notifications/direct_message_notification_event.dart';
 import 'package:windwisher/core/notifications/local_notifications_service.dart';
 import 'package:windwisher/core/notifications/push_notification_subscription_service.dart';
+import 'package:windwisher/core/notifications/spot_chat_notification_event.dart';
 import 'package:windwisher/features/spots/presentation/state/spot_alarm_catalog.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
+    await ensureNotificationBackgroundDependenciesInitialized();
     await _ensureFirebaseInitializedIfNeeded();
     await LocalNotificationsService.instance.initialize();
     if (message.data['type'] == 'direct_message' &&
@@ -40,9 +42,39 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       }
       return;
     }
+    if (message.data['type'] == 'spot_chat' &&
+        (message.notification == null ||
+            ((message.notification?.title?.trim().isEmpty ?? true) &&
+                (message.notification?.body?.trim().isEmpty ?? true)))) {
+      final spotName = message.data['spotName']?.trim();
+      final spotArea = message.data['spotArea']?.trim();
+      final messageId = message.data['messageId']?.trim();
+      if (spotName != null &&
+          spotName.isNotEmpty &&
+          spotArea != null &&
+          spotArea.isNotEmpty &&
+          messageId != null &&
+          messageId.isNotEmpty) {
+        await LocalNotificationsService.instance.showSpotChatMessage(
+          spotName: spotName,
+          spotArea: spotArea,
+          messageId: messageId,
+          senderName:
+              message.data['senderDisplayName']?.trim().isNotEmpty == true
+              ? message.data['senderDisplayName']!.trim()
+              : 'Chat del spot',
+          body: message.data['preview']?.trim().isNotEmpty == true
+              ? message.data['preview']!.trim()
+              : 'Hay un mensaje nuevo en $spotName.',
+        );
+      }
+      return;
+    }
     final alarmId = message.data['alarmId']?.trim();
     final repeatWindowRaw = message.data['repeatWindow']?.trim();
     final maxRepeats = int.tryParse(message.data['maxRepeats'] ?? '');
+    final occurrenceIndex =
+        int.tryParse(message.data['occurrenceIndex'] ?? '') ?? 0;
     if (message.data['type'] == 'spot_alarm' &&
         alarmId != null &&
         alarmId.isNotEmpty &&
@@ -62,6 +94,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
           orElse: () => AlarmRepeatWindow.min10,
         ),
         maxRepeats: maxRepeats,
+        occurrenceIndex: occurrenceIndex,
         includeImmediateNotification: true,
       );
     }
@@ -70,17 +103,14 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   }
 }
 
-
 Future<void> _ensureFirebaseInitializedIfNeeded() async {
-  if (kIsWeb || Platform.isAndroid) {
+  if (kIsWeb) {
     return;
   }
   if (Firebase.apps.isNotEmpty) {
     return;
   }
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 }
 
 class FirebasePushMessagingService {
@@ -98,18 +128,30 @@ class FirebasePushMessagingService {
   final StreamController<DirectMessageNotificationEvent>
   _directMessageOpenController =
       StreamController<DirectMessageNotificationEvent>.broadcast();
+  final StreamController<SpotChatNotificationEvent> _spotChatOpenController =
+      StreamController<SpotChatNotificationEvent>.broadcast();
   DirectMessageNotificationEvent? _pendingDirectMessageOpen;
+  SpotChatNotificationEvent? _pendingSpotChatOpen;
   bool _initialized = false;
   String? _lastInitializationError;
 
   Stream<DirectMessageNotificationEvent> get directMessageOpenStream =>
       _directMessageOpenController.stream;
 
+  Stream<SpotChatNotificationEvent> get spotChatOpenStream =>
+      _spotChatOpenController.stream;
+
   String? get lastInitializationError => _lastInitializationError;
 
   DirectMessageNotificationEvent? consumePendingDirectMessageOpen() {
     final pending = _pendingDirectMessageOpen;
     _pendingDirectMessageOpen = null;
+    return pending;
+  }
+
+  SpotChatNotificationEvent? consumePendingSpotChatOpen() {
+    final pending = _pendingSpotChatOpen;
+    _pendingSpotChatOpen = null;
     return pending;
   }
 
@@ -137,17 +179,19 @@ class FirebasePushMessagingService {
 
     try {
       if (Platform.isAndroid) {
+        await _ensureFirebaseInitializedIfNeeded();
         await PushNotificationSubscriptionService.instance
             .setRemoteProviderConfigured(true);
         _lastInitializationError = null;
         final token = await _getAndroidFcmToken();
         if (token != null && token.trim().isNotEmpty) {
-          await PushNotificationSubscriptionService.instance.registerDeviceToken(
-            token: token,
-            provider: 'fcm',
-            platform: _platformLabel(),
-            deviceLabel: _deviceLabel(),
-          );
+          await PushNotificationSubscriptionService.instance
+              .registerDeviceToken(
+                token: token,
+                provider: 'fcm',
+                platform: _platformLabel(),
+                deviceLabel: _deviceLabel(),
+              );
         }
         await _bindForegroundMessagingHandlers(bestEffort: true);
         _initialized = true;
@@ -196,9 +240,7 @@ class FirebasePushMessagingService {
     } catch (error, stackTrace) {
       _initialized = false;
       _lastInitializationError = error.toString();
-      debugPrint(
-        'FirebasePushMessagingService.initialize failed: $error',
-      );
+      debugPrint('FirebasePushMessagingService.initialize failed: $error');
       debugPrintStack(stackTrace: stackTrace);
       await PushNotificationSubscriptionService.instance
           .setRemoteProviderConfigured(false);
@@ -207,7 +249,9 @@ class FirebasePushMessagingService {
 
   Future<PushSubscriptionSyncStatus> refreshDeviceRegistration() async {
     if (!_initialized ||
-        !PushNotificationSubscriptionService.instance.remoteProviderConfigured) {
+        !PushNotificationSubscriptionService
+            .instance
+            .remoteProviderConfigured) {
       await initialize();
     }
 
@@ -228,12 +272,13 @@ class FirebasePushMessagingService {
         _lastInitializationError = null;
         final token = await _getAndroidFcmToken();
         if (token != null && token.trim().isNotEmpty) {
-          return await PushNotificationSubscriptionService.instance.registerDeviceToken(
-            token: token,
-            provider: 'fcm',
-            platform: _platformLabel(),
-            deviceLabel: _deviceLabel(),
-          );
+          return await PushNotificationSubscriptionService.instance
+              .registerDeviceToken(
+                token: token,
+                provider: 'fcm',
+                platform: _platformLabel(),
+                deviceLabel: _deviceLabel(),
+              );
         }
         return PushNotificationSubscriptionService.instance.currentStatus;
       }
@@ -251,12 +296,13 @@ class FirebasePushMessagingService {
       }
       final token = await messaging.getToken();
       if (token != null && token.trim().isNotEmpty) {
-        return await PushNotificationSubscriptionService.instance.registerDeviceToken(
-          token: token,
-          provider: 'fcm',
-          platform: _platformLabel(),
-          deviceLabel: _deviceLabel(),
-        );
+        return await PushNotificationSubscriptionService.instance
+            .registerDeviceToken(
+              token: token,
+              provider: 'fcm',
+              platform: _platformLabel(),
+              deviceLabel: _deviceLabel(),
+            );
       }
       return PushNotificationSubscriptionService.instance.currentStatus;
     } catch (error, stackTrace) {
@@ -276,7 +322,9 @@ class FirebasePushMessagingService {
     return token?.trim().isEmpty ?? true ? null : token?.trim();
   }
 
-  Future<void> _bindForegroundMessagingHandlers({bool bestEffort = false}) async {
+  Future<void> _bindForegroundMessagingHandlers({
+    bool bestEffort = false,
+  }) async {
     try {
       await _foregroundMessageSubscription?.cancel();
       await _messageOpenedSubscription?.cancel();
@@ -297,7 +345,9 @@ class FirebasePushMessagingService {
       if (initialMessage != null) {
         _handleOpenedRemoteMessage(initialMessage);
       }
-      _tokenRefreshSubscription = messaging.onTokenRefresh.listen((nextToken) async {
+      _tokenRefreshSubscription = messaging.onTokenRefresh.listen((
+        nextToken,
+      ) async {
         if (nextToken.trim().isEmpty) {
           return;
         }
@@ -334,6 +384,10 @@ class FirebasePushMessagingService {
       await _showForegroundDirectMessageNotification(message);
       return;
     }
+    if (data['type'] == 'spot_chat') {
+      await _showForegroundSpotChatNotification(message);
+      return;
+    }
     if (data['type'] != 'spot_alarm') {
       return;
     }
@@ -352,17 +406,28 @@ class FirebasePushMessagingService {
       orElse: () => AlarmRepeatWindow.min10,
     );
     final maxRepeats = int.tryParse(data['maxRepeats']?.trim() ?? '') ?? 1;
+    final occurrenceIndex =
+        int.tryParse(data['occurrenceIndex']?.trim() ?? '') ?? 0;
     await LocalNotificationsService.instance.showSpotAlarm(
       alarmId: alarmId,
       title: title,
       body: body,
       repeatWindow: repeatWindow,
       maxRepeats: maxRepeats,
+      occurrenceIndex: occurrenceIndex,
     );
   }
 
   void _handleOpenedRemoteMessage(RemoteMessage message) {
     final data = message.data;
+    if (data['type'] == 'spot_alarm') {
+      unawaited(_handleOpenedSpotAlarmMessage(message));
+      return;
+    }
+    if (data['type'] == 'spot_chat') {
+      _handleOpenedSpotChatMessage(message);
+      return;
+    }
     if (data['type'] != 'direct_message') {
       return;
     }
@@ -380,6 +445,67 @@ class FirebasePushMessagingService {
     );
     _pendingDirectMessageOpen = event;
     _directMessageOpenController.add(event);
+  }
+
+  Future<void> _handleOpenedSpotAlarmMessage(RemoteMessage message) async {
+    final data = message.data;
+    final alarmId = data['alarmId']?.trim();
+    final repeatWindowRaw = data['repeatWindow']?.trim();
+    final maxRepeats = int.tryParse(data['maxRepeats']?.trim() ?? '');
+    final occurrenceIndex =
+        int.tryParse(data['occurrenceIndex']?.trim() ?? '') ?? 0;
+    if (alarmId == null ||
+        alarmId.isEmpty ||
+        repeatWindowRaw == null ||
+        repeatWindowRaw.isEmpty ||
+        maxRepeats == null ||
+        maxRepeats <= 0) {
+      return;
+    }
+    final title = message.notification?.title?.trim().isNotEmpty == true
+        ? message.notification!.title!.trim()
+        : (data['title']?.trim().isNotEmpty == true
+              ? data['title']!.trim()
+              : 'Alarma activa');
+    final body = message.notification?.body?.trim().isNotEmpty == true
+        ? message.notification!.body!.trim()
+        : (data['body']?.trim().isNotEmpty == true
+              ? data['body']!.trim()
+              : 'Las condiciones del spot ya se estan cumpliendo.');
+    final repeatWindow = AlarmRepeatWindow.values.firstWhere(
+      (value) => value.name == repeatWindowRaw,
+      orElse: () => AlarmRepeatWindow.min10,
+    );
+    await LocalNotificationsService.instance.handleRemoteSpotAlarmPushOpen(
+      alarmId: alarmId,
+      title: title,
+      body: body,
+      repeatWindow: repeatWindow,
+      maxRepeats: maxRepeats,
+      occurrenceIndex: occurrenceIndex,
+    );
+  }
+
+  void _handleOpenedSpotChatMessage(RemoteMessage message) {
+    final data = message.data;
+    final spotName = data['spotName']?.trim();
+    final spotArea = data['spotArea']?.trim();
+    final messageId = data['messageId']?.trim();
+    if (spotName == null ||
+        spotName.isEmpty ||
+        spotArea == null ||
+        spotArea.isEmpty ||
+        messageId == null ||
+        messageId.isEmpty) {
+      return;
+    }
+    final event = SpotChatNotificationEvent(
+      spotName: spotName,
+      spotArea: spotArea,
+      messageId: messageId,
+    );
+    _pendingSpotChatOpen = event;
+    _spotChatOpenController.add(event);
   }
 
   Future<void> _showForegroundDirectMessageNotification(
@@ -409,6 +535,43 @@ class FirebasePushMessagingService {
               : 'Tienes un mensaje nuevo.');
     await LocalNotificationsService.instance.showDirectMessage(
       threadId: threadId,
+      messageId: messageId,
+      senderName: senderName,
+      body: body,
+    );
+  }
+
+  Future<void> _showForegroundSpotChatNotification(
+    RemoteMessage message,
+  ) async {
+    final data = message.data;
+    final spotName = data['spotName']?.trim();
+    final spotArea = data['spotArea']?.trim();
+    final messageId = data['messageId']?.trim();
+    if (spotName == null ||
+        spotName.isEmpty ||
+        spotArea == null ||
+        spotArea.isEmpty ||
+        messageId == null ||
+        messageId.isEmpty) {
+      return;
+    }
+    if (Platform.isIOS && message.notification != null) {
+      return;
+    }
+    final senderName = message.notification?.title?.trim().isNotEmpty == true
+        ? message.notification!.title!.trim()
+        : (data['senderDisplayName']?.trim().isNotEmpty == true
+              ? data['senderDisplayName']!.trim()
+              : 'Chat del spot');
+    final body = message.notification?.body?.trim().isNotEmpty == true
+        ? message.notification!.body!.trim()
+        : (data['preview']?.trim().isNotEmpty == true
+              ? data['preview']!.trim()
+              : 'Hay un mensaje nuevo en $spotName.');
+    await LocalNotificationsService.instance.showSpotChatMessage(
+      spotName: spotName,
+      spotArea: spotArea,
       messageId: messageId,
       senderName: senderName,
       body: body,

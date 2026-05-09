@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/app/router/app_routes.dart';
+import 'package:windwisher/core/notifications/push_notification_subscription_service.dart';
 import 'package:windwisher/features/auth/presentation/onboarding/first_login_flow_remote_store.dart';
 import 'package:windwisher/features/auth/presentation/onboarding/first_login_flow_store.dart';
 import 'package:windwisher/features/auth/presentation/onboarding/terms_and_conditions_dialog.dart';
@@ -170,6 +171,8 @@ class _TermsAcceptanceGateState extends State<TermsAcceptanceGate> {
   }
 
   Future<void> _signOutAndGoLogin(String message) async {
+    await PushNotificationSubscriptionService.instance
+        .disableCurrentDeviceSubscriptionForSignedInUser();
     await Supabase.instance.client.auth.signOut();
     if (!mounted) {
       return;

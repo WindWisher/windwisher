@@ -504,11 +504,7 @@ extension _SpotDetailLiveAlarmsSection on _SpotDetailPageState {
                         }
                         setState(() {
                           _editingAlarmId = null;
-                          _syncAlarmMonitoring();
                         });
-                        await _processLocalAlarmNotifications(
-                          _savedAlarmsForCurrentSpot(),
-                        );
                         if (!mounted) {
                           return;
                         }
@@ -661,6 +657,10 @@ extension _SpotDetailLiveAlarmsSection on _SpotDetailPageState {
                                             Icons.error_outline_rounded,
                                           _AlarmEvaluationState.disabled =>
                                             Icons.notifications_off_rounded,
+                                          _AlarmEvaluationState.snoozed =>
+                                            Icons.snooze_rounded,
+                                          _AlarmEvaluationState.stopped =>
+                                            Icons.notifications_off_rounded,
                                         },
                                         size: 16,
                                         color: evaluationColor,
@@ -726,7 +726,6 @@ extension _SpotDetailLiveAlarmsSection on _SpotDetailPageState {
                                     if (_editingAlarmId == alarm.id) {
                                       _editingAlarmId = null;
                                     }
-                                    _syncAlarmMonitoring();
                                   });
                                   if (!deleted) {
                                     ScaffoldMessenger.of(context).showSnackBar(

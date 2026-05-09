@@ -6,6 +6,7 @@ import 'package:windwisher/core/notifications/direct_message_notification_event.
 import 'package:windwisher/core/notifications/firebase_push_messaging_service.dart';
 import 'package:windwisher/core/notifications/local_notifications_service.dart';
 import 'package:windwisher/core/notifications/spot_alarm_notification_event.dart';
+import 'package:windwisher/core/notifications/spot_chat_notification_event.dart';
 import 'package:windwisher/app/router/app_routes.dart';
 import 'package:windwisher/features/auth/presentation/onboarding/first_login_flow_remote_store.dart';
 import 'package:windwisher/features/auth/presentation/onboarding/first_login_flow_store.dart';
@@ -43,6 +44,9 @@ class _DashboardPageState extends State<DashboardPage> {
   _remoteDirectMessageOpenSubscription;
   StreamSubscription<DirectMessageNotificationEvent>?
   _localDirectMessageOpenSubscription;
+  StreamSubscription<SpotChatNotificationEvent>?
+  _remoteSpotChatOpenSubscription;
+  StreamSubscription<SpotChatNotificationEvent>? _localSpotChatOpenSubscription;
   StreamSubscription<SpotAlarmNotificationEvent>?
   _localSpotAlarmOpenSubscription;
   bool _hasStartedFirstLoginFlow = false;
@@ -61,28 +65,54 @@ class _DashboardPageState extends State<DashboardPage> {
         .instance
         .directMessageOpenStream
         .listen(_handleDirectMessageNotificationOpen);
+    _remoteSpotChatOpenSubscription = FirebasePushMessagingService
+        .instance
+        .spotChatOpenStream
+        .listen(_handleSpotChatNotificationOpen);
+    _localSpotChatOpenSubscription = LocalNotificationsService
+        .instance
+        .spotChatOpenStream
+        .listen(_handleSpotChatNotificationOpen);
     _localSpotAlarmOpenSubscription = LocalNotificationsService
         .instance
         .spotAlarmOpenStream
         .listen(_handleSpotAlarmNotificationOpen);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final pendingRemote = FirebasePushMessagingService.instance
-          .consumePendingDirectMessageOpen();
-      if (pendingRemote != null) {
-        _handleDirectMessageNotificationOpen(pendingRemote);
-      }
-      final pendingLocal = LocalNotificationsService.instance
-          .consumePendingDirectMessageOpen();
-      if (pendingLocal != null) {
-        _handleDirectMessageNotificationOpen(pendingLocal);
-      }
-      final pendingSpotAlarm = LocalNotificationsService.instance
-          .consumePendingSpotAlarmOpen();
-      if (pendingSpotAlarm != null) {
-        _handleSpotAlarmNotificationOpen(pendingSpotAlarm);
-      }
+      unawaited(_consumePendingNotificationOpensAfterStartup());
       unawaited(_runFirstLoginFlowIfNeeded());
     });
+  }
+
+  Future<void> _consumePendingNotificationOpensAfterStartup() async {
+    await LocalNotificationsService.instance.initialize();
+    if (!mounted) {
+      return;
+    }
+    final pendingRemote = FirebasePushMessagingService.instance
+        .consumePendingDirectMessageOpen();
+    if (pendingRemote != null) {
+      await _handleDirectMessageNotificationOpen(pendingRemote);
+    }
+    final pendingRemoteSpotChat = FirebasePushMessagingService.instance
+        .consumePendingSpotChatOpen();
+    if (pendingRemoteSpotChat != null) {
+      await _handleSpotChatNotificationOpen(pendingRemoteSpotChat);
+    }
+    final pendingLocal = LocalNotificationsService.instance
+        .consumePendingDirectMessageOpen();
+    if (pendingLocal != null) {
+      await _handleDirectMessageNotificationOpen(pendingLocal);
+    }
+    final pendingLocalSpotChat = LocalNotificationsService.instance
+        .consumePendingSpotChatOpen();
+    if (pendingLocalSpotChat != null) {
+      await _handleSpotChatNotificationOpen(pendingLocalSpotChat);
+    }
+    final pendingSpotAlarm = LocalNotificationsService.instance
+        .consumePendingSpotAlarmOpen();
+    if (pendingSpotAlarm != null) {
+      await _handleSpotAlarmNotificationOpen(pendingSpotAlarm);
+    }
   }
 
   List<Widget> get _pages => [
@@ -152,6 +182,30 @@ class _DashboardPageState extends State<DashboardPage> {
       final profileState = _profileKey.currentState;
       if (profileState != null) {
         profileState.openAlarmsFromNotification();
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+    }
+  }
+
+  Future<void> _handleSpotChatNotificationOpen(
+    SpotChatNotificationEvent event,
+  ) async {
+    if (!mounted) {
+      return;
+    }
+    if (_selectedIndex != 0) {
+      setState(() {
+        _selectedIndex = 0;
+      });
+    }
+    for (var attempt = 0; attempt < 10; attempt += 1) {
+      final spotsState = _spotsKey.currentState;
+      if (spotsState != null) {
+        await spotsState.openSpotChatFromNotification(
+          spotName: event.spotName,
+          spotArea: event.spotArea,
+        );
         return;
       }
       await Future<void>.delayed(const Duration(milliseconds: 120));
@@ -252,6 +306,8 @@ class _DashboardPageState extends State<DashboardPage> {
   void dispose() {
     _remoteDirectMessageOpenSubscription?.cancel();
     _localDirectMessageOpenSubscription?.cancel();
+    _remoteSpotChatOpenSubscription?.cancel();
+    _localSpotChatOpenSubscription?.cancel();
     _localSpotAlarmOpenSubscription?.cancel();
     super.dispose();
   }

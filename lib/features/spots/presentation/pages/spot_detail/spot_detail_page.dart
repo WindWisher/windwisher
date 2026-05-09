@@ -109,6 +109,7 @@ class SpotDetailPage extends StatefulWidget {
     this.meteosourceCurrentDayClient,
     this.portusRealtimeWindClient,
     this.useLocalPersistence = EnvConfig.spotsLocalPersistenceEnabled,
+    this.openChatInitially = false,
   });
 
   final String name;
@@ -135,6 +136,7 @@ class SpotDetailPage extends StatefulWidget {
   final MeteosourceCurrentDayClient? meteosourceCurrentDayClient;
   final PortusRealtimeWindClient? portusRealtimeWindClient;
   final bool useLocalPersistence;
+  final bool openChatInitially;
 
   SpotItem get spot => SpotItem(
     name: name,
@@ -164,13 +166,13 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   static const bool _isFlutterTest = bool.fromEnvironment('FLUTTER_TEST');
   static const String _degreeSymbol = '\u00B0';
-  _SpotDetailSection _section = _SpotDetailSection.prevision;
+  late _SpotDetailSection _section;
   String _forecastProvider = 'Open-Meteo';
   late String _forecastModel;
   _ForecastRange _forecastRange = _ForecastRange.d3;
   _ForecastResolution _forecastResolution = _ForecastResolution.h3;
-  String _historyForecastProvider = 'Open-Meteo';
-  late String _historyForecastModel;
+  String? _historyForecastProvider;
+  String? _historyForecastModel;
   int _meteoblueSeaVisibleHours = 6;
   _ForecastFullscreenMode _fullscreenMode = _ForecastFullscreenMode.none;
   String _selectedStation = '';
@@ -188,8 +190,10 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   WebViewController? _windguruFullscreenController;
   bool _isLiveRefreshing = false;
   bool _isHistoricalRefreshing = false;
-  Timer? _alarmAutoRefreshTimer;
-  bool _isAppResumed = true;
+  bool _isHistoricalLoading = false;
+  bool _liveSectionLoadRequested = false;
+  bool _alarmCatalogHydrationRequested = false;
+  bool _socialHydrationRequested = false;
 
   String _alarmStation = '';
   RangeValues _alarmWindRange = const RangeValues(14, 26);
@@ -260,6 +264,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   @override
   void initState() {
     super.initState();
+    _section = widget.openChatInitially
+        ? _SpotDetailSection.social
+        : _SpotDetailSection.prevision;
     WidgetsBinding.instance.addObserver(this);
     _spotsModule =
         widget.spotsModule ??
@@ -303,38 +310,27 @@ class _SpotDetailPageState extends State<SpotDetailPage>
           provider: _forecastProvider,
         ) ??
         _modelsForProvider(_forecastProvider).first;
-    _historyForecastModel = _historyForecastModelsForProvider(
-      _historyForecastProvider,
-    ).first;
     _forecastRowsFuture = _loadForecastRows();
-    _loadLiveStations();
-    unawaited(_hydrateAlarmCatalog());
-    _hydrateSocialChat();
-    _syncAlarmMonitoring();
+    if (_section == _SpotDetailSection.social) {
+      final didStartSocialHydration = _ensureSocialSectionHydrated();
+      _enterSocialChatSection(loadFeed: !didStartSocialHydration);
+    }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _isAppResumed = state == AppLifecycleState.resumed;
-    if (_isAppResumed) {
-      _syncAlarmMonitoring();
-      unawaited(_loadLiveStations());
+    if (state == AppLifecycleState.resumed) {
+      if (_liveSectionLoadRequested) {
+        unawaited(_loadLiveStations());
+      }
       _resumeSocialChatIfVisible();
       return;
-    }
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.detached ||
-        state == AppLifecycleState.hidden) {
-      _alarmAutoRefreshTimer?.cancel();
-      _alarmAutoRefreshTimer = null;
     }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _alarmAutoRefreshTimer?.cancel();
     _disposeSocialChat();
     _historyChartScrollController.dispose();
     _historyChartFullscreenScrollController.dispose();
@@ -354,8 +350,14 @@ class _SpotDetailPageState extends State<SpotDetailPage>
 
   void _setSection(_SpotDetailSection section) {
     if (_section == section) {
+      if (section == _SpotDetailSection.live) {
+        _ensureLiveSectionLoaded();
+      }
       if (section == _SpotDetailSection.social) {
-        _focusOrStartSocialChat();
+        final didStartSocialHydration = _ensureSocialSectionHydrated();
+        if (!didStartSocialHydration) {
+          _focusOrStartSocialChat();
+        }
       }
       return;
     }
@@ -367,9 +369,34 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         section != _SpotDetailSection.social) {
       _leaveSocialChatSection();
     }
-    if (section == _SpotDetailSection.social) {
-      _enterSocialChatSection();
+    if (section == _SpotDetailSection.live) {
+      _ensureLiveSectionLoaded();
     }
+    if (section == _SpotDetailSection.social) {
+      final didStartSocialHydration = _ensureSocialSectionHydrated();
+      _enterSocialChatSection(loadFeed: !didStartSocialHydration);
+    }
+  }
+
+  void _ensureLiveSectionLoaded() {
+    if (!_alarmCatalogHydrationRequested) {
+      _alarmCatalogHydrationRequested = true;
+      unawaited(_hydrateAlarmCatalog());
+    }
+    if (_liveSectionLoadRequested) {
+      return;
+    }
+    _liveSectionLoadRequested = true;
+    unawaited(_loadLiveStations());
+  }
+
+  bool _ensureSocialSectionHydrated() {
+    if (_socialHydrationRequested) {
+      return false;
+    }
+    _socialHydrationRequested = true;
+    _hydrateSocialChat();
+    return true;
   }
 
   void _showSocialSnackBar(String message) {

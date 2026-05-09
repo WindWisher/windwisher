@@ -29,25 +29,32 @@ extension SpotsActionsController on SpotsPageState {
     });
   }
 
+  Future<void> openSpotChatFromNotification({
+    required String spotName,
+    required String spotArea,
+  }) async {
+    _SpotItem? spot;
+    for (final candidate in _spots) {
+      if (candidate.name.trim().toLowerCase() ==
+              spotName.trim().toLowerCase() &&
+          candidate.area.trim().toLowerCase() ==
+              spotArea.trim().toLowerCase()) {
+        spot = candidate;
+        break;
+      }
+    }
+    if (spot == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se encontro el spot $spotName.')),
+      );
+      return;
+    }
+    await _openSpotDetail(spot, openChatInitially: true);
+  }
+
   Future<void> _handleCardTap(_SpotItem spot) async {
     if (_pendingCardAction == _PendingCardAction.none) {
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => SpotDetailPage(
-            name: spot.name,
-            area: spot.area,
-            isCustom: spot.isCustom,
-            latitude: spot.latitude,
-            longitude: spot.longitude,
-            aemetMunicipalityCode: spot.aemetMunicipalityCode,
-            aemetBeachCode: spot.aemetBeachCode,
-            aemetBeachCodes: spot.aemetBeachCodes,
-            backgroundImagePath: spot.backgroundImagePath,
-            capabilities: spot.capabilities,
-            spotsModule: _spotsModule,
-          ),
-        ),
-      );
+      await _openSpotDetail(spot);
       return;
     }
 
@@ -65,5 +72,29 @@ extension SpotsActionsController on SpotsPageState {
     }
 
     return;
+  }
+
+  Future<void> _openSpotDetail(
+    _SpotItem spot, {
+    bool openChatInitially = false,
+  }) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SpotDetailPage(
+          name: spot.name,
+          area: spot.area,
+          isCustom: spot.isCustom,
+          latitude: spot.latitude,
+          longitude: spot.longitude,
+          aemetMunicipalityCode: spot.aemetMunicipalityCode,
+          aemetBeachCode: spot.aemetBeachCode,
+          aemetBeachCodes: spot.aemetBeachCodes,
+          backgroundImagePath: spot.backgroundImagePath,
+          capabilities: spot.capabilities,
+          spotsModule: _spotsModule,
+          openChatInitially: openChatInitially,
+        ),
+      ),
+    );
   }
 }

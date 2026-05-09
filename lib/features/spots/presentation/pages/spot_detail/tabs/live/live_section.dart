@@ -49,12 +49,13 @@ extension _SpotDetailLiveSection on _SpotDetailPageState {
   }
 
   Widget _buildLiveProviderLabel() {
-    final observedAt = _selectedLiveData().observedAt;
+    final liveData = _selectedLiveData();
+    final observedAt = liveData.observedAt;
     if (observedAt == null) {
       return const SizedBox.shrink();
     }
     return Text(
-      'Actualizado: ${_formatObservedAt(observedAt)}',
+      'Ultimo dato: ${_formatObservedAtWithAge(observedAt, label: liveData.observedAtLabel)}',
       style: Theme.of(context).textTheme.bodySmall?.copyWith(
         color: Theme.of(context).colorScheme.onSurfaceVariant,
       ),

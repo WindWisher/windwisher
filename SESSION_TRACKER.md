@@ -16273,3 +16273,41 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
     - verificacion:
       - multiples `flutter analyze` limpios sobre `main.dart`, `settings_page.dart`, `profile_page.dart`, `profile_messages` y adapters de Supabase,
       - se mantiene solo el warning externo conocido de `webview_flutter:macos`.
+
+
+  - bloque nuevo `2026-05-09`:
+    - cierre del flujo de alarmas push/locales y optimizacion de carga en Spots/Live/Forecast,
+    - tiempo real trabajado en este tramo: `55 min` aprox. (`13:53-14:48 CEST`),
+    - alarmas / backend:
+      - el runner de Supabase vuelve a evaluar alarmas activas respetando `snoozed_until`, `stopped_until_reset` y `max_repeats`,
+      - cambiado el scheduler de `spot-alarm-runner` de cada 5 minutos a cada 1 minuto para que `min1` pueda funcionar de forma realista con app cerrada,
+      - desplegada la Edge Function `spot-alarm-runner` en el proyecto remoto,
+      - verificado en Supabase que el cron remoto activo es `spot-alarm-runner-every-1-min`,
+      - anadido `occurrenceIndex` al payload FCM para que cliente y backend sepan que repeticion se esta gestionando,
+      - reforzado el envio por usuario para evitar entregas cruzadas entre subscripciones,
+      - anadido soporte de observaciones `PUERTOS/PORTUS` en el runner de alarmas,
+    - alarmas / cliente:
+      - separadas las rutas de notificacion de `spot_alarm`, `spot_chat` y `direct_message`,
+      - al tocar una alarma push se abre `Perfil > Alarmas`,
+      - tocar la notificacion de alarma actua como posponer cuando quedan repeticiones y como finalizar/parar al llegar a `max_repeats`,
+      - `Posponer` cancela la notificacion visible, programa repeticion local si el sistema lo permite y sincroniza `snoozed_until` para que Supabase sea el fallback fiable,
+      - `Parar` cancela la notificacion y deja la alarma parada hasta que las condiciones se desactiven y puedan reactivarse,
+      - inicializacion defensiva de dependencias en background isolate para taps/acciones de notificaciones,
+      - ids deterministas de notificacion por alarma para poder cancelar correctamente incluso despues de reinicios,
+    - spots / live:
+      - optimizacion del tab Live para no cargar historicos pesados al entrar,
+      - carga de historico bajo demanda con boton dedicado,
+      - patron de lazy loading por estacion para que cada spot pueda cargar solo su estacion de referencia y despues las seleccionadas,
+      - restaurada y ajustada la seleccion de estaciones live, incluyendo `AEMET Oliva` y la preferencia por Club Nautico en Oliva Canal,
+    - spots / forecast:
+      - Forecast queda orientado a carga por modelo seleccionado en lugar de precargar todo,
+      - reorganizacion de tablas por proveedor/modelo con piezas compartidas,
+      - mantenido Windguru con su comportamiento especifico,
+    - notificaciones de chat de spot:
+      - anadido evento local `spot_chat_notification_event.dart`,
+      - enrutable desde notificaciones hacia el chat del spot correspondiente sin mezclarlo con alarmas,
+    - verificacion:
+      - `flutter analyze lib/core/notifications/local_notifications_service.dart lib/core/notifications/firebase_push_messaging_service.dart` limpio,
+      - `flutter build apk --debug` correcto,
+      - APK debug instalado correctamente en el dispositivo Android conectado mediante `adb install -r`,
+      - validacion manual del usuario: el flujo de alarma ya parece funcionar bien con app cerrada.

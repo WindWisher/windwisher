@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -12,15 +13,26 @@ class SpotAlarmCatalog extends ChangeNotifier {
   SpotAlarmCatalog._() : _syncClient = SpotAlarmSyncClient.auto() {
     _activeStorageScope = _storageScopeForCurrentUser();
     _load();
-    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((_) {
-      _handleAuthScopeChanged();
-    });
+    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange
+        .listen((_) {
+          _handleAuthScopeChanged();
+        });
     if (_syncClient.canSync) {
       unawaited(hydrateFromRemote());
+    } else if (_pendingSyncAlarmIds.isNotEmpty) {
+      _schedulePendingAlarmSyncRetry();
     }
   }
 
   static final SpotAlarmCatalog instance = SpotAlarmCatalog._();
+  static const int _maxPendingSyncAttempts = 5;
+  static const List<Duration> _pendingSyncRetryDelays = <Duration>[
+    Duration(seconds: 30),
+    Duration(minutes: 2),
+    Duration(minutes: 5),
+    Duration(minutes: 15),
+    Duration(minutes: 30),
+  ];
 
   final SpotAlarmSyncClient _syncClient;
   StreamSubscription<AuthState>? _authStateSubscription;
@@ -28,11 +40,16 @@ class SpotAlarmCatalog extends ChangeNotifier {
   late String _activeStorageScope;
   final Map<String, bool> _spotEnabledByKey = <String, bool>{};
   final List<SpotAlarmRecord> _alarms = <SpotAlarmRecord>[];
+  final Set<String> _pendingSyncAlarmIds = <String>{};
+  final Map<String, int> _pendingSyncAttemptsByAlarmId = <String, int>{};
+  Timer? _pendingSyncRetryTimer;
   bool _remoteHydrated = false;
   String? _lastSyncError;
 
   bool get globalEnabled => _globalEnabled;
   bool get hasRemoteSync => _syncClient.canSync;
+  bool get hasPendingAlarmSync => _pendingSyncAlarmIds.isNotEmpty;
+  int get pendingAlarmSyncCount => _pendingSyncAlarmIds.length;
   String? get lastSyncError => _lastSyncError;
 
   File? get _file {
@@ -40,7 +57,9 @@ class SpotAlarmCatalog extends ChangeNotifier {
       return null;
     }
     return File(
-      AppStoragePaths.resolve('spot_alarm_catalog_v1_$_activeStorageScope.json'),
+      AppStoragePaths.resolve(
+        'spot_alarm_catalog_v1_$_activeStorageScope.json',
+      ),
     );
   }
 
@@ -64,6 +83,8 @@ class SpotAlarmCatalog extends ChangeNotifier {
     notifyListeners();
     if (_syncClient.canSync) {
       await hydrateFromRemote();
+    } else if (_pendingSyncAlarmIds.isNotEmpty) {
+      _schedulePendingAlarmSyncRetry();
     }
   }
 
@@ -74,10 +95,14 @@ class SpotAlarmCatalog extends ChangeNotifier {
     if (_remoteHydrated) {
       return;
     }
+    await retryPendingAlarmSync();
     final snapshot = await _syncClient.loadSnapshot();
     if (snapshot == null) {
       return;
     }
+    final pendingLocalAlarms = _alarms
+        .where((alarm) => _pendingSyncAlarmIds.contains(alarm.id))
+        .toList(growable: false);
     _globalEnabled = snapshot.globalEnabled;
     _spotEnabledByKey
       ..clear()
@@ -85,9 +110,53 @@ class SpotAlarmCatalog extends ChangeNotifier {
     _alarms
       ..clear()
       ..addAll(snapshot.alarms);
+    for (final pendingAlarm in pendingLocalAlarms) {
+      final index = _alarms.indexWhere((alarm) => alarm.id == pendingAlarm.id);
+      if (index >= 0) {
+        _alarms[index] = pendingAlarm;
+      } else {
+        _alarms.add(pendingAlarm);
+      }
+    }
     _remoteHydrated = true;
     _save();
     notifyListeners();
+  }
+
+  Future<int> retryPendingAlarmSync() async {
+    if (!_syncClient.canSync || _pendingSyncAlarmIds.isEmpty) {
+      return 0;
+    }
+    var synced = 0;
+    final pendingIds = _pendingSyncAlarmIds.toList(growable: false);
+    for (final alarmId in pendingIds) {
+      final attempts = _pendingSyncAttemptsByAlarmId[alarmId] ?? 0;
+      if (attempts >= _maxPendingSyncAttempts) {
+        continue;
+      }
+      final alarm = _alarmById(alarmId);
+      if (alarm == null) {
+        _pendingSyncAlarmIds.remove(alarmId);
+        _pendingSyncAttemptsByAlarmId.remove(alarmId);
+        continue;
+      }
+      try {
+        _lastSyncError = null;
+        await _syncClient.saveAlarm(alarm);
+        _pendingSyncAlarmIds.remove(alarmId);
+        _pendingSyncAttemptsByAlarmId.remove(alarmId);
+        synced += 1;
+      } catch (error) {
+        _pendingSyncAttemptsByAlarmId[alarmId] = attempts + 1;
+        _lastSyncError = error.toString();
+      }
+    }
+    _save();
+    notifyListeners();
+    if (_pendingSyncAlarmIds.isNotEmpty) {
+      _schedulePendingAlarmSyncRetry();
+    }
+    return synced;
   }
 
   bool isSpotEnabled(String spotKey) => _spotEnabledByKey[spotKey] ?? true;
@@ -132,9 +201,16 @@ class SpotAlarmCatalog extends ChangeNotifier {
     try {
       _lastSyncError = null;
       await _syncClient.saveAlarm(_alarms[index]);
+      _pendingSyncAlarmIds.remove(alarmId);
+      _pendingSyncAttemptsByAlarmId.remove(alarmId);
     } catch (error) {
+      _pendingSyncAlarmIds.add(alarmId);
+      _pendingSyncAttemptsByAlarmId[alarmId] =
+          (_pendingSyncAttemptsByAlarmId[alarmId] ?? 0) + 1;
       _lastSyncError = error.toString();
+      _schedulePendingAlarmSyncRetry();
     }
+    _save();
     notifyListeners();
   }
 
@@ -162,16 +238,26 @@ class SpotAlarmCatalog extends ChangeNotifier {
       _lastSyncError = null;
       await _syncClient.saveAlarm(alarm);
     } catch (error) {
+      _pendingSyncAlarmIds.add(alarm.id);
+      _pendingSyncAttemptsByAlarmId[alarm.id] =
+          (_pendingSyncAttemptsByAlarmId[alarm.id] ?? 0) + 1;
+      _save();
       _lastSyncError = error.toString();
+      _schedulePendingAlarmSyncRetry();
       notifyListeners();
       return false;
     }
+    _pendingSyncAlarmIds.remove(alarm.id);
+    _pendingSyncAttemptsByAlarmId.remove(alarm.id);
+    _save();
     notifyListeners();
     return true;
   }
 
   Future<bool> deleteAlarm(String alarmId) async {
     _alarms.removeWhere((alarm) => alarm.id == alarmId);
+    _pendingSyncAlarmIds.remove(alarmId);
+    _pendingSyncAttemptsByAlarmId.remove(alarmId);
     _save();
     try {
       _lastSyncError = null;
@@ -189,7 +275,9 @@ class SpotAlarmCatalog extends ChangeNotifier {
     required String alarmId,
     required int triggerCount,
     DateTime? lastTriggeredAt,
+    bool? stoppedUntilReset,
     bool clearLastTriggeredAt = false,
+    bool clearSnoozedUntil = false,
   }) {
     final index = _alarms.indexWhere((alarm) => alarm.id == alarmId);
     if (index < 0) {
@@ -198,45 +286,136 @@ class SpotAlarmCatalog extends ChangeNotifier {
     _alarms[index] = _alarms[index].copyWith(
       triggerCount: triggerCount,
       lastTriggeredAt: lastTriggeredAt,
+      stoppedUntilReset: stoppedUntilReset,
       clearLastTriggeredAt: clearLastTriggeredAt,
+      clearSnoozedUntil: clearSnoozedUntil,
     );
     _save();
-    unawaited(_syncClient.saveAlarm(_alarms[index]));
+    _queueBestEffortAlarmSync(_alarms[index]);
     notifyListeners();
   }
 
-  void snoozeAlarm(String alarmId, {DateTime? snoozedAt}) {
+  Future<void> snoozeAlarm(String alarmId, {DateTime? snoozedAt}) async {
     final index = _alarms.indexWhere((alarm) => alarm.id == alarmId);
     if (index < 0) {
       return;
     }
+    final alarm = _alarms[index];
+    final now = snoozedAt ?? DateTime.now();
     _alarms[index] = _alarms[index].copyWith(
-      lastTriggeredAt: snoozedAt ?? DateTime.now(),
+      triggerCount: alarm.triggerCount,
+      lastTriggeredAt: now,
+      snoozedUntil: now.add(alarm.repeatWindow.duration),
+      stoppedUntilReset: false,
     );
     _save();
-    unawaited(_syncClient.saveAlarm(_alarms[index]));
+    await _syncAlarmRuntimeControlsNow(_alarms[index]);
     notifyListeners();
   }
 
-  void stopAlarmUntilConditionsReset(String alarmId) {
+  Future<void> stopAlarmUntilConditionsReset(String alarmId) async {
     final index = _alarms.indexWhere((alarm) => alarm.id == alarmId);
     if (index < 0) {
       return;
     }
     final alarm = _alarms[index];
     _alarms[index] = alarm.copyWith(
-      triggerCount: alarm.maxRepeats,
+      triggerCount: alarm.triggerCount,
       lastTriggeredAt: DateTime.now(),
+      stoppedUntilReset: true,
+      clearSnoozedUntil: true,
     );
     _save();
-    unawaited(_syncClient.saveAlarm(_alarms[index]));
+    await _syncAlarmRuntimeControlsNow(_alarms[index]);
     notifyListeners();
+  }
+
+  SpotAlarmRecord? _alarmById(String alarmId) {
+    for (final alarm in _alarms) {
+      if (alarm.id == alarmId) {
+        return alarm;
+      }
+    }
+    return null;
+  }
+
+  void _queueBestEffortAlarmSync(SpotAlarmRecord alarm) {
+    unawaited(
+      _syncClient
+          .saveAlarm(alarm)
+          .then((_) {
+            _pendingSyncAlarmIds.remove(alarm.id);
+            _pendingSyncAttemptsByAlarmId.remove(alarm.id);
+            _save();
+            notifyListeners();
+          })
+          .catchError((Object error) {
+            _pendingSyncAlarmIds.add(alarm.id);
+            _pendingSyncAttemptsByAlarmId[alarm.id] =
+                (_pendingSyncAttemptsByAlarmId[alarm.id] ?? 0) + 1;
+            _lastSyncError = error.toString();
+            _save();
+            _schedulePendingAlarmSyncRetry();
+            notifyListeners();
+          }),
+    );
+  }
+
+  Future<void> _syncAlarmRuntimeControlsNow(SpotAlarmRecord alarm) async {
+    try {
+      _lastSyncError = null;
+      await _syncClient.saveAlarmRuntimeControls(
+        alarmId: alarm.id,
+        snoozedUntil: alarm.snoozedUntil,
+        stoppedUntilReset: alarm.stoppedUntilReset,
+      );
+    } catch (error) {
+      _lastSyncError = error.toString();
+    }
+    _save();
+  }
+
+  void _schedulePendingAlarmSyncRetry() {
+    if (_pendingSyncRetryTimer?.isActive ?? false) {
+      return;
+    }
+    final delay = _nextPendingSyncRetryDelay();
+    if (delay == null) {
+      return;
+    }
+    _pendingSyncRetryTimer = Timer(delay, () {
+      _pendingSyncRetryTimer = null;
+      if (_pendingSyncAlarmIds.isEmpty) {
+        return;
+      }
+      unawaited(retryPendingAlarmSync());
+    });
+  }
+
+  Duration? _nextPendingSyncRetryDelay() {
+    int? minAttempts;
+    for (final alarmId in _pendingSyncAlarmIds) {
+      final attempts = _pendingSyncAttemptsByAlarmId[alarmId] ?? 0;
+      if (attempts >= _maxPendingSyncAttempts) {
+        continue;
+      }
+      minAttempts = minAttempts == null
+          ? attempts
+          : math.min(minAttempts, attempts);
+    }
+    if (minAttempts == null) {
+      return null;
+    }
+    final delayIndex = minAttempts.clamp(0, _pendingSyncRetryDelays.length - 1);
+    return _pendingSyncRetryDelays[delayIndex];
   }
 
   void _load() {
     _globalEnabled = true;
     _spotEnabledByKey.clear();
     _alarms.clear();
+    _pendingSyncAlarmIds.clear();
+    _pendingSyncAttemptsByAlarmId.clear();
 
     final file = _file;
     if (file == null) {
@@ -272,15 +451,35 @@ class SpotAlarmCatalog extends ChangeNotifier {
                   .toList(growable: false) ??
               const <SpotAlarmRecord>[],
         );
+      final rawPendingSyncAlarmIds =
+          json['pendingSyncAlarmIds'] as List<dynamic>?;
+      _pendingSyncAlarmIds
+        ..clear()
+        ..addAll(
+          rawPendingSyncAlarmIds
+                  ?.map((value) => value.toString())
+                  .where((value) => value.isNotEmpty) ??
+              const <String>[],
+        );
+      final rawPendingSyncAttempts =
+          json['pendingSyncAttemptsByAlarmId'] as Map<String, dynamic>?;
+      _pendingSyncAttemptsByAlarmId
+        ..clear()
+        ..addAll(
+          rawPendingSyncAttempts?.map(
+                (key, value) => MapEntry(key, (value as num?)?.toInt() ?? 0),
+              ) ??
+              const <String, int>{},
+        );
     } catch (_) {
       _save();
     }
   }
 
-
   @override
   void dispose() {
     _authStateSubscription?.cancel();
+    _pendingSyncRetryTimer?.cancel();
     super.dispose();
   }
 
@@ -293,6 +492,8 @@ class SpotAlarmCatalog extends ChangeNotifier {
       'globalEnabled': _globalEnabled,
       'spotEnabledByKey': _spotEnabledByKey,
       'alarms': _alarms.map((alarm) => alarm.toJson()).toList(growable: false),
+      'pendingSyncAlarmIds': _pendingSyncAlarmIds.toList(growable: false),
+      'pendingSyncAttemptsByAlarmId': _pendingSyncAttemptsByAlarmId,
     };
     file.writeAsStringSync(const JsonEncoder.withIndent('  ').convert(data));
   }
@@ -317,6 +518,8 @@ class SpotAlarmRecord {
     this.maxRepeats = 3,
     this.triggerCount = 0,
     this.lastTriggeredAt,
+    this.snoozedUntil,
+    this.stoppedUntilReset = false,
     this.enabled = true,
   });
 
@@ -337,6 +540,8 @@ class SpotAlarmRecord {
   final int maxRepeats;
   final int triggerCount;
   final DateTime? lastTriggeredAt;
+  final DateTime? snoozedUntil;
+  final bool stoppedUntilReset;
   final bool enabled;
 
   SpotAlarmRecord copyWith({
@@ -350,8 +555,11 @@ class SpotAlarmRecord {
     int? maxRepeats,
     int? triggerCount,
     DateTime? lastTriggeredAt,
+    DateTime? snoozedUntil,
+    bool? stoppedUntilReset,
     bool? enabled,
     bool clearLastTriggeredAt = false,
+    bool clearSnoozedUntil = false,
   }) {
     return SpotAlarmRecord(
       id: id,
@@ -373,6 +581,10 @@ class SpotAlarmRecord {
       lastTriggeredAt: clearLastTriggeredAt
           ? null
           : (lastTriggeredAt ?? this.lastTriggeredAt),
+      snoozedUntil: clearSnoozedUntil
+          ? null
+          : (snoozedUntil ?? this.snoozedUntil),
+      stoppedUntilReset: stoppedUntilReset ?? this.stoppedUntilReset,
       enabled: enabled ?? this.enabled,
     );
   }
@@ -397,6 +609,8 @@ class SpotAlarmRecord {
       'maxRepeats': maxRepeats,
       'triggerCount': triggerCount,
       'lastTriggeredAt': lastTriggeredAt?.toIso8601String(),
+      'snoozedUntil': snoozedUntil?.toIso8601String(),
+      'stoppedUntilReset': stoppedUntilReset,
       'enabled': enabled,
     };
   }
@@ -433,6 +647,8 @@ class SpotAlarmRecord {
       lastTriggeredAt: DateTime.tryParse(
         json['lastTriggeredAt'] as String? ?? '',
       ),
+      snoozedUntil: DateTime.tryParse(json['snoozedUntil'] as String? ?? ''),
+      stoppedUntilReset: json['stoppedUntilReset'] as bool? ?? false,
       enabled: json['enabled'] as bool? ?? true,
     );
   }
@@ -455,3 +671,20 @@ class SpotAlarmRecord {
 }
 
 enum AlarmRepeatWindow { min1, min5, min10, min15, min30 }
+
+extension AlarmRepeatWindowDuration on AlarmRepeatWindow {
+  Duration get duration {
+    switch (this) {
+      case AlarmRepeatWindow.min1:
+        return const Duration(minutes: 1);
+      case AlarmRepeatWindow.min5:
+        return const Duration(minutes: 5);
+      case AlarmRepeatWindow.min10:
+        return const Duration(minutes: 10);
+      case AlarmRepeatWindow.min15:
+        return const Duration(minutes: 15);
+      case AlarmRepeatWindow.min30:
+        return const Duration(minutes: 30);
+    }
+  }
+}

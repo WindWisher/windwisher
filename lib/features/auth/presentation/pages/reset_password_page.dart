@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/app/router/app_routes.dart';
 import 'package:windwisher/core/i18n/app_strings.dart';
+import 'package:windwisher/core/notifications/push_notification_subscription_service.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/features/auth/presentation/providers/auth_session_provider.dart';
 
@@ -147,6 +148,8 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
     }
 
     _showSnack(strings.passwordUpdated);
+    await PushNotificationSubscriptionService.instance
+        .disableCurrentDeviceSubscriptionForSignedInUser();
     await Supabase.instance.client.auth.signOut();
     if (!mounted) {
       return;

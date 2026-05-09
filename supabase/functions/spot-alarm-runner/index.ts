@@ -171,11 +171,37 @@ Deno.serve(async (request) => {
       continue;
     }
 
-    if (alarm.trigger_count > 0) {
+    const now = new Date();
+    const snoozedUntil = alarm.snoozed_until
+      ? new Date(alarm.snoozed_until)
+      : null;
+    if (snoozedUntil != null && snoozedUntil.getTime() > now.getTime()) {
       await logDelivery(
         alarm,
         "skipped",
-        "already-triggered-for-current-active-window",
+        "snoozed-until-next-repeat",
+        evaluation.payload,
+      );
+      logged += 1;
+      continue;
+    }
+
+    if (alarm.stopped_until_reset) {
+      await logDelivery(
+        alarm,
+        "skipped",
+        "stopped-until-conditions-reset",
+        evaluation.payload,
+      );
+      logged += 1;
+      continue;
+    }
+
+    if (alarm.trigger_count >= alarm.max_repeats) {
+      await logDelivery(
+        alarm,
+        "skipped",
+        "max-repeats-reached-for-current-active-window",
         evaluation.payload,
       );
       logged += 1;
@@ -193,7 +219,6 @@ Deno.serve(async (request) => {
       continue;
     }
 
-    const now = new Date();
     const firebase = parseFirebaseServiceAccount(firebaseServiceAccountJson);
     if (!firebase) {
       await logDelivery(
@@ -304,6 +329,11 @@ async function sendAlarmPushes({
   let failed = 0;
   const failureReasons: string[] = [];
   for (const subscription of subscriptions) {
+    if (subscription.user_id !== alarm.user_id) {
+      failed += 1;
+      failureReasons.push("push-subscription-user-mismatch");
+      continue;
+    }
     if (subscription.provider !== "fcm") {
       failed += 1;
       failureReasons.push("unsupported-push-provider");
@@ -328,6 +358,7 @@ async function sendAlarmPushes({
               stationProvider: alarm.station_provider,
               repeatWindow: alarm.repeat_window,
               maxRepeats: String(alarm.max_repeats),
+              occurrenceIndex: String(alarm.trigger_count),
               title,
               body,
             },
@@ -336,12 +367,16 @@ async function sendAlarmPushes({
             },
             apns: {
               headers: {
-                "apns-priority": "5",
-                "apns-push-type": "background",
+                "apns-priority": "10",
+                "apns-push-type": "alert",
               },
               payload: {
                 aps: {
-                  "content-available": 1,
+                  alert: {
+                    title,
+                    body,
+                  },
+                  sound: "default",
                 },
               },
             },
@@ -572,6 +607,9 @@ async function fetchObservationForAlarm(alarm: AlarmRow) {
       return await fetchInforatgeObservation(alarm.station_key);
     case "AVAMET":
       return await fetchAvametObservation(alarm.station_key);
+    case "PUERTOS":
+    case "PORTUS":
+      return await fetchPortusObservation(alarm.station_key);
     default:
       return null;
   }
@@ -581,7 +619,9 @@ function supportsStationProvider(provider: string) {
   return provider === "AEMET" ||
     provider === "AIGUABLANCA" ||
     provider === "INFORATGE" ||
-    provider === "AVAMET";
+    provider === "AVAMET" ||
+    provider === "PUERTOS" ||
+    provider === "PORTUS";
 }
 
 async function fetchAemetStationObservation(stationId: string) {
@@ -683,6 +723,48 @@ async function fetchAvametObservation(stationKey: string) {
   };
 }
 
+async function fetchPortusObservation(stationKey: string) {
+  const stationId = extractStationId(stationKey);
+  const payload = await fetchPortusJson(
+    `https://portus.puertos.es/portussvr/api/lastData/station/${
+      encodeURIComponent(stationId)
+    }?locale=es`,
+    ["WIND", "AIR_TEMP", "AIR_PRESURE"],
+  );
+  const record = asRecord(payload);
+  if (!record) {
+    return null;
+  }
+  const observedAt = parsePortusDate(record.fecha);
+  const rawData = Array.isArray(record.datos) ? record.datos : [];
+  let windMps: number | null = null;
+  let windDeg: number | null = null;
+  for (const item of rawData) {
+    const entry = asRecord(item);
+    if (!entry) {
+      continue;
+    }
+    const param = typeof entry.paramEseoo === "string"
+      ? entry.paramEseoo
+      : null;
+    const value = scaledPortusValue(entry);
+    if (param === "WindSpeed") {
+      windMps = value;
+    } else if (param === "WindDir") {
+      windDeg = value;
+    }
+  }
+  if (windMps == null) {
+    return null;
+  }
+  return {
+    observedAt,
+    windKnots: Number((windMps * 1.9438444924406).toFixed(2)),
+    windDirectionBucket: directionBucket(windDeg),
+    observedTotalMinutesLocal: localTotalMinutesFromDate(observedAt),
+  };
+}
+
 function evaluateAlarm(
   alarm: AlarmRow,
   observation: {
@@ -734,7 +816,7 @@ function evaluateAlarm(
       spotName: alarm.spot_name,
       stationKey: alarm.station_key,
       stationName: alarm.station_name,
-      observedAt: observation.observedAt.toISOString(),
+      observedAt: observation.observedAt?.toISOString() ?? null,
       observedAgeMinutes: observationAgeMinutes,
       windKnots: observation.windKnots,
       direction: observation.windDirectionBucket,
@@ -828,6 +910,44 @@ function parseDate(raw: unknown): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function parsePortusDate(raw: unknown): Date | null {
+  if (typeof raw !== "string" || !raw.trim()) {
+    return null;
+  }
+  const match = raw.trim().match(
+    /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/,
+  );
+  if (!match) {
+    return null;
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    !Number.isFinite(hour) ||
+    !Number.isFinite(minute) ||
+    !Number.isFinite(second)
+  ) {
+    return null;
+  }
+  return new Date(year, month - 1, day, hour, minute, second);
+}
+
+function scaledPortusValue(entry: Record<string, unknown>): number | null {
+  const value = parseNumber(entry.valor);
+  const factor = parseNumber(entry.factor);
+  if (value == null || factor == null || factor === 0) {
+    return null;
+  }
+  return value / factor;
+}
+
 async function fetchJsonObject(
   url: string,
   headers: Record<string, string> = {},
@@ -849,6 +969,21 @@ async function fetchJsonArray(url: string): Promise<unknown[]> {
     throw new Error(`request-failed:${response.status}`);
   }
   return await response.json() as unknown[];
+}
+
+async function fetchPortusJson(url: string, body: unknown): Promise<unknown> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(`portus-request-failed:${response.status}`);
+  }
+  return await response.json();
 }
 
 async function fetchText(url: string): Promise<string> {

@@ -66,6 +66,16 @@ class PortusRealtimeWindClient {
     return _fetchLatestWind(station);
   }
 
+  Future<PortusWindStation?> fetchWindStationMetadata({
+    required int stationId,
+  }) async {
+    final stations = await _fetchWindStations();
+    return stations.cast<PortusWindStation?>().firstWhere(
+      (entry) => entry?.id == stationId,
+      orElse: () => null,
+    );
+  }
+
   Future<List<PortusWindHistoryPoint>> fetchWindHistory({
     required int stationId,
   }) async {
@@ -114,7 +124,8 @@ class PortusRealtimeWindClient {
     if (raw is! Map<String, dynamic>) {
       return null;
     }
-    final observedAt = _parsePortusDate(raw['fecha'] as String?);
+    final rawObservedAt = raw['fecha'] as String?;
+    final observedAt = _parsePortusDate(rawObservedAt);
     final rawData = raw['datos'];
     if (observedAt == null || rawData is! List) {
       return null;
@@ -160,6 +171,7 @@ class PortusRealtimeWindClient {
       tempC: tempC,
       pressureHpa: pressureHpa,
       observedAt: observedAt,
+      observedAtLabel: _formatPortusDateLabel(rawObservedAt),
     );
   }
 
@@ -224,14 +236,20 @@ class PortusRealtimeWindClient {
       return null;
     }
     int part(int index) => int.parse(match.group(index)!);
-    return DateTime.utc(
-      part(1),
-      part(2),
-      part(3),
-      part(4),
-      part(5),
-      part(6),
-    ).toLocal();
+    return DateTime(part(1), part(2), part(3), part(4), part(5), part(6));
+  }
+
+  String? _formatPortusDateLabel(String? raw) {
+    if (raw == null || raw.trim().isEmpty) {
+      return null;
+    }
+    final match = RegExp(
+      r'^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})',
+    ).firstMatch(raw.trim());
+    if (match == null) {
+      return null;
+    }
+    return '${match.group(3)}/${match.group(2)} ${match.group(4)}:${match.group(5)}';
   }
 
   Future<dynamic> _fetchJson(String url, Object? body) async {
@@ -360,6 +378,7 @@ class PortusWindSnapshot {
     required this.tempC,
     required this.pressureHpa,
     required this.observedAt,
+    this.observedAtLabel,
   });
 
   final int stationId;
@@ -374,6 +393,7 @@ class PortusWindSnapshot {
   final double? tempC;
   final int? pressureHpa;
   final DateTime observedAt;
+  final String? observedAtLabel;
 
   PortusWindSnapshot copyWith({double? distanceKm}) {
     return PortusWindSnapshot(
@@ -389,6 +409,7 @@ class PortusWindSnapshot {
       tempC: tempC,
       pressureHpa: pressureHpa,
       observedAt: observedAt,
+      observedAtLabel: observedAtLabel,
     );
   }
 }

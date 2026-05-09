@@ -14,148 +14,7 @@ extension _SpotDetailLiveAlarmsController on _SpotDetailPageState {
     if (!mounted) {
       return;
     }
-    setState(() {
-      _syncAlarmMonitoring();
-    });
-  }
-
-  void _syncAlarmMonitoring() {
-    final savedAlarms = _savedAlarmsForCurrentSpot();
-    final hasSavedAlarms = savedAlarms.isNotEmpty;
-    final catalog = SpotAlarmCatalog.instance;
-    final shouldMonitor =
-        _isAppResumed &&
-        hasSavedAlarms &&
-        catalog.globalEnabled &&
-        catalog.isSpotEnabled(_currentSpotAlarmKey());
-    if (!shouldMonitor) {
-      _alarmAutoRefreshTimer?.cancel();
-      _alarmAutoRefreshTimer = null;
-      return;
-    }
-    final monitoringInterval = _alarmMonitoringInterval(savedAlarms);
-    _alarmAutoRefreshTimer?.cancel();
-    _alarmAutoRefreshTimer = Timer.periodic(monitoringInterval, (_) {
-      if (!mounted || !_isAppResumed) {
-        return;
-      }
-      unawaited(_loadLiveStations());
-    });
-  }
-
-  Duration _alarmMonitoringInterval(List<SpotAlarmRecord> alarms) {
-    if (alarms.any((alarm) => alarm.repeatWindow == AlarmRepeatWindow.min1)) {
-      return const Duration(minutes: 1);
-    }
-    return const Duration(minutes: 5);
-  }
-
-  Future<void> _refreshAlarmStationsLiveData(
-    List<SpotAlarmRecord> alarms,
-  ) async {
-    final stationKeys = alarms.map((alarm) => alarm.stationKey).toSet();
-    if (stationKeys.isEmpty) {
-      return;
-    }
-    final current = _liveStationsLoadResult;
-    if (current == null) {
-      return;
-    }
-    final updatedLiveData = Map<String, _StationLiveData>.from(
-      current.liveDataByStation,
-    );
-    var changed = false;
-    for (final stationKey in stationKeys) {
-      if (stationKey == _selectedStation) {
-        continue;
-      }
-      final station = _findStationByKey(stationKey);
-      if (station == null) {
-        continue;
-      }
-      try {
-        final refreshed = await _fetchLiveDataForStation(station);
-        if (refreshed == null) {
-          continue;
-        }
-        updatedLiveData[stationKey] = refreshed;
-        changed = true;
-      } catch (_) {
-        continue;
-      }
-    }
-    if (!mounted || !changed) {
-      return;
-    }
-    setState(() {
-      final currentResult = _liveStationsLoadResult;
-      if (currentResult == null) {
-        return;
-      }
-      _liveStationsLoadResult = _LiveStationsLoadResult(
-        stations: currentResult.stations,
-        liveDataByStation: updatedLiveData,
-        historicalSeriesByStation: currentResult.historicalSeriesByStation,
-        source: currentResult.source,
-        message: currentResult.message,
-        technicalError: currentResult.technicalError,
-      );
-    });
-  }
-
-  Future<void> _processLocalAlarmNotifications(
-    List<SpotAlarmRecord> alarms,
-  ) async {
-    if (alarms.isEmpty) {
-      return;
-    }
-    final catalog = SpotAlarmCatalog.instance;
-    for (final alarm in alarms) {
-      final evaluation = _evaluateAlarm(alarm);
-      if (evaluation.state == _AlarmEvaluationState.active) {
-        if (alarm.triggerCount >= alarm.maxRepeats) {
-          continue;
-        }
-        await LocalNotificationsService.instance.showSpotAlarm(
-          alarmId: alarm.id,
-          title: 'Alarma activa en ${alarm.spotName}',
-          body: _localAlarmNotificationBody(alarm),
-          repeatWindow: alarm.repeatWindow,
-          maxRepeats: alarm.maxRepeats,
-        );
-        catalog.updateTriggerState(
-          alarmId: alarm.id,
-          triggerCount: alarm.maxRepeats,
-          lastTriggeredAt: DateTime.now(),
-        );
-        continue;
-      }
-
-      final shouldReset =
-          evaluation.state == _AlarmEvaluationState.idle ||
-          evaluation.state == _AlarmEvaluationState.partial ||
-          evaluation.state == _AlarmEvaluationState.disabled;
-      if (!shouldReset ||
-          (alarm.triggerCount == 0 && alarm.lastTriggeredAt == null)) {
-        continue;
-      }
-      await LocalNotificationsService.instance.cancelAlarmCycle(
-        alarmId: alarm.id,
-        maxRepeats: alarm.maxRepeats,
-      );
-      catalog.updateTriggerState(
-        alarmId: alarm.id,
-        triggerCount: 0,
-        clearLastTriggeredAt: true,
-      );
-    }
-  }
-
-  String _localAlarmNotificationBody(SpotAlarmRecord alarm) {
-    final liveData = _resolvedLiveDataByStation()[alarm.stationKey];
-    final wind = _formatWind(liveData?.windKnots);
-    final direction = _directionBucketLabel(liveData?.windDeg) ?? 'sin dir.';
-    return '${alarm.stationName}: $wind $direction · objetivo ${_formatAlarmWindRange(alarm.windRange)}';
+    setState(() {});
   }
 
   String _formatAlarmWindValue(num knots) {
@@ -290,6 +149,7 @@ extension _SpotDetailLiveAlarmsController on _SpotDetailPageState {
 
   _AlarmEvaluation _evaluateAlarm(SpotAlarmRecord alarm) {
     final catalog = SpotAlarmCatalog.instance;
+    final now = DateTime.now();
     if (!alarm.enabled) {
       return const _AlarmEvaluation(
         state: _AlarmEvaluationState.disabled,
@@ -308,7 +168,6 @@ extension _SpotDetailLiveAlarmsController on _SpotDetailPageState {
         label: 'Alarmas de este spot desactivadas',
       );
     }
-
     final liveData = _resolvedLiveDataByStation()[alarm.stationKey];
     final currentWind = liveData?.windKnots?.toDouble();
     final currentDirection = _directionBucketLabel(liveData?.windDeg);
@@ -335,6 +194,19 @@ extension _SpotDetailLiveAlarmsController on _SpotDetailPageState {
         currentDirection != null && alarm.directions.contains(currentDirection);
 
     if (timeMatches && windMatches && directionMatches) {
+      if (alarm.stoppedUntilReset) {
+        return const _AlarmEvaluation(
+          state: _AlarmEvaluationState.stopped,
+          label: 'Parada hasta que cambien las condiciones',
+        );
+      }
+      final snoozedUntil = alarm.snoozedUntil;
+      if (snoozedUntil != null && snoozedUntil.isAfter(now)) {
+        return _AlarmEvaluation(
+          state: _AlarmEvaluationState.snoozed,
+          label: 'Pospuesta hasta ${_formatShortTime(snoozedUntil)}',
+        );
+      }
       return _AlarmEvaluation(
         state: _AlarmEvaluationState.active,
         label:
@@ -371,6 +243,10 @@ extension _SpotDetailLiveAlarmsController on _SpotDetailPageState {
       case _AlarmEvaluationState.noData:
         return Theme.of(context).colorScheme.error;
       case _AlarmEvaluationState.disabled:
+        return Theme.of(context).colorScheme.onSurfaceVariant;
+      case _AlarmEvaluationState.snoozed:
+        return Theme.of(context).colorScheme.primary;
+      case _AlarmEvaluationState.stopped:
         return Theme.of(context).colorScheme.onSurfaceVariant;
     }
   }
@@ -412,6 +288,10 @@ extension _SpotDetailLiveAlarmsController on _SpotDetailPageState {
       return 'hace ${difference.inHours} h';
     }
     return 'hace ${difference.inDays} d';
+  }
+
+  String _formatShortTime(DateTime timestamp) {
+    return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
   }
 
   String _alarmTriggerSummary(SpotAlarmRecord alarm) {

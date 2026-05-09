@@ -106,6 +106,18 @@ class PushNotificationSubscriptionService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> disableCurrentDeviceSubscriptionForSignedInUser() async {
+    await initialize();
+    final token = _deviceToken;
+    if (token == null || token.isEmpty || !_syncClient.canSync) {
+      return;
+    }
+    await _syncClient.setSubscriptionEnabled(
+      deviceToken: token,
+      enabled: false,
+    );
+  }
+
   PushSubscriptionSyncStatus _syncStatusForCurrentState() {
     if (!_enabled) {
       return PushSubscriptionSyncStatus.disabled;
