@@ -880,6 +880,10 @@ class LocalNotificationsService {
       debugPrint(
         'LocalNotificationsService: notification response without payload action=${response.actionId} id=${response.id}',
       );
+      final responseId = response.id;
+      if (responseId != null) {
+        await _plugin.cancel(id: responseId);
+      }
       return;
     }
     debugPrint(
@@ -1129,7 +1133,12 @@ class LocalNotificationsService {
       );
       return;
     }
-    await SpotAlarmCatalog.instance.snoozeAlarm(alarmId);
+    await SpotAlarmCatalog.instance.snoozeAlarmFromNotification(
+      alarmId: alarmId,
+      snoozedUntil: DateTime.now().add(
+        _repeatWindowDuration(_repeatWindowFromName(repeatWindowRaw)),
+      ),
+    );
     debugPrint(
       'LocalNotificationsService: spot alarm snoozed alarmId=$alarmId occurrence=$occurrenceIndex maxRepeats=$maxRepeats',
     );
@@ -1149,6 +1158,7 @@ class LocalNotificationsService {
     for (var index = 0; index < maxRepeats; index += 1) {
       await _plugin.cancel(id: notificationIdForAlarm(alarmId, index));
     }
+    await _cancelActiveAlarmChannelNotifications();
   }
 
   Future<void> _cancelNotificationResponse({
@@ -1161,6 +1171,24 @@ class LocalNotificationsService {
       await _plugin.cancel(id: responseId);
     }
     await _plugin.cancel(id: notificationIdForAlarm(alarmId, occurrenceIndex));
+  }
+
+  Future<void> _cancelActiveAlarmChannelNotifications() async {
+    try {
+      final activeNotifications = await _plugin.getActiveNotifications();
+      for (final notification in activeNotifications) {
+        final id = notification.id;
+        if (id == null || notification.channelId != _alarmChannelId) {
+          continue;
+        }
+        await _plugin.cancel(id: id);
+      }
+    } catch (error, stackTrace) {
+      debugPrint(
+        'LocalNotificationsService: active alarm notification cleanup failed: $error',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+    }
   }
 
   @visibleForTesting

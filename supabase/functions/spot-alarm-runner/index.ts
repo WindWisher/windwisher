@@ -376,6 +376,8 @@ async function sendAlarmPushes({
                     title,
                     body,
                   },
+                  category: "spot_alarm_actions",
+                  "interruption-level": "time-sensitive",
                   sound: "default",
                 },
               },

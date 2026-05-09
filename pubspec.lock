@@ -1651,13 +1651,12 @@ packages:
     source: hosted
     version: "2.14.0"
   webview_flutter_wkwebview:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: webview_flutter_wkwebview
-      sha256: a68868ac4828a5f012bf81e8bd25d879f3cec5bd5301575466caafbf9a320a65
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.24.5"
+      path: "third_party/webview_flutter_wkwebview_xcode14"
+      relative: true
+    source: path
+    version: "3.24.5+windwisher.xcode14"
   win32:
     dependency: transitive
     description:

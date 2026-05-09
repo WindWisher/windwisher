@@ -56,6 +56,13 @@ class SpotAlarmSyncClient {
     }
   }
 
+  void _ensureSupabaseConfigured() {
+    if (!_useSupabase || _client == null) {
+      _lastError = 'Supabase no esta configurado en esta app.';
+      throw StateError(_lastError!);
+    }
+  }
+
   Future<SpotAlarmSyncSnapshot?> loadSnapshot() async {
     if (!canSync || _client == null) {
       return null;
@@ -156,6 +163,29 @@ class SpotAlarmSyncClient {
     required bool stoppedUntilReset,
   }) async {
     _ensureSyncAvailable();
+    final client = _client!;
+    try {
+      _lastError = null;
+      await client.rpc(
+        'set_backend_spot_alarm_runtime_controls',
+        params: <String, dynamic>{
+          'target_alarm_id': alarmId,
+          'next_snoozed_until': snoozedUntil?.toUtc().toIso8601String(),
+          'next_stopped_until_reset': stoppedUntilReset,
+        },
+      );
+    } catch (error) {
+      _lastError = error.toString();
+      rethrow;
+    }
+  }
+
+  Future<void> saveAlarmRuntimeControlsFromNotification({
+    required String alarmId,
+    DateTime? snoozedUntil,
+    required bool stoppedUntilReset,
+  }) async {
+    _ensureSupabaseConfigured();
     final client = _client!;
     try {
       _lastError = null;

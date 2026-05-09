@@ -76,6 +76,13 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
   flutter_native_splash: ^2.4.6
 
+dependency_overrides:
+  # Xcode 14.2 / iOS SDK 16.2 does not expose WKWebView.isInspectable at
+  # compile time. This local copy keeps the modern plugin API and calls the
+  # selector dynamically until the Apple build machines move to Xcode 14.3+.
+  webview_flutter_wkwebview:
+    path: third_party/webview_flutter_wkwebview_xcode14
+
 flutter_launcher_icons:
   android: true
   ios: true

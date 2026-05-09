@@ -313,9 +313,39 @@ class SpotAlarmCatalog extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> snoozeAlarmFromNotification({
+    required String alarmId,
+    required DateTime snoozedUntil,
+    DateTime? snoozedAt,
+  }) async {
+    final index = _alarms.indexWhere((alarm) => alarm.id == alarmId);
+    if (index < 0) {
+      await _syncClient.saveAlarmRuntimeControlsFromNotification(
+        alarmId: alarmId,
+        snoozedUntil: snoozedUntil,
+        stoppedUntilReset: false,
+      );
+      return;
+    }
+    final alarm = _alarms[index];
+    _alarms[index] = _alarms[index].copyWith(
+      triggerCount: alarm.triggerCount,
+      lastTriggeredAt: snoozedAt ?? DateTime.now(),
+      snoozedUntil: snoozedUntil,
+      stoppedUntilReset: false,
+    );
+    _save();
+    await _syncAlarmRuntimeControlsNow(_alarms[index]);
+    notifyListeners();
+  }
+
   Future<void> stopAlarmUntilConditionsReset(String alarmId) async {
     final index = _alarms.indexWhere((alarm) => alarm.id == alarmId);
     if (index < 0) {
+      await _syncClient.saveAlarmRuntimeControlsFromNotification(
+        alarmId: alarmId,
+        stoppedUntilReset: true,
+      );
       return;
     }
     final alarm = _alarms[index];

@@ -29,6 +29,10 @@ flutter_ios_podfile_setup
 target 'Runner' do
   use_frameworks!
 
+  # Xcode 14.2 ships Swift 5.7. SwiftProtobuf 1.37+ uses newer Swift
+  # modifiers, while reactive_ble_mobile needs a recent 1.x runtime.
+  pod 'SwiftProtobuf', '1.36.1'
+
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do
     inherit! :search_paths
@@ -38,5 +42,41 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      flags = config.build_settings['OTHER_SWIFT_FLAGS']
+      next if flags.nil?
+
+      normalized_flags = flags.is_a?(Array) ? flags : flags.to_s.split
+      normalized_flags = normalized_flags.each_with_index.reject do |flag, index|
+        flag == '-package-name' ||
+          (index > 0 && normalized_flags[index - 1] == '-package-name')
+      end.map(&:first)
+      config.build_settings['OTHER_SWIFT_FLAGS'] = normalized_flags.join(' ')
+    end
+  end
+  Dir.glob(File.join(__dir__, 'Pods', 'Target Support Files', 'SwiftProtobuf', '*.xcconfig')).each do |path|
+    contents = File.read(path)
+    contents = contents.gsub(/ ?-package-name SwiftProtobuf/, '')
+    File.write(path, contents)
+  end
+  Dir.glob(File.join(__dir__, 'Pods', 'SwiftProtobuf', 'Sources', 'SwiftProtobuf', '**', '*.swift')).each do |path|
+    contents = File.read(path)
+    contents = contents.gsub(/^(\s*)package(\s+)/, '\\1public\\2')
+    contents = contents.gsub(/\bnonisolated\(unsafe\)\s+/, '')
+    contents = contents.gsub(/^(\s*)@usableFromInline\n/, '')
+    contents = contents.gsub(/^(\s*)@inlinable\n/, '')
+    contents = contents.gsub(
+      'buffer.initializeElement(at: index, to: nextNullTerminatedString())',
+      'buffer[index] = nextNullTerminatedString()'
+    )
+    File.chmod(0o644, path)
+    File.write(path, contents)
+  end
+  Dir.glob(File.join(__dir__, 'Pods', 'FirebaseCoreInternal', '**', '*.swift')).each do |path|
+    contents = File.read(path)
+    contents = contents.gsub(/\bsending\s+/, '')
+    contents = contents.gsub(/\binternal import\b/, 'import')
+    File.chmod(0o644, path)
+    File.write(path, contents)
   end
 end

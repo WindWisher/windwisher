@@ -16311,3 +16311,36 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - `flutter build apk --debug` correcto,
       - APK debug instalado correctamente en el dispositivo Android conectado mediante `adb install -r`,
       - validacion manual del usuario: el flujo de alarma ya parece funcionar bien con app cerrada.
+
+
+  - bloque nuevo `2026-05-09`:
+    - apuntalado del sistema de alarmas para Apple/iOS y cierre de regresion en acciones de notificacion,
+    - tiempo real trabajado en este tramo: `1h 20 min` aprox. de trabajo efectivo,
+    - alarmas / Apple:
+      - anadido `Runner.entitlements` en iOS con `aps-environment` dependiente de configuracion,
+      - conectado el target iOS para firmar con `Runner/Runner.entitlements`,
+      - configurado `APS_ENVIRONMENT = development` en Debug y `production` en Profile/Release,
+      - anadido `remote-notification` a `Info.plist`,
+      - anadidos entitlements APNs equivalentes en macOS,
+      - el payload APNs de `spot-alarm-runner` mantiene `category: spot_alarm_actions`, `sound: default` e `interruption-level: time-sensitive`,
+    - iOS / compatibilidad de build:
+      - creado override local `third_party/webview_flutter_wkwebview_xcode14` para compilar con Xcode 14.2 sin llamar directamente a `WKWebView.isInspectable`,
+      - anadido override en `pubspec.yaml` hacia el WebView local parcheado,
+      - fijado `SwiftProtobuf` en `1.36.1` en `ios/Podfile`,
+      - anadidos parches reproducibles `post_install` para quitar sintaxis Swift no soportada por Xcode 14.2 en Pods generados,
+      - actualizado `Podfile.lock` con Firebase 11.15.0 y dependencias compatibles con los plugins actuales,
+      - excluido `third_party/**` del analyzer para no analizar codigo vendorizado/generado del plugin,
+    - alarmas / contrato antirregresion:
+      - creado `docs/backend/android_spot_alarm_contract.md` documentando el contrato Android + Apple de alarmas,
+      - creado `scripts/check_android_spot_alarm_contract.py` para validar permisos, scheduler, payloads, APNs, routing y parches iOS criticos,
+      - el contrato separa explicitamente `spot_alarm`, `spot_chat` y `direct_message`,
+    - alarmas / acciones de notificacion:
+      - reforzado `Parar` para cancelar tambien cualquier notificacion activa del canal `spot_alarms_v2`,
+      - si Android entrega una respuesta sin payload, se cancela al menos la notificacion visual por `response.id`,
+      - `Parar` ahora sincroniza `stopped_until_reset` directamente con Supabase aunque el catalogo local no este hidratado en background,
+      - `Posponer` desde notificacion tambien puede sincronizar `snoozed_until` directamente con Supabase si la alarma no esta cargada localmente,
+    - verificacion:
+      - `flutter build ios --debug --simulator` correcto,
+      - `python3 scripts/check_android_spot_alarm_contract.py` correcto,
+      - `plutil -lint` correcto para `Info.plist` y entitlements Apple,
+      - `flutter analyze` limpio.
