@@ -10,7 +10,6 @@ extension _SpotDetailLiveStationSelection on _SpotDetailPageState {
       _applyHistoricalDefaultsForStation(station);
     });
     _refreshSelectedStationLiveData();
-    _refreshSelectedStationHistoricalData();
   }
 
   String _stationKey(_NearbyStation station) {

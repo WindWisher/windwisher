@@ -80,6 +80,12 @@ extension _SpotDetailLiveSection on _SpotDetailPageState {
   Widget _buildLiveCompassSection() {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final hasSelectedPayload = _resolvedLiveDataByStation().containsKey(
+          _selectedStation,
+        );
+        if (_isLiveRefreshing && !hasSelectedPayload) {
+          return _buildLiveWindLoadingCard();
+        }
         final liveData = _selectedLiveData();
         final hasWindData =
             liveData.windKnots != null && liveData.windDeg != null;
