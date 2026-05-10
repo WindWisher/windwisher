@@ -52,8 +52,28 @@ def main() -> None:
     )
     contains(
         manifest,
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "Android scheduled alarm repeats must survive reboot/package replacement",
+    )
+    contains(
+        manifest,
         "spot_alarms_v2",
         "Default FCM channel must keep the alarm channel id",
+    )
+    contains(
+        manifest,
+        "com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver",
+        "Android notification actions must keep the plugin action receiver",
+    )
+    contains(
+        manifest,
+        "com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver",
+        "Android scheduled local alarm repeats must keep the scheduled receiver",
+    )
+    contains(
+        manifest,
+        "com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver",
+        "Android scheduled local alarm repeats must keep the boot receiver",
     )
 
     contains(

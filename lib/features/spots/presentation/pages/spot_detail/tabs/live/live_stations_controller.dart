@@ -7,6 +7,7 @@ extension _SpotDetailLiveStationsController on _SpotDetailPageState {
     if (_isLiveRefreshing) {
       return;
     }
+    final stopwatch = Stopwatch()..start();
     var handedOffRefreshState = false;
     setState(() {
       _isLiveRefreshing = true;
@@ -35,7 +36,17 @@ extension _SpotDetailLiveStationsController on _SpotDetailPageState {
         _isLiveRefreshing = false;
       });
       handedOffRefreshState = true;
+      debugPrint(
+        'LiveStationTiming phase=resolve-stations elapsedMs=${stopwatch.elapsedMilliseconds} '
+        'spot="${widget.name}" stations=${result.stations.length} source=${result.source.name}',
+      );
       unawaited(_hydrateSelectedLiveStationPayload());
+    } catch (error) {
+      debugPrint(
+        'LiveStationTiming phase=resolve-stations elapsedMs=${stopwatch.elapsedMilliseconds} '
+        'spot="${widget.name}" error=$error',
+      );
+      rethrow;
     } finally {
       if (mounted && !handedOffRefreshState) {
         setState(() {
@@ -57,6 +68,7 @@ extension _SpotDetailLiveStationsController on _SpotDetailPageState {
     if (station == null) {
       return;
     }
+    final stopwatch = Stopwatch()..start();
     final ownsRefreshState = !_isLiveRefreshing;
     if (ownsRefreshState && mounted) {
       setState(() {
@@ -65,6 +77,11 @@ extension _SpotDetailLiveStationsController on _SpotDetailPageState {
     }
     try {
       final refreshed = await _fetchLiveDataForStation(station);
+      debugPrint(
+        'LiveStationTiming phase=live-data elapsedMs=${stopwatch.elapsedMilliseconds} '
+        'provider=${station.provider} stationKey=${station.stationKey} '
+        'station="${station.name}" success=${refreshed != null}',
+      );
       if (!mounted || refreshed == null) {
         if (ownsRefreshState && mounted) {
           _showLiveRefreshFeedback(
@@ -92,7 +109,12 @@ extension _SpotDetailLiveStationsController on _SpotDetailPageState {
           technicalError: current.technicalError,
         );
       });
-    } catch (_) {
+    } catch (error) {
+      debugPrint(
+        'LiveStationTiming phase=live-data elapsedMs=${stopwatch.elapsedMilliseconds} '
+        'provider=${station.provider} stationKey=${station.stationKey} '
+        'station="${station.name}" error=$error',
+      );
       if (ownsRefreshState && mounted) {
         _showLiveRefreshFeedback(
           'No se pudo actualizar ${_stationDisplayName(_selectedStation)}.',

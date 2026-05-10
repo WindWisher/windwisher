@@ -16344,3 +16344,21 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - `python3 scripts/check_android_spot_alarm_contract.py` correcto,
       - `plutil -lint` correcto para `Info.plist` y entitlements Apple,
       - `flutter analyze` limpio.
+
+
+  - bloque nuevo `2026-05-10`:
+    - cierre del bug de acciones Android en notificaciones de alarmas y medicion de rendimiento Live,
+    - tiempo real trabajado en este tramo: `20 min` aprox. de trabajo efectivo,
+    - alarmas / Android:
+      - anadido `ActionBroadcastReceiver` de `flutter_local_notifications` al `AndroidManifest.xml` para que `Posponer` y `Parar` entren realmente en Dart,
+      - anadidos receivers de notificaciones programadas y permiso `RECEIVE_BOOT_COMPLETED` para reforzar repeticiones locales tras reinicio o actualizacion,
+      - ampliado el script de contrato para detectar si esos receivers/permisos desaparecen,
+      - validacion manual del usuario: `Posponer` y `Parar` ya funcionan correctamente,
+    - spots / live:
+      - anadidas trazas `LiveStationTiming` para medir `resolve-stations`, `live-data` e `history`,
+      - las trazas incluyen `elapsedMs`, proveedor, `stationKey`, nombre de estacion y numero de puntos de historico,
+      - esto permite comparar velocidades reales entre AEMET, AVAMET, Puertos, Inforatge y resto de estaciones desde logs del dispositivo,
+    - verificacion:
+      - `python3 scripts/check_android_spot_alarm_contract.py` correcto,
+      - `flutter analyze` limpio,
+      - `flutter build apk --debug` correcto.

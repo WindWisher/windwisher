@@ -10,8 +10,15 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
       return false;
     }
 
+    final stopwatch = Stopwatch()..start();
     try {
       final refreshedHistory = await _fetchHistoricalDataForStation(station);
+      debugPrint(
+        'LiveStationTiming phase=history elapsedMs=${stopwatch.elapsedMilliseconds} '
+        'provider=${station.provider} stationKey=${station.stationKey} '
+        'station="${station.name}" success=${refreshedHistory != null} '
+        'points=${refreshedHistory?.length ?? 0}',
+      );
       if (!mounted || refreshedHistory == null) {
         return false;
       }
@@ -35,7 +42,12 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
         );
       });
       return true;
-    } catch (_) {
+    } catch (error) {
+      debugPrint(
+        'LiveStationTiming phase=history elapsedMs=${stopwatch.elapsedMilliseconds} '
+        'provider=${station.provider} stationKey=${station.stationKey} '
+        'station="${station.name}" error=$error',
+      );
       return false;
     }
   }
