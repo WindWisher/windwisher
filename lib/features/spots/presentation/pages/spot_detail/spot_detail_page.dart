@@ -61,6 +61,7 @@ part 'tabs/live/live_alarms_section.dart';
 part 'tabs/live/live_compass_section.dart';
 part 'tabs/live/live_formatters.dart';
 part 'tabs/live/live_history_controller.dart';
+part 'tabs/live/live_history_helpers.dart';
 part 'tabs/live/live_history_section.dart';
 part 'tabs/live/live_section.dart';
 part 'tabs/live/live_station_actions.dart';
