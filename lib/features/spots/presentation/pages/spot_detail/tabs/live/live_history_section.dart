@@ -149,48 +149,11 @@ extension _SpotDetailLiveHistorySection on _SpotDetailPageState {
 
   Widget _buildHistoricalChart() {
     if (!_hasRealHistoricalSeries()) {
-      final sourceLabel = _historicalSeriesDisplayLabel();
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Historico $sourceLabel · ${_selectedStationName()}',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                'Carga el historico real solo cuando quieras consultar la grafica.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: FilledButton.icon(
-                  onPressed: _isHistoricalLoading
-                      ? null
-                      : _loadSelectedStationHistoricalData,
-                  icon: _isHistoricalLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.show_chart_rounded),
-                  label: Text(
-                    _isHistoricalLoading
-                        ? 'Cargando historico'
-                        : 'Cargar historico',
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      return _LiveHistoryLoadCard(
+        sourceLabel: _historicalSeriesDisplayLabel(),
+        stationName: _selectedStationName(),
+        isLoading: _isHistoricalLoading,
+        onLoad: _loadSelectedStationHistoricalData,
       );
     }
 
@@ -231,155 +194,35 @@ extension _SpotDetailLiveHistorySection on _SpotDetailPageState {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '${intraday ? 'Historico intradia $historyProviderLabel' : 'Historico diario $historyProviderLabel'} · ${_selectedStationName()}',
-              style: Theme.of(context).textTheme.titleMedium,
+            _LiveHistoryHeader(
+              intraday: intraday,
+              providerLabel: historyProviderLabel,
+              stationName: _selectedStationName(),
+              diagnosticLabel: diagnosticLabel,
             ),
-            if (diagnosticLabel != null) ...[
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                diagnosticLabel,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
             const SizedBox(height: AppSpacing.xs),
-            if (usesFixedAemetOlivaWindow)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xs,
-                ),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  historicalCoverageLabel,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
-                ),
-              )
-            else
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SegmentedButton<_HistoryRange>(
-                  segments: availableRanges
-                      .map(
-                        (range) => ButtonSegment<_HistoryRange>(
-                          value: range,
-                          label: Text(_historyRangeLabel(range)),
-                        ),
-                      )
-                      .toList(growable: false),
-                  selected: {_historyRange},
-                  onSelectionChanged: (value) =>
-                      _handleHistoryRangeChanged(value.first),
-                ),
-              ),
-            if (intraday && !usesFixedAemetOlivaWindow) ...[
-              const SizedBox(height: AppSpacing.xs),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SegmentedButton<_HistoricalBucketOption>(
-                  segments: _availableBucketOptions(_historyRange)
-                      .map(
-                        (option) => ButtonSegment<_HistoricalBucketOption>(
-                          value: option,
-                          label: Text(_historicalBucketOptionLabel(option)),
-                        ),
-                      )
-                      .toList(growable: false),
-                  selected: {_selectedBucketOption(_historyRange)},
-                  onSelectionChanged: (value) =>
-                      _handleHistoricalBucketOptionChanged(value.first),
-                ),
-              ),
-            ],
+            _LiveHistoryRangeControls(
+              usesFixedWindow: usesFixedAemetOlivaWindow,
+              coverageLabel: historicalCoverageLabel,
+              availableRanges: availableRanges,
+              selectedRange: _historyRange,
+              showBucketSelector: intraday && !usesFixedAemetOlivaWindow,
+              bucketOptions: _availableBucketOptions(_historyRange),
+              selectedBucketOption: _selectedBucketOption(_historyRange),
+              onRangeChanged: _handleHistoryRangeChanged,
+              onBucketChanged: _handleHistoricalBucketOptionChanged,
+            ),
             const SizedBox(height: AppSpacing.sm),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                SizedBox(
-                  width: 180,
-                  child: DropdownButtonFormField<String>(
-                    initialValue: selectedHistoryForecastProvider,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Proveedor forecast',
-                      hintText: 'Seleccionar',
-                      isDense: true,
-                    ),
-                    items: _historyForecastProviders()
-                        .map(
-                          (provider) => DropdownMenuItem<String>(
-                            value: provider,
-                            child: Text(provider),
-                          ),
-                        )
-                        .toList(growable: false),
-                    onChanged: (value) {
-                      if (value == null || value == _historyForecastProvider) {
-                        return;
-                      }
-                      _handleHistoryForecastProviderChanged(value);
-                    },
-                  ),
-                ),
-                SizedBox(
-                  width: 180,
-                  child: DropdownButtonFormField<String>(
-                    initialValue: selectedHistoryForecastModel,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Modelo forecast',
-                      hintText: 'Seleccionar',
-                      isDense: true,
-                    ),
-                    items: historyForecastModels
-                        .map((model) {
-                          return DropdownMenuItem<String>(
-                            value: model,
-                            child: Text(model),
-                          );
-                        })
-                        .toList(growable: false),
-                    onChanged: historyForecastModels.isEmpty
-                        ? null
-                        : (value) {
-                            if (value == null ||
-                                value == _historyForecastModel) {
-                              return;
-                            }
-                            _handleHistoryForecastModelChanged(value);
-                          },
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed:
-                      _historyForecastLoadRequested ||
-                          !canLoadHistoricalForecast
-                      ? null
-                      : _ensureHistoryForecastRowsLoaded,
-                  icon: _historyForecastLoadRequested
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.compare_arrows_rounded),
-                  label: Text(
-                    _historyForecastLoadRequested
-                        ? 'Cargando comparativa'
-                        : 'Cargar comparativa',
-                  ),
-                ),
-              ],
+            _LiveHistoryComparisonControls(
+              providers: _historyForecastProviders(),
+              selectedProvider: selectedHistoryForecastProvider,
+              models: historyForecastModels,
+              selectedModel: selectedHistoryForecastModel,
+              canLoad: canLoadHistoricalForecast,
+              isLoading: _historyForecastLoadRequested,
+              onProviderChanged: _handleHistoryForecastProviderChanged,
+              onModelChanged: _handleHistoryForecastModelChanged,
+              onLoad: _ensureHistoryForecastRowsLoaded,
             ),
             if (forecastAccuracy != null) ...[
               const SizedBox(height: AppSpacing.sm),
@@ -396,68 +239,25 @@ extension _SpotDetailLiveHistorySection on _SpotDetailPageState {
               showForecast: series.forecast != null,
             ),
             const SizedBox(height: AppSpacing.sm),
-            SizedBox(
-              height: 420,
-              width: double.infinity,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: _buildInteractiveHistoryChart(
-                      points: series.points,
-                      gustPoints: series.gust,
-                      labels: series.labels,
-                      xFractions: series.xFractions,
-                      directionDegs: series.directions,
-                      directionKinds: series.directionKinds,
-                      overlayMarkers: series.overlayMarkers,
-                      timeGuides: series.timeGuides,
-                      dayStartIndexes: series.dayStartIndexes,
-                      dayStartLabels: series.dayStartLabels,
-                      forecastPoints: series.forecast,
-                      scrollController: _historyChartScrollController,
-                      fullscreen: false,
-                      fixedHeight: 420,
-                    ),
-                  ),
-                  Positioned(
-                    top: 10,
-                    right: 10,
-                    child: Material(
-                      color: Theme.of(context).colorScheme.surface,
-                      elevation: 2,
-                      shape: const CircleBorder(),
-                      child: IconButton(
-                        tooltip: 'Refrescar grafica',
-                        onPressed: _isHistoricalRefreshing
-                            ? null
-                            : _refreshHistoricalChartData,
-                        icon: _isHistoricalRefreshing
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.refresh_rounded),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: 10,
-                    bottom: 10,
-                    child: Material(
-                      color: Theme.of(context).colorScheme.surface,
-                      elevation: 2,
-                      shape: const CircleBorder(),
-                      child: IconButton(
-                        tooltip: 'Pantalla completa',
-                        onPressed: _openHistoricalChartFullscreen,
-                        icon: const Icon(Icons.fullscreen_rounded),
-                      ),
-                    ),
-                  ),
-                ],
+            _LiveHistoryChartShell(
+              isRefreshing: _isHistoricalRefreshing,
+              onRefresh: _refreshHistoricalChartData,
+              onOpenFullscreen: _openHistoricalChartFullscreen,
+              chart: _buildInteractiveHistoryChart(
+                points: series.points,
+                gustPoints: series.gust,
+                labels: series.labels,
+                xFractions: series.xFractions,
+                directionDegs: series.directions,
+                directionKinds: series.directionKinds,
+                overlayMarkers: series.overlayMarkers,
+                timeGuides: series.timeGuides,
+                dayStartIndexes: series.dayStartIndexes,
+                dayStartLabels: series.dayStartLabels,
+                forecastPoints: series.forecast,
+                scrollController: _historyChartScrollController,
+                fullscreen: false,
+                fixedHeight: 420,
               ),
             ),
           ],

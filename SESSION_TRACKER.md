@@ -16362,3 +16362,22 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - `python3 scripts/check_android_spot_alarm_contract.py` correcto,
       - `flutter analyze` limpio,
       - `flutter build apk --debug` correcto.
+
+
+  - bloque nuevo `2026-05-13`:
+    - refactor incremental del tab Live de Spots para dejar el historico mas modular y seguro de mantener,
+    - tiempo real trabajado en este tramo: `30 min` aprox. de trabajo efectivo,
+    - spots / live / estaciones:
+      - extraidos widgets de seleccion y acciones de estaciones live,
+      - eliminado el boton de debug `Chequear AEMET Oliva`,
+      - mantenido el lazy loading de estacion seleccionada y la carga manual de historico,
+    - spots / live / historico:
+      - extraidos helpers puros del historico a `live_history_helpers.dart`,
+      - extraida la tarjeta inicial de `Cargar historico`,
+      - extraidos controles de rango/bucket del historico,
+      - extraidos controles de comparativa forecast historico,
+      - extraida la carcasa visual de la grafica historica con refrescar y pantalla completa,
+      - extraido el encabezado del historico cargado,
+      - `live_history_section.dart` queda mas cerca de un ensamblador de datos y callbacks,
+    - verificacion:
+      - `flutter analyze` limpio tras cada paso del refactor.
