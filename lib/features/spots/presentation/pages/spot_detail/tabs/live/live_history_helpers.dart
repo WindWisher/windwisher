@@ -59,6 +59,17 @@ bool _isIntradayHistoricalSeries(List<_HistoricalWindPoint> points) {
   return false;
 }
 
+String _formatHistoricalLabel(
+  _HistoricalWindPoint point, {
+  required bool intraday,
+}) {
+  String two(int input) => input.toString().padLeft(2, '0');
+  if (!intraday) {
+    return '${two(point.time.day)}/${two(point.time.month)}';
+  }
+  return '${two(point.time.hour)}:${two(point.time.minute)}';
+}
+
 Duration _bucketDurationForOption(_HistoricalBucketOption option) {
   switch (option) {
     case _HistoricalBucketOption.min20:
@@ -80,6 +91,61 @@ DateTime _alignBucketStart(DateTime time, Duration bucket) {
   final elapsedMinutes = time.difference(dayStart).inMinutes;
   final bucketIndex = elapsedMinutes ~/ minutes;
   return dayStart.add(Duration(minutes: bucketIndex * minutes));
+}
+
+List<_HistoricalWindPoint> _bucketHistoricalPoints(
+  List<_HistoricalWindPoint> points, {
+  required Duration bucket,
+  bool representativeWhenMultiple = true,
+}) {
+  if (points.isEmpty) {
+    return const <_HistoricalWindPoint>[];
+  }
+
+  final buckets = <DateTime, List<_HistoricalWindPoint>>{};
+  for (final point in points) {
+    final bucketStart = _alignBucketStart(point.time, bucket);
+    buckets.putIfAbsent(bucketStart, () => <_HistoricalWindPoint>[]).add(point);
+  }
+
+  final entries = buckets.entries.toList()
+    ..sort((a, b) => a.key.compareTo(b.key));
+  final result = <_HistoricalWindPoint>[];
+  for (final entry in entries) {
+    final bucketPoints = entry.value;
+    final avgWind =
+        bucketPoints.fold<double>(0, (acc, point) => acc + point.windKnots) /
+        bucketPoints.length;
+    final gustValues = bucketPoints
+        .map((point) => point.gustKnots)
+        .whereType<double>()
+        .toList(growable: false);
+    _HistoricalWindPoint? directionPoint;
+    for (final point in bucketPoints.reversed) {
+      if (point.windDirectionDeg != null) {
+        directionPoint = point;
+        break;
+      }
+    }
+    final lastDirection = directionPoint?.windDirectionDeg;
+    final directionKind = lastDirection == null
+        ? null
+        : (!representativeWhenMultiple || bucketPoints.length == 1)
+        ? directionPoint?.directionKind ?? _HistoricalDirectionKind.exact
+        : _HistoricalDirectionKind.representative;
+    result.add(
+      _HistoricalWindPoint(
+        time: entry.key,
+        windKnots: avgWind,
+        gustKnots: gustValues.isEmpty
+            ? null
+            : gustValues.reduce((a, b) => a > b ? a : b),
+        windDirectionDeg: lastDirection,
+        directionKind: directionKind,
+      ),
+    );
+  }
+  return result;
 }
 
 String _formatBucketLabel(Duration bucket) {
@@ -126,6 +192,77 @@ Duration _gridDurationForHistorySelection(
           return const Duration(hours: 1);
       }
   }
+}
+
+int _maxBucketCountForHistorySelection(
+  _HistoryRange range,
+  Duration arrowDuration,
+) {
+  final totalMinutes = _durationForRange(range).inMinutes;
+  final bucketMinutes = math.max(1, arrowDuration.inMinutes);
+  return (totalMinutes / bucketMinutes).ceil();
+}
+
+double _timeFraction(
+  DateTime time, {
+  required DateTime startInclusive,
+  required DateTime endExclusive,
+}) {
+  final totalMs = endExclusive.difference(startInclusive).inMilliseconds;
+  if (totalMs <= 0) {
+    return 0;
+  }
+  final elapsedMs = time.difference(startInclusive).inMilliseconds;
+  return (elapsedMs / totalMs).clamp(0.0, 1.0);
+}
+
+List<double> _timeFractionsForPoints(
+  List<_HistoricalWindPoint> points, {
+  required DateTime startInclusive,
+  required DateTime endExclusive,
+}) {
+  return points
+      .map(
+        (point) => _timeFraction(
+          point.time,
+          startInclusive: startInclusive,
+          endExclusive: endExclusive,
+        ),
+      )
+      .toList(growable: false);
+}
+
+List<_ChartTimeGuide> _gridTimeGuides({
+  required DateTime startInclusive,
+  required DateTime endExclusive,
+  required Duration gridStep,
+}) {
+  final guides = <_ChartTimeGuide>[];
+  var cursor = _alignBucketStart(startInclusive, gridStep);
+  if (cursor.isBefore(startInclusive)) {
+    cursor = cursor.add(gridStep);
+  }
+  for (; !cursor.isAfter(endExclusive); cursor = cursor.add(gridStep)) {
+    final isHour = cursor.minute == 0;
+    final isMajor = gridStep.inMinutes >= 60 ? true : isHour;
+    final showsEveryTwentyMinutes = gridStep.inMinutes == 20;
+    guides.add(
+      _ChartTimeGuide(
+        xFraction: _timeFraction(
+          cursor,
+          startInclusive: startInclusive,
+          endExclusive: endExclusive,
+        ),
+        isMajor: isMajor,
+        label: showsEveryTwentyMinutes
+            ? '${cursor.hour.toString().padLeft(2, '0')}:${cursor.minute.toString().padLeft(2, '0')}'
+            : isMajor
+            ? '${cursor.hour.toString().padLeft(2, '0')}h'
+            : null,
+      ),
+    );
+  }
+  return guides;
 }
 
 Duration _arrowDurationForHistorySelection(
