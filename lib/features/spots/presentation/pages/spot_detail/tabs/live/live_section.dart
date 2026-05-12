@@ -47,44 +47,14 @@ extension _SpotDetailLiveSection on _SpotDetailPageState {
         final liveData = _selectedLiveData();
         final hasWindData =
             liveData.windKnots != null && liveData.windDeg != null;
-        final compassCard = Stack(
-          children: [
-            _buildWindRoseWithCompassOverlay(liveData),
-            Positioned(
-              top: AppSpacing.xs,
-              left: AppSpacing.xs,
-              child: IconButton.filledTonal(
-                tooltip: _compassOverlayMode == _CompassOverlayMode.realtime
-                    ? 'Desactivar brujula'
-                    : 'Activar brujula',
-                onPressed: hasWindData ? _toggleRealtimeCompass : null,
-                icon: Icon(
-                  _compassOverlayMode == _CompassOverlayMode.realtime
-                      ? Icons.explore_off_rounded
-                      : Icons.explore_rounded,
-                ),
-              ),
-            ),
-            Positioned(
-              top: AppSpacing.xs,
-              right: AppSpacing.xs,
-              child: IconButton.filledTonal(
-                tooltip: 'Refrescar estacion',
-                onPressed: _isLiveRefreshing
-                    ? null
-                    : _refreshSelectedStationLiveData,
-                icon: _isLiveRefreshing
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.refresh_rounded),
-              ),
-            ),
-          ],
+        return _LiveCompassShell(
+          compassEnabled: _compassOverlayMode == _CompassOverlayMode.realtime,
+          canToggleCompass: hasWindData,
+          isRefreshing: _isLiveRefreshing,
+          onToggleCompass: _toggleRealtimeCompass,
+          onRefresh: _refreshSelectedStationLiveData,
+          child: _buildWindRoseWithCompassOverlay(liveData),
         );
-        return compassCard;
       },
     );
   }

@@ -83,6 +83,7 @@ part 'tabs/live/widgets/live_history_comparison_controls.dart';
 part 'tabs/live/widgets/live_history_header.dart';
 part 'tabs/live/widgets/live_history_load_card.dart';
 part 'tabs/live/widgets/live_history_range_controls.dart';
+part 'tabs/live/widgets/live_compass_shell.dart';
 part 'tabs/live/widgets/live_metrics_grid.dart';
 part 'tabs/live/widgets/live_provider_label.dart';
 part 'tabs/live/widgets/live_station_actions_row.dart';
