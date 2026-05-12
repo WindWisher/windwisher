@@ -115,23 +115,6 @@ extension _SpotDetailLiveFormatters on _SpotDetailPageState {
     return '${value.toStringAsFixed(1)}$suffix';
   }
 
-  Widget _liveMetric(String label, String value) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: Theme.of(context).textTheme.labelMedium),
-            const SizedBox(height: 4),
-            Text(value, style: Theme.of(context).textTheme.titleMedium),
-          ],
-        ),
-      ),
-    );
-  }
-
   Color _windColor(int knots) {
     if (knots < 10) {
       return Colors.transparent;

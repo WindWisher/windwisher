@@ -21,29 +21,17 @@ extension _SpotDetailLiveSection on _SpotDetailPageState {
   Widget _buildLiveProviderLabel() {
     final liveData = _selectedLiveData();
     final observedAt = liveData.observedAt;
-    if (observedAt == null) {
-      return const SizedBox.shrink();
-    }
-    return Text(
-      'Ultimo dato: ${_formatObservedAtWithAge(observedAt, label: liveData.observedAtLabel)}',
-      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
-      ),
+    return _LiveProviderLabel(
+      text: observedAt == null
+          ? null
+          : 'Ultimo dato: ${_formatObservedAtWithAge(observedAt, label: liveData.observedAtLabel)}',
     );
   }
 
   Widget _buildLiveWindUnitSelector() {
-    return SegmentedButton<_WindSpeedUnit>(
-      segments: const [
-        ButtonSegment(value: _WindSpeedUnit.knots, label: Text('kt')),
-        ButtonSegment(value: _WindSpeedUnit.kmh, label: Text('km/h')),
-        ButtonSegment(value: _WindSpeedUnit.mph, label: Text('mph')),
-        ButtonSegment(value: _WindSpeedUnit.beaufort, label: Text('Bft')),
-      ],
-      selected: {_windSpeedUnit},
-      onSelectionChanged: (value) {
-        _handleWindSpeedUnitChanged(value.first);
-      },
+    return _LiveWindUnitSelector(
+      selectedUnit: _windSpeedUnit,
+      onChanged: _handleWindSpeedUnitChanged,
     );
   }
 
@@ -104,26 +92,32 @@ extension _SpotDetailLiveSection on _SpotDetailPageState {
   Widget _buildLiveMetricsGrid() {
     final liveData = _selectedLiveData();
     final station = _findStationByKey(_selectedStation);
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: AppSpacing.sm,
-      crossAxisSpacing: AppSpacing.sm,
-      childAspectRatio: 2.2,
-      children: [
-        _liveMetric('Viento', _formatWind(liveData.windKnots)),
-        _liveMetric(
-          station?.provider == 'INFORATGE' ? 'Racha max.' : 'Racha',
-          _formatWind(liveData.gustKnots),
+    return _LiveMetricsGrid(
+      metrics: [
+        _LiveMetricData(
+          label: 'Viento',
+          value: _formatWind(liveData.windKnots),
         ),
-        _liveMetric('Temperatura', _formatOptionalDouble(liveData.tempC, ' C')),
-        _liveMetric(
-          'Presion',
-          _formatOptionalInt(liveData.pressureHpa, ' hPa'),
+        _LiveMetricData(
+          label: station?.provider == 'INFORATGE' ? 'Racha max.' : 'Racha',
+          value: _formatWind(liveData.gustKnots),
         ),
-        _liveMetric('Humedad', _formatOptionalInt(liveData.humidityPct, '%')),
-        _liveMetric('Lluvia', _formatOptionalDouble(liveData.rainMm, ' mm')),
+        _LiveMetricData(
+          label: 'Temperatura',
+          value: _formatOptionalDouble(liveData.tempC, ' C'),
+        ),
+        _LiveMetricData(
+          label: 'Presion',
+          value: _formatOptionalInt(liveData.pressureHpa, ' hPa'),
+        ),
+        _LiveMetricData(
+          label: 'Humedad',
+          value: _formatOptionalInt(liveData.humidityPct, '%'),
+        ),
+        _LiveMetricData(
+          label: 'Lluvia',
+          value: _formatOptionalDouble(liveData.rainMm, ' mm'),
+        ),
       ],
     );
   }
