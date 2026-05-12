@@ -9,42 +9,12 @@ extension _SpotDetailLiveSection on _SpotDetailPageState {
     final effectiveKey = stationKeys.contains(_selectedStation)
         ? _selectedStation
         : (stationKeys.isNotEmpty ? stationKeys.first : _selectedStation);
-    return DropdownButtonFormField<String>(
-      initialValue: effectiveKey,
-      isExpanded: true,
-      decoration: const InputDecoration(
-        labelText: 'Estacion meteorologica cercana',
-        border: OutlineInputBorder(),
-      ),
-      items: stations.map((station) {
-        return DropdownMenuItem<String>(
-          value: _stationKey(station),
-          child: SizedBox(
-            width: double.infinity,
-            child: Text(
-              _stationLabel(station),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        );
-      }).toList(),
-      selectedItemBuilder: (context) {
-        return stations
-            .map(
-              (station) => Text(
-                _stationLabel(station),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            )
-            .toList();
-      },
-      onChanged: (value) {
-        if (value == null) {
-          return;
-        }
-        _handleLiveStationChanged(value);
-      },
+    return _LiveStationDropdown(
+      stations: stations,
+      selectedStationKey: effectiveKey,
+      stationKeyOf: _stationKey,
+      stationLabelOf: _stationLabel,
+      onChanged: _handleLiveStationChanged,
     );
   }
 
@@ -158,35 +128,10 @@ extension _SpotDetailLiveSection on _SpotDetailPageState {
     );
   }
 
-  Widget _buildLiveStationMapLink(_NearbyStation station) {
-    return TextButton.icon(
-      onPressed: () => _showLiveStationMapDialog(station),
-      icon: const Icon(Icons.map_outlined),
-      label: const Text('Ver estacion en el mapa'),
-    );
-  }
-
   Widget _buildLiveActionsRow(_NearbyStation station) {
-    return Wrap(
-      spacing: AppSpacing.xs,
-      runSpacing: AppSpacing.xs,
-      children: [
-        _buildLiveStationMapLink(station),
-        if (_isOlivaAemetOfficialStation(station))
-          OutlinedButton.icon(
-            onPressed: _isLiveRefreshing
-                ? null
-                : () => _checkAemetOlivaStation(station),
-            icon: _isLiveRefreshing
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.fact_check_outlined),
-            label: const Text('Chequear AEMET Oliva'),
-          ),
-      ],
+    return _LiveStationActionsRow(
+      station: station,
+      onShowMap: _showLiveStationMapDialog,
     );
   }
 
