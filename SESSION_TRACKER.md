@@ -16381,3 +16381,22 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - `live_history_section.dart` queda mas cerca de un ensamblador de datos y callbacks,
     - verificacion:
       - `flutter analyze` limpio tras cada paso del refactor.
+
+
+  - bloque nuevo `2026-05-13`:
+    - continuacion del refactor Live de Spots para separar responsabilidades del historico y de estaciones,
+    - tiempo real trabajado en este tramo: `25 min` aprox. de trabajo efectivo,
+    - spots / live / historico:
+      - `live_history_controller.dart` queda reducido a orquestacion de estado y acciones,
+      - extraido fetch de historico por proveedor a `live_history_data_loader.dart`,
+      - extraida comparativa forecast historica a `live_history_forecast_overlay.dart`,
+      - extraida preparacion de ventana/serie historica a `live_history_series_controller.dart`,
+    - spots / live / widgets:
+      - extraidos widget de etiqueta de ultimo dato, selector de unidades y grid de metricas live,
+      - eliminado el render de metricas desde `live_formatters.dart`,
+    - spots / live / estaciones:
+      - extraida carga de payload live por proveedor a `live_station_payload_loader.dart`,
+      - extraida metadata/registro de estaciones configuradas a `live_station_metadata_loader.dart`,
+      - `live_station_data_loader.dart` queda centrado en resolver estaciones y construir el resultado de carga,
+    - verificacion:
+      - `flutter analyze` limpio tras los cortes realizados.

@@ -69,6 +69,8 @@ part 'tabs/live/live_history_series_controller.dart';
 part 'tabs/live/live_section.dart';
 part 'tabs/live/live_station_actions.dart';
 part 'tabs/live/live_station_data_loader.dart';
+part 'tabs/live/live_station_metadata_loader.dart';
+part 'tabs/live/live_station_payload_loader.dart';
 part 'tabs/live/live_station_selection.dart';
 part 'tabs/live/live_stations_controller.dart';
 part 'tabs/live/live_wind_legend_dialog.dart';
