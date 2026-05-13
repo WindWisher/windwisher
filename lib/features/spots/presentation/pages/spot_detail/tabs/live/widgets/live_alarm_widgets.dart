@@ -17,6 +17,18 @@ class _AlarmEvaluation {
   final String label;
 }
 
+IconData _alarmEvaluationIcon(_AlarmEvaluationState state) {
+  return switch (state) {
+    _AlarmEvaluationState.active => Icons.notifications_active_rounded,
+    _AlarmEvaluationState.partial => Icons.timelapse_rounded,
+    _AlarmEvaluationState.idle => Icons.notifications_paused_rounded,
+    _AlarmEvaluationState.noData => Icons.error_outline_rounded,
+    _AlarmEvaluationState.disabled => Icons.notifications_off_rounded,
+    _AlarmEvaluationState.snoozed => Icons.snooze_rounded,
+    _AlarmEvaluationState.stopped => Icons.notifications_off_rounded,
+  };
+}
+
 class _AlarmMetaChip extends StatelessWidget {
   const _AlarmMetaChip({required this.icon, required this.label});
 

@@ -16400,3 +16400,18 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - `live_station_data_loader.dart` queda centrado en resolver estaciones y construir el resultado de carga,
     - verificacion:
       - `flutter analyze` limpio tras los cortes realizados.
+
+
+  - bloque nuevo `2026-05-13`:
+    - refactor de la seccion de alarmas del tab Live de Spots,
+    - tiempo real trabajado en este tramo: `25 min` aprox. de trabajo efectivo,
+    - spots / live / alarmas:
+      - extraida la UI del formulario de alarma a `live_alarm_form_widgets.dart`,
+      - extraida la UI de alarmas guardadas a `live_saved_alarm_widgets.dart`,
+      - reducido `live_alarm_widgets.dart` a piezas comunes de evaluacion y chips,
+      - `live_alarms_section.dart` queda como ensamblador de cabecera, formulario, lista y callbacks,
+      - extraidos helpers privados para activar/desactivar alarmas del spot, guardar, editar y eliminar alarmas,
+      - extraidos setters privados para estacion, rango de viento, direcciones, repeticion y maximo de avisos,
+      - separada la construccion de la lista y tarjetas de alarmas guardadas en helpers dedicados,
+    - verificacion:
+      - `flutter analyze` limpio tras el refactor.
