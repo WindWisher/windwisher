@@ -22,7 +22,7 @@ class AemetBeachForecastTable extends StatelessWidget {
       'Oleaje',
       'Temp. max',
       'Temp. agua',
-      'Sens. termica',
+      'Sens. térmica',
       'UV max',
     ];
 
@@ -45,7 +45,7 @@ class AemetBeachForecastTable extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 2),
-            Text('Manana / Tarde', style: textTheme.labelSmall),
+            Text('Mañana / Tarde', style: textTheme.labelSmall),
           ],
         ),
       );
@@ -210,7 +210,7 @@ class AemetBeachForecastTable extends StatelessWidget {
                           data.days
                               .map(
                                 (day) => valueCell(
-                                  'Manana: ${day.skyMorning}',
+                                  'Mañana: ${day.skyMorning}',
                                   'Tarde: ${day.skyAfternoon}',
                                 ),
                               )
@@ -220,7 +220,7 @@ class AemetBeachForecastTable extends StatelessWidget {
                           data.days
                               .map(
                                 (day) => valueCell(
-                                  'Manana: ${day.windMorning}',
+                                  'Mañana: ${day.windMorning}',
                                   'Tarde: ${day.windAfternoon}',
                                 ),
                               )
@@ -230,7 +230,7 @@ class AemetBeachForecastTable extends StatelessWidget {
                           data.days
                               .map(
                                 (day) => valueCell(
-                                  'Manana: ${day.waveMorning}',
+                                  'Mañana: ${day.waveMorning}',
                                   'Tarde: ${day.waveAfternoon}',
                                 ),
                               )
@@ -242,7 +242,7 @@ class AemetBeachForecastTable extends StatelessWidget {
                                 (day) => valueCell(
                                   day.maxTempC == null
                                       ? '-'
-                                      : '${day.maxTempC} C',
+                                      : '${day.maxTempC} °C',
                                 ),
                               )
                               .toList(growable: false),
@@ -253,7 +253,7 @@ class AemetBeachForecastTable extends StatelessWidget {
                                 (day) => valueCell(
                                   day.waterTempC == null
                                       ? '-'
-                                      : '${day.waterTempC} C',
+                                      : '${day.waterTempC} °C',
                                 ),
                               )
                               .toList(growable: false),

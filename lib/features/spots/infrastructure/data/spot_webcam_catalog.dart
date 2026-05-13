@@ -50,9 +50,37 @@ const List<SpotWebcam> _olivaCanalGorgsWebcams = [
   ),
 ];
 
+const List<SpotWebcam> _pilesWebcams = [
+  SpotWebcam(
+    name: 'Piles',
+    source: 'Comunitat Valenciana',
+    status: 'Directo',
+    resolution: 'Web oficial',
+    primaryPageUrl:
+        'https://www.comunitatvalenciana.com/es/valencia/piles/webcams/piles-2',
+    summary: 'Webcam oficial de la playa de Piles.',
+    locationLabel: 'Playa de Piles',
+    latitude: 38.9519444444,
+    longitude: -0.1144444444,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Piles · Comunitat Valenciana',
+        url:
+            'https://www.comunitatvalenciana.com/es/valencia/piles/webcams/piles-2',
+      ),
+      WebcamReferencePage(
+        title: 'Playa Piles · Comunitat Valenciana',
+        url:
+            'https://www.comunitatvalenciana.com/valencia/piles/playas/playa-piles-1',
+      ),
+    ],
+  ),
+];
+
 List<SpotWebcam> webcamsForProfile(String? profile) {
   return switch (profile) {
     olivaCanalGorgsWebcamProfile => _olivaCanalGorgsWebcams,
+    pilesWebcamProfile => _pilesWebcams,
     _ => const <SpotWebcam>[],
   };
 }
@@ -67,4 +95,7 @@ List<WebcamReferencePage> referencePagesForWebcam(String webcamName) {
   return const <WebcamReferencePage>[];
 }
 
-const List<SpotWebcam> _allProfileWebcams = [..._olivaCanalGorgsWebcams];
+const List<SpotWebcam> _allProfileWebcams = [
+  ..._olivaCanalGorgsWebcams,
+  ..._pilesWebcams,
+];

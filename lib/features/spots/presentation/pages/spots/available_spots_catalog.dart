@@ -34,11 +34,13 @@ const _availableSpots = <_AvailableSpot>[
     capabilities: olivaCanalGorgsSpotCapabilities,
   ),
   _AvailableSpot(
-    name: 'Piles',
+    name: pilesSpotName,
     area: 'Valencia',
-    latitude: 38.9402,
-    longitude: -0.1324,
-    aemetMunicipalityCode: '46197',
+    latitude: 38.9519444444,
+    longitude: -0.1144444444,
+    aemetMunicipalityCode: '46195',
+    aemetBeachCode: '4619501',
+    capabilities: pilesSpotCapabilities,
   ),
   _AvailableSpot(
     name: 'Punta de los Molinos',

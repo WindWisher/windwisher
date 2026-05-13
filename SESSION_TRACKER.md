@@ -16456,3 +16456,29 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
     - verificacion:
       - `flutter analyze` limpio,
       - validacion manual del usuario: ahora se ve correctamente el avatar propio y el de los demas usuarios.
+
+
+  - bloque nuevo `2026-05-13`:
+    - construccion inicial del spot oficial de Piles y correccion de textos AEMET,
+    - tiempo real trabajado en este tramo: `45 min` aprox. de trabajo efectivo,
+    - spots / catalogo:
+      - Piles pasa a usar constantes propias de spot oficial,
+      - actualizadas coordenadas del spot a la playa AEMET de Piles,
+      - corregido el codigo municipal AEMET a `46195`,
+      - anadido codigo de playa AEMET `4619501`,
+      - anadidas capacidades propias de Piles con AEMET/Puertos del Estado por defecto,
+      - Piles hereda estaciones live de referencia cercanas y Puertos Gandia Serpis como patron inicial replicable,
+    - spots / webcams:
+      - anadido perfil de webcam propio para Piles con pagina oficial de Comunitat Valenciana,
+      - anadidas paginas de referencia de webcam y playa de Piles,
+    - spots / forecast / AEMET:
+      - creado `aemet_text_normalizer.dart` para limpiar entidades HTML, mojibake y caracteres de sustitucion,
+      - aplicado el normalizador a prediccion de playa y maritima costera,
+      - anadido nombre amigable `Piles` para el codigo de playa `4619501`,
+      - ajustada la tabla de playa para mostrar Manana/Sensacion termica/temperaturas correctamente,
+      - configurada la maritima costera para mostrar textos largos sin tildes y evitar simbolos raros,
+    - tests / verificacion:
+      - anadido test unitario para normalizacion de textos AEMET,
+      - `flutter test test/features/spots/infrastructure/services/aemet_text_normalizer_test.dart` limpio,
+      - `flutter analyze` limpio,
+      - validacion manual del usuario: la tabla costera ya no muestra simbolos raros.

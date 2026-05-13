@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_item.dart';
+import 'package:windwisher/features/spots/infrastructure/services/aemet_text_normalizer.dart';
 import 'package:windwisher/features/spots/infrastructure/services/supabase_forecast_proxy_client.dart';
 
 const kAemetCoastalForecastModel = 'Maritima costera';
@@ -122,12 +123,16 @@ class AemetCoastalForecastClient {
           }
           final zone = AemetCoastalForecastZone(
             id: (subzoneRaw['id'] as num?)?.round(),
-            name: (subzoneRaw['nombre'] as String?)?.trim().isNotEmpty == true
-                ? (subzoneRaw['nombre'] as String).trim()
-                : 'Zona costera',
-            text: (subzoneRaw['texto'] as String?)?.trim().isNotEmpty == true
-                ? (subzoneRaw['texto'] as String).trim()
-                : 'Sin detalle textual disponible.',
+            name: normalizeAemetText(
+              subzoneRaw['nombre'],
+              fallback: 'Zona costera',
+              stripAccents: true,
+            ),
+            text: normalizeAemetText(
+              subzoneRaw['texto'],
+              fallback: 'Sin detalle textual disponible.',
+              stripAccents: true,
+            ),
           );
           zones.add(zone);
         }
@@ -142,9 +147,11 @@ class AemetCoastalForecastClient {
                 .toList(growable: false);
 
       final result = AemetCoastalForecastData(
-        bulletinName: (root['nombre'] as String?)?.trim().isNotEmpty == true
-            ? (root['nombre'] as String).trim()
-            : 'Boletin meteorologico y marino costero',
+        bulletinName: normalizeAemetText(
+          root['nombre'],
+          fallback: 'Boletin meteorologico y marino costero',
+          stripAccents: true,
+        ),
         issuedAt: _parseDateTime(
           (root['origen'] as Map<String, dynamic>?)?['elaborado'],
         ),
@@ -178,7 +185,9 @@ class AemetCoastalForecastClient {
     }
   }
 
-  Future<List<Map<String, dynamic>>> _fetchRemotePayload(String coastalCode) async {
+  Future<List<Map<String, dynamic>>> _fetchRemotePayload(
+    String coastalCode,
+  ) async {
     final envelope = await _fetchJson(
       'https://opendata.aemet.es/opendata/api/prediccion/maritima/costera/costa/$coastalCode/?api_key=$_apiKey',
     );
@@ -318,10 +327,11 @@ DateTime? _parseDateTime(dynamic value) {
 }
 
 String _readText(dynamic value) {
-  if (value is String && value.trim().isNotEmpty) {
-    return value.trim();
-  }
-  return 'Sin informacion disponible.';
+  return normalizeAemetText(
+    value,
+    fallback: 'Sin informacion disponible.',
+    stripAccents: true,
+  );
 }
 
 String _decodeResponseBody(List<int> bytes) {

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_item.dart';
+import 'package:windwisher/features/spots/infrastructure/services/aemet_text_normalizer.dart';
 import 'package:windwisher/features/spots/infrastructure/services/supabase_forecast_proxy_client.dart';
 
 const kAemetBeachForecastModel = 'Prediccion de playa';
@@ -53,6 +54,8 @@ String getAemetBeachDisplayName({required String beachCode}) {
       return 'Pau-Pi';
     case '4618103':
       return "l'Aigua Blanca";
+    case '4619501':
+      return 'Piles';
     default:
       return beachCode;
   }
@@ -209,9 +212,7 @@ class AemetBeachForecastClient {
           .toList(growable: false);
 
       final result = AemetBeachForecastData(
-        beachName: (root['nombre'] as String?)?.trim().isNotEmpty == true
-            ? (root['nombre'] as String).trim()
-            : spot.name,
+        beachName: normalizeAemetText(root['nombre'], fallback: spot.name),
         beachId: (root['id'] as num?)?.round(),
         issuedAt: _parseDateTime(root['elaborado']),
         days: days,
@@ -233,7 +234,9 @@ class AemetBeachForecastClient {
     }
   }
 
-  Future<List<Map<String, dynamic>>> _fetchRemotePayload(String beachCode) async {
+  Future<List<Map<String, dynamic>>> _fetchRemotePayload(
+    String beachCode,
+  ) async {
     final envelope = await _fetchJson(
       'https://opendata.aemet.es/opendata/api/prediccion/especifica/playa/$beachCode/?api_key=$_apiKey',
     );
@@ -399,10 +402,7 @@ DateTime? _parseAemetCompactDate(dynamic value) {
 }
 
 String _readText(dynamic value) {
-  if (value is String && value.trim().isNotEmpty) {
-    return value.trim();
-  }
-  return '-';
+  return normalizeAemetText(value);
 }
 
 int? _readInt(dynamic value) {
