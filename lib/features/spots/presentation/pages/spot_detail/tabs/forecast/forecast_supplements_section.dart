@@ -208,10 +208,10 @@ extension _SpotDetailForecastSupplementsSection on _SpotDetailPageState {
         const SizedBox(height: AppSpacing.sm),
         WindguruForecastCard(
           title: _buildForecastTableTitle(),
-          subtitle: 'Widget Windguru · Oliva Canal',
-          height: _windguruWidgetHeight,
+          subtitle: _windguruWidgetSubtitleForSpot(widget.name),
+          height: _windguruWidgetHeightForSpot(widget.name),
           controller: controller,
-          webEmbedHtml: kIsWeb ? _windguruWidgetHtml : null,
+          webEmbedHtml: kIsWeb ? _windguruWidgetHtmlForSpot(widget.name) : null,
           isFullscreenActive:
               _fullscreenMode == _ForecastFullscreenMode.windguru,
           onOpenFullscreen: _openWindguruFullscreen,

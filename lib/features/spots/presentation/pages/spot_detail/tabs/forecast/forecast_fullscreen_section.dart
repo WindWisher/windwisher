@@ -108,7 +108,7 @@ extension _SpotDetailForecastFullscreenSection on _SpotDetailPageState {
     final isSupported = !_SpotDetailPageState._isFlutterTest;
     return WindguruFullscreenOverlay(
       controller: _windguruFullscreenController,
-      webEmbedHtml: kIsWeb ? _windguruWidgetHtml : null,
+      webEmbedHtml: kIsWeb ? _windguruWidgetHtmlForSpot(widget.name) : null,
       isSupported: isSupported,
       unsupportedMessage: 'Windguru no disponible en este dispositivo.',
       onClose: () {

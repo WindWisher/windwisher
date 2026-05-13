@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/windguru_web_embed.dart';
@@ -28,7 +30,7 @@ class WindguruForecastCard extends StatelessWidget {
     final embeddedContent = webEmbedHtml != null
         ? WindguruWebEmbed(html: webEmbedHtml!)
         : controller != null
-        ? WebViewWidget(controller: controller!)
+        ? _WindguruWebView(controller: controller!)
         : const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -97,7 +99,7 @@ class WindguruFullscreenOverlay extends StatelessWidget {
                       builder: (context, constraints) {
                         final content = webEmbedHtml != null
                             ? WindguruWebEmbed(html: webEmbedHtml!)
-                            : WebViewWidget(controller: controller!);
+                            : _WindguruWebView(controller: controller!);
                         if (isLandscape) {
                           return SizedBox(
                             width: constraints.maxWidth,
@@ -145,6 +147,22 @@ class WindguruFullscreenOverlay extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _WindguruWebView extends StatelessWidget {
+  const _WindguruWebView({required this.controller});
+
+  final WebViewController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return WebViewWidget(
+      controller: controller,
+      gestureRecognizers: {
+        Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+      },
     );
   }
 }

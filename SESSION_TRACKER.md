@@ -16482,3 +16482,19 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - `flutter test test/features/spots/infrastructure/services/aemet_text_normalizer_test.dart` limpio,
       - `flutter analyze` limpio,
       - validacion manual del usuario: la tabla costera ya no muestra simbolos raros.
+
+
+  - bloque nuevo `2026-05-13`:
+    - ajuste de widget Windguru por spot y mejora de gestos,
+    - tiempo real trabajado en este tramo: `20 min` aprox. de trabajo efectivo,
+    - spots / forecast / Windguru:
+      - el widget de Windguru pasa a resolverse por nombre de spot,
+      - Piles utiliza el widget `s=504236` proporcionado por el usuario,
+      - Oliva mantiene su `s=48858` pero usa el formato completo de filas del widget nuevo,
+      - el subtitulo del bloque Windguru se adapta al spot seleccionado,
+      - la altura del widget Windguru sube a `680` para acomodar mas filas,
+      - fullscreen y WebView movil/web usan el mismo HTML resuelto por spot,
+      - anadido `EagerGestureRecognizer` al WebView de Windguru para mejorar el deslizamiento tactil,
+    - verificacion:
+      - `flutter analyze` limpio,
+      - validacion manual del usuario: el deslizamiento de filas ahora va mucho mejor.

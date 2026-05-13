@@ -32,7 +32,10 @@ extension _SpotDetailForecastActionsController on _SpotDetailPageState {
     return WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.transparent)
-      ..loadHtmlString(_windguruWidgetHtml, baseUrl: 'https://www.windguru.cz');
+      ..loadHtmlString(
+        _windguruWidgetHtmlForSpot(widget.name),
+        baseUrl: 'https://www.windguru.cz',
+      );
   }
 
   Future<void> _openWindMap() async {
