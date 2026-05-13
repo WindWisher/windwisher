@@ -47,6 +47,11 @@ class MeteopilesLiveClient {
       return null;
     }
 
+    final observedAt = _parseObservedAt(values);
+    if (_isStale(observedAt)) {
+      return null;
+    }
+
     return MeteopilesLiveSnapshot(
       windKnots: _mphToKnots(_readDouble(values, 4)),
       windDirectionDeg: _readInt(values, 3),
@@ -55,7 +60,7 @@ class MeteopilesLiveClient {
       pressureHpa: _inHgToHpa(_readDouble(values, 25))?.round(),
       humidityPct: _readDouble(values, 7)?.round(),
       rainMm: _inchesToMm(_readDouble(values, 11)),
-      observedAt: _parseObservedAt(_readString(values, 1)),
+      observedAt: observedAt,
       observedAtLabel: _readString(values, 1),
     );
   }
@@ -99,7 +104,12 @@ class MeteopilesLiveClient {
     return _readDouble(values, index)?.round();
   }
 
-  DateTime? _parseObservedAt(String? timeLabel) {
+  DateTime? _parseObservedAt(List<String> values) {
+    final timestamp = _readVwsTimestamp(values);
+    if (timestamp != null) {
+      return timestamp;
+    }
+    final timeLabel = _readString(values, 1);
     if (timeLabel == null) {
       return null;
     }
@@ -115,6 +125,26 @@ class MeteopilesLiveClient {
     }
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day, hour, minute, second);
+  }
+
+  DateTime? _readVwsTimestamp(List<String> values) {
+    final raw = _readString(values, 0);
+    if (raw == null || !raw.startsWith('F=')) {
+      return null;
+    }
+    final seconds = int.tryParse(raw.substring(2));
+    if (seconds == null) {
+      return null;
+    }
+    final epoch = DateTime.utc(1900);
+    return epoch.add(Duration(seconds: seconds)).toLocal();
+  }
+
+  bool _isStale(DateTime? observedAt) {
+    if (observedAt == null) {
+      return false;
+    }
+    return DateTime.now().difference(observedAt) > const Duration(hours: 2);
   }
 
   double? _mphToKnots(double? value) {

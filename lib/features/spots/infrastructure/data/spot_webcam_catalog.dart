@@ -59,6 +59,10 @@ const List<SpotWebcam> _pilesWebcams = [
     primaryPageUrl:
         'https://www.comunitatvalenciana.com/es/valencia/piles/webcams/piles-2',
     summary: 'Webcam oficial de la playa de Piles.',
+    streamManifestUrl:
+        'https://streaming.comunitatvalenciana.com/webcam/Piles/manifest.mpd',
+    previewImageUrl:
+        'https://streaming.comunitatvalenciana.com/static/Piles/webcam_mini.png',
     locationLabel: 'Playa de Piles',
     latitude: 38.9519444444,
     longitude: -0.1144444444,

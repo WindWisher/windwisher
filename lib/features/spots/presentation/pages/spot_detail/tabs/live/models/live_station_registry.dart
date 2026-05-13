@@ -24,12 +24,6 @@ const String _avametGandiaCamiMarStationName = 'Gandia Cami de la mar';
 const double _avametGandiaCamiMarStationLat = 38.982786;
 const double _avametGandiaCamiMarStationLon = -0.166017;
 
-const String _meteopilesStationId = 'meteopiles';
-const String _meteopilesStationKey = 'meteopiles:meteopiles';
-const String _meteopilesStationName = 'Meteo Piles';
-const double _meteopilesStationLat = 38.9421;
-const double _meteopilesStationLon = -0.1344;
-
 const String _windguruDkPilesStationId = '51';
 const String _windguruDkPilesStationKey = 'windguru-station:51';
 const String _windguruDkPilesStationName = 'DK Piles Meteo';

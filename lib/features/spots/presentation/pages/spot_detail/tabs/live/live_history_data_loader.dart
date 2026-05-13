@@ -104,11 +104,11 @@ extension _SpotDetailLiveHistoryDataLoader on _SpotDetailPageState {
     }
 
     if (station.provider == 'METEOPILES') {
-      return const <_HistoricalWindPoint>[];
+      return _fetchBackendCollectedLiveHistory(station);
     }
 
     if (station.provider == 'WINDGURU_STATION') {
-      return const <_HistoricalWindPoint>[];
+      return _fetchBackendCollectedLiveHistory(station);
     }
 
     if (station.provider == 'AEMET' && station.stationId != null) {
@@ -135,5 +135,32 @@ extension _SpotDetailLiveHistoryDataLoader on _SpotDetailPageState {
     }
 
     return null;
+  }
+
+  Future<List<_HistoricalWindPoint>> _fetchBackendCollectedLiveHistory(
+    _NearbyStation station,
+  ) async {
+    final client = _spotLiveObservationHistoryClient;
+    if (client == null) {
+      return const <_HistoricalWindPoint>[];
+    }
+    final history = await client.fetchStationHistory(
+      stationKey: station.stationKey,
+      range: const Duration(hours: 72),
+    );
+    return history
+        .where((point) => point.windKnots != null)
+        .map(
+          (point) => _HistoricalWindPoint(
+            time: point.observedAt,
+            windKnots: point.windKnots!,
+            gustKnots: point.gustKnots,
+            windDirectionDeg: point.windDirectionDeg,
+            directionKind: point.windDirectionDeg == null
+                ? null
+                : _HistoricalDirectionKind.exact,
+          ),
+        )
+        .toList(growable: false);
   }
 }

@@ -114,18 +114,6 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     _addLiveStationMetadata(
       stations: stations,
       seenKeys: seenKeys,
-      stationKey: _meteopilesStationKey,
-      stationName: _meteopilesStationName,
-      provider: 'METEOPILES',
-      stationId: _meteopilesStationId,
-      latitude: _meteopilesStationLat,
-      longitude: _meteopilesStationLon,
-      referenceLatitude: latitude,
-      referenceLongitude: longitude,
-    );
-    _addLiveStationMetadata(
-      stations: stations,
-      seenKeys: seenKeys,
       stationKey: _windguruDkPilesStationKey,
       stationName: _windguruDkPilesStationName,
       provider: 'WINDGURU_STATION',

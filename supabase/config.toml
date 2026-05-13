@@ -38,6 +38,9 @@ verify_jwt = false
 [functions.spot-alarm-runner]
 verify_jwt = false
 
+[functions.spot-live-observation-collector]
+verify_jwt = false
+
 [functions.direct-message-push]
 verify_jwt = true
 

@@ -134,6 +134,7 @@ class SpotDetailPage extends StatefulWidget {
     this.meteostatDayClient,
     this.meteosourceCurrentDayClient,
     this.portusRealtimeWindClient,
+    this.spotLiveObservationHistoryClient,
     this.useLocalPersistence = EnvConfig.spotsLocalPersistenceEnabled,
     this.openChatInitially = false,
   });
@@ -163,6 +164,7 @@ class SpotDetailPage extends StatefulWidget {
   final MeteostatDayClient? meteostatDayClient;
   final MeteosourceCurrentDayClient? meteosourceCurrentDayClient;
   final PortusRealtimeWindClient? portusRealtimeWindClient;
+  final SpotLiveObservationHistoryClient? spotLiveObservationHistoryClient;
   final bool useLocalPersistence;
   final bool openChatInitially;
 
@@ -280,6 +282,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   late final MeteostatDayClient _meteostatDayClient;
   late final MeteosourceCurrentDayClient _meteosourceCurrentDayClient;
   late final PortusRealtimeWindClient _portusRealtimeWindClient;
+  late final SpotLiveObservationHistoryClient?
+  _spotLiveObservationHistoryClient;
   late Future<_ForecastLoadResult> _forecastRowsFuture;
   _ForecastLoadResult? _historyForecastRowsResult;
   bool _historyForecastLoadRequested = false;
@@ -329,6 +333,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         widget.meteosourceCurrentDayClient ?? MeteosourceCurrentDayClient();
     _portusRealtimeWindClient =
         widget.portusRealtimeWindClient ?? PortusRealtimeWindClient();
+    _spotLiveObservationHistoryClient =
+        widget.spotLiveObservationHistoryClient ??
+        SpotLiveObservationHistoryClient.maybeCreate();
     _initializeSocialChat();
     _forecastProvider =
         widget.capabilities.defaultForecastProvider ?? _forecastProvider;

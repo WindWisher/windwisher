@@ -16532,3 +16532,37 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
     - verificacion:
       - `flutter analyze` limpio,
       - validacion manual del usuario: DK Piles funciona estupendamente y las tarjetas vacias ya no aparecen.
+
+
+  - bloque nuevo `2026-05-13`:
+    - cierre operativo del spot oficial de Piles,
+    - tiempo real trabajado en este tramo: `60 min` aprox. de trabajo efectivo,
+    - spots / live / historico backend:
+      - creada la tabla `spot_live_observations` para historicos live rotativos,
+      - configurada retencion automatica de `72 h` para evitar crecimiento indefinido,
+      - creada la Edge Function `spot-live-observation-collector`,
+      - desplegada la function en Supabase,
+      - configurado el secreto `SPOT_LIVE_COLLECTOR_SECRET` reutilizando el valor operativo de `LIVE_WIND_RECORDER_SECRET`,
+      - creado y activado el cron `spot-live-observation-collector-every-5-min`,
+      - verificado en cloud que el cron queda activo con expresion `*/5 * * * *`,
+      - verificada invocacion manual con insercion real de muestras,
+      - conectada la app para leer historico backend desde `spot_live_observations`,
+      - DK Piles Meteo usa el historico backend propio al pulsar cargar historico,
+    - spots / live / MeteoPiles:
+      - comprobado que `meteopiles.es/wflash/Data/wflash.txt` y `wflash2.txt` estan congelados desde enero de 2020,
+      - el contador visible en la web solo cuenta desde la descarga AJAX y no indica nueva medicion real,
+      - corregido el parser para leer el timestamp VWS `F=` desde epoch 1900,
+      - anadido filtro anti-stale para rechazar observaciones con mas de `2 h`,
+      - limpiadas las muestras falsas de MeteoPiles guardadas con fecha actual,
+      - MeteoPiles queda oculto del selector Live de Piles hasta que vuelva a publicar datos reales,
+      - el collector backend deja de consultar MeteoPiles y solo recoge DK Piles Meteo,
+    - spots / webcam / Piles:
+      - la webcam de Piles deja de abrir la pagina completa de Comunitat Valenciana,
+      - anadido stream DASH directo `https://streaming.comunitatvalenciana.com/webcam/Piles/manifest.mpd`,
+      - anadida miniatura directa `https://streaming.comunitatvalenciana.com/static/Piles/webcam_mini.png`,
+      - el reproductor queda alineado con el comportamiento de Oliva,
+    - verificacion:
+      - `flutter analyze` limpio,
+      - `deno check supabase/functions/spot-live-observation-collector/index.ts` limpio,
+      - Edge Function redesplegada tras desactivar MeteoPiles,
+      - validacion manual del usuario: el spot de Piles queda completo hasta nueva ampliacion.
