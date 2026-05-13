@@ -6,6 +6,7 @@ class SpotChatEntry {
     required this.postId,
     required this.authorUsername,
     required this.authorDisplayName,
+    this.authorAvatarPath,
     required this.message,
     required this.createdAt,
     required this.isMine,
@@ -20,6 +21,7 @@ class SpotChatEntry {
     required String id,
     required String authorUsername,
     required String authorDisplayName,
+    String? authorAvatarPath,
     required String message,
     required DateTime createdAt,
     required bool isMine,
@@ -31,6 +33,7 @@ class SpotChatEntry {
       postId: id,
       authorUsername: authorUsername,
       authorDisplayName: authorDisplayName,
+      authorAvatarPath: authorAvatarPath,
       message: message,
       createdAt: createdAt,
       isMine: isMine,
@@ -45,6 +48,7 @@ class SpotChatEntry {
     required String postId,
     required String authorUsername,
     required String authorDisplayName,
+    String? authorAvatarPath,
     required String message,
     required DateTime createdAt,
     required bool isMine,
@@ -58,6 +62,7 @@ class SpotChatEntry {
       postId: postId,
       authorUsername: authorUsername,
       authorDisplayName: authorDisplayName,
+      authorAvatarPath: authorAvatarPath,
       message: message,
       createdAt: createdAt,
       isMine: isMine,
@@ -73,6 +78,7 @@ class SpotChatEntry {
   final String postId;
   final String authorUsername;
   final String authorDisplayName;
+  final String? authorAvatarPath;
   final String message;
   final DateTime createdAt;
   final bool isMine;
@@ -91,6 +97,7 @@ List<SpotChatEntry> buildSpotChatEntries(List<SpotSocialPost> feed) {
         id: post.id,
         authorUsername: post.authorUsername,
         authorDisplayName: post.authorDisplayName,
+        authorAvatarPath: post.authorAvatarPath,
         message: post.message,
         createdAt: post.createdAt,
         isMine: post.isMine,
@@ -133,6 +140,7 @@ void _appendReplyEntries({
         postId: postId,
         authorUsername: reply.authorUsername,
         authorDisplayName: reply.authorDisplayName,
+        authorAvatarPath: reply.authorAvatarPath,
         message: reply.message,
         createdAt: reply.createdAt,
         isMine: reply.isMine,

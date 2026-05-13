@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class SpotChatAvatar extends StatelessWidget {
@@ -16,15 +17,12 @@ class SpotChatAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasLocalAvatar =
-        localAvatarPath != null && localAvatarPath!.trim().isNotEmpty;
+    final avatarImage = _avatarImageProvider(localAvatarPath);
     return CircleAvatar(
       radius: 14,
       backgroundColor: _avatarColor(authorUsername),
-      backgroundImage: hasLocalAvatar
-          ? FileImage(File(localAvatarPath!))
-          : null,
-      child: hasLocalAvatar
+      backgroundImage: avatarImage,
+      child: avatarImage != null
           ? null
           : Text(
               _avatarInitials(authorDisplayName),
@@ -35,6 +33,21 @@ class SpotChatAvatar extends StatelessWidget {
               ),
             ),
     );
+  }
+
+  ImageProvider<Object>? _avatarImageProvider(String? path) {
+    if (path == null || path.trim().isEmpty) {
+      return null;
+    }
+    final trimmedPath = path.trim();
+    final uri = Uri.tryParse(trimmedPath);
+    if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
+      return NetworkImage(trimmedPath);
+    }
+    if (!kIsWeb) {
+      return FileImage(File(trimmedPath));
+    }
+    return null;
   }
 
   String _avatarInitials(String displayName) {

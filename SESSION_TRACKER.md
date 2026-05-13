@@ -16442,3 +16442,17 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
     - verificacion:
       - `flutter analyze` limpio,
       - validacion manual del usuario: las tablas ya funcionan bien con la primera columna visible.
+
+
+  - bloque nuevo `2026-05-13`:
+    - correccion de avatares en el chat de spot,
+    - tiempo real trabajado en este tramo: `15 min` aprox. de trabajo efectivo,
+    - spots / chat:
+      - corregido `SpotChatAvatar` para distinguir entre URLs remotas y rutas locales,
+      - evitado que una URL publica de Supabase se intente abrir como archivo local,
+      - anadido `authorAvatarPath` a posts y respuestas sociales para transportar el avatar del autor,
+      - propagado el avatar desde el feed social hasta las entradas renderizadas del chat,
+      - cargados los avatares de otros usuarios desde `public_profiles.avatar_path`, respetando el endurecimiento RLS de `profiles`,
+    - verificacion:
+      - `flutter analyze` limpio,
+      - validacion manual del usuario: ahora se ve correctamente el avatar propio y el de los demas usuarios.

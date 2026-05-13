@@ -145,7 +145,7 @@ class _SpotChatMiniAvatar extends StatelessWidget {
       authorDisplayName: entry.authorDisplayName,
       localAvatarPath: entry.isMine && !kIsWeb
           ? currentUserAvatarLocalPath
-          : null,
+          : entry.authorAvatarPath,
     );
   }
 }

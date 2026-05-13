@@ -60,6 +60,7 @@ class SpotSocialPost {
     required this.isMine,
     List<SpotSocialAttachment>? attachments,
     List<SpotSocialReply>? replies,
+    this.authorAvatarPath,
   }) : attachments = List<SpotSocialAttachment>.from(attachments ?? const []),
        replies = List<SpotSocialReply>.from(replies ?? const []);
 
@@ -68,6 +69,7 @@ class SpotSocialPost {
   final String spotArea;
   final String authorUsername;
   final String authorDisplayName;
+  final String? authorAvatarPath;
   final String message;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -81,6 +83,7 @@ class SpotSocialPost {
     bool? isMine,
     List<SpotSocialAttachment>? attachments,
     List<SpotSocialReply>? replies,
+    String? authorAvatarPath,
   }) {
     return SpotSocialPost(
       id: id,
@@ -88,6 +91,7 @@ class SpotSocialPost {
       spotArea: spotArea,
       authorUsername: authorUsername,
       authorDisplayName: authorDisplayName,
+      authorAvatarPath: authorAvatarPath ?? this.authorAvatarPath,
       message: message ?? this.message,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -110,6 +114,7 @@ class SpotSocialReply {
     this.parentReplyId,
     List<SpotSocialAttachment>? attachments,
     List<SpotSocialReply>? replies,
+    this.authorAvatarPath,
   }) : attachments = List<SpotSocialAttachment>.from(attachments ?? const []),
        replies = List<SpotSocialReply>.from(replies ?? const []);
 
@@ -118,6 +123,7 @@ class SpotSocialReply {
   final String? parentReplyId;
   final String authorUsername;
   final String authorDisplayName;
+  final String? authorAvatarPath;
   final String message;
   final DateTime createdAt;
   final bool isMine;
@@ -130,6 +136,7 @@ class SpotSocialReply {
     bool? isMine,
     List<SpotSocialAttachment>? attachments,
     List<SpotSocialReply>? replies,
+    String? authorAvatarPath,
   }) {
     return SpotSocialReply(
       id: id,
@@ -137,6 +144,7 @@ class SpotSocialReply {
       parentReplyId: parentReplyId ?? this.parentReplyId,
       authorUsername: authorUsername,
       authorDisplayName: authorDisplayName,
+      authorAvatarPath: authorAvatarPath ?? this.authorAvatarPath,
       message: message ?? this.message,
       createdAt: createdAt,
       isMine: isMine ?? this.isMine,

@@ -283,13 +283,15 @@ class SpotSocialClient {
     final repliesByPostId = <String, List<SpotSocialReply>>{};
     final attachmentsByPostId = <String, List<SpotSocialAttachment>>{};
     final attachmentsByReplyId = <String, List<SpotSocialAttachment>>{};
+    var replyMaps = <Map<String, dynamic>>[];
+    var avatarPathByUserId = <String, String?>{};
     if (postIds.isNotEmpty) {
       final replyRows = await _client
           .from('spot_social_replies')
           .select()
           .inFilter('post_id', postIds)
           .order('created_at');
-      final replyMaps = (replyRows as List<dynamic>)
+      replyMaps = (replyRows as List<dynamic>)
           .whereType<Map<String, dynamic>>()
           .toList(growable: false);
       final replyIds = replyMaps
@@ -332,6 +334,11 @@ class SpotSocialClient {
               .add(_attachmentFromRow(row));
         }
       }
+      avatarPathByUserId = await _loadAvatarPathsByUserId([
+        ...postMaps.map((row) => row['author_user_id'] as String?),
+        ...replyMaps.map((row) => row['author_user_id'] as String?),
+      ]);
+
       for (final postId in postIds) {
         final rawReplies = replyMaps
             .where((row) => row['post_id'] == postId)
@@ -339,6 +346,7 @@ class SpotSocialClient {
               (row) => _replyFromRow(
                 row,
                 currentUserId: userId,
+                avatarPathByUserId: avatarPathByUserId,
                 attachments:
                     attachmentsByReplyId[row['id'] as String? ?? ''] ??
                     const [],
@@ -354,6 +362,7 @@ class SpotSocialClient {
           (row) => _postFromRow(
             row,
             currentUserId: userId,
+            avatarPathByUserId: avatarPathByUserId,
             attachments:
                 attachmentsByPostId[row['id'] as String? ?? ''] ?? const [],
             replies: repliesByPostId[row['id'] as String? ?? ''] ?? const [],
@@ -662,6 +671,7 @@ class SpotSocialClient {
   SpotSocialPost _postFromRow(
     Map<String, dynamic> row, {
     required String? currentUserId,
+    Map<String, String?> avatarPathByUserId = const <String, String?>{},
     required List<SpotSocialAttachment> attachments,
     required List<SpotSocialReply> replies,
   }) {
@@ -672,6 +682,7 @@ class SpotSocialClient {
       spotArea: row['spot_area'] as String? ?? '',
       authorUsername: row['author_username'] as String? ?? 'rider',
       authorDisplayName: row['author_display_name'] as String? ?? 'Rider',
+      authorAvatarPath: authorId == null ? null : avatarPathByUserId[authorId],
       message: row['message'] as String? ?? '',
       createdAt:
           DateTime.tryParse(row['created_at'] as String? ?? '')?.toLocal() ??
@@ -688,6 +699,7 @@ class SpotSocialClient {
   SpotSocialReply _replyFromRow(
     Map<String, dynamic> row, {
     required String? currentUserId,
+    Map<String, String?> avatarPathByUserId = const <String, String?>{},
     required List<SpotSocialAttachment> attachments,
   }) {
     final authorId = row['author_user_id'] as String?;
@@ -697,6 +709,7 @@ class SpotSocialClient {
       parentReplyId: row['parent_reply_id'] as String?,
       authorUsername: row['author_username'] as String? ?? 'rider',
       authorDisplayName: row['author_display_name'] as String? ?? 'Rider',
+      authorAvatarPath: authorId == null ? null : avatarPathByUserId[authorId],
       message: row['message'] as String? ?? '',
       createdAt:
           DateTime.tryParse(row['created_at'] as String? ?? '')?.toLocal() ??
@@ -704,6 +717,42 @@ class SpotSocialClient {
       isMine: currentUserId != null && currentUserId == authorId,
       attachments: attachments,
     );
+  }
+
+  Future<Map<String, String?>> _loadAvatarPathsByUserId(
+    Iterable<String?> rawUserIds,
+  ) async {
+    if (!_useSupabase || _client == null) {
+      return const <String, String?>{};
+    }
+    final userIds = rawUserIds
+        .whereType<String>()
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    if (userIds.isEmpty) {
+      return const <String, String?>{};
+    }
+
+    try {
+      final rows = await _client
+          .from('public_profiles')
+          .select('id, avatar_path')
+          .inFilter('id', userIds);
+      final avatarPaths = <String, String?>{};
+      for (final row
+          in (rows as List<dynamic>).whereType<Map<String, dynamic>>()) {
+        final id = (row['id'] as String?)?.trim();
+        if (id == null || id.isEmpty) {
+          continue;
+        }
+        avatarPaths[id] = (row['avatar_path'] as String?)?.trim();
+      }
+      return avatarPaths;
+    } catch (_) {
+      return const <String, String?>{};
+    }
   }
 
   SpotSocialAttachment _attachmentFromRow(Map<String, dynamic> row) {
