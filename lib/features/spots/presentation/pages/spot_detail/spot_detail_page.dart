@@ -128,6 +128,8 @@ class SpotDetailPage extends StatefulWidget {
     this.avametIntradayHistoryClient,
     this.avametObservationClient,
     this.inforatgeOlivaNovaClient,
+    this.meteopilesLiveClient,
+    this.windguruStationLiveClient,
     this.meteoblueCurrentDayClient,
     this.meteostatDayClient,
     this.meteosourceCurrentDayClient,
@@ -155,6 +157,8 @@ class SpotDetailPage extends StatefulWidget {
   final AvametIntradayHistoryClient? avametIntradayHistoryClient;
   final AvametObservationClient? avametObservationClient;
   final InforatgeOlivaNovaClient? inforatgeOlivaNovaClient;
+  final MeteopilesLiveClient? meteopilesLiveClient;
+  final WindguruStationLiveClient? windguruStationLiveClient;
   final MeteoblueCurrentDayClient? meteoblueCurrentDayClient;
   final MeteostatDayClient? meteostatDayClient;
   final MeteosourceCurrentDayClient? meteosourceCurrentDayClient;
@@ -270,6 +274,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   late final AvametIntradayHistoryClient _avametIntradayHistoryClient;
   late final AvametObservationClient _avametObservationClient;
   late final InforatgeOlivaNovaClient _inforatgeOlivaNovaClient;
+  late final MeteopilesLiveClient _meteopilesLiveClient;
+  late final WindguruStationLiveClient _windguruStationLiveClient;
   late final MeteoblueCurrentDayClient _meteoblueCurrentDayClient;
   late final MeteostatDayClient _meteostatDayClient;
   late final MeteosourceCurrentDayClient _meteosourceCurrentDayClient;
@@ -312,6 +318,10 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         widget.avametObservationClient ?? AvametObservationClient();
     _inforatgeOlivaNovaClient =
         widget.inforatgeOlivaNovaClient ?? InforatgeOlivaNovaClient();
+    _meteopilesLiveClient =
+        widget.meteopilesLiveClient ?? MeteopilesLiveClient();
+    _windguruStationLiveClient =
+        widget.windguruStationLiveClient ?? WindguruStationLiveClient();
     _meteoblueCurrentDayClient =
         widget.meteoblueCurrentDayClient ?? MeteoblueCurrentDayClient();
     _meteostatDayClient = widget.meteostatDayClient ?? MeteostatDayClient();

@@ -103,6 +103,14 @@ extension _SpotDetailLiveHistoryDataLoader on _SpotDetailPageState {
           .toList(growable: false);
     }
 
+    if (station.provider == 'METEOPILES') {
+      return const <_HistoricalWindPoint>[];
+    }
+
+    if (station.provider == 'WINDGURU_STATION') {
+      return const <_HistoricalWindPoint>[];
+    }
+
     if (station.provider == 'AEMET' && station.stationId != null) {
       final observationSeries = await _aemetObservationClient
           .fetchStationObservations(

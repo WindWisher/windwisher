@@ -36,6 +36,7 @@ enum _StationSourceKind {
 class _StationLiveData {
   const _StationLiveData({
     required this.windKnots,
+    this.windMinKnots,
     required this.windDeg,
     required this.gustKnots,
     required this.tempC,
@@ -47,6 +48,7 @@ class _StationLiveData {
   });
 
   final double? windKnots;
+  final double? windMinKnots;
   final int? windDeg;
   final double? gustKnots;
   final double? tempC;

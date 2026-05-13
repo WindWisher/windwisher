@@ -17,6 +17,7 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
 
     try {
       final usesOlivaCanalLiveProfile = _usesOlivaCanalLiveProfile();
+      final usesPilesLiveProfile = _usesPilesLiveProfile();
       final stations = <_NearbyStation>[];
       final liveDataByStation = <String, _StationLiveData>{};
       final historyByStation = <String, List<_HistoricalWindPoint>>{};
@@ -26,7 +27,7 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
 
       List<AemetObservationStationSnapshot> snapshots =
           const <AemetObservationStationSnapshot>[];
-      if (!usesOlivaCanalLiveProfile) {
+      if (!usesOlivaCanalLiveProfile && !usesPilesLiveProfile) {
         try {
           snapshots = await _aemetObservationClient.fetchNearestStations(
             latitude: latitude,
@@ -96,6 +97,14 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
 
       if (usesOlivaCanalLiveProfile) {
         _addOlivaLiveStations(
+          latitude: latitude,
+          longitude: longitude,
+          stations: stations,
+          seenKeys: seenKeys,
+        );
+      }
+      if (usesPilesLiveProfile) {
+        _addPilesLiveStations(
           latitude: latitude,
           longitude: longitude,
           stations: stations,

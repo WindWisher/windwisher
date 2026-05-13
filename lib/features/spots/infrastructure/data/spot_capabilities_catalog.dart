@@ -7,6 +7,7 @@ const String olivaCanalGorgsPreferredLiveStationKey = 'avamet:c25m181e07';
 const String olivaCanalGorgsSpotName = 'Oliva Canal - Platja dels Gorgs';
 const String pilesLiveStationProfile = 'piles';
 const String pilesWebcamProfile = 'piles_webcams';
+const String pilesPreferredLiveStationKey = 'avamet:c25m181e07';
 const String pilesSpotName = 'Piles';
 
 const olivaCanalGorgsSpotCapabilities = SpotCapabilities(
@@ -25,8 +26,8 @@ const pilesSpotCapabilities = SpotCapabilities(
   webcamProfile: pilesWebcamProfile,
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
+  preferredLiveStationKey: pilesPreferredLiveStationKey,
   portusRealtimeStationIds: <int>[4634],
-  includeOlivaReferenceLiveStations: true,
 );
 
 SpotCapabilities defaultSpotCapabilitiesForName(String name) {

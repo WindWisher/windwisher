@@ -62,34 +62,44 @@ extension _SpotDetailLiveSection on _SpotDetailPageState {
   Widget _buildLiveMetricsGrid() {
     final liveData = _selectedLiveData();
     final station = _findStationByKey(_selectedStation);
-    return _LiveMetricsGrid(
-      metrics: [
+    final metrics = <_LiveMetricData>[
+      if (liveData.windKnots != null)
         _LiveMetricData(
           label: 'Viento',
           value: _formatWind(liveData.windKnots),
         ),
+      if (liveData.gustKnots != null)
         _LiveMetricData(
           label: station?.provider == 'INFORATGE' ? 'Racha max.' : 'Racha',
           value: _formatWind(liveData.gustKnots),
         ),
+      if (liveData.windMinKnots != null)
+        _LiveMetricData(
+          label: 'Viento min.',
+          value: _formatWind(liveData.windMinKnots),
+        ),
+      if (liveData.tempC != null)
         _LiveMetricData(
           label: 'Temperatura',
           value: _formatOptionalDouble(liveData.tempC, ' C'),
         ),
+      if (liveData.pressureHpa != null)
         _LiveMetricData(
           label: 'Presion',
           value: _formatOptionalInt(liveData.pressureHpa, ' hPa'),
         ),
+      if (liveData.humidityPct != null)
         _LiveMetricData(
           label: 'Humedad',
           value: _formatOptionalInt(liveData.humidityPct, '%'),
         ),
+      if (liveData.rainMm != null)
         _LiveMetricData(
           label: 'Lluvia',
           value: _formatOptionalDouble(liveData.rainMm, ' mm'),
         ),
-      ],
-    );
+    ];
+    return _LiveMetricsGrid(metrics: metrics);
   }
 
   Widget _buildLiveActionsRow(_NearbyStation station) {

@@ -81,6 +81,62 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     );
   }
 
+  void _addPilesLiveStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametOlivaStationKey,
+      stationName: _avametOlivaStationName,
+      provider: 'AVAMET',
+      stationId: _avametOlivaStationId,
+      latitude: _avametOlivaStationLat,
+      longitude: _avametOlivaStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametGandiaCamiMarStationKey,
+      stationName: _avametGandiaCamiMarStationName,
+      provider: 'AVAMET',
+      stationId: _avametGandiaCamiMarStationId,
+      latitude: _avametGandiaCamiMarStationLat,
+      longitude: _avametGandiaCamiMarStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _meteopilesStationKey,
+      stationName: _meteopilesStationName,
+      provider: 'METEOPILES',
+      stationId: _meteopilesStationId,
+      latitude: _meteopilesStationLat,
+      longitude: _meteopilesStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _windguruDkPilesStationKey,
+      stationName: _windguruDkPilesStationName,
+      provider: 'WINDGURU_STATION',
+      stationId: _windguruDkPilesStationId,
+      latitude: _windguruDkPilesStationLat,
+      longitude: _windguruDkPilesStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+  }
+
   Future<void> _addConfiguredPortusStationMetadata({
     required double latitude,
     required double longitude,
@@ -178,10 +234,18 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     return capabilities.includeOlivaReferenceLiveStations;
   }
 
+  bool _usesPilesLiveProfile() {
+    final capabilities = _resolvedSpotCapabilities();
+    return capabilities.liveStationProfile == pilesLiveStationProfile;
+  }
+
   SpotCapabilities _resolvedSpotCapabilities() {
     final capabilities = widget.capabilities;
     if (capabilities.liveStationProfile == olivaCanalGorgsLiveStationProfile) {
       return olivaCanalGorgsSpotCapabilities;
+    }
+    if (capabilities.liveStationProfile == pilesLiveStationProfile) {
+      return pilesSpotCapabilities;
     }
 
     final defaultCapabilities = defaultSpotCapabilitiesForName(widget.name);

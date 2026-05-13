@@ -18,6 +18,24 @@ const String _avametOlivaPlayaStationName = 'Oliva Playa';
 const double _avametOlivaPlayaStationLat = 38.9269;
 const double _avametOlivaPlayaStationLon = -0.0958;
 
+const String _avametGandiaCamiMarStationId = 'c25m131e15';
+const String _avametGandiaCamiMarStationKey = 'avamet:c25m131e15';
+const String _avametGandiaCamiMarStationName = 'Gandia Cami de la mar';
+const double _avametGandiaCamiMarStationLat = 38.982786;
+const double _avametGandiaCamiMarStationLon = -0.166017;
+
+const String _meteopilesStationId = 'meteopiles';
+const String _meteopilesStationKey = 'meteopiles:meteopiles';
+const String _meteopilesStationName = 'Meteo Piles';
+const double _meteopilesStationLat = 38.9421;
+const double _meteopilesStationLon = -0.1344;
+
+const String _windguruDkPilesStationId = '51';
+const String _windguruDkPilesStationKey = 'windguru-station:51';
+const String _windguruDkPilesStationName = 'DK Piles Meteo';
+const double _windguruDkPilesStationLat = 38.9519444444;
+const double _windguruDkPilesStationLon = -0.1144444444;
+
 const String _meteoclimaticOlivaNovaStationId = 'ESPVA4600000046780B';
 const String _meteoclimaticOlivaNovaStationKey =
     'meteoclimatic:ESPVA4600000046780B';

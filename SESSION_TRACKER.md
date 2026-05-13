@@ -16511,3 +16511,24 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
     - verificacion:
       - `flutter analyze` limpio,
       - validacion manual del usuario: la apertura del mapa de viento se nota mas rapida.
+
+
+  - bloque nuevo `2026-05-13`:
+    - construccion del apartado Live para el spot oficial de Piles,
+    - tiempo real trabajado en este tramo: `40 min` aprox. de trabajo efectivo,
+    - spots / live / Piles:
+      - Piles pasa a tener perfil Live propio y deja de heredar todas las estaciones de Oliva,
+      - configurada la estacion preferida por defecto como Club Nautico de Oliva por cercania y utilidad para el spot,
+      - mantenida la estacion de Puertos del Estado Gandia Serpis como estacion util para Piles,
+      - anadida la estacion AVAMET Gandia Cami de la mar solo para Piles,
+      - verificado que Gandia Serpis y Gandia Cami de la mar no son la misma estacion,
+      - anadida la estacion Meteo Piles desde `meteopiles.es` para datos live del spot,
+      - anadida la estacion DK Piles Meteo desde el widget Windguru Live `id_station=51`,
+      - DK Piles Meteo queda limitada al spot de Piles y no aparece en Oliva,
+      - el cliente Windguru Live usa referer DK Piles para leer el dato actual de viento, racha, viento minimo, direccion y hora,
+      - el historico queda desactivado para Meteo Piles y DK Piles porque las fuentes descubiertas solo exponen dato actual fiable,
+      - las tarjetas Live ahora se construyen solo con metricas disponibles para evitar tarjetas vacias,
+      - DK Piles muestra viento, racha y viento minimo sin ensenar temperatura/presion/humedad/lluvia cuando la fuente devuelve valores nulos,
+    - verificacion:
+      - `flutter analyze` limpio,
+      - validacion manual del usuario: DK Piles funciona estupendamente y las tarjetas vacias ya no aparecen.
