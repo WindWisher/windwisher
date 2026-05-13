@@ -16415,3 +16415,15 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - separada la construccion de la lista y tarjetas de alarmas guardadas en helpers dedicados,
     - verificacion:
       - `flutter analyze` limpio tras el refactor.
+
+
+  - bloque nuevo `2026-05-13`:
+    - continuacion del refactor de widgets de alarmas Live,
+    - tiempo real trabajado en este tramo: `10 min` aprox. de trabajo efectivo,
+    - spots / live / alarmas:
+      - dividido `live_alarm_form_widgets.dart` en widgets especificos de tiempo/viento, direcciones y repeticion/guardar,
+      - anadidos `live_alarm_time_wind_widgets.dart`, `live_alarm_direction_widgets.dart` y `live_alarm_repeat_widgets.dart`,
+      - `live_alarm_form_widgets.dart` queda centrado en cabecera, tarjeta y selector de estacion,
+      - pulida la tarjeta de alarmas guardadas separando acciones y chips de metadatos dentro de `live_saved_alarm_widgets.dart`,
+    - verificacion:
+      - `flutter analyze` limpio tras el refactor.

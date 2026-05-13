@@ -121,20 +121,7 @@ class _LiveSavedAlarmCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              Column(
-                children: [
-                  IconButton(
-                    tooltip: 'Editar',
-                    onPressed: onEdit,
-                    icon: const Icon(Icons.edit_rounded),
-                  ),
-                  IconButton(
-                    tooltip: 'Eliminar',
-                    onPressed: onDelete,
-                    icon: const Icon(Icons.delete_outline_rounded),
-                  ),
-                ],
-              ),
+              _LiveSavedAlarmActions(onEdit: onEdit, onDelete: onDelete),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -145,31 +132,71 @@ class _LiveSavedAlarmCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          Wrap(
-            spacing: AppSpacing.xs,
-            runSpacing: AppSpacing.xs,
-            children: [
-              _AlarmMetaChip(icon: Icons.air_rounded, label: windRangeLabel),
-              _AlarmMetaChip(
-                icon: Icons.schedule_rounded,
-                label: timeRangeLabel,
-              ),
-              _AlarmMetaChip(
-                icon: Icons.navigation_rounded,
-                label: alarm.directions.join('/'),
-              ),
-              _AlarmMetaChip(
-                icon: Icons.repeat_rounded,
-                label: repeatWindowLabel,
-              ),
-              _AlarmMetaChip(
-                icon: Icons.filter_3_rounded,
-                label: '${alarm.maxRepeats} avisos',
-              ),
-            ],
+          _LiveSavedAlarmMetaChips(
+            windRangeLabel: windRangeLabel,
+            timeRangeLabel: timeRangeLabel,
+            directionsLabel: alarm.directions.join('/'),
+            repeatWindowLabel: repeatWindowLabel,
+            maxRepeatsLabel: '${alarm.maxRepeats} avisos',
           ),
         ],
       ),
+    );
+  }
+}
+
+class _LiveSavedAlarmActions extends StatelessWidget {
+  const _LiveSavedAlarmActions({required this.onEdit, required this.onDelete});
+
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        IconButton(
+          tooltip: 'Editar',
+          onPressed: onEdit,
+          icon: const Icon(Icons.edit_rounded),
+        ),
+        IconButton(
+          tooltip: 'Eliminar',
+          onPressed: onDelete,
+          icon: const Icon(Icons.delete_outline_rounded),
+        ),
+      ],
+    );
+  }
+}
+
+class _LiveSavedAlarmMetaChips extends StatelessWidget {
+  const _LiveSavedAlarmMetaChips({
+    required this.windRangeLabel,
+    required this.timeRangeLabel,
+    required this.directionsLabel,
+    required this.repeatWindowLabel,
+    required this.maxRepeatsLabel,
+  });
+
+  final String windRangeLabel;
+  final String timeRangeLabel;
+  final String directionsLabel;
+  final String repeatWindowLabel;
+  final String maxRepeatsLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: AppSpacing.xs,
+      runSpacing: AppSpacing.xs,
+      children: [
+        _AlarmMetaChip(icon: Icons.air_rounded, label: windRangeLabel),
+        _AlarmMetaChip(icon: Icons.schedule_rounded, label: timeRangeLabel),
+        _AlarmMetaChip(icon: Icons.navigation_rounded, label: directionsLabel),
+        _AlarmMetaChip(icon: Icons.repeat_rounded, label: repeatWindowLabel),
+        _AlarmMetaChip(icon: Icons.filter_3_rounded, label: maxRepeatsLabel),
+      ],
     );
   }
 }
