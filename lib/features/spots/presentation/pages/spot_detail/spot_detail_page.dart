@@ -34,6 +34,7 @@ import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/fo
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/tables/meteoblue/meteoblue_forecast_supplement_card.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/tables/meteosource/meteosource_forecast_supplement_card.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/tables/meteostat/meteostat_day_supplement_card.dart';
+import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/tables/shared/forecast_table_chrome.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/tables/windguru/windguru_forecast_card.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/webcam/webcam_player_page.dart';
 import 'package:windwisher/features/spots/infrastructure/services/spot_social_client.dart';

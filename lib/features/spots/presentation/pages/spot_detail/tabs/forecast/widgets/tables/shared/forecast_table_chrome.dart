@@ -234,6 +234,83 @@ class ForecastCompactLabelCell extends StatelessWidget {
   }
 }
 
+class ForecastStickyLabelTable extends StatelessWidget {
+  const ForecastStickyLabelTable({
+    super.key,
+    required this.rows,
+    required this.labelColumnWidth,
+    required this.valueColumnWidth,
+    this.border,
+    this.physics = const BouncingScrollPhysics(),
+  });
+
+  final List<TableRow> rows;
+  final double labelColumnWidth;
+  final double valueColumnWidth;
+  final TableBorder? border;
+  final ScrollPhysics physics;
+
+  @override
+  Widget build(BuildContext context) {
+    if (rows.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final colorScheme = Theme.of(context).colorScheme;
+    final labelRows = rows
+        .where((row) => row.children.isNotEmpty)
+        .map(
+          (row) => TableRow(
+            decoration: row.decoration,
+            children: [row.children.first],
+          ),
+        )
+        .toList(growable: false);
+    final valueRows = rows
+        .where((row) => row.children.length > 1)
+        .map(
+          (row) => TableRow(
+            decoration: row.decoration,
+            children: row.children.skip(1).toList(growable: false),
+          ),
+        )
+        .toList(growable: false);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            border: Border(
+              right: BorderSide(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.7),
+                width: 0.8,
+              ),
+            ),
+          ),
+          child: Table(
+            defaultColumnWidth: FixedColumnWidth(labelColumnWidth),
+            border: border,
+            children: labelRows,
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: physics,
+            child: Table(
+              defaultColumnWidth: FixedColumnWidth(valueColumnWidth),
+              border: border,
+              children: valueRows,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class ForecastCompactValueCell extends StatelessWidget {
   const ForecastCompactValueCell(
     this.text, {

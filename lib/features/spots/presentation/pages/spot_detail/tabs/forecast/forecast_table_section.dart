@@ -206,264 +206,255 @@ extension _SpotDetailForecastTableSection on _SpotDetailPageState {
             fullscreenResolution,
           );
     final columnWidth = _forecastColumnWidth(selectedResolution);
-
-    final tableScroll = SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Table(
-        defaultColumnWidth: FixedColumnWidth(columnWidth),
-        border: TableBorder(
-          horizontalInside: BorderSide(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.7),
-            width: 0.6,
-          ),
-          verticalInside: BorderSide(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.45),
-            width: 0.5,
-          ),
+    final tableBorder = TableBorder(
+      horizontalInside: BorderSide(
+        color: colorScheme.outlineVariant.withValues(alpha: 0.7),
+        width: 0.6,
+      ),
+      verticalInside: BorderSide(
+        color: colorScheme.outlineVariant.withValues(alpha: 0.45),
+        width: 0.5,
+      ),
+    );
+    final tableRows = <TableRow>[
+      TableRow(
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
         ),
         children: [
-          TableRow(
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withValues(
-                alpha: 0.45,
+          _compactLabelCell('Hora', minHeight: fullscreenRowHeight),
+          ...rows.asMap().entries.map(
+            (entry) => _forecastHourCell(
+              rows,
+              entry.key,
+              minHeight: fullscreenRowHeight,
+            ),
+          ),
+        ],
+      ),
+      _forecastMetricRow(
+        label: 'Viento',
+        rows: rows,
+        valueText: (row) => '${row.windKnots}',
+        color: (row) => _windColor(row.windKnots),
+        bold: true,
+        minHeight: fullscreenRowHeight,
+      ),
+      if (rows.any((row) => row.gustKnots != null))
+        _forecastMetricRow(
+          label: 'Racha',
+          rows: rows,
+          valueText: (row) => _nullableMetricText(row.gustKnots?.toString()),
+          color: (row) =>
+              row.gustKnots == null ? null : _windColor(row.gustKnots!),
+          minHeight: fullscreenRowHeight,
+        ),
+      TableRow(
+        children: [
+          _compactLabelCell('Dir', minHeight: fullscreenRowHeight),
+          ...rows.asMap().entries.map(
+            (entry) => _forecastColumnCell(
+              isDayStart: _isForecastDayStart(rows, entry.key),
+              child: _compactDirectionCell(
+                entry.value.windDeg,
+                minHeight: fullscreenRowHeight,
               ),
             ),
-            children: [
-              _compactLabelCell('Hora', minHeight: fullscreenRowHeight),
-              ...rows.asMap().entries.map(
-                (entry) => _forecastHourCell(
-                  rows,
-                  entry.key,
+          ),
+        ],
+      ),
+      if (rows.any((row) => row.waveM != null))
+        _forecastMetricRow(
+          label: 'Olas',
+          rows: rows,
+          valueText: (row) =>
+              _nullableMetricText(row.waveM?.toStringAsFixed(1)),
+          color: (row) => row.waveM == null
+              ? null
+              : const Color(0xFFB3E5FC).withValues(alpha: 0.75),
+          minHeight: fullscreenRowHeight,
+        ),
+      if (rows.any((row) => row.wavePeriodSeconds != null))
+        _forecastMetricRow(
+          label: 'Periodo',
+          rows: rows,
+          valueText: (row) =>
+              _nullableMetricText(row.wavePeriodSeconds?.toStringAsFixed(1)),
+          minHeight: fullscreenRowHeight,
+        ),
+      if (rows.any((row) => row.waveDirDeg != null))
+        TableRow(
+          children: [
+            _compactLabelCell('Dir ola', minHeight: fullscreenRowHeight),
+            ...rows.asMap().entries.map(
+              (entry) => _forecastColumnCell(
+                isDayStart: _isForecastDayStart(rows, entry.key),
+                child: _compactNullableDirectionCell(
+                  entry.value.waveDirDeg,
                   minHeight: fullscreenRowHeight,
                 ),
               ),
-            ],
-          ),
-          _forecastMetricRow(
-            label: 'Viento',
-            rows: rows,
-            valueText: (row) => '${row.windKnots}',
-            color: (row) => _windColor(row.windKnots),
-            bold: true,
-            minHeight: fullscreenRowHeight,
-          ),
-          if (rows.any((row) => row.gustKnots != null))
-            _forecastMetricRow(
-              label: 'Racha',
-              rows: rows,
-              valueText: (row) =>
-                  _nullableMetricText(row.gustKnots?.toString()),
-              color: (row) =>
-                  row.gustKnots == null ? null : _windColor(row.gustKnots!),
-              minHeight: fullscreenRowHeight,
             ),
-          TableRow(
-            children: [
-              _compactLabelCell('Dir', minHeight: fullscreenRowHeight),
-              ...rows.asMap().entries.map(
-                (entry) => _forecastColumnCell(
-                  isDayStart: _isForecastDayStart(rows, entry.key),
-                  child: _compactDirectionCell(
-                    entry.value.windDeg,
-                    minHeight: fullscreenRowHeight,
+          ],
+        ),
+      if (rows.any((row) => row.pressureHpa != null))
+        _forecastMetricRow(
+          label: 'Presion',
+          rows: rows,
+          valueText: (row) => _nullableMetricText(row.pressureHpa?.toString()),
+          textColor: (row) => row.pressureHpa == null
+              ? colorScheme.onSurfaceVariant.withValues(alpha: 0.55)
+              : colorScheme.onSurfaceVariant,
+          minHeight: fullscreenRowHeight,
+        ),
+      if (rows.any((row) => row.waterTempC != null))
+        TableRow(
+          children: [
+            _compactLabelCell('Agua', minHeight: fullscreenRowHeight),
+            ...rows.asMap().entries.map(
+              (entry) => _forecastColumnCell(
+                isDayStart: _isForecastDayStart(rows, entry.key),
+                child: _compactValueCell(
+                  _nullableMetricText(
+                    entry.value.waterTempC == null
+                        ? null
+                        : '${entry.value.waterTempC}${_SpotDetailPageState._degreeSymbol}',
                   ),
+                  color: entry.value.waterTempC == null
+                      ? null
+                      : _waterTempColor(entry.value.waterTempC!),
+                  minHeight: fullscreenRowHeight,
                 ),
               ),
-            ],
-          ),
-          if (rows.any((row) => row.waveM != null))
-            _forecastMetricRow(
-              label: 'Olas',
-              rows: rows,
-              valueText: (row) =>
-                  _nullableMetricText(row.waveM?.toStringAsFixed(1)),
-              color: (row) => row.waveM == null
-                  ? null
-                  : const Color(0xFFB3E5FC).withValues(alpha: 0.75),
-              minHeight: fullscreenRowHeight,
             ),
-          if (rows.any((row) => row.wavePeriodSeconds != null))
-            _forecastMetricRow(
-              label: 'Periodo',
-              rows: rows,
-              valueText: (row) => _nullableMetricText(
-                row.wavePeriodSeconds?.toStringAsFixed(1),
+          ],
+        ),
+      if (rows.any((row) => row.currentMps != null))
+        TableRow(
+          children: [
+            _compactLabelCell('Corr.', minHeight: fullscreenRowHeight),
+            ...rows.asMap().entries.map(
+              (entry) => _forecastColumnCell(
+                isDayStart: _isForecastDayStart(rows, entry.key),
+                child: _compactValueCell(
+                  _nullableMetricText(
+                    entry.value.currentMps?.toStringAsFixed(2),
+                  ),
+                  color: entry.value.currentMps == null
+                      ? null
+                      : const Color(0xFF80CBC4).withValues(alpha: 0.65),
+                  minHeight: fullscreenRowHeight,
+                ),
               ),
-              minHeight: fullscreenRowHeight,
             ),
-          if (rows.any((row) => row.waveDirDeg != null))
-            TableRow(
-              children: [
-                _compactLabelCell('Dir ola', minHeight: fullscreenRowHeight),
-                ...rows.asMap().entries.map(
-                  (entry) => _forecastColumnCell(
-                    isDayStart: _isForecastDayStart(rows, entry.key),
-                    child: _compactNullableDirectionCell(
-                      entry.value.waveDirDeg,
-                      minHeight: fullscreenRowHeight,
-                    ),
-                  ),
+          ],
+        ),
+      if (rows.any((row) => row.currentDirDeg != null))
+        TableRow(
+          children: [
+            _compactLabelCell('Dir corr.', minHeight: fullscreenRowHeight),
+            ...rows.asMap().entries.map(
+              (entry) => _forecastColumnCell(
+                isDayStart: _isForecastDayStart(rows, entry.key),
+                child: _compactNullableDirectionCell(
+                  entry.value.currentDirDeg,
+                  minHeight: fullscreenRowHeight,
                 ),
-              ],
+              ),
             ),
-          if (rows.any((row) => row.pressureHpa != null))
-            _forecastMetricRow(
-              label: 'Presion',
-              rows: rows,
-              valueText: (row) =>
-                  _nullableMetricText(row.pressureHpa?.toString()),
-              textColor: (row) => row.pressureHpa == null
-                  ? colorScheme.onSurfaceVariant.withValues(alpha: 0.55)
-                  : colorScheme.onSurfaceVariant,
-              minHeight: fullscreenRowHeight,
-            ),
-          if (rows.any((row) => row.waterTempC != null))
-            TableRow(
-              children: [
-                _compactLabelCell('Agua', minHeight: fullscreenRowHeight),
-                ...rows.asMap().entries.map(
-                  (entry) => _forecastColumnCell(
-                    isDayStart: _isForecastDayStart(rows, entry.key),
-                    child: _compactValueCell(
-                      _nullableMetricText(
-                        entry.value.waterTempC == null
-                            ? null
-                            : '${entry.value.waterTempC}${_SpotDetailPageState._degreeSymbol}',
-                      ),
-                      color: entry.value.waterTempC == null
-                          ? null
-                          : _waterTempColor(entry.value.waterTempC!),
-                      minHeight: fullscreenRowHeight,
-                    ),
+          ],
+        ),
+      if (rows.any((row) => row.salinityPsu != null))
+        TableRow(
+          children: [
+            _compactLabelCell('Sal.', minHeight: fullscreenRowHeight),
+            ...rows.asMap().entries.map(
+              (entry) => _forecastColumnCell(
+                isDayStart: _isForecastDayStart(rows, entry.key),
+                child: _compactValueCell(
+                  _nullableMetricText(
+                    entry.value.salinityPsu?.toStringAsFixed(1),
                   ),
+                  minHeight: fullscreenRowHeight,
                 ),
-              ],
+              ),
             ),
-          if (rows.any((row) => row.currentMps != null))
-            TableRow(
-              children: [
-                _compactLabelCell('Corr.', minHeight: fullscreenRowHeight),
-                ...rows.asMap().entries.map(
-                  (entry) => _forecastColumnCell(
-                    isDayStart: _isForecastDayStart(rows, entry.key),
-                    child: _compactValueCell(
-                      _nullableMetricText(
-                        entry.value.currentMps?.toStringAsFixed(2),
-                      ),
-                      color: entry.value.currentMps == null
-                          ? null
-                          : const Color(0xFF80CBC4).withValues(alpha: 0.65),
-                      minHeight: fullscreenRowHeight,
-                    ),
+          ],
+        ),
+      if (rows.any((row) => row.tempC != null))
+        TableRow(
+          children: [
+            _compactLabelCell('Aire', minHeight: fullscreenRowHeight),
+            ...rows.asMap().entries.map(
+              (entry) => _forecastColumnCell(
+                isDayStart: _isForecastDayStart(rows, entry.key),
+                child: _compactValueCell(
+                  _nullableMetricText(
+                    entry.value.tempC == null
+                        ? null
+                        : '${entry.value.tempC}${_SpotDetailPageState._degreeSymbol}',
                   ),
+                  color: entry.value.tempC == null
+                      ? null
+                      : _airTempColor(entry.value.tempC!),
+                  minHeight: fullscreenRowHeight,
                 ),
-              ],
+              ),
             ),
-          if (rows.any((row) => row.currentDirDeg != null))
-            TableRow(
-              children: [
-                _compactLabelCell('Dir corr.', minHeight: fullscreenRowHeight),
-                ...rows.asMap().entries.map(
-                  (entry) => _forecastColumnCell(
-                    isDayStart: _isForecastDayStart(rows, entry.key),
-                    child: _compactNullableDirectionCell(
-                      entry.value.currentDirDeg,
-                      minHeight: fullscreenRowHeight,
-                    ),
+          ],
+        ),
+      if (rows.any((row) => row.cloudCoverPct != null))
+        TableRow(
+          children: [
+            _compactLabelCell('Nubes', minHeight: fullscreenRowHeight),
+            ...rows.asMap().entries.map(
+              (entry) => _forecastColumnCell(
+                isDayStart: _isForecastDayStart(rows, entry.key),
+                child: _compactValueCell(
+                  _nullableMetricText(
+                    entry.value.cloudCoverPct == null
+                        ? null
+                        : '${entry.value.cloudCoverPct}%',
                   ),
+                  color: entry.value.cloudCoverPct == null
+                      ? null
+                      : colorScheme.surfaceContainerHighest.withValues(
+                          alpha: 0.24,
+                        ),
+                  minHeight: fullscreenRowHeight,
                 ),
-              ],
+              ),
             ),
-          if (rows.any((row) => row.salinityPsu != null))
-            TableRow(
-              children: [
-                _compactLabelCell('Sal.', minHeight: fullscreenRowHeight),
-                ...rows.asMap().entries.map(
-                  (entry) => _forecastColumnCell(
-                    isDayStart: _isForecastDayStart(rows, entry.key),
-                    child: _compactValueCell(
-                      _nullableMetricText(
-                        entry.value.salinityPsu?.toStringAsFixed(1),
-                      ),
-                      minHeight: fullscreenRowHeight,
-                    ),
-                  ),
+          ],
+        ),
+      if (rows.any((row) => row.rainMm != null))
+        TableRow(
+          children: [
+            _compactLabelCell('Lluvia', minHeight: fullscreenRowHeight),
+            ...rows.asMap().entries.map(
+              (entry) => _forecastColumnCell(
+                isDayStart: _isForecastDayStart(rows, entry.key),
+                child: _compactValueCell(
+                  entry.value.rainMm == null
+                      ? '-'
+                      : entry.value.rainMm! > 0
+                      ? entry.value.rainMm!.toStringAsFixed(1)
+                      : '-',
+                  color: entry.value.rainMm == null
+                      ? null
+                      : _rainColor(entry.value.rainMm!).withValues(alpha: 0.8),
+                  minHeight: fullscreenRowHeight,
                 ),
-              ],
+              ),
             ),
-          if (rows.any((row) => row.tempC != null))
-            TableRow(
-              children: [
-                _compactLabelCell('Aire', minHeight: fullscreenRowHeight),
-                ...rows.asMap().entries.map(
-                  (entry) => _forecastColumnCell(
-                    isDayStart: _isForecastDayStart(rows, entry.key),
-                    child: _compactValueCell(
-                      _nullableMetricText(
-                        entry.value.tempC == null
-                            ? null
-                            : '${entry.value.tempC}${_SpotDetailPageState._degreeSymbol}',
-                      ),
-                      color: entry.value.tempC == null
-                          ? null
-                          : _airTempColor(entry.value.tempC!),
-                      minHeight: fullscreenRowHeight,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          if (rows.any((row) => row.cloudCoverPct != null))
-            TableRow(
-              children: [
-                _compactLabelCell('Nubes', minHeight: fullscreenRowHeight),
-                ...rows.asMap().entries.map(
-                  (entry) => _forecastColumnCell(
-                    isDayStart: _isForecastDayStart(rows, entry.key),
-                    child: _compactValueCell(
-                      _nullableMetricText(
-                        entry.value.cloudCoverPct == null
-                            ? null
-                            : '${entry.value.cloudCoverPct}%',
-                      ),
-                      color: entry.value.cloudCoverPct == null
-                          ? null
-                          : colorScheme.surfaceContainerHighest.withValues(
-                              alpha: 0.24,
-                            ),
-                      minHeight: fullscreenRowHeight,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          if (rows.any((row) => row.rainMm != null))
-            TableRow(
-              children: [
-                _compactLabelCell('Lluvia', minHeight: fullscreenRowHeight),
-                ...rows.asMap().entries.map(
-                  (entry) => _forecastColumnCell(
-                    isDayStart: _isForecastDayStart(rows, entry.key),
-                    child: _compactValueCell(
-                      entry.value.rainMm == null
-                          ? '-'
-                          : entry.value.rainMm! > 0
-                          ? entry.value.rainMm!.toStringAsFixed(1)
-                          : '-',
-                      color: entry.value.rainMm == null
-                          ? null
-                          : _rainColor(
-                              entry.value.rainMm!,
-                            ).withValues(alpha: 0.8),
-                      minHeight: fullscreenRowHeight,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-        ],
-      ),
+          ],
+        ),
+    ];
+    final tableScroll = ForecastStickyLabelTable(
+      rows: tableRows,
+      labelColumnWidth: 72,
+      valueColumnWidth: columnWidth,
+      border: tableBorder,
     );
 
     return Stack(

@@ -11,10 +11,25 @@ class AemetBeachForecastTable extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    const labelColumnWidth = 116.0;
+    const dayColumnWidth = 148.0;
+    const headerHeight = 58.0;
+    const rowHeight = 76.0;
+    const rowGap = 8.0;
+    const rowLabels = [
+      'Cielo',
+      'Viento',
+      'Oleaje',
+      'Temp. max',
+      'Temp. agua',
+      'Sens. termica',
+      'UV max',
+    ];
 
     Widget dayHeader(AemetBeachForecastDay day) {
       return Container(
-        width: 148,
+        width: dayColumnWidth,
+        height: headerHeight,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerHighest,
@@ -38,17 +53,22 @@ class AemetBeachForecastTable extends StatelessWidget {
 
     Widget rowLabel(String label) {
       return SizedBox(
-        width: 116,
-        child: Text(
-          label,
-          style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+        width: labelColumnWidth,
+        height: rowHeight,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            label,
+            style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+          ),
         ),
       );
     }
 
     Widget valueCell(String primary, [String? secondary]) {
       return Container(
-        width: 148,
+        width: dayColumnWidth,
+        height: rowHeight,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerLowest,
@@ -73,8 +93,8 @@ class AemetBeachForecastTable extends StatelessWidget {
       );
     }
 
-    Widget dataRow(String label, List<Widget> values) {
-      final rowChildren = <Widget>[rowLabel(label), const SizedBox(width: 8)];
+    Widget dataRow(List<Widget> values) {
+      final rowChildren = <Widget>[];
       for (var i = 0; i < values.length; i++) {
         rowChildren.add(values[i]);
         if (i != values.length - 1) {
@@ -145,96 +165,117 @@ class AemetBeachForecastTable extends StatelessWidget {
           const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.all(12),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const SizedBox(width: 124),
-                      ...(() {
-                        final children = <Widget>[];
-                        for (var i = 0; i < data.days.length; i++) {
-                          children.add(dayHeader(data.days[i]));
-                          if (i != data.days.length - 1) {
-                            children.add(const SizedBox(width: 8));
-                          }
-                        }
-                        return children;
-                      })(),
-                    ],
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(
+                      width: labelColumnWidth,
+                      height: headerHeight,
+                    ),
+                    const SizedBox(height: 10),
+                    ...rowLabels.map(
+                      (label) => Padding(
+                        padding: const EdgeInsets.only(bottom: rowGap),
+                        child: rowLabel(label),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            ...(() {
+                              final children = <Widget>[];
+                              for (var i = 0; i < data.days.length; i++) {
+                                children.add(dayHeader(data.days[i]));
+                                if (i != data.days.length - 1) {
+                                  children.add(const SizedBox(width: 8));
+                                }
+                              }
+                              return children;
+                            })(),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        dataRow(
+                          data.days
+                              .map(
+                                (day) => valueCell(
+                                  'Manana: ${day.skyMorning}',
+                                  'Tarde: ${day.skyAfternoon}',
+                                ),
+                              )
+                              .toList(growable: false),
+                        ),
+                        dataRow(
+                          data.days
+                              .map(
+                                (day) => valueCell(
+                                  'Manana: ${day.windMorning}',
+                                  'Tarde: ${day.windAfternoon}',
+                                ),
+                              )
+                              .toList(growable: false),
+                        ),
+                        dataRow(
+                          data.days
+                              .map(
+                                (day) => valueCell(
+                                  'Manana: ${day.waveMorning}',
+                                  'Tarde: ${day.waveAfternoon}',
+                                ),
+                              )
+                              .toList(growable: false),
+                        ),
+                        dataRow(
+                          data.days
+                              .map(
+                                (day) => valueCell(
+                                  day.maxTempC == null
+                                      ? '-'
+                                      : '${day.maxTempC} C',
+                                ),
+                              )
+                              .toList(growable: false),
+                        ),
+                        dataRow(
+                          data.days
+                              .map(
+                                (day) => valueCell(
+                                  day.waterTempC == null
+                                      ? '-'
+                                      : '${day.waterTempC} C',
+                                ),
+                              )
+                              .toList(growable: false),
+                        ),
+                        dataRow(
+                          data.days
+                              .map((day) => valueCell(day.thermalSensation))
+                              .toList(growable: false),
+                        ),
+                        dataRow(
+                          data.days
+                              .map(
+                                (day) =>
+                                    valueCell(day.uvMax?.toString() ?? '-'),
+                              )
+                              .toList(growable: false),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 10),
-                  dataRow(
-                    'Cielo',
-                    data.days
-                        .map(
-                          (day) => valueCell(
-                            'Manana: ${day.skyMorning}',
-                            'Tarde: ${day.skyAfternoon}',
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-                  dataRow(
-                    'Viento',
-                    data.days
-                        .map(
-                          (day) => valueCell(
-                            'Manana: ${day.windMorning}',
-                            'Tarde: ${day.windAfternoon}',
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-                  dataRow(
-                    'Oleaje',
-                    data.days
-                        .map(
-                          (day) => valueCell(
-                            'Manana: ${day.waveMorning}',
-                            'Tarde: ${day.waveAfternoon}',
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-                  dataRow(
-                    'Temp. max',
-                    data.days
-                        .map(
-                          (day) => valueCell(
-                            day.maxTempC == null ? '-' : '${day.maxTempC} C',
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-                  dataRow(
-                    'Temp. agua',
-                    data.days
-                        .map(
-                          (day) => valueCell(
-                            day.waterTempC == null
-                                ? '-'
-                                : '${day.waterTempC} C',
-                          ),
-                        )
-                        .toList(growable: false),
-                  ),
-                  dataRow(
-                    'Sens. termica',
-                    data.days
-                        .map((day) => valueCell(day.thermalSensation))
-                        .toList(growable: false),
-                  ),
-                  dataRow(
-                    'UV max',
-                    data.days
-                        .map((day) => valueCell(day.uvMax?.toString() ?? '-'))
-                        .toList(growable: false),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],

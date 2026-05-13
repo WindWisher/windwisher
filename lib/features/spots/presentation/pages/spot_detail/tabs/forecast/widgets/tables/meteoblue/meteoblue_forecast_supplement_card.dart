@@ -193,135 +193,133 @@ class MeteoblueForecastSupplementCard extends StatelessWidget {
           if (seaRows.isEmpty)
             Text(message ?? 'Sea no disponible.', style: textTheme.bodySmall)
           else
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Table(
-                defaultColumnWidth: FixedColumnWidth(isNarrow ? 78 : 86),
-                border: TableBorder(
-                  horizontalInside: BorderSide(
-                    color: colorScheme.outlineVariant.withValues(alpha: 0.7),
-                    width: 0.6,
-                  ),
-                  verticalInside: BorderSide(
-                    color: colorScheme.outlineVariant.withValues(alpha: 0.45),
-                    width: 0.5,
-                  ),
+            ForecastStickyLabelTable(
+              labelColumnWidth: isNarrow ? 92 : 104,
+              valueColumnWidth: isNarrow ? 78 : 86,
+              border: TableBorder(
+                horizontalInside: BorderSide(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.7),
+                  width: 0.6,
                 ),
-                children: [
-                  TableRow(
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest.withValues(
-                        alpha: 0.45,
+                verticalInside: BorderSide(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.45),
+                  width: 0.5,
+                ),
+              ),
+              rows: [
+                TableRow(
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.45,
+                    ),
+                  ),
+                  children: [
+                    const ForecastCompactLabelCell('Hora'),
+                    ...seaRows.map(
+                      (row) => ForecastCompactValueCell(
+                        row.time == null
+                            ? '-'
+                            : row.time!.hour.toString().padLeft(2, '0'),
+                        bold: true,
                       ),
                     ),
-                    children: [
-                      const ForecastCompactLabelCell('Hora'),
-                      ...seaRows.map(
-                        (row) => ForecastCompactValueCell(
-                          row.time == null
-                              ? '-'
-                              : row.time!.hour.toString().padLeft(2, '0'),
-                          bold: true,
-                        ),
+                  ],
+                ),
+                _buildSeaRow(
+                  label: 'Agua º',
+                  values: seaRows
+                      .map((row) => _formatFixed(row.surfaceWaterTempC))
+                      .toList(),
+                ),
+                _buildSeaRow(
+                  label: 'Surf(wave)',
+                  values: seaRows
+                      .map((row) => _formatFixed(row.surfWaveHeightM))
+                      .toList(),
+                  color: const Color(0xFFB3E5FC).withValues(alpha: 0.75),
+                ),
+                _buildSeaRow(
+                  label: 'Oleaje(m)',
+                  values: seaRows
+                      .map((row) => _formatFixed(row.significantWaveHeightM))
+                      .toList(),
+                  color: const Color(0xFF80DEEA).withValues(alpha: 0.75),
+                ),
+                _buildSeaRow(
+                  label: 'Mar de fondo',
+                  values: seaRows
+                      .map((row) => _formatFixed(row.swellWaveHeightM))
+                      .toList(),
+                  color: const Color(0xFFBBDEFB).withValues(alpha: 0.75),
+                ),
+                _buildSeaRow(
+                  label: 'Windsea',
+                  values: seaRows
+                      .map((row) => _formatFixed(row.windWaveHeightM))
+                      .toList(),
+                  color: const Color(0xFFC8E6C9).withValues(alpha: 0.75),
+                ),
+                _buildSeaRow(
+                  label: 'Periodo(oleaje)',
+                  values: seaRows
+                      .map((row) => _formatFixed(row.meanWavePeriodS))
+                      .toList(),
+                ),
+                _buildSeaRow(
+                  label: 'Periodo(mar de viento)',
+                  values: seaRows
+                      .map((row) => _formatFixed(row.windWaveMeanPeriodS))
+                      .toList(),
+                ),
+                TableRow(
+                  children: [
+                    const ForecastCompactLabelCell('Sea dir.'),
+                    ...seaRows.map(
+                      (row) => ForecastCompactDirectionCell(
+                        degrees: row.meanWaveDirectionDeg,
+                        cardinalLabel: _degreesToCardinal,
                       ),
-                    ],
-                  ),
-                  _buildSeaRow(
-                    label: 'Agua º',
-                    values: seaRows
-                        .map((row) => _formatFixed(row.surfaceWaterTempC))
-                        .toList(),
-                  ),
-                  _buildSeaRow(
-                    label: 'Surf(wave)',
-                    values: seaRows
-                        .map((row) => _formatFixed(row.surfWaveHeightM))
-                        .toList(),
-                    color: const Color(0xFFB3E5FC).withValues(alpha: 0.75),
-                  ),
-                  _buildSeaRow(
-                    label: 'Oleaje(m)',
-                    values: seaRows
-                        .map((row) => _formatFixed(row.significantWaveHeightM))
-                        .toList(),
-                    color: const Color(0xFF80DEEA).withValues(alpha: 0.75),
-                  ),
-                  _buildSeaRow(
-                    label: 'Mar de fondo',
-                    values: seaRows
-                        .map((row) => _formatFixed(row.swellWaveHeightM))
-                        .toList(),
-                    color: const Color(0xFFBBDEFB).withValues(alpha: 0.75),
-                  ),
-                  _buildSeaRow(
-                    label: 'Windsea',
-                    values: seaRows
-                        .map((row) => _formatFixed(row.windWaveHeightM))
-                        .toList(),
-                    color: const Color(0xFFC8E6C9).withValues(alpha: 0.75),
-                  ),
-                  _buildSeaRow(
-                    label: 'Periodo(oleaje)',
-                    values: seaRows
-                        .map((row) => _formatFixed(row.meanWavePeriodS))
-                        .toList(),
-                  ),
-                  _buildSeaRow(
-                    label: 'Periodo(mar de viento)',
-                    values: seaRows
-                        .map((row) => _formatFixed(row.windWaveMeanPeriodS))
-                        .toList(),
-                  ),
-                  TableRow(
-                    children: [
-                      const ForecastCompactLabelCell('Sea dir.'),
-                      ...seaRows.map(
-                        (row) => ForecastCompactDirectionCell(
-                          degrees: row.meanWaveDirectionDeg,
-                          cardinalLabel: _degreesToCardinal,
-                        ),
+                    ),
+                  ],
+                ),
+                TableRow(
+                  children: [
+                    const ForecastCompactLabelCell('Dir(Mar de fondo)'),
+                    ...seaRows.map(
+                      (row) => ForecastCompactDirectionCell(
+                        degrees: row.swellMeanDirectionDeg,
+                        cardinalLabel: _degreesToCardinal,
                       ),
-                    ],
-                  ),
-                  TableRow(
-                    children: [
-                      const ForecastCompactLabelCell('Dir(Mar de fondo)'),
-                      ...seaRows.map(
-                        (row) => ForecastCompactDirectionCell(
-                          degrees: row.swellMeanDirectionDeg,
-                          cardinalLabel: _degreesToCardinal,
-                        ),
+                    ),
+                  ],
+                ),
+                TableRow(
+                  children: [
+                    const ForecastCompactLabelCell('Dir(Wind)'),
+                    ...seaRows.map(
+                      (row) => ForecastCompactDirectionCell(
+                        degrees: row.windWaveDirectionDeg,
+                        cardinalLabel: _degreesToCardinal,
                       ),
-                    ],
-                  ),
-                  TableRow(
-                    children: [
-                      const ForecastCompactLabelCell('Dir(Wind)'),
-                      ...seaRows.map(
-                        (row) => ForecastCompactDirectionCell(
-                          degrees: row.windWaveDirectionDeg,
-                          cardinalLabel: _degreesToCardinal,
-                        ),
+                    ),
+                  ],
+                ),
+                TableRow(
+                  children: [
+                    const ForecastCompactLabelCell('Sea status'),
+                    ...seaRows.map(
+                      (row) => ForecastCompactValueCell(
+                        row.douglasSeaState == null
+                            ? '-'
+                            : _douglasSeaStateLabel(row.douglasSeaState!),
+                        color: row.douglasSeaState == null
+                            ? null
+                            : colorScheme.secondaryContainer,
                       ),
-                    ],
-                  ),
-                  TableRow(
-                    children: [
-                      const ForecastCompactLabelCell('Sea status'),
-                      ...seaRows.map(
-                        (row) => ForecastCompactValueCell(
-                          row.douglasSeaState == null
-                              ? '-'
-                              : _douglasSeaStateLabel(row.douglasSeaState!),
-                          color: row.douglasSeaState == null
-                              ? null
-                              : colorScheme.secondaryContainer,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
         ],
         if (showDay) ...[

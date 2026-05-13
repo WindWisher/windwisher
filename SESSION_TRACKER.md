@@ -16427,3 +16427,18 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - pulida la tarjeta de alarmas guardadas separando acciones y chips de metadatos dentro de `live_saved_alarm_widgets.dart`,
     - verificacion:
       - `flutter analyze` limpio tras el refactor.
+
+
+  - bloque nuevo `2026-05-13`:
+    - mejora de legibilidad de tablas Forecast con primera columna fija,
+    - tiempo real trabajado en este tramo: `25 min` aprox. de trabajo efectivo,
+    - spots / forecast / tablas:
+      - creado `ForecastStickyLabelTable` para mantener visible la primera columna de etiquetas mientras se desplazan los datos,
+      - aplicada la columna fija a la tabla principal de forecast,
+      - aplicada la columna fija a la tabla AEMET Playa,
+      - aplicada la columna fija a la tabla Meteoblue Sea,
+      - descartado el primer enfoque de referencia desplegable porque no cumplia el comportamiento esperado,
+      - ajustada la altura de filas en AEMET Playa para evitar overflow vertical en celdas con Manana/Tarde,
+    - verificacion:
+      - `flutter analyze` limpio,
+      - validacion manual del usuario: las tablas ya funcionan bien con la primera columna visible.
