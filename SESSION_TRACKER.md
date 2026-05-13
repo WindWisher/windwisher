@@ -16498,3 +16498,16 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
     - verificacion:
       - `flutter analyze` limpio,
       - validacion manual del usuario: el deslizamiento de filas ahora va mucho mejor.
+
+
+  - bloque nuevo `2026-05-13`:
+    - optimizacion de apertura del mapa de viento desde Forecast,
+    - tiempo real trabajado en este tramo: `10 min` aprox. de trabajo efectivo,
+    - spots / forecast / mapa de viento:
+      - eliminada la carga previa de grilla Open-Meteo antes de abrir el visor de viento,
+      - el mapa actual usa el visor oficial de Puertos del Estado y no consumia esa grilla,
+      - eliminado el cliente `_openMeteoWindMapGridClient` que quedaba sin uso en `SpotDetailPage`,
+      - el boton de mapa de viento navega antes al visor al no esperar una peticion innecesaria,
+    - verificacion:
+      - `flutter analyze` limpio,
+      - validacion manual del usuario: la apertura del mapa de viento se nota mas rapida.

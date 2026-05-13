@@ -273,7 +273,6 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   late final MeteoblueCurrentDayClient _meteoblueCurrentDayClient;
   late final MeteostatDayClient _meteostatDayClient;
   late final MeteosourceCurrentDayClient _meteosourceCurrentDayClient;
-  late final OpenMeteoWindMapGridClient _openMeteoWindMapGridClient;
   late final PortusRealtimeWindClient _portusRealtimeWindClient;
   late Future<_ForecastLoadResult> _forecastRowsFuture;
   _ForecastLoadResult? _historyForecastRowsResult;
@@ -320,7 +319,6 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         widget.meteosourceCurrentDayClient ?? MeteosourceCurrentDayClient();
     _portusRealtimeWindClient =
         widget.portusRealtimeWindClient ?? PortusRealtimeWindClient();
-    _openMeteoWindMapGridClient = OpenMeteoWindMapGridClient();
     _initializeSocialChat();
     _forecastProvider =
         widget.capabilities.defaultForecastProvider ?? _forecastProvider;

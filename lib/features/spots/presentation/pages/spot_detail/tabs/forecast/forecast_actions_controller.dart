@@ -78,22 +78,6 @@ extension _SpotDetailForecastActionsController on _SpotDetailPageState {
           ),
         )
         .toList(growable: false);
-    var gridSnapshots = const <OpenMeteoWindMapGridSnapshot>[];
-    if (_forecastProvider == 'Open-Meteo') {
-      try {
-        gridSnapshots = await _openMeteoWindMapGridClient.fetchGrid(
-          centerLat: center.latitude,
-          centerLon: center.longitude,
-          model: _forecastModel,
-        );
-      } catch (_) {
-        gridSnapshots = const <OpenMeteoWindMapGridSnapshot>[];
-      }
-    }
-
-    if (!mounted) {
-      return;
-    }
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => WindMapPage(
@@ -102,7 +86,6 @@ extension _SpotDetailForecastActionsController on _SpotDetailPageState {
           samples: samples,
           providerLabel: _forecastProvider,
           modelLabel: _forecastModel,
-          gridSnapshots: gridSnapshots,
         ),
       ),
     );
