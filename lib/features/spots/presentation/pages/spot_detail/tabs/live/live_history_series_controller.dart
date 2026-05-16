@@ -112,6 +112,7 @@ extension _SpotDetailLiveHistorySeriesController on _SpotDetailPageState {
     final prepared = _prepareHistorySeriesWindow();
     final intraday = prepared.intraday;
     final selectedBucketOption = prepared.selectedBucketOption;
+    final usesRawCollectedHistory = prepared.usesRawCollectedHistory;
     final gridDuration = prepared.gridDuration;
     final arrowDuration = prepared.arrowDuration;
     final intradayBounds = prepared.intradayBounds;
@@ -189,7 +190,9 @@ extension _SpotDetailLiveHistorySeriesController on _SpotDetailPageState {
       forecast: forecast,
       intraday: intraday,
       intervalLabel: intraday
-          ? _historicalBucketOptionLabel(selectedBucketOption!)
+          ? usesRawCollectedHistory
+                ? 'muestras reales'
+                : _historicalBucketOptionLabel(selectedBucketOption!)
           : '1 d',
       diagnosticLabel: diagnosticLabel,
     );
@@ -198,6 +201,7 @@ extension _SpotDetailLiveHistorySeriesController on _SpotDetailPageState {
   ({
     List<_HistoricalWindPoint> realHistory,
     bool intraday,
+    bool usesRawCollectedHistory,
     _HistoricalBucketOption? selectedBucketOption,
     Duration gridDuration,
     Duration arrowDuration,
@@ -207,54 +211,70 @@ extension _SpotDetailLiveHistorySeriesController on _SpotDetailPageState {
   _prepareHistorySeriesWindow() {
     final realHistory = _selectedHistoricalWindPoints();
     final intraday = _isIntradayHistoricalSeries(realHistory);
-    final selectedBucketOption = intraday
+    final usesRawCollectedHistory =
+        _usesRawCollectedHistoryForSelectedStation();
+    final selectedBucketOption = intraday && !usesRawCollectedHistory
         ? _selectedBucketOption(_historyRange)
         : null;
-    final gridDuration = intraday
+    final gridDuration = intraday && !usesRawCollectedHistory
         ? _gridDurationForHistorySelection(_historyRange, selectedBucketOption!)
+        : intraday
+        ? const Duration(minutes: 10)
         : const Duration(days: 1);
-    final arrowDuration = intraday
+    final arrowDuration = intraday && !usesRawCollectedHistory
         ? _arrowDurationForHistorySelection(
             _historyRange,
             selectedBucketOption!,
           )
+        : intraday
+        ? const Duration(minutes: 5)
         : const Duration(days: 1);
     final alignmentDuration =
         intraday && arrowDuration.inMinutes < gridDuration.inMinutes
         ? arrowDuration
         : gridDuration;
     final intradayBounds = intraday
-        ? _alignedIntradayWindowBounds(realHistory, alignmentDuration)
+        ? usesRawCollectedHistory
+              ? (
+                  startInclusive: realHistory.last.time.subtract(
+                    _durationForRange(_historyRange),
+                  ),
+                  endExclusive: realHistory.last.time,
+                )
+              : _alignedIntradayWindowBounds(realHistory, alignmentDuration)
         : null;
-    final windowed = _windowHistoricalPoints(
-      realHistory,
-      intradayBucket: intraday ? alignmentDuration : null,
-    );
-    final trimmed = intraday
+    final windowed = usesRawCollectedHistory
+        ? _windowHistoricalPoints(realHistory)
+        : _windowHistoricalPoints(
+            realHistory,
+            intradayBucket: intraday ? alignmentDuration : null,
+          );
+    final displayPoints = intraday && !usesRawCollectedHistory
         ? _bucketHistoricalPoints(
             windowed,
             bucket: arrowDuration,
             representativeWhenMultiple: false,
           )
         : windowed;
-    final boundedTrimmed = intraday
-        ? trimmed.length >
+    final boundedTrimmed = intraday && !usesRawCollectedHistory
+        ? displayPoints.length >
                   _maxBucketCountForHistorySelection(
                     _historyRange,
                     arrowDuration,
                   )
-              ? trimmed.sublist(
-                  trimmed.length -
+              ? displayPoints.sublist(
+                  displayPoints.length -
                       _maxBucketCountForHistorySelection(
                         _historyRange,
                         arrowDuration,
                       ),
                 )
-              : trimmed
-        : trimmed;
+              : displayPoints
+        : displayPoints;
     return (
       realHistory: realHistory,
       intraday: intraday,
+      usesRawCollectedHistory: usesRawCollectedHistory,
       selectedBucketOption: selectedBucketOption,
       gridDuration: gridDuration,
       arrowDuration: arrowDuration,

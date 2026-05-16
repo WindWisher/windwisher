@@ -111,6 +111,11 @@ extension _SpotDetailLiveHistoryDataLoader on _SpotDetailPageState {
       return _fetchBackendCollectedLiveHistory(station);
     }
 
+    if (station.provider == 'MADIS_MARITIME' ||
+        station.provider == 'COPERNICUS_MARINE') {
+      return _fetchMaritimeObservationHistory(station);
+    }
+
     if (station.provider == 'AEMET' && station.stationId != null) {
       final observationSeries = await _aemetObservationClient
           .fetchStationObservations(
@@ -145,6 +150,40 @@ extension _SpotDetailLiveHistoryDataLoader on _SpotDetailPageState {
       return const <_HistoricalWindPoint>[];
     }
     final history = await client.fetchStationHistory(
+      stationKey: station.stationKey,
+      range: const Duration(hours: 72),
+    );
+    final mappedHistory = history
+        .where((point) => point.windKnots != null)
+        .map(
+          (point) => _HistoricalWindPoint(
+            time: point.observedAt,
+            windKnots: point.windKnots!,
+            gustKnots: point.gustKnots,
+            windDirectionDeg: point.windDirectionDeg,
+            directionKind: point.windDirectionDeg == null
+                ? null
+                : _HistoricalDirectionKind.exact,
+          ),
+        )
+        .toList(growable: false);
+    debugPrint(
+      'LiveStationTiming phase=backend-history stationKey=${station.stationKey} '
+      'provider=${station.provider} rawPoints=${history.length} '
+      'windPoints=${mappedHistory.length}',
+    );
+    return mappedHistory;
+  }
+
+  Future<List<_HistoricalWindPoint>> _fetchMaritimeObservationHistory(
+    _NearbyStation station,
+  ) async {
+    final client = _spotMaritimeObservationsClient;
+    if (client == null) {
+      return const <_HistoricalWindPoint>[];
+    }
+    final history = await client.fetchHistory(
+      spotName: widget.name,
       stationKey: station.stationKey,
       range: const Duration(hours: 72),
     );

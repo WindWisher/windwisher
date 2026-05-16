@@ -125,6 +125,278 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     );
   }
 
+  void _addGandiaPlayaLiveStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametGandiaCamiMarStationKey,
+      stationName: _avametGandiaCamiMarStationName,
+      provider: 'AVAMET',
+      stationId: _avametGandiaCamiMarStationId,
+      latitude: _avametGandiaCamiMarStationLat,
+      longitude: _avametGandiaCamiMarStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+  }
+
+  void _addDeniaLesDevesesLiveStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametDeniaPlatjaPegoStationKey,
+      stationName: _avametDeniaPlatjaPegoStationName,
+      provider: 'AVAMET',
+      stationId: _avametDeniaPlatjaPegoStationId,
+      latitude: _avametDeniaPlatjaPegoStationLat,
+      longitude: _avametDeniaPlatjaPegoStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _windguruDkPilesStationKey,
+      stationName: _windguruDkPilesStationName,
+      provider: 'WINDGURU_STATION',
+      stationId: _windguruDkPilesStationId,
+      latitude: _windguruDkPilesStationLat,
+      longitude: _windguruDkPilesStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametOlivaStationKey,
+      stationName: _avametOlivaStationName,
+      provider: 'AVAMET',
+      stationId: _avametOlivaStationId,
+      latitude: _avametOlivaStationLat,
+      longitude: _avametOlivaStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+  }
+
+  void _addDeniaPuntaMolinsLiveStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametDeniaPlatjaPegoStationKey,
+      stationName: _avametDeniaPlatjaPegoStationName,
+      provider: 'AVAMET',
+      stationId: _avametDeniaPlatjaPegoStationId,
+      latitude: _avametDeniaPlatjaPegoStationLat,
+      longitude: _avametDeniaPlatjaPegoStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametDeniaJoanChabasStationKey,
+      stationName: _avametDeniaJoanChabasStationName,
+      provider: 'AVAMET',
+      stationId: _avametDeniaJoanChabasStationId,
+      latitude: _avametDeniaJoanChabasStationLat,
+      longitude: _avametDeniaJoanChabasStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _windguruDkPilesStationKey,
+      stationName: _windguruDkPilesStationName,
+      provider: 'WINDGURU_STATION',
+      stationId: _windguruDkPilesStationId,
+      latitude: _windguruDkPilesStationLat,
+      longitude: _windguruDkPilesStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+  }
+
+  void _addCalpeLiveStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametCalpStationKey,
+      stationName: _avametCalpStationName,
+      provider: 'AVAMET',
+      stationId: _avametCalpStationId,
+      latitude: _avametCalpStationLat,
+      longitude: _avametCalpStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametCalpMorroToixStationKey,
+      stationName: _avametCalpMorroToixStationName,
+      provider: 'AVAMET',
+      stationId: _avametCalpMorroToixStationId,
+      latitude: _avametCalpMorroToixStationLat,
+      longitude: _avametCalpMorroToixStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametCalpToixMascaratStationKey,
+      stationName: _avametCalpToixMascaratStationName,
+      provider: 'AVAMET',
+      stationId: _avametCalpToixMascaratStationId,
+      latitude: _avametCalpToixMascaratStationLat,
+      longitude: _avametCalpToixMascaratStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+  }
+
+  void _addAlteaCapNegretLiveStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametAlteaClubNauticoStationKey,
+      stationName: _avametAlteaClubNauticoStationName,
+      provider: 'AVAMET',
+      stationId: _avametAlteaClubNauticoStationId,
+      latitude: _avametAlteaClubNauticoStationLat,
+      longitude: _avametAlteaClubNauticoStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametAlteaFoiaBaixaStationKey,
+      stationName: _avametAlteaFoiaBaixaStationName,
+      provider: 'AVAMET',
+      stationId: _avametAlteaFoiaBaixaStationId,
+      latitude: _avametAlteaFoiaBaixaStationLat,
+      longitude: _avametAlteaFoiaBaixaStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametAlteaElsArcsStationKey,
+      stationName: _avametAlteaElsArcsStationName,
+      provider: 'AVAMET',
+      stationId: _avametAlteaElsArcsStationId,
+      latitude: _avametAlteaElsArcsStationLat,
+      longitude: _avametAlteaElsArcsStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+  }
+
+  void _addVillajoyosaEspigonLiveStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametVillajoyosaPuertoStationKey,
+      stationName: _avametVillajoyosaPuertoStationName,
+      provider: 'AVAMET',
+      stationId: _avametVillajoyosaPuertoStationId,
+      latitude: _avametVillajoyosaPuertoStationLat,
+      longitude: _avametVillajoyosaPuertoStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametVillajoyosaStationKey,
+      stationName: _avametVillajoyosaStationName,
+      provider: 'AVAMET',
+      stationId: _avametVillajoyosaStationId,
+      latitude: _avametVillajoyosaStationLat,
+      longitude: _avametVillajoyosaStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+  }
+
+  void _addVillajoyosaPlayaParaisoLiveStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametVillajoyosaStationKey,
+      stationName: _avametVillajoyosaStationName,
+      provider: 'AVAMET',
+      stationId: _avametVillajoyosaStationId,
+      latitude: _avametVillajoyosaStationLat,
+      longitude: _avametVillajoyosaStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametVillajoyosaCarabassotStationKey,
+      stationName: _avametVillajoyosaCarabassotStationName,
+      provider: 'AVAMET',
+      stationId: _avametVillajoyosaCarabassotStationId,
+      latitude: _avametVillajoyosaCarabassotStationLat,
+      longitude: _avametVillajoyosaCarabassotStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametVillajoyosaPuertoStationKey,
+      stationName: _avametVillajoyosaPuertoStationName,
+      provider: 'AVAMET',
+      stationId: _avametVillajoyosaPuertoStationId,
+      latitude: _avametVillajoyosaPuertoStationLat,
+      longitude: _avametVillajoyosaPuertoStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+  }
+
   Future<void> _addConfiguredPortusStationMetadata({
     required double latitude,
     required double longitude,
@@ -227,6 +499,44 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     return capabilities.liveStationProfile == pilesLiveStationProfile;
   }
 
+  bool _usesGandiaPlayaLiveProfile() {
+    final capabilities = _resolvedSpotCapabilities();
+    return capabilities.liveStationProfile == gandiaPlayaLiveStationProfile;
+  }
+
+  bool _usesDeniaLesDevesesLiveProfile() {
+    final capabilities = _resolvedSpotCapabilities();
+    return capabilities.liveStationProfile == deniaLesDevesesLiveStationProfile;
+  }
+
+  bool _usesDeniaPuntaMolinsLiveProfile() {
+    final capabilities = _resolvedSpotCapabilities();
+    return capabilities.liveStationProfile ==
+        deniaPuntaMolinsLiveStationProfile;
+  }
+
+  bool _usesCalpeLiveProfile() {
+    final capabilities = _resolvedSpotCapabilities();
+    return capabilities.liveStationProfile == calpeLiveStationProfile;
+  }
+
+  bool _usesAlteaCapNegretLiveProfile() {
+    final capabilities = _resolvedSpotCapabilities();
+    return capabilities.liveStationProfile == alteaCapNegretLiveStationProfile;
+  }
+
+  bool _usesVillajoyosaEspigonLiveProfile() {
+    final capabilities = _resolvedSpotCapabilities();
+    return capabilities.liveStationProfile ==
+        villajoyosaEspigonLiveStationProfile;
+  }
+
+  bool _usesVillajoyosaPlayaParaisoLiveProfile() {
+    final capabilities = _resolvedSpotCapabilities();
+    return capabilities.liveStationProfile ==
+        villajoyosaPlayaParaisoLiveStationProfile;
+  }
+
   SpotCapabilities _resolvedSpotCapabilities() {
     final capabilities = widget.capabilities;
     if (capabilities.liveStationProfile == olivaCanalGorgsLiveStationProfile) {
@@ -234,6 +544,29 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     }
     if (capabilities.liveStationProfile == pilesLiveStationProfile) {
       return pilesSpotCapabilities;
+    }
+    if (capabilities.liveStationProfile == gandiaPlayaLiveStationProfile) {
+      return gandiaPlayaSpotCapabilities;
+    }
+    if (capabilities.liveStationProfile == deniaLesDevesesLiveStationProfile) {
+      return deniaLesDevesesSpotCapabilities;
+    }
+    if (capabilities.liveStationProfile == deniaPuntaMolinsLiveStationProfile) {
+      return deniaPuntaMolinsSpotCapabilities;
+    }
+    if (capabilities.liveStationProfile == calpeLiveStationProfile) {
+      return calpeSpotCapabilities;
+    }
+    if (capabilities.liveStationProfile == alteaCapNegretLiveStationProfile) {
+      return alteaCapNegretSpotCapabilities;
+    }
+    if (capabilities.liveStationProfile ==
+        villajoyosaEspigonLiveStationProfile) {
+      return villajoyosaEspigonSpotCapabilities;
+    }
+    if (capabilities.liveStationProfile ==
+        villajoyosaPlayaParaisoLiveStationProfile) {
+      return villajoyosaPlayaParaisoSpotCapabilities;
     }
 
     final defaultCapabilities = defaultSpotCapabilitiesForName(widget.name);

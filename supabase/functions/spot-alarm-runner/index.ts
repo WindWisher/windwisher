@@ -609,6 +609,8 @@ async function fetchObservationForAlarm(alarm: AlarmRow) {
       return await fetchInforatgeObservation(alarm.station_key);
     case "AVAMET":
       return await fetchAvametObservation(alarm.station_key);
+    case "WINDGURU_STATION":
+      return await fetchWindguruStationObservation(alarm.station_key);
     case "PUERTOS":
     case "PORTUS":
       return await fetchPortusObservation(alarm.station_key);
@@ -622,6 +624,7 @@ function supportsStationProvider(provider: string) {
     provider === "AIGUABLANCA" ||
     provider === "INFORATGE" ||
     provider === "AVAMET" ||
+    provider === "WINDGURU_STATION" ||
     provider === "PUERTOS" ||
     provider === "PORTUS";
 }
@@ -763,6 +766,44 @@ async function fetchPortusObservation(stationKey: string) {
     observedAt,
     windKnots: Number((windMps * 1.9438444924406).toFixed(2)),
     windDirectionBucket: directionBucket(windDeg),
+    observedTotalMinutesLocal: localTotalMinutesFromDate(observedAt),
+  };
+}
+
+async function fetchWindguruStationObservation(stationKey: string) {
+  const stationId = extractStationId(stationKey);
+  const url = new URL("https://www.windguru.cz/int/iapi.php");
+  url.searchParams.set("callback", "windwisher");
+  url.searchParams.set("q", "station_data_current");
+  url.searchParams.set("id_station", stationId);
+  url.searchParams.set("date_format", "Y-m-d H:i:s T");
+
+  const response = await fetch(url, {
+    headers: {
+      accept: "application/javascript,text/javascript,*/*",
+      referer: "https://www.dkpiles.com/meteo.html",
+      "user-agent": "WindWisher/1.0",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`windguru-request-failed:${response.status}`);
+  }
+  const raw = (await response.text()).trim();
+  const data = asRecord(JSON.parse(decodeJsonp(raw, "windwisher")));
+  if (!data || data.return === "error") {
+    return null;
+  }
+
+  const unixTime = parseNumber(data.unixtime);
+  const windKnots = parseNumber(data.wind_avg);
+  if (unixTime == null || windKnots == null) {
+    return null;
+  }
+  const observedAt = new Date(unixTime * 1000);
+  return {
+    observedAt,
+    windKnots,
+    windDirectionBucket: directionBucket(data.wind_direction),
     observedTotalMinutesLocal: localTotalMinutesFromDate(observedAt),
   };
 }
@@ -948,6 +989,14 @@ function scaledPortusValue(entry: Record<string, unknown>): number | null {
     return null;
   }
   return value / factor;
+}
+
+function decodeJsonp(raw: string, callback: string): string {
+  const prefix = `${callback}(`;
+  if (raw.startsWith(prefix) && raw.endsWith(");")) {
+    return raw.slice(prefix.length, -2);
+  }
+  return raw;
 }
 
 async function fetchJsonObject(

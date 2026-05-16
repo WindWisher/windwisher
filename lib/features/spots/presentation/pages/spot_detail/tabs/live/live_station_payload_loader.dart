@@ -127,6 +127,10 @@ extension _SpotDetailLiveStationPayloadLoader on _SpotDetailPageState {
         observedAtLabel: snapshot.observedAtLabel,
       );
     }
+    if (station.provider == 'MADIS_MARITIME' ||
+        station.provider == 'COPERNICUS_MARINE') {
+      return _resolvedLiveDataByStation()[station.stationKey];
+    }
     if (station.stationId == null) {
       return null;
     }

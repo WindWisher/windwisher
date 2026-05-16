@@ -178,6 +178,8 @@ extension _SpotDetailLiveHistorySection on _SpotDetailPageState {
     final historicalCoverageLabel = _historicalCoverageLabel(
       _selectedHistoricalWindPoints(),
     );
+    final usesRawCollectedHistory =
+        _usesRawCollectedHistoryForSelectedStation();
     final forecastAccuracy = _historicalForecastAccuracySummary(
       points: preparedHistory.points,
       bucketDuration: preparedHistory.arrowDuration,
@@ -206,7 +208,10 @@ extension _SpotDetailLiveHistorySection on _SpotDetailPageState {
               coverageLabel: historicalCoverageLabel,
               availableRanges: availableRanges,
               selectedRange: _historyRange,
-              showBucketSelector: intraday && !usesFixedAemetOlivaWindow,
+              showBucketSelector:
+                  intraday &&
+                  !usesFixedAemetOlivaWindow &&
+                  !usesRawCollectedHistory,
               bucketOptions: _availableBucketOptions(_historyRange),
               selectedBucketOption: _selectedBucketOption(_historyRange),
               onRangeChanged: _handleHistoryRangeChanged,

@@ -245,7 +245,6 @@ List<_ChartTimeGuide> _gridTimeGuides({
   for (; !cursor.isAfter(endExclusive); cursor = cursor.add(gridStep)) {
     final isHour = cursor.minute == 0;
     final isMajor = gridStep.inMinutes >= 60 ? true : isHour;
-    final showsEveryTwentyMinutes = gridStep.inMinutes == 20;
     guides.add(
       _ChartTimeGuide(
         xFraction: _timeFraction(
@@ -254,11 +253,7 @@ List<_ChartTimeGuide> _gridTimeGuides({
           endExclusive: endExclusive,
         ),
         isMajor: isMajor,
-        label: showsEveryTwentyMinutes
-            ? '${cursor.hour.toString().padLeft(2, '0')}:${cursor.minute.toString().padLeft(2, '0')}'
-            : isMajor
-            ? '${cursor.hour.toString().padLeft(2, '0')}h'
-            : null,
+        label: isMajor ? '${cursor.hour.toString().padLeft(2, '0')}h' : null,
       ),
     );
   }

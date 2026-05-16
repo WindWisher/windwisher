@@ -12,7 +12,9 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
 
     final stopwatch = Stopwatch()..start();
     try {
-      final refreshedHistory = await _fetchHistoricalDataForStation(station);
+      final refreshedHistory = await _fetchHistoricalDataForStation(
+        station,
+      ).timeout(const Duration(seconds: 15));
       debugPrint(
         'LiveStationTiming phase=history elapsedMs=${stopwatch.elapsedMilliseconds} '
         'provider=${station.provider} stationKey=${station.stationKey} '
@@ -140,6 +142,14 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
     return _isOlivaAemetOfficialStation(station);
   }
 
+  bool _usesRawCollectedHistoryForSelectedStation() {
+    final station = _findStationByKey(_selectedStation);
+    return station?.provider == 'WINDGURU_STATION' ||
+        station?.provider == 'METEOPILES' ||
+        station?.provider == 'MADIS_MARITIME' ||
+        station?.provider == 'COPERNICUS_MARINE';
+  }
+
   String _historicalSeriesDisplayLabel() {
     final station = _findStationByKey(_selectedStation);
     switch (station?.provider) {
@@ -149,6 +159,10 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
         return 'AVAMET';
       case 'INFORATGE':
         return 'Inforatge';
+      case 'MADIS_MARITIME':
+        return 'MADIS Maritime';
+      case 'COPERNICUS_MARINE':
+        return 'Copernicus Marine';
       default:
         return 'Historico';
     }

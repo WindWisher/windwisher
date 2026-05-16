@@ -50,12 +50,38 @@ String? extractAemetBeachCodeFromModel({
 
 String getAemetBeachDisplayName({required String beachCode}) {
   switch (beachCode) {
+    case '0301808':
+      return 'La Roda';
+    case '0306301':
+      return 'Les Deveses';
+    case '0306308':
+      return 'Les Boves / Les Marines';
+    case '0304709':
+      return 'Arenal/Bol';
+    case '0313909':
+      return 'Paradis';
+    case '0312108':
+      return 'Tamarit';
+    case '0301401':
+      return 'Sant Joan / San Juan';
+    case '0305013':
+      return 'Carrer la Mar';
+    case '4625004':
+      return 'La Devesa';
+    case '4625001':
+      return 'Playa de Levante / Malvarrosa';
+    case '1103506':
+      return 'Los Lances';
+    case '4610502':
+      return 'El Dossel';
     case '4618102':
       return 'Pau-Pi';
     case '4618103':
       return "l'Aigua Blanca";
     case '4619501':
       return 'Piles';
+    case '4613102':
+      return 'Norte de Gandia';
     default:
       return beachCode;
   }

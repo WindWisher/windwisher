@@ -18,6 +18,16 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
     try {
       final usesOlivaCanalLiveProfile = _usesOlivaCanalLiveProfile();
       final usesPilesLiveProfile = _usesPilesLiveProfile();
+      final usesGandiaPlayaLiveProfile = _usesGandiaPlayaLiveProfile();
+      final usesDeniaLesDevesesLiveProfile = _usesDeniaLesDevesesLiveProfile();
+      final usesDeniaPuntaMolinsLiveProfile =
+          _usesDeniaPuntaMolinsLiveProfile();
+      final usesCalpeLiveProfile = _usesCalpeLiveProfile();
+      final usesAlteaCapNegretLiveProfile = _usesAlteaCapNegretLiveProfile();
+      final usesVillajoyosaEspigonLiveProfile =
+          _usesVillajoyosaEspigonLiveProfile();
+      final usesVillajoyosaPlayaParaisoLiveProfile =
+          _usesVillajoyosaPlayaParaisoLiveProfile();
       final stations = <_NearbyStation>[];
       final liveDataByStation = <String, _StationLiveData>{};
       final historyByStation = <String, List<_HistoricalWindPoint>>{};
@@ -27,7 +37,15 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
 
       List<AemetObservationStationSnapshot> snapshots =
           const <AemetObservationStationSnapshot>[];
-      if (!usesOlivaCanalLiveProfile && !usesPilesLiveProfile) {
+      if (!usesOlivaCanalLiveProfile &&
+          !usesPilesLiveProfile &&
+          !usesGandiaPlayaLiveProfile &&
+          !usesDeniaLesDevesesLiveProfile &&
+          !usesDeniaPuntaMolinsLiveProfile &&
+          !usesCalpeLiveProfile &&
+          !usesAlteaCapNegretLiveProfile &&
+          !usesVillajoyosaEspigonLiveProfile &&
+          !usesVillajoyosaPlayaParaisoLiveProfile) {
         try {
           snapshots = await _aemetObservationClient.fetchNearestStations(
             latitude: latitude,
@@ -105,6 +123,62 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
       }
       if (usesPilesLiveProfile) {
         _addPilesLiveStations(
+          latitude: latitude,
+          longitude: longitude,
+          stations: stations,
+          seenKeys: seenKeys,
+        );
+      }
+      if (usesGandiaPlayaLiveProfile) {
+        _addGandiaPlayaLiveStations(
+          latitude: latitude,
+          longitude: longitude,
+          stations: stations,
+          seenKeys: seenKeys,
+        );
+      }
+      if (usesDeniaLesDevesesLiveProfile) {
+        _addDeniaLesDevesesLiveStations(
+          latitude: latitude,
+          longitude: longitude,
+          stations: stations,
+          seenKeys: seenKeys,
+        );
+      }
+      if (usesDeniaPuntaMolinsLiveProfile) {
+        _addDeniaPuntaMolinsLiveStations(
+          latitude: latitude,
+          longitude: longitude,
+          stations: stations,
+          seenKeys: seenKeys,
+        );
+      }
+      if (usesCalpeLiveProfile) {
+        _addCalpeLiveStations(
+          latitude: latitude,
+          longitude: longitude,
+          stations: stations,
+          seenKeys: seenKeys,
+        );
+      }
+      if (usesAlteaCapNegretLiveProfile) {
+        _addAlteaCapNegretLiveStations(
+          latitude: latitude,
+          longitude: longitude,
+          stations: stations,
+          seenKeys: seenKeys,
+        );
+      }
+      if (usesVillajoyosaEspigonLiveProfile) {
+        _addVillajoyosaEspigonLiveStations(
+          latitude: latitude,
+          longitude: longitude,
+          stations: stations,
+          seenKeys: seenKeys,
+        );
+      }
+      if (usesVillajoyosaPlayaParaisoLiveProfile) {
+        _addVillajoyosaPlayaParaisoLiveStations(
           latitude: latitude,
           longitude: longitude,
           stations: stations,

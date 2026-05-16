@@ -68,6 +68,7 @@ part 'tabs/live/live_history_helpers.dart';
 part 'tabs/live/live_history_section.dart';
 part 'tabs/live/live_history_series_controller.dart';
 part 'tabs/live/live_section.dart';
+part 'tabs/live/live_maritime_observations_controller.dart';
 part 'tabs/live/live_station_actions.dart';
 part 'tabs/live/live_station_data_loader.dart';
 part 'tabs/live/live_station_metadata_loader.dart';
@@ -135,6 +136,7 @@ class SpotDetailPage extends StatefulWidget {
     this.meteosourceCurrentDayClient,
     this.portusRealtimeWindClient,
     this.spotLiveObservationHistoryClient,
+    this.spotMaritimeObservationsClient,
     this.useLocalPersistence = EnvConfig.spotsLocalPersistenceEnabled,
     this.openChatInitially = false,
   });
@@ -165,6 +167,7 @@ class SpotDetailPage extends StatefulWidget {
   final MeteosourceCurrentDayClient? meteosourceCurrentDayClient;
   final PortusRealtimeWindClient? portusRealtimeWindClient;
   final SpotLiveObservationHistoryClient? spotLiveObservationHistoryClient;
+  final SpotMaritimeObservationsClient? spotMaritimeObservationsClient;
   final bool useLocalPersistence;
   final bool openChatInitially;
 
@@ -221,6 +224,12 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   bool _isLiveRefreshing = false;
   bool _isHistoricalRefreshing = false;
   bool _isHistoricalLoading = false;
+  bool _isMaritimeObservationsLoading = false;
+  bool _maritimeObservationsLoaded = false;
+  int _maritimeObservationsTotal = 0;
+  int _maritimeObservationsLoadedCount = 0;
+  bool _maritimeObservationsHasMore = false;
+  String? _maritimeObservationsError;
   bool _liveSectionLoadRequested = false;
   bool _alarmCatalogHydrationRequested = false;
   bool _socialHydrationRequested = false;
@@ -284,6 +293,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   late final PortusRealtimeWindClient _portusRealtimeWindClient;
   late final SpotLiveObservationHistoryClient?
   _spotLiveObservationHistoryClient;
+  late final SpotMaritimeObservationsClient? _spotMaritimeObservationsClient;
   late Future<_ForecastLoadResult> _forecastRowsFuture;
   _ForecastLoadResult? _historyForecastRowsResult;
   bool _historyForecastLoadRequested = false;
@@ -336,6 +346,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     _spotLiveObservationHistoryClient =
         widget.spotLiveObservationHistoryClient ??
         SpotLiveObservationHistoryClient.maybeCreate();
+    _spotMaritimeObservationsClient =
+        widget.spotMaritimeObservationsClient ??
+        SpotMaritimeObservationsClient.maybeCreate();
     _initializeSocialChat();
     _forecastProvider =
         widget.capabilities.defaultForecastProvider ?? _forecastProvider;

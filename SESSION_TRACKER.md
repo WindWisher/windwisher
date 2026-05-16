@@ -16566,3 +16566,42 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - `deno check supabase/functions/spot-live-observation-collector/index.ts` limpio,
       - Edge Function redesplegada tras desactivar MeteoPiles,
       - validacion manual del usuario: el spot de Piles queda completo hasta nueva ampliacion.
+
+
+  - bloque nuevo `2026-05-16`:
+    - observaciones maritimas cercanas bajo demanda para Live,
+    - tiempo real trabajado en este tramo: `120 min` aprox. de trabajo efectivo,
+    - investigacion / fuentes maritimas:
+      - evaluado MADIS Maritime como fuente experimental de observaciones maritimas,
+      - confirmado que MADIS devuelve muy pocos datos utiles en Mediterraneo cercano a costa,
+      - investigado Copernicus Marine In Situ para Mediterraneo como proveedor mas adecuado,
+      - verificado el producto `INSITU_MED_PHYBGCWAV_DISCRETE_MYNRT_013_035` y el dataset `cmems_obs-ins_med_phybgcwav_mynrt_na_irr`,
+      - confirmadas variables utiles para Live: `WSPD`, `WDIR`, `GSPD`, `GDIR`, `DRYT`, `RELH`, `ATMS`, `VHM0`, `VAVT`, `TEMP`,
+    - backend / Supabase:
+      - creada la tabla `spot_maritime_observations` para observaciones maritimas cacheadas y historico rotativo de `72 h`,
+      - creada la funcion SQL `prune_spot_maritime_observations`,
+      - aplicada la migracion remota en Supabase,
+      - configurados secrets `COPERNICUSMARINE_SERVICE_USERNAME` y `COPERNICUSMARINE_SERVICE_PASSWORD`,
+      - creada y desplegada la Edge Function `madis-maritime-nearby`,
+      - creada y desplegada la Edge Function `copernicus-marine-nearby`,
+      - `copernicus-marine-nearby` lee metadatos STAC, calcula chunks, descarga SQLite desde S3 y extrae filas con `sql.js`,
+      - Copernicus queda como proveedor principal y MADIS como fallback/experimental,
+      - radio por defecto limitado a `10 km` para no saturar,
+      - excepcion temporal de pruebas para spots de Tarifa con radio `50 km`,
+      - primera carga limitada a `10` plataformas con paginacion `Cargar 10 barcos mas`,
+      - la respuesta backend devuelve `total`, `offset`, `limit`, `hasMore` y observaciones normalizadas,
+    - app / Live:
+      - anadido `SpotMaritimeObservationsClient`,
+      - `SpotDetailPage` recibe el cliente de observaciones maritimas y mantiene estado de carga/paginacion,
+      - anadido controlador `live_maritime_observations_controller.dart`,
+      - el boton `Cargar observaciones maritimas` aparece bajo `Ver estacion en el mapa`,
+      - la UI muestra el radio usado y el total de barcos/plataformas detectadas,
+      - las estaciones maritimas se inyectan en el selector Live solo bajo demanda,
+      - Live reconoce `COPERNICUS_MARINE` y `MADIS_MARITIME` para payload, historico y etiquetas,
+    - validacion:
+      - `deno check supabase/functions/madis-maritime-nearby/index.ts` limpio,
+      - `deno check supabase/functions/copernicus-marine-nearby/index.ts` limpio,
+      - `flutter analyze` limpio,
+      - prueba remota de `copernicus-marine-nearby` en Tarifa con `50 km`: devuelve `4` plataformas,
+      - prueba remota cacheada posterior: `total=4`, `count=4`, `hasMore=false`,
+      - `local.env.json` sigue ignorado por git y contiene credenciales locales sin versionar.

@@ -41,6 +41,12 @@ verify_jwt = false
 [functions.spot-live-observation-collector]
 verify_jwt = false
 
+[functions.madis-maritime-nearby]
+verify_jwt = true
+
+[functions.copernicus-marine-nearby]
+verify_jwt = true
+
 [functions.direct-message-push]
 verify_jwt = true
 

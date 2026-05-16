@@ -109,6 +109,64 @@ extension _SpotDetailLiveSection on _SpotDetailPageState {
     );
   }
 
+  Widget _buildMaritimeObservationsButton() {
+    if (!_canLoadMaritimeObservations()) {
+      return const SizedBox.shrink();
+    }
+    final loadedLabel = _maritimeObservationsLoaded
+        ? 'Actualizar observaciones maritimas'
+        : 'Cargar observaciones maritimas';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        OutlinedButton.icon(
+          onPressed: _isMaritimeObservationsLoading
+              ? null
+              : _loadMaritimeObservations,
+          icon: _isMaritimeObservationsLoading
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.sailing_outlined),
+          label: Text(
+            _isMaritimeObservationsLoading
+                ? 'Buscando observaciones...'
+                : loadedLabel,
+          ),
+        ),
+        if (_maritimeObservationsLoaded) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Radio ${_maritimeObservationsRadiusKm.toStringAsFixed(0)} km · '
+            '$_maritimeObservationsLoadedCount de '
+            '$_maritimeObservationsTotal barcos detectados',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          if (_maritimeObservationsHasMore) ...[
+            const SizedBox(height: AppSpacing.xs),
+            TextButton.icon(
+              onPressed: _isMaritimeObservationsLoading
+                  ? null
+                  : _loadMoreMaritimeObservations,
+              icon: const Icon(Icons.add_circle_outline),
+              label: const Text('Cargar 10 barcos mas'),
+            ),
+          ],
+        ],
+        if (_maritimeObservationsError != null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            _maritimeObservationsError!,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.error,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildLiveSection() {
     final loadResult = _liveStationsLoadResult;
     if (loadResult == null) {
@@ -146,6 +204,8 @@ extension _SpotDetailLiveSection on _SpotDetailPageState {
               _findStationByKey(_selectedStation) ??
                   _resolvedNearbyStations().first,
             ),
+            const SizedBox(height: AppSpacing.sm),
+            _buildMaritimeObservationsButton(),
             const SizedBox(height: AppSpacing.sm),
             _buildLiveProviderLabel(),
             const SizedBox(height: AppSpacing.sm),
