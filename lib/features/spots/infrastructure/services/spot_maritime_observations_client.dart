@@ -217,15 +217,21 @@ class SpotMaritimeObservationsClient {
       debugPrint('SpotMaritimeObservations invalid row=$row');
       return null;
     }
+    final resolvedStationKey = stationKey;
+    final resolvedPlatformId = platformId;
+    final resolvedLatitude = latitude;
+    final resolvedLongitude = longitude;
+    final resolvedDistanceKm = distanceKm;
+
     return SpotMaritimeObservation(
       provider: row['provider'] as String? ?? 'MADIS_MARITIME',
-      stationKey: stationKey,
-      platformId: platformId,
+      stationKey: resolvedStationKey,
+      platformId: resolvedPlatformId,
       platformName: row['platform_name'] as String?,
       platformType: row['platform_type'] as String?,
-      latitude: latitude,
-      longitude: longitude,
-      distanceKm: distanceKm,
+      latitude: resolvedLatitude,
+      longitude: resolvedLongitude,
+      distanceKm: resolvedDistanceKm,
       observedAt: DateTime.tryParse(
         row['observed_at'] as String? ?? '',
       )?.toLocal(),
