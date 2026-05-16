@@ -40,6 +40,7 @@ extension _SpotsEditController on SpotsPageState {
       final index = _spots.indexOf(spot);
       if (index != -1) {
         _spots[index] = edited;
+        _syncManualOrderFromSpots();
         _spotsModule.deleteSpotByName(spot.name);
         _spotsModule.saveSpot(edited);
       }

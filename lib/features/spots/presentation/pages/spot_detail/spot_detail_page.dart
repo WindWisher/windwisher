@@ -352,6 +352,9 @@ class _SpotDetailPageState extends State<SpotDetailPage>
     _initializeSocialChat();
     _forecastProvider =
         widget.capabilities.defaultForecastProvider ?? _forecastProvider;
+    if (!_forecastProvidersForSpot().contains(_forecastProvider)) {
+      _forecastProvider = 'Open-Meteo';
+    }
     _forecastModel =
         _defaultForecastModelFromCapabilities(_forecastProvider) ??
         getSpotDefaultForecastModel(

@@ -270,7 +270,7 @@ async function collectNearbyCopernicusRows(params: {
     longitude: number;
     distanceKm: number;
     observedAt: string;
-    values: Map<string, number>;
+    values: Map<string, { value: number; observedAt: string }>;
   }>();
 
   for (const row of parsedRows) {
@@ -295,7 +295,7 @@ async function collectNearbyCopernicusRows(params: {
       continue;
     }
     const existing = byPlatform.get(platformId);
-    if (!existing || observedAt.getTime() > Date.parse(existing.observedAt)) {
+    if (!existing) {
       byPlatform.set(platformId, {
         platformId,
         platformType: row.platform_type || null,
@@ -304,12 +304,27 @@ async function collectNearbyCopernicusRows(params: {
         longitude,
         distanceKm,
         observedAt: observedAt.toISOString(),
-        values: new Map([[row.variable, value]]),
+        values: new Map([
+          [row.variable, { value, observedAt: observedAt.toISOString() }],
+        ]),
       });
       continue;
     }
-    if (observedAt.getTime() === Date.parse(existing.observedAt)) {
-      existing.values.set(row.variable, value);
+    const existingVariable = existing.values.get(row.variable);
+    if (
+      !existingVariable ||
+      observedAt.getTime() > Date.parse(existingVariable.observedAt)
+    ) {
+      existing.values.set(row.variable, {
+        value,
+        observedAt: observedAt.toISOString(),
+      });
+    }
+    if (observedAt.getTime() > Date.parse(existing.observedAt)) {
+      existing.observedAt = observedAt.toISOString();
+      existing.latitude = latitude;
+      existing.longitude = longitude;
+      existing.distanceKm = distanceKm;
     }
   }
 
@@ -543,12 +558,12 @@ function toObservationRow(
     longitude: number;
     distanceKm: number;
     observedAt: string;
-    values: Map<string, number>;
+    values: Map<string, { value: number; observedAt: string }>;
   },
   fetchedAt: string,
 ): MaritimeObservationRow {
-  const windSpeedMs = platform.values.get("WSPD") ?? null;
-  const gustMs = platform.values.get("GSPD") ?? null;
+  const windSpeedMs = readPlatformValue(platform.values, "WSPD");
+  const gustMs = readPlatformValue(platform.values, "GSPD");
   return {
     spot_key: params.spotKey,
     spot_name: params.spotName,
@@ -565,24 +580,42 @@ function toObservationRow(
     source_file: productId,
     wind_speed_ms: windSpeedMs,
     wind_speed_knots: msToKnots(windSpeedMs),
-    wind_dir_deg: platform.values.get("WDIR") ?? null,
+    wind_dir_deg: readPlatformValue(platform.values, "WDIR"),
     gust_ms: gustMs,
     gust_knots: msToKnots(gustMs),
-    air_temp_c: platform.values.get("DRYT") ?? null,
-    pressure_hpa: platform.values.get("ATMS") ?? null,
-    humidity_pct: platform.values.get("RELH") ?? null,
-    sea_surface_temp_c: platform.values.get("TEMP") ?? null,
-    wave_height_m: platform.values.get("VHM0") ?? null,
-    wave_period_s: platform.values.get("VAVT") ?? null,
+    air_temp_c: readPlatformValue(platform.values, "DRYT"),
+    pressure_hpa: readPlatformValue(platform.values, "ATMS"),
+    humidity_pct: readPlatformValue(platform.values, "RELH"),
+    sea_surface_temp_c: readPlatformValue(platform.values, "TEMP"),
+    wave_height_m: readPlatformValue(platform.values, "VHM0"),
+    wave_period_s: readPlatformValue(platform.values, "VAVT"),
     quality: "copernicus-qc-1-2",
     raw_payload: {
       datasetId,
       productId,
-      variables: Object.fromEntries(platform.values),
+      variables: Object.fromEntries(
+        [...platform.values.entries()].map(([key, item]) => [
+          key,
+          item.value,
+        ]),
+      ),
+      variableObservedAt: Object.fromEntries(
+        [...platform.values.entries()].map(([key, item]) => [
+          key,
+          item.observedAt,
+        ]),
+      ),
       institution: platform.institution,
       platformType: platform.platformType,
     },
   };
+}
+
+function readPlatformValue(
+  values: Map<string, { value: number; observedAt: string }>,
+  key: string,
+): number | null {
+  return values.get(key)?.value ?? null;
 }
 
 function boundingBox(

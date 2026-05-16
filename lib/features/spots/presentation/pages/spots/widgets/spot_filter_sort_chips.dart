@@ -46,6 +46,11 @@ class _SpotSortChips extends StatelessWidget {
     return _SpotChoiceChipRow<_SpotSort>(
       chips: const [
         _SpotChoiceChipData(
+          key: Key('spots-sort-manual'),
+          label: 'Manual',
+          value: _SpotSort.manual,
+        ),
+        _SpotChoiceChipData(
           key: Key('spots-sort-recent'),
           label: 'Recientes',
           value: _SpotSort.recent,

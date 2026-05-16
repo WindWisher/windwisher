@@ -40,9 +40,10 @@ extension _SpotsAddController on SpotsPageState {
       );
       _spots.insert(0, result);
       _filter = _SpotFilter.all;
-      _sort = _SpotSort.recent;
+      _sort = _SpotSort.manual;
       _searchQuery = '';
       _searchController.clear();
+      _syncManualOrderFromSpots();
       _spotsModule.saveSpot(result);
     });
     unawaited(_refreshSpotsAfterSave(result));

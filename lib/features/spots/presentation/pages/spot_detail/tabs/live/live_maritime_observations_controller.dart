@@ -55,6 +55,12 @@ extension _SpotDetailLiveMaritimeObservationsController
         offset: offset,
       );
       final observations = result.observations;
+      final liveWindObservations = observations
+          .where(
+            (observation) =>
+                observation.windKnots != null && observation.windDirDeg != null,
+          )
+          .toList(growable: false);
       if (!mounted) {
         return;
       }
@@ -62,11 +68,9 @@ extension _SpotDetailLiveMaritimeObservationsController
         _maritimeObservationsLoaded = true;
         _maritimeObservationsTotal = result.total;
         _maritimeObservationsLoadedCount = append
-            ? (_maritimeObservationsLoadedCount + observations.length).clamp(
-                0,
-                result.total,
-              )
-            : observations.length;
+            ? (_maritimeObservationsLoadedCount + liveWindObservations.length)
+                  .clamp(0, result.total)
+            : liveWindObservations.length;
         _maritimeObservationsHasMore = result.hasMore;
         final current = _liveStationsLoadResult;
         if (current == null) {
@@ -84,8 +88,10 @@ extension _SpotDetailLiveMaritimeObservationsController
           liveData.removeWhere(_isMaritimeObservationStationKey);
         }
         final existingStationKeys = stations.map(_stationKey).toSet();
+        String? firstObservationKey;
 
-        for (final observation in observations) {
+        for (final observation in liveWindObservations) {
+          firstObservationKey ??= observation.stationKey;
           if (!existingStationKeys.add(observation.stationKey)) {
             continue;
           }
@@ -115,6 +121,21 @@ extension _SpotDetailLiveMaritimeObservationsController
           );
         }
 
+        if (!append) {
+          final stationKeyToSelect = firstObservationKey;
+          if (stationKeyToSelect != null &&
+              stations.any(
+                (station) => _stationKey(station) == stationKeyToSelect,
+              )) {
+            _selectedStation = stationKeyToSelect;
+            _applyHistoricalDefaultsForStation(
+              stations.firstWhere(
+                (station) => _stationKey(station) == stationKeyToSelect,
+              ),
+            );
+          }
+        }
+
         _liveStationsLoadResult = _LiveStationsLoadResult(
           stations: stations,
           liveDataByStation: liveData,
@@ -129,6 +150,16 @@ extension _SpotDetailLiveMaritimeObservationsController
           append
               ? 'No hay mas observaciones maritimas dentro del radio de busqueda.'
               : 'No se han encontrado observaciones maritimas dentro del radio de busqueda.',
+        );
+      } else if (liveWindObservations.isEmpty && mounted) {
+        _showLiveRefreshFeedback(
+          'Hay ${observations.length} observaciones maritimas, pero ahora no traen viento util.',
+        );
+      } else if (mounted) {
+        _showLiveRefreshFeedback(
+          append
+              ? 'Se han cargado ${liveWindObservations.length} observaciones maritimas con viento mas.'
+              : 'Se han cargado ${liveWindObservations.length} observaciones maritimas con viento.',
         );
       }
     } catch (error) {

@@ -19,29 +19,32 @@ class _SpotCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          children: [
-            if (hasBackground)
-              Positioned.fill(
-                child: Image.file(
-                  File(spot.backgroundImagePath!),
-                  fit: BoxFit.cover,
+    return RepaintBoundary(
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+        child: Card(
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: [
+              if (hasBackground)
+                Positioned.fill(
+                  child: Image.file(
+                    File(spot.backgroundImagePath!),
+                    fit: BoxFit.cover,
+                    filterQuality: FilterQuality.low,
+                  ),
                 ),
+              if (hasBackground) const _SpotCardGradient(),
+              _SpotTile(
+                spot: spot,
+                hasBackground: hasBackground,
+                nearbyWebcamCount: nearbyWebcamCount,
+                isSelected: isSelected,
+                isMultiMode: isMultiMode,
+                onTap: onTap,
               ),
-            if (hasBackground) const _SpotCardGradient(),
-            _SpotTile(
-              spot: spot,
-              hasBackground: hasBackground,
-              nearbyWebcamCount: nearbyWebcamCount,
-              isSelected: isSelected,
-              isMultiMode: isMultiMode,
-              onTap: onTap,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

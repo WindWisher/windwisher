@@ -17,6 +17,8 @@ extension _SpotsListSection on SpotsPageState {
         const SizedBox(height: AppSpacing.sm),
         if (_filteredSpots.isEmpty)
           _buildNoFilteredSpotsCard(textTheme)
+        else if (_sort == _SpotSort.manual && !_isMultiMode)
+          _buildReorderableSpotsList()
         else
           ..._filteredSpots.map(_buildSpotCard),
       ],
@@ -88,6 +90,31 @@ extension _SpotsListSection on SpotsPageState {
       isSelected: _selectedSpotNames.contains(spot.name),
       isMultiMode: _isMultiMode,
       onTap: () => _handleCardTap(spot),
+    );
+  }
+
+  Widget _buildReorderableSpotsList() {
+    final spots = _filteredSpots;
+    return ReorderableListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      buildDefaultDragHandles: false,
+      itemCount: spots.length,
+      onReorder: _handleSpotReorder,
+      proxyDecorator: (child, index, animation) {
+        return Material(
+          color: Colors.transparent,
+          child: RepaintBoundary(child: child),
+        );
+      },
+      itemBuilder: (context, index) {
+        final spot = spots[index];
+        return ReorderableDelayedDragStartListener(
+          key: ValueKey('spot-card-${_spotOrderKey(spot)}'),
+          index: index,
+          child: _buildSpotCard(spot),
+        );
+      },
     );
   }
 }

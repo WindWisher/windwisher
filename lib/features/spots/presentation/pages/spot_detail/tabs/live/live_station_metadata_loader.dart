@@ -397,6 +397,26 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     );
   }
 
+  void _addTarifaLiveStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _aemetTarifaStationKey,
+      stationName: _aemetTarifaStationName,
+      provider: 'AEMET',
+      stationId: _aemetTarifaStationId,
+      latitude: _aemetTarifaStationLat,
+      longitude: _aemetTarifaStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+  }
+
   Future<void> _addConfiguredPortusStationMetadata({
     required double latitude,
     required double longitude,
@@ -537,6 +557,11 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
         villajoyosaPlayaParaisoLiveStationProfile;
   }
 
+  bool _usesTarifaLiveProfile() {
+    final capabilities = _resolvedSpotCapabilities();
+    return capabilities.liveStationProfile == tarifaLiveStationProfile;
+  }
+
   SpotCapabilities _resolvedSpotCapabilities() {
     final capabilities = widget.capabilities;
     if (capabilities.liveStationProfile == olivaCanalGorgsLiveStationProfile) {
@@ -567,6 +592,9 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     if (capabilities.liveStationProfile ==
         villajoyosaPlayaParaisoLiveStationProfile) {
       return villajoyosaPlayaParaisoSpotCapabilities;
+    }
+    if (capabilities.liveStationProfile == tarifaLiveStationProfile) {
+      return defaultSpotCapabilitiesForName(widget.name);
     }
 
     final defaultCapabilities = defaultSpotCapabilitiesForName(widget.name);

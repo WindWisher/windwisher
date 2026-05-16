@@ -13,6 +13,17 @@ extension _SpotDetailForecastDataController on _SpotDetailPageState {
     return models.contains(model) ? model : null;
   }
 
+  List<String> _forecastProvidersForSpot() {
+    return [
+      'Open-Meteo',
+      'AEMET',
+      if (_isWindguruWidgetEnabledForSpot(widget.name)) 'Windguru',
+      'Meteoblue',
+      'Meteosource',
+      'Meteostat',
+    ];
+  }
+
   List<String> _modelsForProvider(String provider) {
     return getSpotForecastModels(
       spotName: widget.name,

@@ -56,9 +56,11 @@ extension _SpotsCatalogController on SpotsPageState {
       return;
     }
     setState(() {
+      _spotOrderKeys = _loadSpotOrderKeys();
       _spots
         ..clear()
         ..addAll(spots);
+      _applyStoredSpotOrder();
     });
   }
 

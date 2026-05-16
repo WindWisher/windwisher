@@ -2,21 +2,25 @@ part of '../../spot_detail_page.dart';
 
 extension _SpotDetailForecastSection on _SpotDetailPageState {
   Widget _buildForecastProviderDropdown() {
+    final providers = _forecastProvidersForSpot();
+    final selectedProvider = providers.contains(_forecastProvider)
+        ? _forecastProvider
+        : providers.first;
     return DropdownButtonFormField<String>(
-      initialValue: _forecastProvider,
+      initialValue: selectedProvider,
       isExpanded: true,
       decoration: const InputDecoration(
         labelText: 'Proveedor meteo',
         border: OutlineInputBorder(),
       ),
-      items: const [
-        DropdownMenuItem(value: 'Open-Meteo', child: Text('Open-Meteo')),
-        DropdownMenuItem(value: 'AEMET', child: Text('AEMET')),
-        DropdownMenuItem(value: 'Windguru', child: Text('Windguru')),
-        DropdownMenuItem(value: 'Meteoblue', child: Text('Meteoblue')),
-        DropdownMenuItem(value: 'Meteosource', child: Text('Meteosource')),
-        DropdownMenuItem<String>(value: 'Meteostat', child: Text('Meteostat')),
-      ],
+      items: providers
+          .map(
+            (provider) => DropdownMenuItem<String>(
+              value: provider,
+              child: Text(provider),
+            ),
+          )
+          .toList(growable: false),
       onChanged: (value) {
         if (value == null) {
           return;

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:async';
@@ -9,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
+import 'package:windwisher/core/persistence/app_storage_paths.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
 import 'package:windwisher/features/spots/di/spots_module.dart';
@@ -36,6 +38,7 @@ part 'spots_delete_controller.dart';
 part 'spots_edit_controller.dart';
 part 'spots_filter_controller.dart';
 part 'spots_list_section.dart';
+part 'spots_order_controller.dart';
 
 part 'widgets/spot_add_form_fields.dart';
 part 'widgets/spot_add_header.dart';
@@ -74,9 +77,10 @@ class SpotsPageState extends State<SpotsPage> {
   final List<_SpotItem> _spots = <_SpotItem>[];
   final _searchController = TextEditingController();
   _SpotFilter _filter = _SpotFilter.all;
-  _SpotSort _sort = _SpotSort.recent;
+  _SpotSort _sort = _SpotSort.manual;
   _PendingCardAction _pendingCardAction = _PendingCardAction.none;
   final Set<String> _selectedSpotNames = <String>{};
+  List<String> _spotOrderKeys = const <String>[];
   String _searchQuery = '';
   StreamSubscription<AuthState>? _authStateSubscription;
   Set<String> _myRoles = const <String>{};
@@ -89,7 +93,9 @@ class SpotsPageState extends State<SpotsPage> {
         (widget.useLocalPersistence
             ? SpotsModule.auto()
             : SpotsModule.inMemory());
+    _spotOrderKeys = _loadSpotOrderKeys();
     _spots.addAll(_spotsModule.getSpots());
+    _applyStoredSpotOrder();
     _hydrateSpotsCatalog();
     unawaited(_loadMyRoles());
     _subscribeToAuthChanges();
@@ -176,4 +182,4 @@ enum _PendingCardAction { none, edit, deleteMany }
 
 enum _SpotFilter { all, official, custom }
 
-enum _SpotSort { recent, az, za }
+enum _SpotSort { manual, recent, az, za }

@@ -16605,3 +16605,42 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - prueba remota de `copernicus-marine-nearby` en Tarifa con `50 km`: devuelve `4` plataformas,
       - prueba remota cacheada posterior: `total=4`, `count=4`, `hasMore=false`,
       - `local.env.json` sigue ignorado por git y contiene credenciales locales sin versionar.
+
+
+  - bloque nuevo `2026-05-16`:
+    - estabilizacion de Spots, Live Tarifa, observaciones maritimas y limite Windguru,
+    - tiempo real trabajado en este tramo: `105 min` aprox. de trabajo efectivo,
+    - spots / orden manual:
+      - anadido orden manual por defecto en la lista de spots,
+      - las tarjetas se pueden mantener pulsadas y arrastrar para reordenar,
+      - anadido chip `Manual` junto a `Recientes`, `A-Z` y `Z-A`,
+      - el drag queda activo solo en orden manual y fuera del modo multi-seleccion,
+      - el orden se persiste en JSON local por usuario/dispositivo,
+      - el orden se mantiene tras hidratar catalogo, agregar, editar o eliminar spots,
+      - optimizado el arrastre con `RepaintBoundary`, menor filtrado de imagen y proxy sin escalado para reducir lag,
+    - live / observaciones maritimas:
+      - el boton de observaciones maritimas selecciona automaticamente la primera observacion con viento real,
+      - las observaciones sin `wind_speed_knots` o sin `wind_dir_deg` ya no se inyectan como estaciones Live seleccionables,
+      - el contador diferencia entre observaciones detectadas y observaciones utiles con viento,
+      - comprobado en Tarifa - Balneario que Copernicus devuelve `4` observaciones dentro de `50 km` pero solo `6101404___MO` trae viento util,
+      - confirmado que `Tarifa-coast-buoy___MO` publica oleaje/temperatura pero no variables `WSPD/WDIR`,
+    - backend / Copernicus Marine:
+      - `copernicus-marine-nearby` ahora conserva el ultimo valor disponible por variable y plataforma en lugar de exigir mismo timestamp para todas las variables,
+      - anadido `variableObservedAt` en `raw_payload` para diagnosticar de donde viene cada variable,
+      - function redesplegada en Supabase,
+      - verificada consulta fresca en Tarifa - Balneario tras el despliegue,
+    - live / Tarifa:
+      - creado perfil Live especifico `tarifa`,
+      - `Tarifa - Balneario` y `Tarifa - Valdevaqueros` usan `AEMET Tarifa` (`6001`) como estacion base/preferida,
+      - las observaciones maritimas quedan como fuente extra bajo demanda y no como fuente principal de Live,
+    - forecast / Windguru:
+      - definido limite operativo de Windguru a 10 spots prioritarios:
+        `Oliva Canal - Platja dels Gorgs`, `Piles`, `El Perellonet`, `Cullera - El Pollo`, `Gandia Playa`, `Denia - Punta Els Molins`, `Calpe`, `Santa Pola - Platja Lissa`, `El Campello - Playa Muchavista` y `Tarifa - Valdevaqueros`,
+      - Windguru desaparece del selector de proveedores en cualquier spot fuera de esa lista,
+      - proteccion inicial para que un spot no permitido no conserve `Windguru` como proveedor por estado previo,
+      - retirado Windguru de `Tarifa - Balneario` y `Xeraco` para no consumir widgets del limite externo,
+    - verificacion:
+      - `deno check supabase/functions/copernicus-marine-nearby/index.ts` limpio,
+      - `flutter analyze` limpio,
+      - desplegada `copernicus-marine-nearby` en Supabase,
+      - `local.env.json` sigue ignorado por git y no se versiona.

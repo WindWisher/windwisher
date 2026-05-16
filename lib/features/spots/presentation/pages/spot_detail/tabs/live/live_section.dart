@@ -139,8 +139,8 @@ extension _SpotDetailLiveSection on _SpotDetailPageState {
           const SizedBox(height: AppSpacing.xs),
           Text(
             'Radio ${_maritimeObservationsRadiusKm.toStringAsFixed(0)} km · '
-            '$_maritimeObservationsLoadedCount de '
-            '$_maritimeObservationsTotal barcos detectados',
+            '$_maritimeObservationsLoadedCount con viento de '
+            '$_maritimeObservationsTotal observaciones detectadas',
             style: Theme.of(context).textTheme.bodySmall,
           ),
           if (_maritimeObservationsHasMore) ...[

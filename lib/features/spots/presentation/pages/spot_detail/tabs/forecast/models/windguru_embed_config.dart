@@ -17,9 +17,25 @@ const String _windguruSantaPolaPlatjaLissaSpotName =
 const String _windguruElCampelloPlayaMuchavistaSpotName =
     'El Campello - Playa Muchavista';
 const String _windguruElPerellonetSpotName = 'El Perellonet';
+const String _windguruXeracoSpotName = 'Xeraco';
 const String _windguruTarifaBalnearioSpotName = 'Tarifa - Balneario';
 const String _windguruTarifaValdevaquerosSpotName = 'Tarifa - Valdevaqueros';
 const String _windguruCulleraElPolloSpotName = 'Cullera - El Pollo';
+
+bool _isWindguruWidgetEnabledForSpot(String spotName) {
+  final normalizedSpot = spotName.trim().toLowerCase();
+  return normalizedSpot == _windguruOlivaSpotName.toLowerCase() ||
+      normalizedSpot == _windguruPilesSpotName.toLowerCase() ||
+      normalizedSpot == _windguruElPerellonetSpotName.toLowerCase() ||
+      normalizedSpot == _windguruCulleraElPolloSpotName.toLowerCase() ||
+      normalizedSpot == _windguruGandiaPlayaSpotName.toLowerCase() ||
+      normalizedSpot == _windguruDeniaPuntaMolinsSpotName.toLowerCase() ||
+      normalizedSpot == _windguruCalpeSpotName.toLowerCase() ||
+      normalizedSpot == _windguruSantaPolaPlatjaLissaSpotName.toLowerCase() ||
+      normalizedSpot ==
+          _windguruElCampelloPlayaMuchavistaSpotName.toLowerCase() ||
+      normalizedSpot == _windguruTarifaValdevaquerosSpotName.toLowerCase();
+}
 
 double _windguruWidgetHeightForSpot(String spotName) {
   return _windguruWidgetHeight;
@@ -27,6 +43,9 @@ double _windguruWidgetHeightForSpot(String spotName) {
 
 String _windguruWidgetHtmlForSpot(String spotName) {
   final normalizedSpot = spotName.trim().toLowerCase();
+  if (!_isWindguruWidgetEnabledForSpot(spotName)) {
+    return _buildWindguruUnavailableHtml(spotName);
+  }
   if (normalizedSpot == _windguruPilesSpotName.toLowerCase()) {
     return _buildWindguruWidgetHtml(
       spotId: '504236',
@@ -95,12 +114,6 @@ String _windguruWidgetHtmlForSpot(String spotName) {
       widgetId: 'wg_fwdg_48862_52_1778870000002',
     );
   }
-  if (normalizedSpot == _windguruTarifaBalnearioSpotName.toLowerCase()) {
-    return _buildWindguruWidgetHtml(
-      spotId: '43',
-      widgetId: 'wg_fwdg_43_52_1778870000003',
-    );
-  }
   if (normalizedSpot == _windguruTarifaValdevaquerosSpotName.toLowerCase()) {
     return _buildWindguruWidgetHtml(
       spotId: '541946',
@@ -156,6 +169,9 @@ String _windguruWidgetSubtitleForSpot(String spotName) {
   if (normalizedSpot == _windguruElPerellonetSpotName.toLowerCase()) {
     return 'Widget Windguru · El Mareny Blau / Perello';
   }
+  if (normalizedSpot == _windguruXeracoSpotName.toLowerCase()) {
+    return 'Widget Windguru · Xeraco';
+  }
   if (normalizedSpot == _windguruTarifaBalnearioSpotName.toLowerCase()) {
     return 'Widget Windguru · Tarifa';
   }
@@ -168,19 +184,89 @@ String _windguruWidgetSubtitleForSpot(String spotName) {
   if (normalizedSpot == _windguruOlivaSpotName.toLowerCase()) {
     return 'Widget Windguru · Oliva Canal';
   }
+  if (!_isWindguruWidgetEnabledForSpot(spotName)) {
+    return 'Windguru reservado para 10 spots prioritarios';
+  }
   return 'Widget Windguru · $spotName';
 }
 
-String _buildWindguruWidgetHtml({
-  required String spotId,
-  required String widgetId,
-}) {
+String _buildWindguruUnavailableHtml(String spotName) {
+  final safeSpotName = spotName
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;');
   return '''<!doctype html>
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    html, body { margin: 0; padding: 0; background: #ffffff; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #263238;
+    }
+    .message {
+      box-sizing: border-box;
+      min-height: 220px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 8px;
+      padding: 24px;
+      text-align: center;
+    }
+    .title {
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .body {
+      font-size: 14px;
+      line-height: 1.4;
+      color: #607d8b;
+    }
+  </style>
+</head>
+<body>
+  <div class="message">
+    <div class="title">Windguru no configurado para $safeSpotName</div>
+    <div class="body">El limite de widgets se reserva para los 10 spots prioritarios.</div>
+  </div>
+</body>
+</html>
+''';
+}
+
+String _buildWindguruWidgetHtml({
+  required String spotId,
+  required String widgetId,
+  bool constrainedLayout = false,
+}) {
+  final layoutCss = constrainedLayout
+      ? '''
+      min-width: 980px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-text-size-adjust: 100%;
+    }
+    body {
+      width: max-content;
+      min-height: 720px;'''
+      : '''
+      overflow: hidden;''';
+  return '''<!doctype html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      $layoutCss
+    }
   </style>
 </head>
 <body>

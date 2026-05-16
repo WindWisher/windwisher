@@ -50,6 +50,8 @@ const String elCampelloPlayaMuchavistaSpotName =
     'El Campello - Playa Muchavista';
 const String elPerellonetWebcamProfile = 'el_perellonet_webcams';
 const String elPerellonetSpotName = 'El Perellonet';
+const String tarifaLiveStationProfile = 'tarifa';
+const String tarifaPreferredLiveStationKey = '6001';
 const String tarifaBalnearioSpotName = 'Tarifa - Balneario';
 const String tarifaValdevaquerosSpotName = 'Tarifa - Valdevaqueros';
 const String culleraDosselWebcamProfile = 'cullera_dossel_webcams';
@@ -155,13 +157,19 @@ const elPerellonetSpotCapabilities = SpotCapabilities(
 );
 
 const tarifaBalnearioSpotCapabilities = SpotCapabilities(
+  liveStationProfile: tarifaLiveStationProfile,
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
+  preferredLiveStationKey: tarifaPreferredLiveStationKey,
+  preferredAemetLiveStationId: tarifaPreferredLiveStationKey,
 );
 
 const tarifaValdevaquerosSpotCapabilities = SpotCapabilities(
+  liveStationProfile: tarifaLiveStationProfile,
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
+  preferredLiveStationKey: tarifaPreferredLiveStationKey,
+  preferredAemetLiveStationId: tarifaPreferredLiveStationKey,
 );
 
 const culleraElPolloSpotCapabilities = SpotCapabilities(

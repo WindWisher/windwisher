@@ -51,6 +51,7 @@ extension SpotsDeleteController on SpotsPageState {
         _spotsModule.deleteSpotByName(name);
       }
       _spots.removeWhere((spot) => _selectedSpotNames.contains(spot.name));
+      _syncManualOrderFromSpots();
       _pendingCardAction = _PendingCardAction.none;
       _selectedSpotNames.clear();
     });
