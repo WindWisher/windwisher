@@ -16695,3 +16695,25 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
     - verificacion:
       - `flutter analyze` limpio tras los cambios principales,
       - `local.env.json` sigue ignorado por git y no se versiona.
+
+
+  - bloque nuevo `2026-05-19`:
+    - ampliacion de estaciones Live y catalogo internacional de spots,
+    - tiempo real trabajado en este tramo: `35 min` aprox. de trabajo efectivo,
+    - live / Weather Underground:
+      - anadida la estacion `WU Oliva IOLIVA94` solo al perfil Live de `Piles`,
+      - confirmada respuesta publica actual de `IOLIVA94` desde Weather Underground,
+      - coordenadas registradas para `IOLIVA94`: `38.93356, -0.116067`,
+      - el historico denso tipo `min20` se aplica ahora a cualquier estacion `WUNDERGROUND`,
+      - `IOLIVA107` se mantiene solo en Oliva y `IOLIVA94` solo en Piles,
+    - spots / catalogo:
+      - creado el spot oficial `Dakhla` con coordenadas `23.901726320541233, -15.785405169532982`,
+      - corregida el area de `Dakhla` a `Sahara Occidental`,
+      - creado el spot oficial `Essaouira` con coordenadas `31.498473284986574, -9.764221578867195`,
+      - `Essaouira` queda en area `Marruecos`,
+      - ambos quedan sin proveedores especificos por ahora hasta conectar fuentes utiles para esa zona,
+    - spots / formulario:
+      - el campo opcional de agregar spot pasa a indicar `Zona / provincia / pais (opcional)`,
+    - verificacion:
+      - `flutter analyze` limpio,
+      - `local.env.json` sigue ignorado por git y no se versiona.

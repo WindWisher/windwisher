@@ -43,7 +43,7 @@ class _SpotAddFormFields extends StatelessWidget {
           onSubmitted: (_) => onSubmitted(),
           enabled: allowTextFields,
           decoration: const InputDecoration(
-            labelText: 'Zona / provincia (opcional)',
+            labelText: 'Zona / provincia / pais (opcional)',
           ),
         ),
       ],

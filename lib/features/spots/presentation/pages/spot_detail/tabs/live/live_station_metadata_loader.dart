@@ -126,6 +126,18 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     _addLiveStationMetadata(
       stations: stations,
       seenKeys: seenKeys,
+      stationKey: _wundergroundOliva94StationKey,
+      stationName: _wundergroundOliva94StationName,
+      provider: 'WUNDERGROUND',
+      stationId: _wundergroundOliva94StationId,
+      latitude: _wundergroundOliva94StationLat,
+      longitude: _wundergroundOliva94StationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
       stationKey: _windguruDkPilesStationKey,
       stationName: _windguruDkPilesStationName,
       provider: 'WINDGURU_STATION',

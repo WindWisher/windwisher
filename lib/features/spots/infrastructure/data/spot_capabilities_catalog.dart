@@ -59,6 +59,8 @@ const String tarifaValdevaquerosSpotName = 'Tarifa - Valdevaqueros';
 const String culleraDosselWebcamProfile = 'cullera_dossel_webcams';
 const String culleraElPolloSpotName = 'Cullera - El Pollo';
 const String xeracoSpotName = 'Xeraco';
+const String dakhlaSpotName = 'Dakhla';
+const String essaouiraSpotName = 'Essaouira';
 
 const olivaCanalGorgsSpotCapabilities = SpotCapabilities(
   liveStationProfile: olivaCanalGorgsLiveStationProfile,

@@ -187,4 +187,16 @@ const _availableSpots = <_AvailableSpot>[
     aemetBeachCode: '1103506',
     capabilities: tarifaValdevaquerosSpotCapabilities,
   ),
+  _AvailableSpot(
+    name: dakhlaSpotName,
+    area: 'Sahara Occidental',
+    latitude: 23.901726320541233,
+    longitude: -15.785405169532982,
+  ),
+  _AvailableSpot(
+    name: essaouiraSpotName,
+    area: 'Marruecos',
+    latitude: 31.498473284986574,
+    longitude: -9.764221578867195,
+  ),
 ];

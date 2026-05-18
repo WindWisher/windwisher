@@ -30,6 +30,12 @@ const String _wundergroundOliva107StationName = 'WU Oliva IOLIVA107';
 const double _wundergroundOliva107StationLat = 38.924614;
 const double _wundergroundOliva107StationLon = -0.087877;
 
+const String _wundergroundOliva94StationId = 'IOLIVA94';
+const String _wundergroundOliva94StationKey = 'wunderground:IOLIVA94';
+const String _wundergroundOliva94StationName = 'WU Oliva IOLIVA94';
+const double _wundergroundOliva94StationLat = 38.93356;
+const double _wundergroundOliva94StationLon = -0.116067;
+
 const String _avametGandiaCamiMarStationId = 'c25m131e15';
 const String _avametGandiaCamiMarStationKey = 'avamet:c25m131e15';
 const String _avametGandiaCamiMarStationName = 'Gandia Cami de la mar';
