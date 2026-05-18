@@ -79,6 +79,18 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
       referenceLatitude: latitude,
       referenceLongitude: longitude,
     );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _wundergroundOliva107StationKey,
+      stationName: _wundergroundOliva107StationName,
+      provider: 'WUNDERGROUND',
+      stationId: _wundergroundOliva107StationId,
+      latitude: _wundergroundOliva107StationLat,
+      longitude: _wundergroundOliva107StationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
   }
 
   void _addPilesLiveStations({

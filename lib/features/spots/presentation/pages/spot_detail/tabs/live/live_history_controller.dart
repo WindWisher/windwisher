@@ -131,6 +131,9 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
     if (station.provider == 'AIGUABLANCA') {
       return false;
     }
+    if (station.provider == 'WUNDERGROUND') {
+      return false;
+    }
     if (station.provider == 'AEMET' && station.stationId == '8058X') {
       return false;
     }
@@ -157,6 +160,8 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
         return 'AEMET';
       case 'AVAMET':
         return 'AVAMET';
+      case 'WUNDERGROUND':
+        return 'Weather Underground';
       case 'INFORATGE':
         return 'Inforatge';
       case 'MADIS_MARITIME':

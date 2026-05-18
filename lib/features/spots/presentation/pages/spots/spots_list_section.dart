@@ -2,27 +2,68 @@ part of 'spots_page.dart';
 
 extension _SpotsListSection on SpotsPageState {
   List<Widget> _buildSpotsListSection(TextTheme textTheme) {
-    return [
+    final topWidgets = <Widget>[
       _buildSpotsHeaderCard(textTheme),
       const SizedBox(height: AppSpacing.sm),
-      if (_spots.isEmpty)
-        _buildEmptySpotsCard(textTheme)
-      else ...[
-        _buildFilterChips(),
-        const SizedBox(height: AppSpacing.sm),
-        _buildSearchField(),
-        ..._buildPendingActionCard(textTheme),
-        const SizedBox(height: AppSpacing.sm),
-        _buildSortChips(),
-        const SizedBox(height: AppSpacing.sm),
-        if (_filteredSpots.isEmpty)
-          _buildNoFilteredSpotsCard(textTheme)
-        else if (_sort == _SpotSort.manual && !_isMultiMode)
-          _buildReorderableSpotsList()
-        else
-          ..._filteredSpots.map(_buildSpotCard),
-      ],
-      const SizedBox(height: 96),
+    ];
+
+    if (_spots.isEmpty) {
+      return [
+        SliverPadding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          sliver: SliverList.list(
+            children: [
+              ...topWidgets,
+              _buildEmptySpotsCard(textTheme),
+              const SizedBox(height: 96),
+            ],
+          ),
+        ),
+      ];
+    }
+
+    final controls = <Widget>[
+      ...topWidgets,
+      _buildFilterChips(),
+      const SizedBox(height: AppSpacing.sm),
+      _buildSearchField(),
+      ..._buildPendingActionCard(textTheme),
+      const SizedBox(height: AppSpacing.sm),
+      _buildSortChips(),
+      const SizedBox(height: AppSpacing.sm),
+    ];
+
+    if (_filteredSpots.isEmpty) {
+      return [
+        SliverPadding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          sliver: SliverList.list(
+            children: [
+              ...controls,
+              _buildNoFilteredSpotsCard(textTheme),
+              const SizedBox(height: 96),
+            ],
+          ),
+        ),
+      ];
+    }
+
+    final canReorder = _sort == _SpotSort.manual && !_isMultiMode;
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.md,
+          0,
+        ),
+        sliver: SliverList.list(children: controls),
+      ),
+      if (canReorder)
+        _buildReorderableSpotsSliver()
+      else
+        _buildSpotsSliverList(),
+      const SliverToBoxAdapter(child: SizedBox(height: 96)),
     ];
   }
 
@@ -86,35 +127,47 @@ extension _SpotsListSection on SpotsPageState {
     return _SpotCard(
       spot: spot,
       hasBackground: hasBackground,
-      nearbyWebcamCount: _nearbyWebcamCount(spot),
       isSelected: _selectedSpotNames.contains(spot.name),
       isMultiMode: _isMultiMode,
       onTap: () => _handleCardTap(spot),
+      onShowMap: _canShowSpotMap(spot) ? () => _showSpotMapDialog(spot) : null,
     );
   }
 
-  Widget _buildReorderableSpotsList() {
+  Widget _buildSpotsSliverList() {
     final spots = _filteredSpots;
-    return ReorderableListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      buildDefaultDragHandles: false,
-      itemCount: spots.length,
-      onReorder: _handleSpotReorder,
-      proxyDecorator: (child, index, animation) {
-        return Material(
-          color: Colors.transparent,
-          child: RepaintBoundary(child: child),
-        );
-      },
-      itemBuilder: (context, index) {
-        final spot = spots[index];
-        return ReorderableDelayedDragStartListener(
-          key: ValueKey('spot-card-${_spotOrderKey(spot)}'),
-          index: index,
-          child: _buildSpotCard(spot),
-        );
-      },
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      sliver: SliverList.builder(
+        itemCount: spots.length,
+        itemBuilder: (context, index) => _buildSpotCard(spots[index]),
+      ),
+    );
+  }
+
+  Widget _buildReorderableSpotsSliver() {
+    final spots = _filteredSpots;
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      sliver: SliverReorderableList(
+        itemCount: spots.length,
+        onReorder: _handleSpotReorder,
+        autoScrollerVelocityScalar: 70,
+        proxyDecorator: (child, index, animation) {
+          return Material(
+            color: Colors.transparent,
+            child: RepaintBoundary(child: child),
+          );
+        },
+        itemBuilder: (context, index) {
+          final spot = spots[index];
+          return ReorderableDelayedDragStartListener(
+            key: ValueKey('spot-card-${_spotOrderKey(spot)}'),
+            index: index,
+            child: _buildSpotCard(spot),
+          );
+        },
+      ),
     );
   }
 }

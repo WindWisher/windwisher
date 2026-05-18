@@ -8,6 +8,9 @@ class SpotCapabilities {
     this.preferredAemetLiveStationId,
     this.portusRealtimeStationIds = const <int>[],
     this.includeOlivaReferenceLiveStations = false,
+    this.navigationLatitude,
+    this.navigationLongitude,
+    this.navigationLabel,
   });
 
   static const empty = SpotCapabilities();
@@ -20,6 +23,9 @@ class SpotCapabilities {
   final String? preferredAemetLiveStationId;
   final List<int> portusRealtimeStationIds;
   final bool includeOlivaReferenceLiveStations;
+  final double? navigationLatitude;
+  final double? navigationLongitude;
+  final String? navigationLabel;
 }
 
 class SpotItem {

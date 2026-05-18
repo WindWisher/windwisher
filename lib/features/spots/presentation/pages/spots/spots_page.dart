@@ -9,6 +9,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/core/persistence/app_storage_paths.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
@@ -24,7 +25,6 @@ part 'spot_add_sheet_state.dart';
 part 'spot_add_suggestions_helper.dart';
 part 'spot_custom_map_coordinate_parser.dart';
 part 'spot_custom_map_models.dart';
-part 'spots_webcam_distance_helper.dart';
 
 part 'add_spot_sheet.dart';
 part 'custom_map_picker_dialog.dart';
@@ -110,10 +110,6 @@ class SpotsPageState extends State<SpotsPage> {
     );
   }
 
-  int _nearbyWebcamCount(_SpotItem spot) {
-    return _nearbySpotWebcamCount(spot: spot, spotsModule: _spotsModule);
-  }
-
   void _setFilter(_SpotFilter value) {
     setState(() {
       _filter = value;
@@ -154,10 +150,9 @@ class SpotsPageState extends State<SpotsPage> {
       children: [
         ScrollConfiguration(
           behavior: const _VerticalBounceNoStretchBehavior(),
-          child: ListView(
+          child: CustomScrollView(
             physics: kAppBouncingScrollPhysics,
-            padding: const EdgeInsets.all(AppSpacing.md),
-            children: _buildSpotsListSection(textTheme),
+            slivers: _buildSpotsListSection(textTheme),
           ),
         ),
         Positioned(

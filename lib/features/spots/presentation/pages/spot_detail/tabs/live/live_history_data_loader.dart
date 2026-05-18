@@ -111,6 +111,29 @@ extension _SpotDetailLiveHistoryDataLoader on _SpotDetailPageState {
       return _fetchBackendCollectedLiveHistory(station);
     }
 
+    if (station.provider == 'WUNDERGROUND') {
+      final stationId = station.stationId;
+      if (stationId == null) {
+        return null;
+      }
+      final history = await _wundergroundPwsClient.fetchOneDayHistory(
+        stationId: stationId,
+      );
+      return history
+          .map(
+            (point) => _HistoricalWindPoint(
+              time: point.time,
+              windKnots: point.windKnots,
+              gustKnots: point.gustKnots,
+              windDirectionDeg: point.windDirectionDeg,
+              directionKind: point.windDirectionDeg == null
+                  ? null
+                  : _HistoricalDirectionKind.exact,
+            ),
+          )
+          .toList(growable: false);
+    }
+
     if (station.provider == 'MADIS_MARITIME' ||
         station.provider == 'COPERNICUS_MARINE') {
       return _fetchMaritimeObservationHistory(station);

@@ -134,11 +134,12 @@ const _availableSpots = <_AvailableSpot>[
     capabilities: culleraElPolloSpotCapabilities,
   ),
   _AvailableSpot(
-    name: 'Xeraco',
+    name: xeracoSpotName,
     area: 'Valencia',
     latitude: 39.0318,
     longitude: -0.2161,
     aemetMunicipalityCode: '46143',
+    capabilities: xeracoSpotCapabilities,
   ),
   _AvailableSpot(
     name: elPerellonetSpotName,
@@ -158,6 +159,24 @@ const _availableSpots = <_AvailableSpot>[
     aemetMunicipalityCode: '11035',
     aemetBeachCode: '1103506',
     capabilities: tarifaBalnearioSpotCapabilities,
+  ),
+  _AvailableSpot(
+    name: tarifaCampoFutbolSpotName,
+    area: 'Cadiz',
+    latitude: 36.02129962247533,
+    longitude: -5.616776453751289,
+    aemetMunicipalityCode: '11035',
+    aemetBeachCode: '1103506',
+    capabilities: tarifaCampoFutbolSpotCapabilities,
+  ),
+  _AvailableSpot(
+    name: tarifaLosLancesSpotName,
+    area: 'Cadiz',
+    latitude: 36.046076176197694,
+    longitude: -5.640893942328883,
+    aemetMunicipalityCode: '11035',
+    aemetBeachCode: '1103506',
+    capabilities: tarifaLosLancesSpotCapabilities,
   ),
   _AvailableSpot(
     name: tarifaValdevaquerosSpotName,

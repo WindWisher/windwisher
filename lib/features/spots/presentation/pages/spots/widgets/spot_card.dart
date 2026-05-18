@@ -4,18 +4,18 @@ class _SpotCard extends StatelessWidget {
   const _SpotCard({
     required this.spot,
     required this.hasBackground,
-    required this.nearbyWebcamCount,
     required this.isSelected,
     required this.isMultiMode,
     required this.onTap,
+    required this.onShowMap,
   });
 
   final _SpotItem spot;
   final bool hasBackground;
-  final int nearbyWebcamCount;
   final bool isSelected;
   final bool isMultiMode;
   final VoidCallback onTap;
+  final VoidCallback? onShowMap;
 
   @override
   Widget build(BuildContext context) {
@@ -38,10 +38,10 @@ class _SpotCard extends StatelessWidget {
               _SpotTile(
                 spot: spot,
                 hasBackground: hasBackground,
-                nearbyWebcamCount: nearbyWebcamCount,
                 isSelected: isSelected,
                 isMultiMode: isMultiMode,
                 onTap: onTap,
+                onShowMap: onShowMap,
               ),
             ],
           ),
@@ -77,18 +77,18 @@ class _SpotTile extends StatelessWidget {
   const _SpotTile({
     required this.spot,
     required this.hasBackground,
-    required this.nearbyWebcamCount,
     required this.isSelected,
     required this.isMultiMode,
     required this.onTap,
+    required this.onShowMap,
   });
 
   final _SpotItem spot;
   final bool hasBackground;
-  final int nearbyWebcamCount;
   final bool isSelected;
   final bool isMultiMode;
   final VoidCallback onTap;
+  final VoidCallback? onShowMap;
 
   @override
   Widget build(BuildContext context) {
@@ -96,17 +96,13 @@ class _SpotTile extends StatelessWidget {
       selected: isSelected,
       leading: const Icon(Icons.place_outlined),
       title: Text(spot.name),
-      subtitle: _SpotTileSubtitle(
-        spot: spot,
-        hasBackground: hasBackground,
-        nearbyWebcamCount: nearbyWebcamCount,
-      ),
+      subtitle: _SpotTileSubtitle(spot: spot, hasBackground: hasBackground),
       trailing: isMultiMode
           ? _SpotSelectionIcon(
               isSelected: isSelected,
               hasBackground: hasBackground,
             )
-          : null,
+          : _SpotMapButton(hasBackground: hasBackground, onPressed: onShowMap),
       onTap: onTap,
       textColor: hasBackground ? Colors.white : null,
       iconColor: hasBackground ? Colors.white : null,
@@ -115,15 +111,10 @@ class _SpotTile extends StatelessWidget {
 }
 
 class _SpotTileSubtitle extends StatelessWidget {
-  const _SpotTileSubtitle({
-    required this.spot,
-    required this.hasBackground,
-    required this.nearbyWebcamCount,
-  });
+  const _SpotTileSubtitle({required this.spot, required this.hasBackground});
 
   final _SpotItem spot;
   final bool hasBackground;
-  final int nearbyWebcamCount;
 
   @override
   Widget build(BuildContext context) {
@@ -137,8 +128,6 @@ class _SpotTileSubtitle extends StatelessWidget {
           runSpacing: AppSpacing.xs,
           children: [
             if (spot.isCustom) _SpotCustomChip(hasBackground: hasBackground),
-            if (nearbyWebcamCount > 0)
-              _SpotWebcamChip(hasBackground: hasBackground),
           ],
         ),
       ],
@@ -165,27 +154,6 @@ class _SpotCustomChip extends StatelessWidget {
   }
 }
 
-class _SpotWebcamChip extends StatelessWidget {
-  const _SpotWebcamChip({required this.hasBackground});
-
-  final bool hasBackground;
-
-  @override
-  Widget build(BuildContext context) {
-    return Chip(
-      backgroundColor: hasBackground
-          ? Colors.black.withValues(alpha: 0.4)
-          : null,
-      label: Icon(
-        Icons.videocam_rounded,
-        size: 16,
-        color: hasBackground ? Colors.white : null,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-    );
-  }
-}
-
 class _SpotSelectionIcon extends StatelessWidget {
   const _SpotSelectionIcon({
     required this.isSelected,
@@ -200,6 +168,33 @@ class _SpotSelectionIcon extends StatelessWidget {
     return Icon(
       isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
       color: hasBackground ? Colors.white : null,
+    );
+  }
+}
+
+class _SpotMapButton extends StatelessWidget {
+  const _SpotMapButton({required this.hasBackground, required this.onPressed});
+
+  final bool hasBackground;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    if (onPressed == null) {
+      return const SizedBox.shrink();
+    }
+    return IconButton.filledTonal(
+      tooltip: 'Ver ubicacion',
+      onPressed: onPressed,
+      icon: Icon(
+        Icons.map_outlined,
+        color: hasBackground ? Colors.white : null,
+      ),
+      style: IconButton.styleFrom(
+        backgroundColor: hasBackground
+            ? Colors.black.withValues(alpha: 0.35)
+            : null,
+      ),
     );
   }
 }

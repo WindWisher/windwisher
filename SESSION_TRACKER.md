@@ -16644,3 +16644,54 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - `flutter analyze` limpio,
       - desplegada `copernicus-marine-nearby` en Supabase,
       - `local.env.json` sigue ignorado por git y no se versiona.
+
+
+  - bloque nuevo `2026-05-18`:
+    - integracion Weather Underground, optimizacion de Spots y puntos de llegada para Google Maps,
+    - tiempo real trabajado en este tramo: `135 min` aprox. de trabajo efectivo,
+    - live / Weather Underground:
+      - anadido cliente `WundergroundPwsClient` para leer la estacion publica `IOLIVA107`,
+      - `WU Oliva IOLIVA107` aparece como estacion Live solo en el perfil de Oliva,
+      - carga viento actual desde Weather Underground,
+      - carga historico real de 1 dia desde Weather Underground al pulsar el boton de grafica,
+      - historico configurado con granularidad densa tipo `min20`,
+      - integrado en payload, historico, metadata, seleccion y etiquetas Live,
+    - spots / rendimiento:
+      - la pestana Spots pasa a renderizar con `CustomScrollView` y slivers,
+      - la lista normal usa `SliverList.builder` para construir tarjetas de forma perezosa,
+      - el modo manual usa `SliverReorderableList`,
+      - el reordenado permite auto-scroll mientras se arrastra una tarjeta,
+      - eliminado el recuento/chip de webcams de las tarjetas para aligerar carga,
+      - eliminado `spots_webcam_distance_helper.dart`,
+    - spots / mapa y llegada:
+      - anadido boton de mapa en las tarjetas de spot,
+      - el dialogo muestra mapa OSM con marcador del spot real y, si existe, marcador separado de llegada/aparcamiento,
+      - Google Maps abre una ruta en coche al punto de llegada si esta configurado,
+      - se separan coordenadas reales del spot de coordenadas utiles para acceder/aparcar,
+      - `SpotCapabilities` incorpora `navigationLatitude`, `navigationLongitude` y `navigationLabel`,
+    - puntos de llegada configurados:
+      - `Oliva Canal - Platja dels Gorgs`: `38.91580884367901, -0.07779792085000076`,
+      - `Piles`: `38.943633843553286, -0.10985116793513353`,
+      - `Gandia Playa`: `39.02083052614467, -0.17543646293914303`,
+      - `Xeraco`: `39.03800937721705, -0.18951786389646919`,
+      - `Cullera - El Pollo`: `39.21294234832044, -0.23836018562887695`,
+      - `El Perellonet`: `39.28095954536101, -0.27708708529321363`,
+      - `Denia - Les Deveses`: `38.883244386654184, -0.03539319215620903`,
+      - `Denia - Punta Els Molins`: `38.86044033592307, 0.04655905881270543`,
+      - `Calpe`: `38.64159285682161, 0.04694828199875873`,
+      - `Altea - Cap Negret`: `38.606497460633456, -0.041219503393286`,
+      - `Villajoyosa - Espigon`: `38.50239214628279, -0.23440666068378316`,
+      - `Villajoyosa - Playa Paraiso`: `38.49715021833233, -0.2584490074105973`,
+      - `El Campello - Playa Muchavista`: `38.39502060831646, -0.4071727602994512`,
+      - `Santa Pola - Platja Lissa`: `38.190017240184275, -0.5902498009788203`,
+      - `Tarifa - Balneario`: `36.009606703879996, -5.607629973493867`,
+      - `Tarifa - Valdevaqueros`: `36.06735671371158, -5.683717901374338`,
+    - nuevos spots:
+      - creado `Tarifa - Campo de futbol` con coordenadas `36.02129962247533, -5.616776453751289`,
+      - punto de llegada `Tarifa - Campo de futbol`: `36.02176430173696, -5.615059313052187`,
+      - creado `Tarifa - Los Lances` con coordenadas `36.046076176197694, -5.640893942328883`,
+      - punto de llegada `Tarifa - Los Lances`: `36.047401, -5.640325`,
+      - ambos usan el perfil Live/AEMET de Tarifa y quedan sin Windguru dedicado para respetar el limite de 10 widgets prioritarios,
+    - verificacion:
+      - `flutter analyze` limpio tras los cambios principales,
+      - `local.env.json` sigue ignorado por git y no se versiona.

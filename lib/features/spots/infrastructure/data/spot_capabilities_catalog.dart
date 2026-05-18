@@ -53,9 +53,12 @@ const String elPerellonetSpotName = 'El Perellonet';
 const String tarifaLiveStationProfile = 'tarifa';
 const String tarifaPreferredLiveStationKey = '6001';
 const String tarifaBalnearioSpotName = 'Tarifa - Balneario';
+const String tarifaCampoFutbolSpotName = 'Tarifa - Campo de futbol';
+const String tarifaLosLancesSpotName = 'Tarifa - Los Lances';
 const String tarifaValdevaquerosSpotName = 'Tarifa - Valdevaqueros';
 const String culleraDosselWebcamProfile = 'cullera_dossel_webcams';
 const String culleraElPolloSpotName = 'Cullera - El Pollo';
+const String xeracoSpotName = 'Xeraco';
 
 const olivaCanalGorgsSpotCapabilities = SpotCapabilities(
   liveStationProfile: olivaCanalGorgsLiveStationProfile,
@@ -66,6 +69,9 @@ const olivaCanalGorgsSpotCapabilities = SpotCapabilities(
   preferredAemetLiveStationId: null,
   portusRealtimeStationIds: <int>[4634],
   includeOlivaReferenceLiveStations: true,
+  navigationLatitude: 38.91580884367901,
+  navigationLongitude: -0.07779792085000076,
+  navigationLabel: 'Llegada Oliva Canal',
 );
 
 const pilesSpotCapabilities = SpotCapabilities(
@@ -75,6 +81,9 @@ const pilesSpotCapabilities = SpotCapabilities(
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
   preferredLiveStationKey: pilesPreferredLiveStationKey,
   portusRealtimeStationIds: <int>[4634],
+  navigationLatitude: 38.943633843553286,
+  navigationLongitude: -0.10985116793513353,
+  navigationLabel: 'Llegada Piles',
 );
 
 const gandiaPlayaSpotCapabilities = SpotCapabilities(
@@ -84,6 +93,9 @@ const gandiaPlayaSpotCapabilities = SpotCapabilities(
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
   preferredLiveStationKey: gandiaPlayaPreferredLiveStationKey,
   portusRealtimeStationIds: <int>[4634],
+  navigationLatitude: 39.02083052614467,
+  navigationLongitude: -0.17543646293914303,
+  navigationLabel: 'Llegada Gandia Playa',
 );
 
 const deniaLesDevesesSpotCapabilities = SpotCapabilities(
@@ -93,6 +105,9 @@ const deniaLesDevesesSpotCapabilities = SpotCapabilities(
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
   preferredLiveStationKey: deniaLesDevesesPreferredLiveStationKey,
   portusRealtimeStationIds: <int>[4634],
+  navigationLatitude: 38.883244386654184,
+  navigationLongitude: -0.03539319215620903,
+  navigationLabel: 'Llegada Denia - Les Deveses',
 );
 
 const deniaPuntaMolinsSpotCapabilities = SpotCapabilities(
@@ -101,6 +116,9 @@ const deniaPuntaMolinsSpotCapabilities = SpotCapabilities(
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
   preferredLiveStationKey: deniaPuntaMolinsPreferredLiveStationKey,
+  navigationLatitude: 38.86044033592307,
+  navigationLongitude: 0.04655905881270543,
+  navigationLabel: 'Llegada Denia - Punta Els Molins',
 );
 
 const calpeSpotCapabilities = SpotCapabilities(
@@ -109,6 +127,9 @@ const calpeSpotCapabilities = SpotCapabilities(
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
   preferredLiveStationKey: calpePreferredLiveStationKey,
+  navigationLatitude: 38.64159285682161,
+  navigationLongitude: 0.04694828199875873,
+  navigationLabel: 'Llegada Calpe',
 );
 
 const alteaCapNegretSpotCapabilities = SpotCapabilities(
@@ -117,6 +138,9 @@ const alteaCapNegretSpotCapabilities = SpotCapabilities(
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
   preferredLiveStationKey: alteaCapNegretPreferredLiveStationKey,
+  navigationLatitude: 38.606497460633456,
+  navigationLongitude: -0.041219503393286,
+  navigationLabel: 'Llegada Altea - Cap Negret',
 );
 
 const villajoyosaEspigonSpotCapabilities = SpotCapabilities(
@@ -125,6 +149,9 @@ const villajoyosaEspigonSpotCapabilities = SpotCapabilities(
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
   preferredLiveStationKey: villajoyosaEspigonPreferredLiveStationKey,
+  navigationLatitude: 38.50239214628279,
+  navigationLongitude: -0.23440666068378316,
+  navigationLabel: 'Llegada Villajoyosa - Espigon',
 );
 
 const villajoyosaPlayaParaisoSpotCapabilities = SpotCapabilities(
@@ -133,6 +160,9 @@ const villajoyosaPlayaParaisoSpotCapabilities = SpotCapabilities(
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
   preferredLiveStationKey: villajoyosaPlayaParaisoPreferredLiveStationKey,
+  navigationLatitude: 38.49715021833233,
+  navigationLongitude: -0.2584490074105973,
+  navigationLabel: 'Llegada Villajoyosa - Playa Paraiso',
 );
 
 const santaPolaPlatjaLissaSpotCapabilities = SpotCapabilities(
@@ -140,6 +170,9 @@ const santaPolaPlatjaLissaSpotCapabilities = SpotCapabilities(
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
   portusRealtimeStationIds: <int>[4651, 4652, 4653],
+  navigationLatitude: 38.190017240184275,
+  navigationLongitude: -0.5902498009788203,
+  navigationLabel: 'Llegada Santa Pola - Platja Lissa',
 );
 
 const elCampelloPlayaMuchavistaSpotCapabilities = SpotCapabilities(
@@ -147,6 +180,9 @@ const elCampelloPlayaMuchavistaSpotCapabilities = SpotCapabilities(
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
   portusRealtimeStationIds: <int>[4651, 4652, 4653],
+  navigationLatitude: 38.39502060831646,
+  navigationLongitude: -0.4071727602994512,
+  navigationLabel: 'Llegada El Campello - Playa Muchavista',
 );
 
 const elPerellonetSpotCapabilities = SpotCapabilities(
@@ -154,6 +190,9 @@ const elPerellonetSpotCapabilities = SpotCapabilities(
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
   portusRealtimeStationIds: <int>[4635],
+  navigationLatitude: 39.28095954536101,
+  navigationLongitude: -0.27708708529321363,
+  navigationLabel: 'Llegada El Perellonet',
 );
 
 const tarifaBalnearioSpotCapabilities = SpotCapabilities(
@@ -162,6 +201,31 @@ const tarifaBalnearioSpotCapabilities = SpotCapabilities(
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
   preferredLiveStationKey: tarifaPreferredLiveStationKey,
   preferredAemetLiveStationId: tarifaPreferredLiveStationKey,
+  navigationLatitude: 36.009606703879996,
+  navigationLongitude: -5.607629973493867,
+  navigationLabel: 'Llegada Tarifa - Balneario',
+);
+
+const tarifaCampoFutbolSpotCapabilities = SpotCapabilities(
+  liveStationProfile: tarifaLiveStationProfile,
+  defaultForecastProvider: 'AEMET',
+  defaultForecastModel: kAemetPortusAtmosphereForecastModel,
+  preferredLiveStationKey: tarifaPreferredLiveStationKey,
+  preferredAemetLiveStationId: tarifaPreferredLiveStationKey,
+  navigationLatitude: 36.02176430173696,
+  navigationLongitude: -5.615059313052187,
+  navigationLabel: 'Llegada Tarifa - Campo de futbol',
+);
+
+const tarifaLosLancesSpotCapabilities = SpotCapabilities(
+  liveStationProfile: tarifaLiveStationProfile,
+  defaultForecastProvider: 'AEMET',
+  defaultForecastModel: kAemetPortusAtmosphereForecastModel,
+  preferredLiveStationKey: tarifaPreferredLiveStationKey,
+  preferredAemetLiveStationId: tarifaPreferredLiveStationKey,
+  navigationLatitude: 36.047401,
+  navigationLongitude: -5.640325,
+  navigationLabel: 'Llegada Tarifa - Los Lances',
 );
 
 const tarifaValdevaquerosSpotCapabilities = SpotCapabilities(
@@ -170,12 +234,24 @@ const tarifaValdevaquerosSpotCapabilities = SpotCapabilities(
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
   preferredLiveStationKey: tarifaPreferredLiveStationKey,
   preferredAemetLiveStationId: tarifaPreferredLiveStationKey,
+  navigationLatitude: 36.06735671371158,
+  navigationLongitude: -5.683717901374338,
+  navigationLabel: 'Llegada Tarifa - Valdevaqueros',
 );
 
 const culleraElPolloSpotCapabilities = SpotCapabilities(
   webcamProfile: culleraDosselWebcamProfile,
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
+  navigationLatitude: 39.21294234832044,
+  navigationLongitude: -0.23836018562887695,
+  navigationLabel: 'Llegada Cullera - El Pollo',
+);
+
+const xeracoSpotCapabilities = SpotCapabilities(
+  navigationLatitude: 39.03800937721705,
+  navigationLongitude: -0.18951786389646919,
+  navigationLabel: 'Llegada Xeraco',
 );
 
 SpotCapabilities defaultSpotCapabilitiesForName(String name) {
@@ -219,11 +295,20 @@ SpotCapabilities defaultSpotCapabilitiesForName(String name) {
   if (normalized == tarifaBalnearioSpotName.toLowerCase()) {
     return tarifaBalnearioSpotCapabilities;
   }
+  if (normalized == tarifaCampoFutbolSpotName.toLowerCase()) {
+    return tarifaCampoFutbolSpotCapabilities;
+  }
+  if (normalized == tarifaLosLancesSpotName.toLowerCase()) {
+    return tarifaLosLancesSpotCapabilities;
+  }
   if (normalized == tarifaValdevaquerosSpotName.toLowerCase()) {
     return tarifaValdevaquerosSpotCapabilities;
   }
   if (normalized == culleraElPolloSpotName.toLowerCase()) {
     return culleraElPolloSpotCapabilities;
+  }
+  if (normalized == xeracoSpotName.toLowerCase()) {
+    return xeracoSpotCapabilities;
   }
   return SpotCapabilities.empty;
 }

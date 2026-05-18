@@ -81,9 +81,15 @@ extension _SpotDetailLiveStationSelection on _SpotDetailPageState {
         station?.stationId == _aiguaBlancaStationId;
   }
 
+  bool _isWundergroundOlivaStation(_NearbyStation? station) {
+    return station?.provider == 'WUNDERGROUND' &&
+        station?.stationId == _wundergroundOliva107StationId;
+  }
+
   void _applyHistoricalDefaultsForStation(_NearbyStation? station) {
     if (_isOlivaNovaInforatgeStation(station) ||
-        _isAiguaBlancaStation(station)) {
+        _isAiguaBlancaStation(station) ||
+        _isWundergroundOlivaStation(station)) {
       _historyBucket1d = _HistoricalBucketOption.min20;
       return;
     }

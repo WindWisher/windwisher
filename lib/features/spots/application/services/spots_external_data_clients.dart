@@ -15,3 +15,4 @@ export 'package:windwisher/features/spots/infrastructure/services/portus_realtim
 export 'package:windwisher/features/spots/infrastructure/services/spot_live_observation_history_client.dart';
 export 'package:windwisher/features/spots/infrastructure/services/spot_maritime_observations_client.dart';
 export 'package:windwisher/features/spots/infrastructure/services/windguru_station_live_client.dart';
+export 'package:windwisher/features/spots/infrastructure/services/wunderground_pws_client.dart';
