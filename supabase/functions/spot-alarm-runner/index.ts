@@ -611,6 +611,8 @@ async function fetchObservationForAlarm(alarm: AlarmRow) {
       return await fetchAvametObservation(alarm.station_key);
     case "WINDGURU_STATION":
       return await fetchWindguruStationObservation(alarm.station_key);
+    case "WUNDERGROUND":
+      return await fetchWundergroundObservation(alarm.station_key);
     case "PUERTOS":
     case "PORTUS":
       return await fetchPortusObservation(alarm.station_key);
@@ -625,6 +627,7 @@ function supportsStationProvider(provider: string) {
     provider === "INFORATGE" ||
     provider === "AVAMET" ||
     provider === "WINDGURU_STATION" ||
+    provider === "WUNDERGROUND" ||
     provider === "PUERTOS" ||
     provider === "PORTUS";
 }
@@ -808,6 +811,56 @@ async function fetchWindguruStationObservation(stationKey: string) {
   };
 }
 
+async function fetchWundergroundObservation(stationKey: string) {
+  const stationId = extractStationId(stationKey);
+  const apiKey = await fetchWundergroundApiKey(stationId);
+  const url = new URL("https://api.weather.com/v2/pws/observations/current");
+  url.searchParams.set("stationId", stationId);
+  url.searchParams.set("numericPrecision", "decimal");
+  url.searchParams.set("format", "json");
+  url.searchParams.set("units", "m");
+  url.searchParams.set("apiKey", apiKey);
+
+  const payload = await fetchJsonObject(url.toString(), {
+    referer: "https://www.wunderground.com/",
+    "user-agent": "WindWisher/1.0",
+  });
+  const observations = Array.isArray(payload.observations)
+    ? payload.observations
+    : [];
+  const latest = asRecord(observations[0]);
+  if (!latest) {
+    return null;
+  }
+  const metric = asRecord(latest.metric);
+  if (!metric) {
+    return null;
+  }
+  const windKmh = parseNumber(metric.windSpeed);
+  if (windKmh == null) {
+    return null;
+  }
+  return {
+    observedAt: parseWundergroundObservedAt(latest),
+    windKnots: Number((windKmh * 0.539957).toFixed(2)),
+    windDirectionBucket: directionBucket(latest.winddir),
+  };
+}
+
+async function fetchWundergroundApiKey(stationId: string) {
+  const dashboard = await fetchText(
+    `https://www.wunderground.com/dashboard/pws/${
+      encodeURIComponent(stationId)
+    }`,
+  );
+  const match = dashboard.match(/apiKey=([A-Za-z0-9]+)/);
+  const apiKey = match?.[1];
+  if (!apiKey) {
+    throw new Error("wunderground-api-key-not-found");
+  }
+  return apiKey;
+}
+
 function evaluateAlarm(
   alarm: AlarmRow,
   observation: {
@@ -980,6 +1033,16 @@ function parsePortusDate(raw: unknown): Date | null {
     return null;
   }
   return new Date(year, month - 1, day, hour, minute, second);
+}
+
+function parseWundergroundObservedAt(
+  observation: Record<string, unknown>,
+): Date | null {
+  const epoch = parseNumber(observation.epoch);
+  if (epoch != null) {
+    return new Date(epoch * 1000);
+  }
+  return parseDate(observation.obsTimeUtc);
 }
 
 function scaledPortusValue(entry: Record<string, unknown>): number | null {
