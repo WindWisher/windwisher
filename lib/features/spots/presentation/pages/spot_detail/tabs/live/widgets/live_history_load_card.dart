@@ -5,12 +5,16 @@ class _LiveHistoryLoadCard extends StatelessWidget {
     required this.sourceLabel,
     required this.stationName,
     required this.isLoading,
+    required this.canLoad,
+    this.description,
     required this.onLoad,
   });
 
   final String sourceLabel;
   final String stationName;
   final bool isLoading;
+  final bool canLoad;
+  final String? description;
   final VoidCallback onLoad;
 
   @override
@@ -28,7 +32,8 @@ class _LiveHistoryLoadCard extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Carga el historico real solo cuando quieras consultar la grafica.',
+              description ??
+                  'Carga el historico real solo cuando quieras consultar la grafica.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -37,16 +42,24 @@ class _LiveHistoryLoadCard extends StatelessWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: FilledButton.icon(
-                onPressed: isLoading ? null : onLoad,
+                onPressed: isLoading || !canLoad ? null : onLoad,
                 icon: isLoading
                     ? const SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.show_chart_rounded),
+                    : Icon(
+                        canLoad
+                            ? Icons.show_chart_rounded
+                            : Icons.info_outline_rounded,
+                      ),
                 label: Text(
-                  isLoading ? 'Cargando historico' : 'Cargar historico',
+                  isLoading
+                      ? 'Cargando historico'
+                      : (canLoad
+                            ? 'Cargar historico'
+                            : 'Historico no disponible'),
                 ),
               ),
             ),

@@ -107,6 +107,10 @@ extension _SpotDetailLiveHistoryDataLoader on _SpotDetailPageState {
       return _fetchBackendCollectedLiveHistory(station);
     }
 
+    if (station.provider == 'METEOCLIMATIC') {
+      return _fetchBackendCollectedLiveHistory(station);
+    }
+
     if (station.provider == 'WINDGURU_STATION') {
       return _fetchBackendCollectedLiveHistory(station);
     }

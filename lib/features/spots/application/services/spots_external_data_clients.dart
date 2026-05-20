@@ -8,6 +8,7 @@ export 'package:windwisher/features/spots/infrastructure/services/avamet_observa
 export 'package:windwisher/features/spots/infrastructure/services/inforatge_oliva_nova_client.dart';
 export 'package:windwisher/features/spots/infrastructure/services/meteopiles_live_client.dart';
 export 'package:windwisher/features/spots/infrastructure/services/meteoblue_current_day_client.dart';
+export 'package:windwisher/features/spots/infrastructure/services/meteoclimatic_live_client.dart';
 export 'package:windwisher/features/spots/infrastructure/services/meteostat_day_client.dart';
 export 'package:windwisher/features/spots/infrastructure/services/meteosource_current_day_client.dart';
 export 'package:windwisher/features/spots/infrastructure/services/open_meteo_wind_map_grid_client.dart';

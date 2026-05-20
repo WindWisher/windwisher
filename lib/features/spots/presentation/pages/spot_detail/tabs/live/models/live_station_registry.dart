@@ -42,6 +42,48 @@ const String _avametGandiaCamiMarStationName = 'Gandia Cami de la mar';
 const double _avametGandiaCamiMarStationLat = 38.982786;
 const double _avametGandiaCamiMarStationLon = -0.166017;
 
+const String _avametPerellonetEstellStationId = 'c21m235e09';
+const String _avametPerellonetEstellStationKey = 'avamet:c21m235e09';
+const String _avametPerellonetEstellStationName =
+    "Sueca l'Albufera/Tancat de l'Estell";
+const double _avametPerellonetEstellStationLat = 39.29445;
+const double _avametPerellonetEstellStationLon = -0.315264;
+
+const String _avametPerellonetRacoOllaStationId = 'c15m250e27';
+const String _avametPerellonetRacoOllaStationKey = 'avamet:c15m250e27';
+const String _avametPerellonetRacoOllaStationName =
+    "Valencia l'Albufera/Raco de l'Olla";
+const double _avametPerellonetRacoOllaStationLat = 39.340361;
+const double _avametPerellonetRacoOllaStationLon = -0.320161;
+
+const String _avametPerellonetTancatMiliaStationId = 'c21m233e02';
+const String _avametPerellonetTancatMiliaStationKey = 'avamet:c21m233e02';
+const String _avametPerellonetTancatMiliaStationName =
+    "Sollana l'Albufera/Tancat de Milia";
+const double _avametPerellonetTancatMiliaStationLat = 39.311233;
+const double _avametPerellonetTancatMiliaStationLon = -0.355983;
+
+const String _avametPerellonetGarroferaStationId = 'c15m250e31';
+const String _avametPerellonetGarroferaStationKey = 'avamet:c15m250e31';
+const String _avametPerellonetGarroferaStationName =
+    'Valencia el Saler Playa de la Garrofera';
+const double _avametPerellonetGarroferaStationLat = 39.358925;
+const double _avametPerellonetGarroferaStationLon = -0.318364;
+
+const String _avametPerellonetTancatPipaStationId = 'c15m250e16';
+const String _avametPerellonetTancatPipaStationKey = 'avamet:c15m250e16';
+const String _avametPerellonetTancatPipaStationName =
+    "Valencia l'Albufera/Tancat de la Pipa";
+const double _avametPerellonetTancatPipaStationLat = 39.3591;
+const double _avametPerellonetTancatPipaStationLon = -0.347;
+
+const String _meteoclimaticPerelloStationId = 'ESPVA4600000046420A';
+const String _meteoclimaticPerelloStationKey =
+    'meteoclimatic:ESPVA4600000046420A';
+const String _meteoclimaticPerelloStationName = 'Meteoclimatic El Perello';
+const double _meteoclimaticPerelloStationLat = 39.27;
+const double _meteoclimaticPerelloStationLon = -0.28;
+
 const String _windguruDkPilesStationId = '51';
 const String _windguruDkPilesStationKey = 'windguru-station:51';
 const String _windguruDkPilesStationName = 'DK Piles Meteo';

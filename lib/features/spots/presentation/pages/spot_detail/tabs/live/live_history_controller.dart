@@ -58,6 +58,12 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
     if (_isHistoricalLoading) {
       return;
     }
+    if (!_supportsHistoricalDataForSelectedStation()) {
+      _showLiveRefreshFeedback(
+        'Esta estacion todavia no tiene historico disponible.',
+      );
+      return;
+    }
     setState(() {
       _isHistoricalLoading = true;
     });
@@ -120,6 +126,22 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
 
   bool _hasRealHistoricalSeries() => _selectedHistoricalWindPoints().isNotEmpty;
 
+  bool _supportsHistoricalDataForSelectedStation() {
+    final station = _findStationByKey(_selectedStation);
+    if (station == null) {
+      return false;
+    }
+    return station.provider != 'METEOCLIMATIC';
+  }
+
+  String? _selectedHistoricalUnavailableDescription() {
+    final station = _findStationByKey(_selectedStation);
+    if (station?.provider == 'METEOCLIMATIC') {
+      return 'Meteoclimatic bloquea las lecturas desde Supabase, asi que por ahora esta estacion solo muestra datos en directo.';
+    }
+    return null;
+  }
+
   bool _supportsThreeDayHistoryForSelectedStation() {
     final station = _findStationByKey(_selectedStation);
     if (station == null) {
@@ -149,6 +171,7 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
     final station = _findStationByKey(_selectedStation);
     return station?.provider == 'WINDGURU_STATION' ||
         station?.provider == 'METEOPILES' ||
+        station?.provider == 'METEOCLIMATIC' ||
         station?.provider == 'MADIS_MARITIME' ||
         station?.provider == 'COPERNICUS_MARINE';
   }
@@ -162,6 +185,8 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
         return 'AVAMET';
       case 'WUNDERGROUND':
         return 'Weather Underground';
+      case 'METEOCLIMATIC':
+        return 'Meteoclimatic';
       case 'INFORATGE':
         return 'Inforatge';
       case 'MADIS_MARITIME':

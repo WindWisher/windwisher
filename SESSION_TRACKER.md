@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 217h 32m`.
+- `Total historico minimo consolidado del proyecto: 219h 47m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -28,10 +28,11 @@
   - bloque consolidado adicional en `2026-05-02`: `+12h 53m` reales observables (`Spots: reorganizacion completa de Spot Detail y Spots por tabs/widgets`)
   - bloque consolidado adicional en `2026-05-06`: `+55m` reales observables (`Spots: modularizacion de pagina Spots, sheets y mapa custom`)
   - bloque consolidado adicional en `2026-05-06`: `+1h 25m` reales observables (`Spots: spot patron Oliva Canal, capacidades replicables y tablas forecast por proveedor`)
+  - bloque consolidado adicional en `2026-05-20`: `+2h 15m` reales aproximados (`El Perellonet: live stations, Meteoclimatic, backend safety and webcam review`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-05-06`: `+1h 25m` reales observables (`Spots: spot patron Oliva Canal, capacidades replicables y tablas forecast por proveedor`).
+  - ultima consolidacion manual anadida el `2026-05-20`: `+2h 15m` reales aproximados (`El Perellonet: live stations, Meteoclimatic, backend safety and webcam review`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -50,6 +51,51 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-05-20 - El Perellonet: live stations, Meteoclimatic, backend safety and webcams
+
+- Bloque consolidado adicional: `+2h 15m` reales aproximados.
+- Medicion real usada:
+  - tramo de trabajo repartido entre investigacion web, pruebas de backend, ajustes Flutter y verificacion,
+  - se registra una duracion conservadora aproximada de trabajo efectivo, no tiempo calendario completo entre pausas.
+- Live / El Perellonet:
+  - creado perfil Live especifico `el_perellonet`,
+  - configurada `Valencia el Saler Playa de la Garrofera` como estacion preferida provisional,
+  - anadidas estaciones AVAMET cercanas para validar en campo:
+    - `Sueca l'Albufera/Tancat de l'Estell`,
+    - `Valencia l'Albufera/Raco de l'Olla`,
+    - `Sollana l'Albufera/Tancat de Milia`,
+    - `Valencia el Saler Playa de la Garrofera`,
+    - `Valencia l'Albufera/Tancat de la Pipa`,
+  - evitado el fallback generico de AEMET para este perfil para no llenar el selector con estaciones poco utiles.
+- Meteoclimatic:
+  - anadido cliente `MeteoclimaticLiveClient` para leer RSS de la estacion `ESPVA4600000046420A`,
+  - integrada `Meteoclimatic El Perello` como estacion Live actual del perfil de El Perellonet,
+  - parseo de RSS `ISO-8859-1/15`, fecha, coordenadas, viento, racha, direccion, temperatura, presion, humedad y lluvia,
+  - anadido test unitario con fixture RSS para validar el mapeo de snapshot,
+  - confirmado que la app puede usar la lectura actual, pero Supabase Edge recibe `403` por Cloudflare en la fuente principal.
+- Backend / seguridad funcional:
+  - se probo integrar Meteoclimatic en `spot-live-observation-collector` y `spot-alarm-runner`,
+  - tras confirmar bloqueo `meteoclimatic-http-403` desde Supabase, se retiro del collector y de las alarmas backend para no crear historicos falsos ni alarmas no evaluables,
+  - Meteoclimatic queda como Live visual, sin historico backend ni seleccion de alarmas hasta encontrar endpoint servidor-servidor permitido,
+  - `spot-live-observation-collector` mantiene la recogida de DK Piles sin cambios funcionales.
+- Historico Live:
+  - el boton de historico informa que Meteoclimatic no tiene historico disponible por bloqueo backend,
+  - se evita cargar grafica infinita o pintar datos inventados,
+  - se mantiene el camino de historico backend para estaciones compatibles.
+- Webcams / El Perellonet:
+  - busqueda intensiva de webcams cercanas: Camaramar, WebcamGalore, PlayaWebcams, web oficial de El Perello, DGT, negocios/hoteles/restaurantes y club nautico,
+  - descartadas las tres camaras de Camaramar porque no funcionan actualmente,
+  - descartado el enlace directo de la web de El Perello por requerir credenciales embebidas publicadas en la web,
+  - se conserva `Valencia El Saler` como webcam embebida oficial de Comunitat Valenciana,
+  - revisado el reproductor: se deja el embed igual que en navegador oficial, usando scripts de Comunitat Valenciana y `connect(video, manifest.mpd)` sin watchdog propio.
+- Verificacion:
+  - `flutter analyze` limpio tras los ajustes de app,
+  - `flutter test test/features/spots/infrastructure/services/meteoclimatic_live_client_test.dart` correcto,
+  - `deno check supabase/functions/spot-live-observation-collector/index.ts` limpio,
+  - `deno check supabase/functions/spot-alarm-runner/index.ts` limpio,
+  - funciones Supabase desplegadas tras dejar el estado seguro,
+  - `local.env.json` sigue ignorado por git y no se versiona.
 
 ### 2026-05-06 - Spots: spot patron Oliva Canal, capacidades replicables y tablas forecast
 

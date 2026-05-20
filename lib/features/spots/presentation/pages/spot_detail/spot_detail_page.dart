@@ -130,6 +130,7 @@ class SpotDetailPage extends StatefulWidget {
     this.avametObservationClient,
     this.inforatgeOlivaNovaClient,
     this.meteopilesLiveClient,
+    this.meteoclimaticLiveClient,
     this.windguruStationLiveClient,
     this.wundergroundPwsClient,
     this.meteoblueCurrentDayClient,
@@ -162,6 +163,7 @@ class SpotDetailPage extends StatefulWidget {
   final AvametObservationClient? avametObservationClient;
   final InforatgeOlivaNovaClient? inforatgeOlivaNovaClient;
   final MeteopilesLiveClient? meteopilesLiveClient;
+  final MeteoclimaticLiveClient? meteoclimaticLiveClient;
   final WindguruStationLiveClient? windguruStationLiveClient;
   final WundergroundPwsClient? wundergroundPwsClient;
   final MeteoblueCurrentDayClient? meteoblueCurrentDayClient;
@@ -288,6 +290,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   late final AvametObservationClient _avametObservationClient;
   late final InforatgeOlivaNovaClient _inforatgeOlivaNovaClient;
   late final MeteopilesLiveClient _meteopilesLiveClient;
+  late final MeteoclimaticLiveClient _meteoclimaticLiveClient;
   late final WindguruStationLiveClient _windguruStationLiveClient;
   late final WundergroundPwsClient _wundergroundPwsClient;
   late final MeteoblueCurrentDayClient _meteoblueCurrentDayClient;
@@ -337,6 +340,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         widget.inforatgeOlivaNovaClient ?? InforatgeOlivaNovaClient();
     _meteopilesLiveClient =
         widget.meteopilesLiveClient ?? MeteopilesLiveClient();
+    _meteoclimaticLiveClient =
+        widget.meteoclimaticLiveClient ?? MeteoclimaticLiveClient();
     _windguruStationLiveClient =
         widget.windguruStationLiveClient ?? WindguruStationLiveClient();
     _wundergroundPwsClient =

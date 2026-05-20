@@ -233,6 +233,57 @@ async function fetchWindguruStationObservation(
   });
 }
 
+async function fetchMeteoclimaticObservation(
+  station: LiveStationConfig,
+): Promise<LiveObservation | null> {
+  const response = await fetch(
+    `https://www.meteoclimatic.net/feed/rss/${
+      encodeURIComponent(station.stationId)
+    }`,
+    { headers: meteoclimaticRequestHeaders() },
+  );
+  if (!response.ok) {
+    throw new Error(`meteoclimatic-http-${response.status}`);
+  }
+  const body = new TextDecoder("iso-8859-1").decode(
+    await response.arrayBuffer(),
+  );
+  const dataMatch = body.match(
+    /\[\[<([A-Z0-9]+);\(([^)]*)\);\(([^)]*)\);\(([^)]*)\);\(([^)]*)\);\(([^)]*)\);([^>]*)>\]\]/s,
+  );
+  if (!dataMatch) {
+    return null;
+  }
+
+  const temperature = splitMeteoclimaticTuple(dataMatch[2]);
+  const humidity = splitMeteoclimaticTuple(dataMatch[3]);
+  const pressure = splitMeteoclimaticTuple(dataMatch[4]);
+  const wind = splitMeteoclimaticTuple(dataMatch[5]);
+  const rain = splitMeteoclimaticTuple(dataMatch[6]);
+  const observedAt = parseMeteoclimaticObservedAt(body);
+  const windKmh = parseMeteoclimaticNumber(wind[0]);
+  if (observedAt == null || windKmh == null) {
+    return null;
+  }
+
+  return baseObservation(station, observedAt, {
+    wind_knots: kmhToKnots(windKmh),
+    wind_min_knots: null,
+    gust_knots: kmhToKnots(parseMeteoclimaticNumber(wind[1])),
+    wind_direction_deg: roundNullable(parseMeteoclimaticNumber(wind[2])),
+    temp_c: parseMeteoclimaticNumber(temperature[0]),
+    pressure_hpa: roundNullable(parseMeteoclimaticNumber(pressure[0])),
+    humidity_pct: roundNullable(parseMeteoclimaticNumber(humidity[0])),
+    rain_mm: parseMeteoclimaticNumber(rain[0]),
+    raw_payload: {
+      source: "meteoclimatic-rss",
+      stationId: dataMatch[1],
+      stationName: decodeHtmlText(dataMatch[7]),
+      pubDate: observedAt.toISOString(),
+    },
+  });
+}
+
 function baseObservation(
   station: LiveStationConfig,
   observedAt: Date,
@@ -410,4 +461,50 @@ function inHgToHpa(value: number | null): number | null {
 
 function inchesToMm(value: number | null): number | null {
   return value == null ? null : value * 25.4;
+}
+
+function kmhToKnots(value: number | null): number | null {
+  return value == null ? null : value * 0.539957;
+}
+
+function splitMeteoclimaticTuple(tuple: string | undefined) {
+  return tuple?.split(";").map((value) => value.trim()) ?? [];
+}
+
+function parseMeteoclimaticNumber(value: string | undefined) {
+  if (!value) {
+    return null;
+  }
+  const parsed = Number(value.replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseMeteoclimaticObservedAt(body: string) {
+  const pubDate = body.match(/<pubDate>([^<]+)<\/pubDate>/)?.[1]?.trim();
+  if (!pubDate) {
+    return null;
+  }
+  const observedAt = new Date(pubDate);
+  return Number.isNaN(observedAt.getTime()) ? null : observedAt;
+}
+
+function meteoclimaticRequestHeaders() {
+  return {
+    "accept": "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.7",
+    "accept-language": "es-ES,es;q=0.9,en;q=0.8",
+    "cache-control": "no-cache",
+    "pragma": "no-cache",
+    "referer": "https://www.meteoclimatic.net/",
+    "user-agent":
+      "Mozilla/5.0 (compatible; WindWisher/1.0; +https://windwisher.app)",
+  };
+}
+
+function decodeHtmlText(value: string | undefined) {
+  return (value ?? "")
+    .replaceAll("&amp;", "&")
+    .replaceAll("&nbsp;", " ")
+    .replaceAll("&#243;", "o")
+    .replaceAll("&oacute;", "o")
+    .trim();
 }

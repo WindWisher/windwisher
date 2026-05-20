@@ -149,10 +149,13 @@ extension _SpotDetailLiveHistorySection on _SpotDetailPageState {
 
   Widget _buildHistoricalChart() {
     if (!_hasRealHistoricalSeries()) {
+      final canLoadHistory = _supportsHistoricalDataForSelectedStation();
       return _LiveHistoryLoadCard(
         sourceLabel: _historicalSeriesDisplayLabel(),
         stationName: _selectedStationName(),
         isLoading: _isHistoricalLoading,
+        canLoad: canLoadHistory,
+        description: _selectedHistoricalUnavailableDescription(),
         onLoad: _loadSelectedStationHistoricalData,
       );
     }

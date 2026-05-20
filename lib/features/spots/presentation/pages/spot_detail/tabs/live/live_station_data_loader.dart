@@ -28,6 +28,7 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
           _usesVillajoyosaEspigonLiveProfile();
       final usesVillajoyosaPlayaParaisoLiveProfile =
           _usesVillajoyosaPlayaParaisoLiveProfile();
+      final usesElPerellonetLiveProfile = _usesElPerellonetLiveProfile();
       final usesTarifaLiveProfile = _usesTarifaLiveProfile();
       final stations = <_NearbyStation>[];
       final liveDataByStation = <String, _StationLiveData>{};
@@ -47,6 +48,7 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
           !usesAlteaCapNegretLiveProfile &&
           !usesVillajoyosaEspigonLiveProfile &&
           !usesVillajoyosaPlayaParaisoLiveProfile &&
+          !usesElPerellonetLiveProfile &&
           !usesTarifaLiveProfile) {
         try {
           snapshots = await _aemetObservationClient.fetchNearestStations(
@@ -181,6 +183,14 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
       }
       if (usesVillajoyosaPlayaParaisoLiveProfile) {
         _addVillajoyosaPlayaParaisoLiveStations(
+          latitude: latitude,
+          longitude: longitude,
+          stations: stations,
+          seenKeys: seenKeys,
+        );
+      }
+      if (usesElPerellonetLiveProfile) {
+        _addElPerellonetLiveStations(
           latitude: latitude,
           longitude: longitude,
           stations: stations,

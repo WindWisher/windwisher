@@ -441,6 +441,86 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     );
   }
 
+  void _addElPerellonetLiveStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _meteoclimaticPerelloStationKey,
+      stationName: _meteoclimaticPerelloStationName,
+      provider: 'METEOCLIMATIC',
+      stationId: _meteoclimaticPerelloStationId,
+      latitude: _meteoclimaticPerelloStationLat,
+      longitude: _meteoclimaticPerelloStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametPerellonetEstellStationKey,
+      stationName: _avametPerellonetEstellStationName,
+      provider: 'AVAMET',
+      stationId: _avametPerellonetEstellStationId,
+      latitude: _avametPerellonetEstellStationLat,
+      longitude: _avametPerellonetEstellStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametPerellonetRacoOllaStationKey,
+      stationName: _avametPerellonetRacoOllaStationName,
+      provider: 'AVAMET',
+      stationId: _avametPerellonetRacoOllaStationId,
+      latitude: _avametPerellonetRacoOllaStationLat,
+      longitude: _avametPerellonetRacoOllaStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametPerellonetTancatMiliaStationKey,
+      stationName: _avametPerellonetTancatMiliaStationName,
+      provider: 'AVAMET',
+      stationId: _avametPerellonetTancatMiliaStationId,
+      latitude: _avametPerellonetTancatMiliaStationLat,
+      longitude: _avametPerellonetTancatMiliaStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametPerellonetGarroferaStationKey,
+      stationName: _avametPerellonetGarroferaStationName,
+      provider: 'AVAMET',
+      stationId: _avametPerellonetGarroferaStationId,
+      latitude: _avametPerellonetGarroferaStationLat,
+      longitude: _avametPerellonetGarroferaStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametPerellonetTancatPipaStationKey,
+      stationName: _avametPerellonetTancatPipaStationName,
+      provider: 'AVAMET',
+      stationId: _avametPerellonetTancatPipaStationId,
+      latitude: _avametPerellonetTancatPipaStationLat,
+      longitude: _avametPerellonetTancatPipaStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+  }
+
   Future<void> _addConfiguredPortusStationMetadata({
     required double latitude,
     required double longitude,
@@ -581,6 +661,11 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
         villajoyosaPlayaParaisoLiveStationProfile;
   }
 
+  bool _usesElPerellonetLiveProfile() {
+    final capabilities = _resolvedSpotCapabilities();
+    return capabilities.liveStationProfile == elPerellonetLiveStationProfile;
+  }
+
   bool _usesTarifaLiveProfile() {
     final capabilities = _resolvedSpotCapabilities();
     return capabilities.liveStationProfile == tarifaLiveStationProfile;
@@ -616,6 +701,9 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     if (capabilities.liveStationProfile ==
         villajoyosaPlayaParaisoLiveStationProfile) {
       return villajoyosaPlayaParaisoSpotCapabilities;
+    }
+    if (capabilities.liveStationProfile == elPerellonetLiveStationProfile) {
+      return elPerellonetSpotCapabilities;
     }
     if (capabilities.liveStationProfile == tarifaLiveStationProfile) {
       return defaultSpotCapabilitiesForName(widget.name);

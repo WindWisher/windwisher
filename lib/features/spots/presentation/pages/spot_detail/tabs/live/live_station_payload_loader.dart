@@ -80,6 +80,29 @@ extension _SpotDetailLiveStationPayloadLoader on _SpotDetailPageState {
         observedAtLabel: snapshot.observedAtLabel,
       );
     }
+    if (station.provider == 'METEOCLIMATIC') {
+      final stationId = station.stationId;
+      if (stationId == null) {
+        return null;
+      }
+      final snapshot = await _meteoclimaticLiveClient.fetchSnapshot(
+        stationId: stationId,
+      );
+      if (snapshot == null) {
+        return null;
+      }
+      return _StationLiveData(
+        windKnots: snapshot.windKnots,
+        windDeg: snapshot.windDirectionDeg,
+        gustKnots: snapshot.gustKnots,
+        tempC: snapshot.tempC,
+        pressureHpa: snapshot.pressureHpa,
+        humidityPct: snapshot.humidityPct,
+        rainMm: snapshot.rainMm,
+        observedAt: snapshot.observedAt,
+        observedAtLabel: snapshot.observedAtLabel,
+      );
+    }
     if (station.provider == 'WINDGURU_STATION') {
       final stationId = int.tryParse(station.stationId ?? '');
       if (stationId == null) {

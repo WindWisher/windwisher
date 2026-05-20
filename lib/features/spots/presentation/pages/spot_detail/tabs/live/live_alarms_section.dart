@@ -6,7 +6,10 @@ extension _SpotDetailLiveAlarmsSection on _SpotDetailPageState {
   Widget _buildCustomAlarmsSection() {
     final catalog = SpotAlarmCatalog.instance;
     final spotKey = _currentSpotAlarmKey();
-    final alarmStations = _resolvedNearbyStations().map(_stationKey).toList();
+    final alarmStations = _resolvedNearbyStations()
+        .where((station) => station.provider != 'METEOCLIMATIC')
+        .map(_stationKey)
+        .toList();
     if (!alarmStations.contains(_alarmStation) && alarmStations.isNotEmpty) {
       _alarmStation = alarmStations.first;
     }

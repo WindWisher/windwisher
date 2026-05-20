@@ -48,7 +48,9 @@ const String elCampelloPlayaMuchavistaWebcamProfile =
     'el_campello_playa_muchavista_webcams';
 const String elCampelloPlayaMuchavistaSpotName =
     'El Campello - Playa Muchavista';
+const String elPerellonetLiveStationProfile = 'el_perellonet';
 const String elPerellonetWebcamProfile = 'el_perellonet_webcams';
+const String elPerellonetPreferredLiveStationKey = 'avamet:c15m250e31';
 const String elPerellonetSpotName = 'El Perellonet';
 const String tarifaLiveStationProfile = 'tarifa';
 const String tarifaPreferredLiveStationKey = '6001';
@@ -188,9 +190,11 @@ const elCampelloPlayaMuchavistaSpotCapabilities = SpotCapabilities(
 );
 
 const elPerellonetSpotCapabilities = SpotCapabilities(
+  liveStationProfile: elPerellonetLiveStationProfile,
   webcamProfile: elPerellonetWebcamProfile,
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
+  preferredLiveStationKey: elPerellonetPreferredLiveStationKey,
   portusRealtimeStationIds: <int>[4635],
   navigationLatitude: 39.28095954536101,
   navigationLongitude: -0.27708708529321363,

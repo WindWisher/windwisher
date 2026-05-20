@@ -847,6 +847,51 @@ async function fetchWundergroundObservation(stationKey: string) {
   };
 }
 
+async function fetchMeteoclimaticObservation(stationKey: string) {
+  const stationId = extractStationId(stationKey);
+  const body = await fetchText(
+    `https://www.meteoclimatic.net/feed/rss/${encodeURIComponent(stationId)}`,
+    meteoclimaticRequestHeaders(),
+  );
+  const dataMatch = body.match(
+    /\[\[<([A-Z0-9]+);\(([^)]*)\);\(([^)]*)\);\(([^)]*)\);\(([^)]*)\);\(([^)]*)\);([^>]*)>\]\]/s,
+  );
+  if (!dataMatch) {
+    return null;
+  }
+  const wind = splitMeteoclimaticTuple(dataMatch[5]);
+  const windKmh = parseMeteoclimaticNumber(wind[0]);
+  if (windKmh == null) {
+    return null;
+  }
+  return {
+    observedAt: parseMeteoclimaticObservedAt(body),
+    windKnots: Number((windKmh * 0.539957).toFixed(2)),
+    windDirectionBucket: directionBucket(parseMeteoclimaticNumber(wind[2])),
+  };
+}
+
+function splitMeteoclimaticTuple(tuple: string | undefined) {
+  return tuple?.split(";").map((value) => value.trim()) ?? [];
+}
+
+function parseMeteoclimaticNumber(value: string | undefined) {
+  if (!value) {
+    return null;
+  }
+  const parsed = Number(value.replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseMeteoclimaticObservedAt(body: string) {
+  const pubDate = body.match(/<pubDate>([^<]+)<\/pubDate>/)?.[1]?.trim();
+  if (!pubDate) {
+    return null;
+  }
+  const observedAt = new Date(pubDate);
+  return Number.isNaN(observedAt.getTime()) ? null : observedAt;
+}
+
 async function fetchWundergroundApiKey(stationId: string) {
   const dashboard = await fetchText(
     `https://www.wunderground.com/dashboard/pws/${
@@ -1100,17 +1145,32 @@ async function fetchPortusJson(url: string, body: unknown): Promise<unknown> {
   return await response.json();
 }
 
-async function fetchText(url: string): Promise<string> {
+async function fetchText(
+  url: string,
+  headers: Record<string, string> = {
+    accept: "text/html,application/xhtml+xml",
+    "user-agent": "WindWisher/1.0",
+  },
+): Promise<string> {
   const response = await fetch(url, {
-    headers: {
-      accept: "text/html,application/xhtml+xml",
-      "user-agent": "WindWisher/1.0",
-    },
+    headers,
   });
   if (!response.ok) {
     throw new Error(`request-failed:${response.status}`);
   }
   return await response.text();
+}
+
+function meteoclimaticRequestHeaders() {
+  return {
+    "accept": "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.7",
+    "accept-language": "es-ES,es;q=0.9,en;q=0.8",
+    "cache-control": "no-cache",
+    "pragma": "no-cache",
+    "referer": "https://www.meteoclimatic.net/",
+    "user-agent":
+      "Mozilla/5.0 (compatible; WindWisher/1.0; +https://windwisher.app)",
+  };
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
