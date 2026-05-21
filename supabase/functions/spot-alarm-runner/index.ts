@@ -613,6 +613,8 @@ async function fetchObservationForAlarm(alarm: AlarmRow) {
       return await fetchWindguruStationObservation(alarm.station_key);
     case "WUNDERGROUND":
       return await fetchWundergroundObservation(alarm.station_key);
+    case "METEOCLIMATIC":
+      return await fetchMeteoclimaticObservation(alarm.station_key);
     case "PUERTOS":
     case "PORTUS":
       return await fetchPortusObservation(alarm.station_key);
@@ -628,6 +630,7 @@ function supportsStationProvider(provider: string) {
     provider === "AVAMET" ||
     provider === "WINDGURU_STATION" ||
     provider === "WUNDERGROUND" ||
+    provider === "METEOCLIMATIC" ||
     provider === "PUERTOS" ||
     provider === "PORTUS";
 }

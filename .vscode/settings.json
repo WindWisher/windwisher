@@ -3,6 +3,10 @@
   "dart.flutterHotReloadOnSave": "always",
   "dart.previewFlutterUiGuides": true,
   "dart.openDevTools": "flutter",
+  "deno.enable": true,
+  "deno.enablePaths": [
+    "supabase/functions"
+  ],
   "python.defaultInterpreterPath": "${workspaceFolder}/tmp/ble_env/bin/python",
   "chatgpt.openOnStartup": true,
   "java.jdt.ls.java.home": "/Applications/Android Studio.app/Contents/jbr/Contents/Home",
