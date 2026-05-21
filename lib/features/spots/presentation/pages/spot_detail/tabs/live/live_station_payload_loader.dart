@@ -24,12 +24,9 @@ extension _SpotDetailLiveStationPayloadLoader on _SpotDetailPageState {
     }
     if (station.provider == 'INFORATGE') {
       final feed = await _inforatgeOlivaNovaClient.fetchFeed(
-        stationCode: station.stationId == _inforatgePoliesportiuStationId
-            ? '01'
-            : '02',
-        liveUrl: station.stationId == _inforatgePoliesportiuStationId
-            ? InforatgeOlivaNovaClient.livePoliesportiuUrl
-            : InforatgeOlivaNovaClient.liveOlivaNovaUrl,
+        stationCode: _inforatgeStationCodeFor(station.stationId),
+        liveUrl: _inforatgeLiveUrlFor(station.stationId),
+        historyUrl: _inforatgeHistoryUrlFor(station.stationId),
       );
       final snapshot = feed.latestSnapshot;
       if (snapshot == null) {

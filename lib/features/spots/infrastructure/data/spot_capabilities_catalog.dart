@@ -58,7 +58,9 @@ const String tarifaBalnearioSpotName = 'Tarifa - Balneario';
 const String tarifaCampoFutbolSpotName = 'Tarifa - Campo de futbol';
 const String tarifaLosLancesSpotName = 'Tarifa - Los Lances';
 const String tarifaValdevaquerosSpotName = 'Tarifa - Valdevaqueros';
+const String culleraElPolloLiveStationProfile = 'cullera_el_pollo';
 const String culleraDosselWebcamProfile = 'cullera_dossel_webcams';
+const String culleraElPolloPreferredLiveStationKey = 'inforatge:46105e02';
 const String culleraElPolloSpotName = 'Cullera - El Pollo';
 const String xeracoSpotName = 'Xeraco';
 const String dakhlaSpotName = 'Dakhla';
@@ -246,9 +248,11 @@ const tarifaValdevaquerosSpotCapabilities = SpotCapabilities(
 );
 
 const culleraElPolloSpotCapabilities = SpotCapabilities(
+  liveStationProfile: culleraElPolloLiveStationProfile,
   webcamProfile: culleraDosselWebcamProfile,
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
+  preferredLiveStationKey: culleraElPolloPreferredLiveStationKey,
   navigationLatitude: 39.21294234832044,
   navigationLongitude: -0.23836018562887695,
   navigationLabel: 'Llegada Cullera - El Pollo',

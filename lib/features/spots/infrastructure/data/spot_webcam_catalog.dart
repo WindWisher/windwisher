@@ -303,6 +303,71 @@ const List<SpotWebcam> _elPerellonetWebcams = [
 
 const List<SpotWebcam> _culleraDosselWebcams = [
   SpotWebcam(
+    name: 'Cullera Dosser',
+    source: 'Inforatge',
+    status: 'Directo',
+    resolution: 'Imagen actualizable',
+    primaryPageUrl: 'https://inforatgedb.com/cullera/webcam2/webcamcullera.jpg',
+    summary:
+        'Webcam del deposito Safi en la zona del Dosser, la referencia visual mas cercana a El Pollo.',
+    previewImageUrl:
+        'https://inforatgedb.com/cullera/webcam2/webcamcullera.jpg',
+    locationLabel: 'Cullera Dosser',
+    latitude: 39.1889,
+    longitude: -0.2263,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Webcam Cullera Dosser · Inforatge',
+        url: 'https://inforatge.com/meteo-cullera/webcam',
+      ),
+      WebcamReferencePage(
+        title: 'Cullera instala en el Dosel una estacion y webcam',
+        url:
+            'https://visit-cullera.es/2021/10/28/cullera-instala-en-el-dosel-una-segunda-estacion-meteorologica/',
+      ),
+    ],
+  ),
+  SpotWebcam(
+    name: 'Cullera Sant Antoni',
+    source: 'ClimaMeteoInfo',
+    status: 'Directo',
+    resolution: 'Imagen actualizable',
+    primaryPageUrl:
+        'https://www.climameteoinfo.com/webcam/id.VAL_210401867121.jpg',
+    summary:
+        'Webcam directa de la estacion Cullera-Sant Antoni, buena referencia visual al sur de El Pollo.',
+    previewImageUrl:
+        'https://www.climameteoinfo.com/webcam/id.VAL_210401867121.jpg',
+    locationLabel: 'Cullera Sant Antoni',
+    latitude: 39.162655,
+    longitude: -0.244687,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Cullera-Sant Antoni · ClimaMeteoInfo',
+        url: 'https://climameteoinfo.com/webest/id.VAL_210401867121.html',
+      ),
+    ],
+  ),
+  SpotWebcam(
+    name: 'Cullera Marenyet',
+    source: 'Naicams',
+    status: 'Directo',
+    resolution: 'YouTube',
+    primaryPageUrl: 'https://www.youtube.com/watch?v=NNkpUXhP_L8',
+    summary:
+        'Camara en directo de Cullera - Marenyet. YouTube no permite incrustarla como iframe, por eso se abre con el reproductor oficial.',
+    previewImageUrl: 'https://img.youtube.com/vi/NNkpUXhP_L8/hqdefault.jpg',
+    locationLabel: 'Cullera Marenyet',
+    latitude: 39.17258,
+    longitude: -0.2392,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Cullera - Marenyet · YouTube',
+        url: 'https://www.youtube.com/watch?v=NNkpUXhP_L8',
+      ),
+    ],
+  ),
+  SpotWebcam(
     name: 'Cullera Castillo',
     source: 'Comunitat Valenciana',
     status: 'Directo',

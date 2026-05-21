@@ -5,6 +5,7 @@ import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_webcam.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/webcam/widgets/webcam_web_embed.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class WebcamPlayerPage extends StatefulWidget {
@@ -45,6 +46,59 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
       (widget.relatedPages.isNotEmpty ? widget.relatedPages.first.url : '');
 
   String get _streamManifestUrl => widget.streamManifestUrl ?? '';
+
+  bool get _usesDirectImage => _isDirectImageUrl(_pageUrl);
+
+  static bool _isDirectImageUrl(String url) {
+    final normalized = url.toLowerCase().split('?').first;
+    return normalized.endsWith('.jpg') ||
+        normalized.endsWith('.jpeg') ||
+        normalized.endsWith('.png') ||
+        normalized.endsWith('.webp');
+  }
+
+  String _directImageEmbedHtml(String imageUrl) {
+    return '''
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+  <img id="webcam-image" src="$imageUrl" alt="Webcam">
+  <script>
+    const baseUrl = '$imageUrl'.split('?')[0];
+    function refreshImage() {
+      document.getElementById('webcam-image').src = baseUrl + '?t=' + Date.now();
+    }
+    setInterval(refreshImage, 50000);
+  </script>
+</body>
+</html>
+''';
+  }
 
   String _streamEmbedHtml() {
     final posterAttribute = widget.previewImageUrl == null
@@ -131,10 +185,15 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
               _loadingProgress = 100;
             });
           },
+          onNavigationRequest: _handleNavigationRequest,
         ),
       );
     if (_streamManifestUrl.isNotEmpty) {
       _controller!.loadHtmlString(_streamEmbedHtml());
+      return;
+    }
+    if (_usesDirectImage) {
+      _controller!.loadHtmlString(_directImageEmbedHtml(_pageUrl));
       return;
     }
     if (_pageUrl.isNotEmpty) {
@@ -150,6 +209,9 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
           streamManifestUrl: _streamManifestUrl,
           previewImageUrl: widget.previewImageUrl,
           pageUrl: _pageUrl,
+          directImageHtml: _usesDirectImage
+              ? _directImageEmbedHtml(_pageUrl)
+              : null,
         ),
       ),
     );
@@ -159,6 +221,74 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
     await SystemChrome.setPreferredOrientations(const [
       DeviceOrientation.portraitUp,
     ]);
+  }
+
+  NavigationDecision _handleNavigationRequest(NavigationRequest request) {
+    final uri = Uri.tryParse(request.url);
+    if (uri == null) {
+      return NavigationDecision.navigate;
+    }
+    if (_shouldOpenExternally(uri)) {
+      _openUriExternally(uri);
+      return NavigationDecision.prevent;
+    }
+    return NavigationDecision.navigate;
+  }
+
+  bool _shouldOpenExternally(Uri uri) {
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme == 'intent' || scheme == 'vnd.youtube') {
+      return true;
+    }
+    return scheme.isNotEmpty && scheme != 'http' && scheme != 'https';
+  }
+
+  Future<void> _openUriExternally(Uri uri) async {
+    if (await _tryLaunchUri(uri)) return;
+    final fallbackUri = _externalNavigationFallback(uri);
+    if (fallbackUri != null) {
+      await _tryLaunchUri(fallbackUri);
+    }
+  }
+
+  Future<bool> _tryLaunchUri(Uri uri) async {
+    for (final mode in const [
+      LaunchMode.externalApplication,
+      LaunchMode.platformDefault,
+    ]) {
+      try {
+        if (await launchUrl(uri, mode: mode)) {
+          return true;
+        }
+      } catch (_) {
+        continue;
+      }
+    }
+    return false;
+  }
+
+  Uri? _externalNavigationFallback(Uri uri) {
+    if (uri.scheme.toLowerCase() == 'intent') {
+      final match = RegExp(
+        r'S\.browser_fallback_url=([^;]+)',
+      ).firstMatch(uri.toString());
+      final fallback = match?.group(1);
+      if (fallback != null) {
+        return Uri.tryParse(Uri.decodeComponent(fallback));
+      }
+    }
+    if (_isYoutubeUrl(_pageUrl)) {
+      return Uri.tryParse(_pageUrl);
+    }
+    return null;
+  }
+
+  bool _isYoutubeUrl(String url) {
+    final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+    return host == 'youtube.com' ||
+        host == 'www.youtube.com' ||
+        host == 'm.youtube.com' ||
+        host == 'youtu.be';
   }
 
   Widget _buildPlayerSurface({
@@ -171,8 +301,13 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
               ? WebcamWebEmbed(
                   html: _streamManifestUrl.isNotEmpty
                       ? _streamEmbedHtml()
+                      : _usesDirectImage
+                      ? _directImageEmbedHtml(_pageUrl)
                       : null,
-                  url: _streamManifestUrl.isEmpty && _pageUrl.isNotEmpty
+                  url:
+                      _streamManifestUrl.isEmpty &&
+                          !_usesDirectImage &&
+                          _pageUrl.isNotEmpty
                       ? _pageUrl
                       : null,
                 )
@@ -333,12 +468,14 @@ class _WebcamFullscreenView extends StatelessWidget {
     required this.webcamName,
     required this.pageUrl,
     required this.streamManifestUrl,
+    this.directImageHtml,
     this.previewImageUrl,
   });
 
   final String webcamName;
   final String pageUrl;
   final String streamManifestUrl;
+  final String? directImageHtml;
   final String? previewImageUrl;
 
   String _streamEmbedHtml() {
@@ -404,6 +541,7 @@ class _WebcamFullscreenView extends StatelessWidget {
       webcamName: webcamName,
       pageUrl: pageUrl,
       streamManifestUrl: streamManifestUrl,
+      directImageHtml: directImageHtml,
       previewImageUrl: previewImageUrl,
       streamEmbedHtml: _streamEmbedHtml(),
     );
@@ -416,6 +554,7 @@ class _WebcamFullscreenScaffold extends StatefulWidget {
     required this.pageUrl,
     required this.streamManifestUrl,
     required this.streamEmbedHtml,
+    this.directImageHtml,
     this.previewImageUrl,
   });
 
@@ -423,6 +562,7 @@ class _WebcamFullscreenScaffold extends StatefulWidget {
   final String pageUrl;
   final String streamManifestUrl;
   final String streamEmbedHtml;
+  final String? directImageHtml;
   final String? previewImageUrl;
 
   @override
@@ -443,9 +583,14 @@ class _WebcamFullscreenScaffoldState extends State<_WebcamFullscreenScaffold> {
         DeviceOrientation.landscapeRight,
       ]);
       _controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted);
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setNavigationDelegate(
+          NavigationDelegate(onNavigationRequest: _handleNavigationRequest),
+        );
       if (widget.streamManifestUrl.isNotEmpty) {
         _controller!.loadHtmlString(widget.streamEmbedHtml);
+      } else if (widget.directImageHtml != null) {
+        _controller!.loadHtmlString(widget.directImageHtml!);
       } else if (widget.pageUrl.isNotEmpty) {
         _controller!.loadRequest(Uri.parse(widget.pageUrl));
       }
@@ -478,6 +623,74 @@ class _WebcamFullscreenScaffoldState extends State<_WebcamFullscreenScaffold> {
     super.dispose();
   }
 
+  NavigationDecision _handleNavigationRequest(NavigationRequest request) {
+    final uri = Uri.tryParse(request.url);
+    if (uri == null) {
+      return NavigationDecision.navigate;
+    }
+    if (_shouldOpenExternally(uri)) {
+      _openUriExternally(uri);
+      return NavigationDecision.prevent;
+    }
+    return NavigationDecision.navigate;
+  }
+
+  bool _shouldOpenExternally(Uri uri) {
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme == 'intent' || scheme == 'vnd.youtube') {
+      return true;
+    }
+    return scheme.isNotEmpty && scheme != 'http' && scheme != 'https';
+  }
+
+  Future<void> _openUriExternally(Uri uri) async {
+    if (await _tryLaunchUri(uri)) return;
+    final fallbackUri = _externalNavigationFallback(uri);
+    if (fallbackUri != null) {
+      await _tryLaunchUri(fallbackUri);
+    }
+  }
+
+  Future<bool> _tryLaunchUri(Uri uri) async {
+    for (final mode in const [
+      LaunchMode.externalApplication,
+      LaunchMode.platformDefault,
+    ]) {
+      try {
+        if (await launchUrl(uri, mode: mode)) {
+          return true;
+        }
+      } catch (_) {
+        continue;
+      }
+    }
+    return false;
+  }
+
+  Uri? _externalNavigationFallback(Uri uri) {
+    if (uri.scheme.toLowerCase() == 'intent') {
+      final match = RegExp(
+        r'S\.browser_fallback_url=([^;]+)',
+      ).firstMatch(uri.toString());
+      final fallback = match?.group(1);
+      if (fallback != null) {
+        return Uri.tryParse(Uri.decodeComponent(fallback));
+      }
+    }
+    if (_isYoutubeUrl(widget.pageUrl)) {
+      return Uri.tryParse(widget.pageUrl);
+    }
+    return null;
+  }
+
+  bool _isYoutubeUrl(String url) {
+    final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+    return host == 'youtube.com' ||
+        host == 'www.youtube.com' ||
+        host == 'm.youtube.com' ||
+        host == 'youtu.be';
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -500,9 +713,10 @@ class _WebcamFullscreenScaffoldState extends State<_WebcamFullscreenScaffold> {
               WebcamWebEmbed(
                 html: widget.streamManifestUrl.isNotEmpty
                     ? widget.streamEmbedHtml
-                    : null,
+                    : widget.directImageHtml,
                 url:
                     widget.streamManifestUrl.isEmpty &&
+                        widget.directImageHtml == null &&
                         widget.pageUrl.isNotEmpty
                     ? widget.pageUrl
                     : null,

@@ -51,8 +51,7 @@ class InforatgeOlivaNovaClient {
   InforatgeOlivaNovaClient({
     HttpClient? httpClient,
     Future<String> Function(String url)? fetchText,
-    Future<String> Function(String url, Map<String, String> formData)?
-    postForm,
+    Future<String> Function(String url, Map<String, String> formData)? postForm,
     SupabaseForecastProxyClient? forecastProxyClient,
   }) : _httpClient = httpClient,
        _fetchTextOverride = fetchText,
@@ -62,7 +61,12 @@ class InforatgeOlivaNovaClient {
 
   static const String liveOlivaNovaUrl = 'https://inforatge.com/meteo-oliva-02';
   static const String livePoliesportiuUrl = 'https://inforatge.com/meteo-oliva';
-  static const String historyUrl = 'https://inforatge.com/meteo-oliva/estacio';
+  static const String historyOlivaUrl =
+      'https://inforatge.com/meteo-oliva/estacio';
+  static const String liveCulleraDosserUrl =
+      'https://inforatge.com/meteo-cullera';
+  static const String historyCulleraUrl =
+      'https://inforatge.com/meteo-cullera/estacio';
 
   final HttpClient? _httpClient;
   final Future<String> Function(String url)? _fetchTextOverride;
@@ -73,6 +77,7 @@ class InforatgeOlivaNovaClient {
   Future<InforatgeOlivaNovaFeed> fetchFeed({
     String stationCode = '02',
     String liveUrl = liveOlivaNovaUrl,
+    String historyUrl = historyOlivaUrl,
   }) async {
     final liveFuture = _safeFetchText(liveUrl);
     final historyPage = await _fetchText(historyUrl);
@@ -98,19 +103,18 @@ class InforatgeOlivaNovaClient {
     final liveBody = await liveFuture;
     final liveSnapshot = liveBody == null ? null : _parseLiveSnapshot(liveBody);
     final latestPoint = sortedPoints.isEmpty ? null : sortedPoints.last;
-    final historySnapshot =
-        latestPoint == null
-            ? null
-            : InforatgeOlivaNovaSnapshot(
-                observedAt: latestPoint.time,
-                windKnots: latestPoint.windKnots,
-                windDirectionDeg: latestPoint.windDirectionDeg,
-                gustKnots: null,
-                tempC: null,
-                pressureHpa: null,
-                humidityPct: null,
-                rainMm: null,
-              );
+    final historySnapshot = latestPoint == null
+        ? null
+        : InforatgeOlivaNovaSnapshot(
+            observedAt: latestPoint.time,
+            windKnots: latestPoint.windKnots,
+            windDirectionDeg: latestPoint.windDirectionDeg,
+            gustKnots: null,
+            tempC: null,
+            pressureHpa: null,
+            humidityPct: null,
+            rainMm: null,
+          );
     return InforatgeOlivaNovaFeed(
       points: sortedPoints,
       latestSnapshot: _pickNewestSnapshot(liveSnapshot, historySnapshot),
@@ -135,11 +139,10 @@ class InforatgeOlivaNovaClient {
     if (categoriesMatch == null) {
       return const <InforatgeOlivaNovaPoint>[];
     }
-    final categories = RegExp(
-      r"'([^']*)'",
-    ).allMatches(categoriesMatch.group(1) ?? '').map((m) => m.group(1)!).toList(
-      growable: false,
-    );
+    final categories = RegExp(r"'([^']*)'")
+        .allMatches(categoriesMatch.group(1) ?? '')
+        .map((m) => m.group(1)!)
+        .toList(growable: false);
     final seriesMatches = RegExp(
       r"data:\[(.*?)\].*?name:'([^']+)'",
       dotAll: true,
@@ -148,7 +151,9 @@ class InforatgeOlivaNovaClient {
       return const <InforatgeOlivaNovaPoint>[];
     }
     final speedValues = _parseNumericSeries(seriesMatches[0].group(1) ?? '');
-    final directionValues = _parseNumericSeries(seriesMatches[1].group(1) ?? '');
+    final directionValues = _parseNumericSeries(
+      seriesMatches[1].group(1) ?? '',
+    );
     final count = [
       categories.length,
       speedValues.length,
@@ -426,7 +431,10 @@ class InforatgeOlivaNovaClient {
     }
   }
 
-  Future<String?> _safePostForm(String url, Map<String, String> formData) async {
+  Future<String?> _safePostForm(
+    String url,
+    Map<String, String> formData,
+  ) async {
     try {
       return await _postForm(url, formData);
     } catch (_) {
@@ -450,7 +458,10 @@ class InforatgeOlivaNovaClient {
     final request = await httpClient.getUrl(Uri.parse(url));
     final response = await request.close();
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw HttpException('Request failed: ${response.statusCode}', uri: Uri.parse(url));
+      throw HttpException(
+        'Request failed: ${response.statusCode}',
+        uri: Uri.parse(url),
+      );
     }
     return response.transform(const SystemEncoding().decoder).join();
   }
@@ -480,7 +491,10 @@ class InforatgeOlivaNovaClient {
     request.write(Uri(queryParameters: formData).query);
     final response = await request.close();
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw HttpException('Request failed: ${response.statusCode}', uri: Uri.parse(url));
+      throw HttpException(
+        'Request failed: ${response.statusCode}',
+        uri: Uri.parse(url),
+      );
     }
     return response.transform(const SystemEncoding().decoder).join();
   }

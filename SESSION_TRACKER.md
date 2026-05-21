@@ -16763,3 +16763,38 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
     - verificacion:
       - `flutter analyze` limpio,
       - `local.env.json` sigue ignorado por git y no se versiona.
+
+
+  - bloque nuevo `2026-05-21`:
+    - configuracion Live/Webcam de `El Perellonet` y `Cullera - El Pollo`,
+    - tiempo real trabajado en este tramo: `160 min` aprox. de trabajo efectivo,
+    - live / El Perellonet:
+      - revisadas fuentes cercanas y estaciones utiles para el spot,
+      - incorporadas estaciones AVAMET cercanas para validacion visual,
+      - configurada `Playa de la Garrofera` como estacion principal provisional,
+      - revisada la opcion WindOliva/El Perellonet y documentado que queda limitada por protecciones externas,
+    - webcam / El Perellonet:
+      - investigadas webcams cercanas de Camaramar, El Perello, PlayaWebcams y otros directorios,
+      - descartadas webcams sin emision util o con reproductor no usable,
+      - conservada la webcam de `El Saler` usando el stream embebido directo de Comunitat Valenciana para que funcione como en navegador,
+    - live / Cullera:
+      - creado perfil Live especifico para `Cullera - El Pollo`,
+      - anadida estacion `Inforatge Cullera Dosser` como fuente principal,
+      - anadida estacion `AVAMET Cullera el Marenyet` como fuente alternativa,
+      - anadida estacion `WU Cullera Sant Antoni` como fuente alternativa,
+      - generalizado el cliente Inforatge para soportar URLs de Oliva Nova y Cullera,
+      - conectado payload, metadata, historico y etiquetas Live para las nuevas estaciones,
+      - actualizado `spot-alarm-runner` para resolver alarmas backend de la estacion Inforatge de Cullera,
+    - webcam / Cullera:
+      - anadida webcam directa de `Cullera Dosser` desde Inforatge,
+      - anadida webcam directa de `Cullera Sant Antoni` desde ClimaMeteoInfo,
+      - anadida webcam `Cullera Marenyet` de YouTube,
+      - mantenida `Cullera Castillo` desde Comunitat Valenciana,
+      - eliminado el boton duplicado `Abrir video en YouTube` porque el boton nativo `Abrir App` de YouTube ya funciona,
+      - el visor ahora soporta imagenes directas `.jpg/.jpeg/.png/.webp` con refresco automatico cada 50 segundos,
+      - el visor intercepta `intent://` y `vnd.youtube://` para abrir YouTube de forma externa sin romper Android,
+      - anadido fallback a la URL normal de YouTube cuando Android no acepta el intent interno,
+    - verificacion:
+      - `flutter analyze` limpio,
+      - comprobado por usuario que la webcam de YouTube vuelve a reproducir correctamente y el boton `Abrir App` funciona,
+      - `local.env.json` sigue ignorado por git y no se versiona.

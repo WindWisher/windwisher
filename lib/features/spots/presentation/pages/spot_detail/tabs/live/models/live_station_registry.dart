@@ -70,6 +70,26 @@ const String _avametPerellonetGarroferaStationName =
 const double _avametPerellonetGarroferaStationLat = 39.358925;
 const double _avametPerellonetGarroferaStationLon = -0.318364;
 
+const String _avametCulleraMarenyetStationId = 'c21m105e07';
+const String _avametCulleraMarenyetStationKey = 'avamet:c21m105e07';
+const String _avametCulleraMarenyetStationName = 'Cullera el Marenyet';
+const double _avametCulleraMarenyetStationLat = 39.17258;
+const double _avametCulleraMarenyetStationLon = -0.2392;
+
+const String _wundergroundCulleraSantAntoniStationId = 'IVALENCI43';
+const String _wundergroundCulleraSantAntoniStationKey =
+    'wunderground:IVALENCI43';
+const String _wundergroundCulleraSantAntoniStationName =
+    'WU Cullera Sant Antoni';
+const double _wundergroundCulleraSantAntoniStationLat = 39.162487;
+const double _wundergroundCulleraSantAntoniStationLon = -0.243729;
+
+const String _inforatgeCulleraDosserStationId = '46105e02';
+const String _inforatgeCulleraDosserStationKey = 'inforatge:46105e02';
+const String _inforatgeCulleraDosserStationName = 'Inforatge Cullera Dosser';
+const double _inforatgeCulleraDosserStationLat = 39.1889;
+const double _inforatgeCulleraDosserStationLon = -0.2263;
+
 const String _avametPerellonetTancatPipaStationId = 'c15m250e16';
 const String _avametPerellonetTancatPipaStationKey = 'avamet:c15m250e16';
 const String _avametPerellonetTancatPipaStationName =

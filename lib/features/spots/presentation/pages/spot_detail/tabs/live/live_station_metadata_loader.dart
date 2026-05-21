@@ -441,6 +441,50 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     );
   }
 
+  void _addCulleraElPolloLiveStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _inforatgeCulleraDosserStationKey,
+      stationName: _inforatgeCulleraDosserStationName,
+      provider: 'INFORATGE',
+      stationId: _inforatgeCulleraDosserStationId,
+      latitude: _inforatgeCulleraDosserStationLat,
+      longitude: _inforatgeCulleraDosserStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametCulleraMarenyetStationKey,
+      stationName: _avametCulleraMarenyetStationName,
+      provider: 'AVAMET',
+      stationId: _avametCulleraMarenyetStationId,
+      latitude: _avametCulleraMarenyetStationLat,
+      longitude: _avametCulleraMarenyetStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _wundergroundCulleraSantAntoniStationKey,
+      stationName: _wundergroundCulleraSantAntoniStationName,
+      provider: 'WUNDERGROUND',
+      stationId: _wundergroundCulleraSantAntoniStationId,
+      latitude: _wundergroundCulleraSantAntoniStationLat,
+      longitude: _wundergroundCulleraSantAntoniStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+  }
+
   void _addElPerellonetLiveStations({
     required double latitude,
     required double longitude,
@@ -671,6 +715,35 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     return capabilities.liveStationProfile == tarifaLiveStationProfile;
   }
 
+  bool _usesCulleraElPolloLiveProfile() {
+    final capabilities = _resolvedSpotCapabilities();
+    return capabilities.liveStationProfile == culleraElPolloLiveStationProfile;
+  }
+
+  String _inforatgeStationCodeFor(String? stationId) {
+    if (stationId == _inforatgePoliesportiuStationId) {
+      return '01';
+    }
+    return '02';
+  }
+
+  String _inforatgeLiveUrlFor(String? stationId) {
+    if (stationId == _inforatgePoliesportiuStationId) {
+      return InforatgeOlivaNovaClient.livePoliesportiuUrl;
+    }
+    if (stationId == _inforatgeCulleraDosserStationId) {
+      return InforatgeOlivaNovaClient.liveCulleraDosserUrl;
+    }
+    return InforatgeOlivaNovaClient.liveOlivaNovaUrl;
+  }
+
+  String _inforatgeHistoryUrlFor(String? stationId) {
+    if (stationId == _inforatgeCulleraDosserStationId) {
+      return InforatgeOlivaNovaClient.historyCulleraUrl;
+    }
+    return InforatgeOlivaNovaClient.historyOlivaUrl;
+  }
+
   SpotCapabilities _resolvedSpotCapabilities() {
     final capabilities = widget.capabilities;
     if (capabilities.liveStationProfile == olivaCanalGorgsLiveStationProfile) {
@@ -707,6 +780,9 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     }
     if (capabilities.liveStationProfile == tarifaLiveStationProfile) {
       return defaultSpotCapabilitiesForName(widget.name);
+    }
+    if (capabilities.liveStationProfile == culleraElPolloLiveStationProfile) {
+      return culleraElPolloSpotCapabilities;
     }
 
     final defaultCapabilities = defaultSpotCapabilitiesForName(widget.name);

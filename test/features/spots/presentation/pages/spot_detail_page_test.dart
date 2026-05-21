@@ -2008,6 +2008,7 @@ class _FakeInforatgeOlivaNovaClient extends InforatgeOlivaNovaClient {
   Future<InforatgeOlivaNovaFeed> fetchFeed({
     String stationCode = '02',
     String liveUrl = InforatgeOlivaNovaClient.liveOlivaNovaUrl,
+    String historyUrl = InforatgeOlivaNovaClient.historyOlivaUrl,
   }) async {
     if (stationCode == '01') {
       return InforatgeOlivaNovaFeed(

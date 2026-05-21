@@ -669,9 +669,7 @@ async function fetchAiguaBlancaObservation() {
 
 async function fetchInforatgeObservation(stationKey: string) {
   const stationId = extractStationId(stationKey);
-  const liveUrl = stationId === "46181e01"
-    ? "https://inforatge.com/meteo-oliva"
-    : "https://inforatge.com/meteo-oliva-02";
+  const liveUrl = inforatgeLiveUrlForStation(stationId);
   const body = await fetchText(liveUrl);
   const updatedMatch = body.match(
     /<h2>(\d{1,2}:\d{2}:\d{2})<br>(.*?)<\/h2>/is,
@@ -693,6 +691,16 @@ async function fetchInforatgeObservation(stationKey: string) {
     windDirectionBucket: directionBucket(cardinalToDegrees(windMatch[2])),
     observedTotalMinutesLocal: localTotalMinutesFromDate(observedAt),
   };
+}
+
+function inforatgeLiveUrlForStation(stationId: string) {
+  if (stationId === "46181e01") {
+    return "https://inforatge.com/meteo-oliva";
+  }
+  if (stationId === "46105e02") {
+    return "https://inforatge.com/meteo-cullera";
+  }
+  return "https://inforatge.com/meteo-oliva-02";
 }
 
 async function fetchAvametObservation(stationKey: string) {
@@ -1163,7 +1171,8 @@ async function fetchText(
 
 function meteoclimaticRequestHeaders() {
   return {
-    "accept": "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.7",
+    "accept":
+      "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.7",
     "accept-language": "es-ES,es;q=0.9,en;q=0.8",
     "cache-control": "no-cache",
     "pragma": "no-cache",
