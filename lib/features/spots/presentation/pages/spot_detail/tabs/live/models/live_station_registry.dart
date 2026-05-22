@@ -90,6 +90,25 @@ const String _inforatgeCulleraDosserStationName = 'Inforatge Cullera Dosser';
 const double _inforatgeCulleraDosserStationLat = 39.1889;
 const double _inforatgeCulleraDosserStationLon = -0.2263;
 
+const String _wundergroundXeracoStationId = 'IXERACO2';
+const String _wundergroundXeracoStationKey = 'wunderground:IXERACO2';
+const String _wundergroundXeracoStationName = 'WU Platja de Xeraco';
+const double _wundergroundXeracoStationLat = 39.039879;
+const double _wundergroundXeracoStationLon = -0.190068;
+
+const String _avametXeracoPlayaStationId = 'c25m143e02';
+const String _avametXeracoPlayaStationKey = 'avamet:c25m143e02';
+const String _avametXeracoPlayaStationName = 'Xeraco Playa';
+const double _avametXeracoPlayaStationLat = 39.042236;
+const double _avametXeracoPlayaStationLon = -0.192328;
+
+const String _meteoclimaticXeracoStationId = 'ESPVA4600000046770B';
+const String _meteoclimaticXeracoStationKey =
+    'meteoclimatic:ESPVA4600000046770B';
+const String _meteoclimaticXeracoStationName = 'Meteoclimatic Xeraco Platja';
+const double _meteoclimaticXeracoStationLat = 39.05;
+const double _meteoclimaticXeracoStationLon = -0.19;
+
 const String _avametPerellonetTancatPipaStationId = 'c15m250e16';
 const String _avametPerellonetTancatPipaStationKey = 'avamet:c15m250e16';
 const String _avametPerellonetTancatPipaStationName =

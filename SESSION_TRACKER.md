@@ -16798,3 +16798,25 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - `flutter analyze` limpio,
       - comprobado por usuario que la webcam de YouTube vuelve a reproducir correctamente y el boton `Abrir App` funciona,
       - `local.env.json` sigue ignorado por git y no se versiona.
+
+
+  - bloque nuevo `2026-05-22`:
+    - configuracion Live/Webcam inicial de `Xeraco`,
+    - tiempo real trabajado en este tramo: `70 min` aprox. de trabajo efectivo,
+    - live / Xeraco:
+      - creado perfil Live especifico `xeraco`,
+      - configurada `AVAMET Xeraco Playa` como estacion preferida del spot,
+      - anadidas como alternativas locales `WU Platja de Xeraco` y `Meteoclimatic Xeraco Platja`,
+      - Xeraco deja de cargar el fallback generico AEMET/Puertos para que el selector no mezcle estaciones de otros spots,
+      - el fallback Portus generico queda desactivado en spots con perfil Live explicito salvo que configuren estaciones Portus propias,
+      - el forecast por defecto de Xeraco queda alineado con AEMET/Puertos atmosférico.
+    - webcam / Xeraco:
+      - investigadas las webcams de CostaSol Xeraco, Camping San Vicente y WorldCam,
+      - confirmado que WorldCam referencia la camara del Camping San Vicente,
+      - descartado el embed del Camping San Vicente por certificado SSL caducado en el servidor real de la camara,
+      - configurada la webcam `Xeraco Playa` de CostaSol usando el player IPCamLive embebido,
+      - probado y revertido el intento de usar el HLS directo y la pagina CostaSol completa al no mejorar la reproduccion movil,
+      - documentado por prueba visual que la fuente CostaSol/IPCamLive mantiene buffering tambien desde su web.
+    - verificacion:
+      - `flutter analyze` limpio tras la configuracion final,
+      - `local.env.json` sigue ignorado por git y no se versiona.

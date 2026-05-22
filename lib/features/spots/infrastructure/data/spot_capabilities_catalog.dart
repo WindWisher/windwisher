@@ -62,6 +62,9 @@ const String culleraElPolloLiveStationProfile = 'cullera_el_pollo';
 const String culleraDosselWebcamProfile = 'cullera_dossel_webcams';
 const String culleraElPolloPreferredLiveStationKey = 'inforatge:46105e02';
 const String culleraElPolloSpotName = 'Cullera - El Pollo';
+const String xeracoLiveStationProfile = 'xeraco';
+const String xeracoWebcamProfile = 'xeraco_webcams';
+const String xeracoPreferredLiveStationKey = 'avamet:c25m143e02';
 const String xeracoSpotName = 'Xeraco';
 const String dakhlaSpotName = 'Dakhla';
 const String essaouiraSpotName = 'Essaouira';
@@ -259,6 +262,11 @@ const culleraElPolloSpotCapabilities = SpotCapabilities(
 );
 
 const xeracoSpotCapabilities = SpotCapabilities(
+  liveStationProfile: xeracoLiveStationProfile,
+  webcamProfile: xeracoWebcamProfile,
+  defaultForecastProvider: 'AEMET',
+  defaultForecastModel: kAemetPortusAtmosphereForecastModel,
+  preferredLiveStationKey: xeracoPreferredLiveStationKey,
   navigationLatitude: 39.03800937721705,
   navigationLongitude: -0.18951786389646919,
   navigationLabel: 'Llegada Xeraco',

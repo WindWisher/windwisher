@@ -485,6 +485,50 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     );
   }
 
+  void _addXeracoLiveStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametXeracoPlayaStationKey,
+      stationName: _avametXeracoPlayaStationName,
+      provider: 'AVAMET',
+      stationId: _avametXeracoPlayaStationId,
+      latitude: _avametXeracoPlayaStationLat,
+      longitude: _avametXeracoPlayaStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _wundergroundXeracoStationKey,
+      stationName: _wundergroundXeracoStationName,
+      provider: 'WUNDERGROUND',
+      stationId: _wundergroundXeracoStationId,
+      latitude: _wundergroundXeracoStationLat,
+      longitude: _wundergroundXeracoStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _meteoclimaticXeracoStationKey,
+      stationName: _meteoclimaticXeracoStationName,
+      provider: 'METEOCLIMATIC',
+      stationId: _meteoclimaticXeracoStationId,
+      latitude: _meteoclimaticXeracoStationLat,
+      longitude: _meteoclimaticXeracoStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+  }
+
   void _addElPerellonetLiveStations({
     required double latitude,
     required double longitude,
@@ -636,6 +680,9 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     if (configuredStationIds.isNotEmpty) {
       return configuredStationIds;
     }
+    if (_resolvedSpotCapabilities().liveStationProfile != null) {
+      return const <int>[];
+    }
     final normalized = '${widget.name} ${widget.area}'.toLowerCase();
     if (normalized.contains('gandia') || normalized.contains('gandía')) {
       return const <int>[4634];
@@ -720,6 +767,11 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     return capabilities.liveStationProfile == culleraElPolloLiveStationProfile;
   }
 
+  bool _usesXeracoLiveProfile() {
+    final capabilities = _resolvedSpotCapabilities();
+    return capabilities.liveStationProfile == xeracoLiveStationProfile;
+  }
+
   String _inforatgeStationCodeFor(String? stationId) {
     if (stationId == _inforatgePoliesportiuStationId) {
       return '01';
@@ -783,6 +835,9 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     }
     if (capabilities.liveStationProfile == culleraElPolloLiveStationProfile) {
       return culleraElPolloSpotCapabilities;
+    }
+    if (capabilities.liveStationProfile == xeracoLiveStationProfile) {
+      return xeracoSpotCapabilities;
     }
 
     final defaultCapabilities = defaultSpotCapabilitiesForName(widget.name);

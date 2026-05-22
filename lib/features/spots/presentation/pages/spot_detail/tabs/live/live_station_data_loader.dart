@@ -31,6 +31,7 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
       final usesElPerellonetLiveProfile = _usesElPerellonetLiveProfile();
       final usesTarifaLiveProfile = _usesTarifaLiveProfile();
       final usesCulleraElPolloLiveProfile = _usesCulleraElPolloLiveProfile();
+      final usesXeracoLiveProfile = _usesXeracoLiveProfile();
       final stations = <_NearbyStation>[];
       final liveDataByStation = <String, _StationLiveData>{};
       final historyByStation = <String, List<_HistoricalWindPoint>>{};
@@ -51,7 +52,8 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
           !usesVillajoyosaPlayaParaisoLiveProfile &&
           !usesElPerellonetLiveProfile &&
           !usesTarifaLiveProfile &&
-          !usesCulleraElPolloLiveProfile) {
+          !usesCulleraElPolloLiveProfile &&
+          !usesXeracoLiveProfile) {
         try {
           snapshots = await _aemetObservationClient.fetchNearestStations(
             latitude: latitude,
@@ -209,6 +211,14 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
       }
       if (usesCulleraElPolloLiveProfile) {
         _addCulleraElPolloLiveStations(
+          latitude: latitude,
+          longitude: longitude,
+          stations: stations,
+          seenKeys: seenKeys,
+        );
+      }
+      if (usesXeracoLiveProfile) {
+        _addXeracoLiveStations(
           latitude: latitude,
           longitude: longitude,
           stations: stations,

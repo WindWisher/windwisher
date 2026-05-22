@@ -393,6 +393,32 @@ const List<SpotWebcam> _culleraDosselWebcams = [
   ),
 ];
 
+const List<SpotWebcam> _xeracoWebcams = [
+  SpotWebcam(
+    name: 'Xeraco Playa',
+    source: 'CostaSol Xeraco',
+    status: 'Directo',
+    resolution: 'Web oficial',
+    primaryPageUrl:
+        'https://g0.ipcamlive.com/player/player.php?alias=645b5e0857e41',
+    summary:
+        'Webcam en directo de la playa de Xeraco con vista hacia la bahia de Cullera.',
+    locationLabel: 'Playa de Xeraco',
+    latitude: 39.04147,
+    longitude: -0.18954,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'CostaSol Xeraco · Webcam playa',
+        url: 'https://www.costasolxeraco.com/camara.php?Lang=es',
+      ),
+      WebcamReferencePage(
+        title: 'Playa de Xeraco · Nuvoler',
+        url: 'https://www.nuvoler.com/spot/72/',
+      ),
+    ],
+  ),
+];
+
 List<SpotWebcam> webcamsForProfile(String? profile) {
   return switch (profile) {
     olivaCanalGorgsWebcamProfile => _olivaCanalGorgsWebcams,
@@ -408,6 +434,7 @@ List<SpotWebcam> webcamsForProfile(String? profile) {
     elCampelloPlayaMuchavistaWebcamProfile => _elCampelloPlayaMuchavistaWebcams,
     elPerellonetWebcamProfile => _elPerellonetWebcams,
     culleraDosselWebcamProfile => _culleraDosselWebcams,
+    xeracoWebcamProfile => _xeracoWebcams,
     _ => const <SpotWebcam>[],
   };
 }
@@ -434,4 +461,5 @@ const List<SpotWebcam> _allProfileWebcams = [
   ..._elCampelloPlayaMuchavistaWebcams,
   ..._elPerellonetWebcams,
   ..._culleraDosselWebcams,
+  ..._xeracoWebcams,
 ];
