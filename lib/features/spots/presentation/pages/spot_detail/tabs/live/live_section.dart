@@ -24,7 +24,7 @@ extension _SpotDetailLiveSection on _SpotDetailPageState {
     return _LiveProviderLabel(
       text: observedAt == null
           ? null
-          : 'Ultimo dato: ${_formatObservedAtWithAge(observedAt, label: liveData.observedAtLabel)}',
+          : 'Ultimo dato: ${_formatObservedAtWithAge(observedAt)}',
     );
   }
 

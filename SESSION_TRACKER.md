@@ -16820,3 +16820,51 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
     - verificacion:
       - `flutter analyze` limpio tras la configuracion final,
       - `local.env.json` sigue ignorado por git y no se versiona.
+
+
+  - bloque nuevo `2026-05-24`:
+    - consolidacion Live/alarmas para Gandia Playa, Denia, El Perellonet y Weathercloud,
+    - tiempo real trabajado en este tramo: `210 min` aprox. de trabajo efectivo,
+    - live / Gandia Playa:
+      - revisadas fuentes externas IVIA, Embalses, Inforatge, Meteo365 y PlayaWebcams,
+      - mantenida la configuracion Live especifica del spot con estaciones utiles cercanas,
+      - revisada la persistencia y compatibilidad de alarmas para los spots valencianos ya configurados,
+    - live / Denia:
+      - anadido cliente `XussMeteoClient` para consumir la estacion Xuss Denia,
+      - anadida estacion `Xuss Denia Joan Chabas` al perfil Live de Denia,
+      - anadido soporte `WEATHERCLOUD` con `WeathercloudLiveClient`,
+      - anadida estacion `Weathercloud Platja de les Deveses` y configurada como principal para `Denia - Les Deveses`,
+      - anadida estacion `Weathercloud ElPaquebote` y configurada como principal para `Denia - Punta Els Molins`,
+      - conectado Weathercloud al payload Live, historico backend, catalogo de clientes y `spot-alarm-runner`,
+      - conectado Weathercloud al colector backend `spot-live-observation-collector`,
+      - revisada la webcam asociada a Platja de les Deveses y documentado que la galeria publica de Weathercloud no expone imagen directa actualmente,
+    - live / Weathercloud:
+      - el cliente Weathercloud ahora descarta mediciones cuyo timestamp de campo sea anterior al `last_update` general de la estacion,
+      - corregido el caso de estaciones con presion actual pero viento antiguo para que no pinten viento caducado,
+      - el listado Live filtra estaciones Weathercloud sin viento fresco para no mostrarlas en el selector,
+      - comprobada la estacion `Quiver` (`8674679676`): operativa en Weathercloud, pero sin viento fresco por tener viento anclado en febrero,
+    - live / Meteoclimatic:
+      - revisadas horas publicadas en RSS de estaciones Meteoclimatic y confirmada conversion correcta UTC -> hora local,
+      - corregido el texto `Ultimo dato` para usar siempre el `observedAt` normalizado local y no una etiqueta cruda del proveedor,
+      - configurada `Meteoclimatic El Perello` como estacion principal del spot `El Perellonet`,
+      - las estaciones Meteoclimatic quedan excluidas del selector de alarmas mientras no esten soportadas en backend,
+      - eliminado el cartel visual de alarmas no soportadas para Meteoclimatic, manteniendo la proteccion de guardado,
+      - las tarjetas antiguas de alarmas Meteoclimatic quedan ocultas para evitar falsas alarmas visibles,
+    - live / El Perellonet:
+      - anadidas y probadas estaciones Weathercloud cercanas para validacion,
+      - mantenidas `Weathercloud Perellobeach` y `Weathercloud YT60234`,
+      - eliminadas solo de El Perellonet y del colector backend las estaciones `Weathercloud Bega`, `Weathercloud Piscina MB`, `Weathercloud Meteosueca`, `Weathercloud Avarroz` y `Weathercloud EDAR Albufera Sur`,
+      - limpiadas constantes muertas del registro de estaciones tras eliminar esas fuentes,
+    - live / mapa de estacion:
+      - corregido overflow del dialogo `Ver estacion en el mapa`,
+      - el dialogo ahora se adapta al cambio de orientacion con el mapa abierto,
+      - ajustado el tamano para que en horizontal use un ancho panoramico similar a abrirlo directamente en horizontal,
+    - backend:
+      - ampliado `spot-alarm-runner` para resolver alarmas de Weathercloud y Xuss,
+      - ampliado `spot-live-observation-collector` para guardar historico backend de Weathercloud,
+      - retiradas del colector las estaciones Weathercloud descartadas para El Perellonet,
+    - verificacion:
+      - `flutter analyze` limpio en los modulos Live tocados,
+      - `deno check` limpio en `spot-live-observation-collector`,
+      - `local.env.json` sigue ignorado por git y no se versiona,
+      - `.tmp/` queda fuera de git como carpeta temporal de investigacion.

@@ -131,8 +131,10 @@ class SpotDetailPage extends StatefulWidget {
     this.inforatgeOlivaNovaClient,
     this.meteopilesLiveClient,
     this.meteoclimaticLiveClient,
+    this.weathercloudLiveClient,
     this.windguruStationLiveClient,
     this.wundergroundPwsClient,
+    this.xussMeteoClient,
     this.meteoblueCurrentDayClient,
     this.meteostatDayClient,
     this.meteosourceCurrentDayClient,
@@ -164,8 +166,10 @@ class SpotDetailPage extends StatefulWidget {
   final InforatgeOlivaNovaClient? inforatgeOlivaNovaClient;
   final MeteopilesLiveClient? meteopilesLiveClient;
   final MeteoclimaticLiveClient? meteoclimaticLiveClient;
+  final WeathercloudLiveClient? weathercloudLiveClient;
   final WindguruStationLiveClient? windguruStationLiveClient;
   final WundergroundPwsClient? wundergroundPwsClient;
+  final XussMeteoClient? xussMeteoClient;
   final MeteoblueCurrentDayClient? meteoblueCurrentDayClient;
   final MeteostatDayClient? meteostatDayClient;
   final MeteosourceCurrentDayClient? meteosourceCurrentDayClient;
@@ -291,8 +295,10 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   late final InforatgeOlivaNovaClient _inforatgeOlivaNovaClient;
   late final MeteopilesLiveClient _meteopilesLiveClient;
   late final MeteoclimaticLiveClient _meteoclimaticLiveClient;
+  late final WeathercloudLiveClient _weathercloudLiveClient;
   late final WindguruStationLiveClient _windguruStationLiveClient;
   late final WundergroundPwsClient _wundergroundPwsClient;
+  late final XussMeteoClient _xussMeteoClient;
   late final MeteoblueCurrentDayClient _meteoblueCurrentDayClient;
   late final MeteostatDayClient _meteostatDayClient;
   late final MeteosourceCurrentDayClient _meteosourceCurrentDayClient;
@@ -342,10 +348,13 @@ class _SpotDetailPageState extends State<SpotDetailPage>
         widget.meteopilesLiveClient ?? MeteopilesLiveClient();
     _meteoclimaticLiveClient =
         widget.meteoclimaticLiveClient ?? MeteoclimaticLiveClient();
+    _weathercloudLiveClient =
+        widget.weathercloudLiveClient ?? WeathercloudLiveClient();
     _windguruStationLiveClient =
         widget.windguruStationLiveClient ?? WindguruStationLiveClient();
     _wundergroundPwsClient =
         widget.wundergroundPwsClient ?? WundergroundPwsClient();
+    _xussMeteoClient = widget.xussMeteoClient ?? XussMeteoClient();
     _meteoblueCurrentDayClient =
         widget.meteoblueCurrentDayClient ?? MeteoblueCurrentDayClient();
     _meteostatDayClient = widget.meteostatDayClient ?? MeteostatDayClient();

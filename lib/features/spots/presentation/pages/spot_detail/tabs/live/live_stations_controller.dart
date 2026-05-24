@@ -29,9 +29,15 @@ extension _SpotDetailLiveStationsController on _SpotDetailPageState {
         }
         if (result.stations.isNotEmpty &&
             !stationKeys.contains(_alarmStation)) {
-          final resolvedAlarmStation =
-              _preferredLiveStation(result.stations) ?? result.stations.first;
-          _alarmStation = _stationKey(resolvedAlarmStation);
+          final supportedAlarmStations = _supportedCustomAlarmStations(
+            result.stations,
+          );
+          if (supportedAlarmStations.isNotEmpty) {
+            final resolvedAlarmStation =
+                _preferredLiveStation(supportedAlarmStations) ??
+                supportedAlarmStations.first;
+            _alarmStation = _stationKey(resolvedAlarmStation);
+          }
         }
         _isLiveRefreshing = false;
       });

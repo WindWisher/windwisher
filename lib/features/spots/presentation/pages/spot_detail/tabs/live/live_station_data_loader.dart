@@ -226,7 +226,12 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
         );
       }
 
-      stations.sort((a, b) {
+      final visibleStations = await _filterWeathercloudStationsWithoutFreshWind(
+        stations: stations,
+        liveDataByStation: liveDataByStation,
+      );
+
+      visibleStations.sort((a, b) {
         final distanceCompare = a.distanceKm.compareTo(b.distanceKm);
         if (distanceCompare != 0) {
           return distanceCompare;
@@ -234,7 +239,7 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
         return a.name.toLowerCase().compareTo(b.name.toLowerCase());
       });
 
-      if (stations.isEmpty) {
+      if (visibleStations.isEmpty) {
         return _LiveStationsLoadResult(
           stations: const <_NearbyStation>[],
           liveDataByStation: const <String, _StationLiveData>{},
@@ -248,7 +253,7 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
         );
       }
       return _LiveStationsLoadResult(
-        stations: stations,
+        stations: visibleStations,
         liveDataByStation: liveDataByStation,
         historicalSeriesByStation: historyByStation,
         source: _LiveStationsDataSource.real,
@@ -269,5 +274,31 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
 
   String? _preferredLiveStationId() {
     return _resolvedSpotCapabilities().preferredAemetLiveStationId;
+  }
+
+  Future<List<_NearbyStation>> _filterWeathercloudStationsWithoutFreshWind({
+    required List<_NearbyStation> stations,
+    required Map<String, _StationLiveData> liveDataByStation,
+  }) async {
+    final visibleStations = <_NearbyStation>[];
+    for (final station in stations) {
+      if (station.provider != 'WEATHERCLOUD') {
+        visibleStations.add(station);
+        continue;
+      }
+
+      final stationKey = _stationKey(station);
+      final liveData =
+          liveDataByStation[stationKey] ??
+          await _fetchLiveDataForStation(station);
+      if (liveData?.windKnots == null) {
+        liveDataByStation.remove(stationKey);
+        continue;
+      }
+
+      liveDataByStation[stationKey] = liveData!;
+      visibleStations.add(station);
+    }
+    return visibleStations;
   }
 }

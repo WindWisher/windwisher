@@ -5,33 +5,35 @@ part of '../../spot_detail_page.dart';
 extension _SpotDetailLiveStationActions on _SpotDetailPageState {
   Future<void> _showLiveStationMapDialog(_NearbyStation station) async {
     final latLng = LatLng(station.latitude, station.longitude);
-    final screenSize = MediaQuery.sizeOf(context);
-    final dialogWidth = math.min(screenSize.width * 0.94, 720.0);
-    final mapHeight = math.min(screenSize.height * 0.55, 460.0);
 
     await showDialog<void>(
       context: context,
       builder: (context) {
+        final screenSize = MediaQuery.sizeOf(context);
+        final dialogWidth = screenSize.width * 0.96;
+        final dialogHeight = math.min(
+          (dialogWidth * 9 / 16) + 116,
+          screenSize.height * 0.9,
+        );
+
         return Dialog(
-          insetPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 24,
-          ),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
           child: SizedBox(
             width: dialogWidth,
+            height: dialogHeight,
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.md),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Estacion · ${station.name}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  SizedBox(
-                    height: mapHeight,
+                  Expanded(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: DecoratedBox(

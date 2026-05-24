@@ -613,6 +613,10 @@ async function fetchObservationForAlarm(alarm: AlarmRow) {
       return await fetchWindguruStationObservation(alarm.station_key);
     case "WUNDERGROUND":
       return await fetchWundergroundObservation(alarm.station_key);
+    case "WEATHERCLOUD":
+      return await fetchWeathercloudObservation(alarm.station_key);
+    case "XUSS":
+      return await fetchXussDeniaObservation();
     case "METEOCLIMATIC":
       return await fetchMeteoclimaticObservation(alarm.station_key);
     case "PUERTOS":
@@ -630,6 +634,8 @@ function supportsStationProvider(provider: string) {
     provider === "AVAMET" ||
     provider === "WINDGURU_STATION" ||
     provider === "WUNDERGROUND" ||
+    provider === "WEATHERCLOUD" ||
+    provider === "XUSS" ||
     provider === "METEOCLIMATIC" ||
     provider === "PUERTOS" ||
     provider === "PORTUS";
@@ -858,6 +864,91 @@ async function fetchWundergroundObservation(stationKey: string) {
   };
 }
 
+async function fetchXussDeniaObservation() {
+  const body = await fetchText("http://www.xuss.es/Meteo/Denia.php", {
+    "user-agent": "WindWisher/1.0",
+    accept: "text/html,*/*",
+  });
+  const windMatch = body.match(
+    /Velocidad media del viento.*?<td[^>]*>\s*([0-9.,]+)\s*kmh\s*\(([0-9.,]+)\s*kts\)/is,
+  );
+  const directionMatch = body.match(
+    /Direcci[oó]n del viento.*?<td[^>]*>.*?\(([0-9.,]+)&deg;\)/is,
+  );
+  const observedAt = parseXussObservedAt(body);
+  const windKnots = parseNumber(windMatch?.[2]);
+  if (windKnots == null) {
+    return null;
+  }
+  return {
+    observedAt,
+    windKnots,
+    windDirectionBucket: directionBucket(parseNumber(directionMatch?.[1])),
+    observedTotalMinutesLocal: observedAt == null
+      ? null
+      : localTotalMinutesFromDate(observedAt),
+  };
+}
+
+function parseXussObservedAt(body: string) {
+  const match = body.match(
+    /Ultima grabaci[oó]n a:\s*(\d{1,2}):(\d{2}).*?Data:\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/is,
+  );
+  if (!match) {
+    return null;
+  }
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const day = Number(match[3]);
+  const month = parseXussMonth(match[4]);
+  const year = Number(match[5]);
+  if (
+    !Number.isFinite(hour) ||
+    !Number.isFinite(minute) ||
+    !Number.isFinite(day) ||
+    month == null ||
+    !Number.isFinite(year)
+  ) {
+    return null;
+  }
+  return new Date(year, month - 1, day, hour, minute);
+}
+
+function parseXussMonth(raw: string | undefined) {
+  switch (raw?.toLowerCase()) {
+    case "jan":
+    case "ene":
+      return 1;
+    case "feb":
+      return 2;
+    case "mar":
+      return 3;
+    case "apr":
+    case "abr":
+      return 4;
+    case "may":
+      return 5;
+    case "jun":
+      return 6;
+    case "jul":
+      return 7;
+    case "aug":
+    case "ago":
+      return 8;
+    case "sep":
+      return 9;
+    case "oct":
+      return 10;
+    case "nov":
+      return 11;
+    case "dec":
+    case "dic":
+      return 12;
+    default:
+      return null;
+  }
+}
+
 async function fetchMeteoclimaticObservation(stationKey: string) {
   const stationId = extractStationId(stationKey);
   const body = await fetchText(
@@ -915,6 +1006,74 @@ async function fetchWundergroundApiKey(stationId: string) {
     throw new Error("wunderground-api-key-not-found");
   }
   return apiKey;
+}
+
+async function fetchWeathercloudObservation(stationKey: string) {
+  const deviceId = extractStationId(stationKey);
+  const stats = await fetchWeathercloudStats(deviceId);
+  const observedAt = weathercloudObservedAt(stats);
+  const windMps = weathercloudPairNumber(stats.wspdavg_current);
+  if (observedAt == null || windMps == null) {
+    return null;
+  }
+  return {
+    observedAt,
+    windKnots: Number((windMps * 1.9438444924406).toFixed(2)),
+    windDirectionBucket: directionBucket(
+      weathercloudPairNumber(stats.wdiravg_current),
+    ),
+    observedTotalMinutesLocal: localTotalMinutesFromDate(observedAt),
+  };
+}
+
+async function fetchWeathercloudStats(deviceId: string) {
+  const pageUrl = `https://app.weathercloud.net/d${
+    encodeURIComponent(deviceId)
+  }`;
+  const pageResponse = await fetch(pageUrl, {
+    headers: weathercloudHeaders(),
+  });
+  if (!pageResponse.ok) {
+    throw new Error(`weathercloud-page-http-${pageResponse.status}`);
+  }
+  const cookie = (pageResponse.headers.get("set-cookie") ?? "")
+    .split(";")[0];
+  const page = await pageResponse.text();
+  const token = page.match(/WEATHERCLOUD_CSRF_TOKEN:"([^"]+)"/)?.[1];
+  if (!token) {
+    throw new Error("weathercloud-token-not-found");
+  }
+  const statsUrl = new URL("https://app.weathercloud.net/device/stats");
+  statsUrl.searchParams.set("code", deviceId);
+  statsUrl.searchParams.set("WEATHERCLOUD_CSRF_TOKEN", token);
+  const stats = await fetchJsonObject(statsUrl.toString(), {
+    ...weathercloudHeaders(),
+    accept: "application/json, text/javascript, */*; q=0.01",
+    cookie,
+    referer: pageUrl,
+    "x-requested-with": "XMLHttpRequest",
+  });
+  return stats;
+}
+
+function weathercloudHeaders(): Record<string, string> {
+  return {
+    "accept-language": "es-ES,es;q=0.9,en;q=0.8",
+    "user-agent": "Mozilla/5.0 WindWisher/1.0",
+  };
+}
+
+function weathercloudObservedAt(stats: Record<string, unknown>) {
+  const epoch = parseNumber(stats.last_update);
+  return epoch == null ? null : new Date(epoch * 1000);
+}
+
+function weathercloudPairNumber(value: unknown): number | null {
+  if (!Array.isArray(value) || value.length < 2) {
+    return null;
+  }
+  const numberValue = Number(value[1]);
+  return Number.isFinite(numberValue) ? numberValue : null;
 }
 
 function evaluateAlarm(

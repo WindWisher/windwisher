@@ -15,5 +15,7 @@ export 'package:windwisher/features/spots/infrastructure/services/open_meteo_win
 export 'package:windwisher/features/spots/infrastructure/services/portus_realtime_wind_client.dart';
 export 'package:windwisher/features/spots/infrastructure/services/spot_live_observation_history_client.dart';
 export 'package:windwisher/features/spots/infrastructure/services/spot_maritime_observations_client.dart';
+export 'package:windwisher/features/spots/infrastructure/services/weathercloud_live_client.dart';
 export 'package:windwisher/features/spots/infrastructure/services/windguru_station_live_client.dart';
 export 'package:windwisher/features/spots/infrastructure/services/wunderground_pws_client.dart';
+export 'package:windwisher/features/spots/infrastructure/services/xuss_meteo_client.dart';

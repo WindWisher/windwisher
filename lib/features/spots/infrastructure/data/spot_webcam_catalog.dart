@@ -105,9 +105,59 @@ const List<SpotWebcam> _gandiaPlayaWebcams = [
       ),
     ],
   ),
+  SpotWebcam(
+    name: 'Gandia Playa Restaurante Ripoll',
+    source: 'Ibericam',
+    status: 'Directo',
+    resolution: 'Player web',
+    primaryPageUrl:
+        'https://ibericam.com/player/modern/player.html?s=4&a=live&v=gandia-playa-de-gandia&i=image-4&l=ibericam&primaryColor=%230044aaff',
+    summary:
+        'Webcam de la Playa de Gandia desde el Restaurante Ripoll, junto al Club Nautico.',
+    previewImageUrl:
+        'https://image-4.ibericam.com/poster/webcam-gandia-playa-de-gandia.webp',
+    locationLabel: 'Restaurante Ripoll',
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Gandia Playa · Ibericam',
+        url: 'https://ibericam.com/valencia/webcam-gandia-playa-de-gandia/',
+      ),
+    ],
+  ),
 ];
 
 const List<SpotWebcam> _deniaLesDevesesWebcams = [
+  SpotWebcam(
+    name: 'Denia Platja de les Deveses',
+    source: 'Traffic Cams / Weathercloud',
+    status: 'Imagen actualizable',
+    resolution: 'Imagen web',
+    primaryPageUrl:
+        'https://www.traffic-cams.com/traffic-camshotsworld/WRLD19423.jpg',
+    summary:
+        'Imagen directa de la webcam ubicada junto a la estacion Weathercloud Platja de les Deveses.',
+    previewImageUrl:
+        'https://www.traffic-cams.com/traffic-camshotsworld/WRLD19423.jpg',
+    locationLabel: 'Playa de Les Deveses',
+    latitude: 38.8808,
+    longitude: -0.0306,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Denia Playa de Les Deveses · Traffic Cams',
+        url:
+            'https://www.traffic-cams.com/world/webcam/feed25373122804025didkey38846',
+      ),
+      WebcamReferencePage(
+        title: 'Webcam Denia Deveses · Comunitat Valenciana',
+        url:
+            'http://comunitatvalenciana.com/actualidad/denia/webcams/webcam-denia-deveses',
+      ),
+      WebcamReferencePage(
+        title: 'Platja de les Deveses · Weathercloud',
+        url: 'https://app.weathercloud.net/d5629095484',
+      ),
+    ],
+  ),
   SpotWebcam(
     name: 'Denia Puerto',
     source: 'Comunitat Valenciana',

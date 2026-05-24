@@ -15,11 +15,12 @@ const String gandiaPlayaPreferredLiveStationKey = 'avamet:c25m131e15';
 const String gandiaPlayaSpotName = 'Gandia Playa';
 const String deniaLesDevesesLiveStationProfile = 'denia_les_deveses';
 const String deniaLesDevesesWebcamProfile = 'denia_les_deveses_webcams';
-const String deniaLesDevesesPreferredLiveStationKey = 'avamet:c30m063e10';
+const String deniaLesDevesesPreferredLiveStationKey = 'weathercloud:5629095484';
 const String deniaLesDevesesSpotName = 'Denia - Les Deveses';
 const String deniaPuntaMolinsLiveStationProfile = 'denia_punta_molins';
 const String deniaPuntaMolinsWebcamProfile = 'denia_punta_molins_webcams';
-const String deniaPuntaMolinsPreferredLiveStationKey = 'avamet:c30m063e10';
+const String deniaPuntaMolinsPreferredLiveStationKey =
+    'weathercloud:3711662418';
 const String deniaPuntaMolinsSpotName = 'Denia - Punta Els Molins';
 const String calpeLiveStationProfile = 'calpe';
 const String calpeWebcamProfile = 'calpe_webcams';
@@ -50,7 +51,8 @@ const String elCampelloPlayaMuchavistaSpotName =
     'El Campello - Playa Muchavista';
 const String elPerellonetLiveStationProfile = 'el_perellonet';
 const String elPerellonetWebcamProfile = 'el_perellonet_webcams';
-const String elPerellonetPreferredLiveStationKey = 'avamet:c15m250e31';
+const String elPerellonetPreferredLiveStationKey =
+    'meteoclimatic:ESPVA4600000046420A';
 const String elPerellonetSpotName = 'El Perellonet';
 const String tarifaLiveStationProfile = 'tarifa';
 const String tarifaPreferredLiveStationKey = '6001';

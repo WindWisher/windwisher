@@ -147,6 +147,43 @@ extension _SpotDetailLiveStationPayloadLoader on _SpotDetailPageState {
         observedAtLabel: snapshot.observedAtLabel,
       );
     }
+    if (station.provider == 'WEATHERCLOUD') {
+      final stationId = station.stationId;
+      if (stationId == null) {
+        return null;
+      }
+      final snapshot = await _weathercloudLiveClient.fetchCurrent(
+        deviceId: stationId,
+      );
+      return _StationLiveData(
+        windKnots: snapshot?.windKnots,
+        windDeg: snapshot?.windDirectionDeg,
+        gustKnots: snapshot?.gustKnots,
+        tempC: snapshot?.tempC,
+        pressureHpa: snapshot?.pressureHpa,
+        humidityPct: snapshot?.humidityPct,
+        rainMm: snapshot?.rainMm,
+        observedAt: snapshot?.observedAt,
+        observedAtLabel: snapshot?.observedAtLabel,
+      );
+    }
+    if (station.provider == 'XUSS') {
+      final snapshot = await _xussMeteoClient.fetchDeniaSnapshot();
+      if (snapshot == null) {
+        return null;
+      }
+      return _StationLiveData(
+        windKnots: snapshot.windKnots,
+        windDeg: snapshot.windDirectionDeg,
+        gustKnots: snapshot.gustKnots,
+        tempC: snapshot.tempC,
+        pressureHpa: snapshot.pressureHpa,
+        humidityPct: snapshot.humidityPct,
+        rainMm: snapshot.rainMm,
+        observedAt: snapshot.observedAt,
+        observedAtLabel: snapshot.observedAtLabel,
+      );
+    }
     if (station.provider == 'PUERTOS') {
       final stationId = int.tryParse(station.stationId ?? '');
       if (stationId == null) {

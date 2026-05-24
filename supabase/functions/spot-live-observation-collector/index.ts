@@ -3,7 +3,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/http.ts";
 
 type LiveStationConfig = {
-  provider: "METEOPILES" | "WINDGURU_STATION";
+  provider: "METEOPILES" | "WINDGURU_STATION" | "WEATHERCLOUD";
   stationKey: string;
   stationId: string;
   stationName: string;
@@ -43,6 +43,30 @@ const stations: LiveStationConfig[] = [
     stationKey: "windguru-station:51",
     stationId: "51",
     stationName: "DK Piles Meteo",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:3711662418",
+    stationId: "3711662418",
+    stationName: "Weathercloud ElPaquebote",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:5629095484",
+    stationId: "5629095484",
+    stationName: "Weathercloud Platja de les Deveses",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:5411085804",
+    stationId: "5411085804",
+    stationName: "Weathercloud Perellobeach",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:4026174225",
+    stationId: "4026174225",
+    stationName: "Weathercloud YT60234",
   },
 ];
 
@@ -146,6 +170,8 @@ async function fetchStationObservation(
       return await fetchMeteopilesObservation(station);
     case "WINDGURU_STATION":
       return await fetchWindguruStationObservation(station);
+    case "WEATHERCLOUD":
+      return await fetchWeathercloudObservation(station);
   }
 }
 
@@ -231,6 +257,79 @@ async function fetchWindguruStationObservation(
     rain_mm: null,
     raw_payload: data,
   });
+}
+
+async function fetchWeathercloudObservation(
+  station: LiveStationConfig,
+): Promise<LiveObservation | null> {
+  const stats = await fetchWeathercloudStats(station.stationId);
+  const observedAt = weathercloudObservedAt(stats);
+  if (observedAt == null || isStale(observedAt)) {
+    return null;
+  }
+
+  return baseObservation(station, observedAt, {
+    wind_knots: mpsToKnots(weathercloudPairNumber(stats.wspdavg_current)),
+    wind_min_knots: null,
+    gust_knots: mpsToKnots(weathercloudPairNumber(stats.wspdhi_current)),
+    wind_direction_deg: roundNullable(
+      weathercloudPairNumber(stats.wdiravg_current),
+    ),
+    temp_c: weathercloudPairNumber(stats.temp_current),
+    pressure_hpa: roundNullable(weathercloudPairNumber(stats.bar_current)),
+    humidity_pct: roundNullable(weathercloudPairNumber(stats.hum_current)),
+    rain_mm: weathercloudPairNumber(stats.rain_day_total),
+    raw_payload: stats,
+  });
+}
+
+async function fetchWeathercloudStats(deviceId: string) {
+  const pageUrl = `https://app.weathercloud.net/d${
+    encodeURIComponent(deviceId)
+  }`;
+  const pageResponse = await fetch(pageUrl, {
+    headers: weathercloudHeaders(),
+  });
+  if (!pageResponse.ok) {
+    throw new Error(`weathercloud-page-http-${pageResponse.status}`);
+  }
+  const cookie = (pageResponse.headers.get("set-cookie") ?? "")
+    .split(";")[0];
+  const page = await pageResponse.text();
+  const token = page.match(/WEATHERCLOUD_CSRF_TOKEN:"([^"]+)"/)?.[1];
+  if (!token) {
+    throw new Error("weathercloud-token-not-found");
+  }
+  const statsUrl = new URL("https://app.weathercloud.net/device/stats");
+  statsUrl.searchParams.set("code", deviceId);
+  statsUrl.searchParams.set("WEATHERCLOUD_CSRF_TOKEN", token);
+  return await fetchJsonObject(statsUrl.toString(), {
+    ...weathercloudHeaders(),
+    accept: "application/json, text/javascript, */*; q=0.01",
+    cookie,
+    referer: pageUrl,
+    "x-requested-with": "XMLHttpRequest",
+  });
+}
+
+function weathercloudHeaders(): Record<string, string> {
+  return {
+    "accept-language": "es-ES,es;q=0.9,en;q=0.8",
+    "user-agent": "Mozilla/5.0 WindWisher/1.0",
+  };
+}
+
+function weathercloudObservedAt(stats: Record<string, unknown>) {
+  const epoch = readObjectNumber(stats, "last_update");
+  return epoch == null ? null : new Date(epoch * 1000);
+}
+
+function weathercloudPairNumber(value: unknown): number | null {
+  if (!Array.isArray(value) || value.length < 2) {
+    return null;
+  }
+  const numberValue = Number(value[1]);
+  return Number.isFinite(numberValue) ? numberValue : null;
 }
 
 async function fetchMeteoclimaticObservation(
@@ -467,6 +566,23 @@ function kmhToKnots(value: number | null): number | null {
   return value == null ? null : value * 0.539957;
 }
 
+function mpsToKnots(value: number | null): number | null {
+  return value == null ? null : value * 1.9438444924406;
+}
+
+async function fetchJsonObject(
+  url: string,
+  headers: Record<string, string> = {},
+): Promise<Record<string, unknown>> {
+  const response = await fetch(url, {
+    headers: { accept: "application/json", ...headers },
+  });
+  if (!response.ok) {
+    throw new Error(`request-failed:${response.status}`);
+  }
+  return await response.json() as Record<string, unknown>;
+}
+
 function splitMeteoclimaticTuple(tuple: string | undefined) {
   return tuple?.split(";").map((value) => value.trim()) ?? [];
 }
@@ -490,7 +606,8 @@ function parseMeteoclimaticObservedAt(body: string) {
 
 function meteoclimaticRequestHeaders() {
   return {
-    "accept": "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.7",
+    "accept":
+      "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.7",
     "accept-language": "es-ES,es;q=0.9,en;q=0.8",
     "cache-control": "no-cache",
     "pragma": "no-cache",

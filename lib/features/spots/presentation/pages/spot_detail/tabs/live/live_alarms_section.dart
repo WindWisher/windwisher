@@ -6,14 +6,20 @@ extension _SpotDetailLiveAlarmsSection on _SpotDetailPageState {
   Widget _buildCustomAlarmsSection() {
     final catalog = SpotAlarmCatalog.instance;
     final spotKey = _currentSpotAlarmKey();
-    final alarmStations = _resolvedNearbyStations()
-        .where((station) => station.provider != 'METEOCLIMATIC')
-        .map(_stationKey)
-        .toList();
+    final resolvedStations = _resolvedNearbyStations();
+    final supportedAlarmStations = _supportedCustomAlarmStations(
+      resolvedStations,
+    );
+    final alarmStations = supportedAlarmStations.map(_stationKey).toList();
     if (!alarmStations.contains(_alarmStation) && alarmStations.isNotEmpty) {
-      _alarmStation = alarmStations.first;
+      final defaultAlarmStation =
+          _preferredLiveStation(supportedAlarmStations) ??
+          supportedAlarmStations.first;
+      _alarmStation = _stationKey(defaultAlarmStation);
     }
-    final savedAlarms = _savedAlarmsForCurrentSpot();
+    final savedAlarms = _savedAlarmsForCurrentSpot()
+        .where(_supportsSavedAlarmRecord)
+        .toList(growable: false);
     final spotEnabled = catalog.isSpotEnabled(spotKey);
 
     return Card(
@@ -31,11 +37,14 @@ extension _SpotDetailLiveAlarmsSection on _SpotDetailPageState {
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
-            _buildAlarmForm(
-              catalog: catalog,
-              spotKey: spotKey,
-              alarmStations: alarmStations,
-            ),
+            if (alarmStations.isEmpty)
+              _buildUnsupportedAlarmFormEmptyState()
+            else
+              _buildAlarmForm(
+                catalog: catalog,
+                spotKey: spotKey,
+                alarmStations: alarmStations,
+              ),
             const SizedBox(height: AppSpacing.md),
             _buildSavedAlarmsList(catalog: catalog, savedAlarms: savedAlarms),
           ],
@@ -56,7 +65,7 @@ extension _SpotDetailLiveAlarmsSection on _SpotDetailPageState {
           _LiveAlarmStationDropdown(
             stationKeys: alarmStations,
             selectedStationKey: _alarmStation,
-            stationLabelForKey: _stationLabelForKey,
+            stationLabelForKey: _alarmStationLabelForKey,
             onChanged: _setAlarmStation,
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -96,6 +105,15 @@ extension _SpotDetailLiveAlarmsSection on _SpotDetailPageState {
                 _saveCurrentAlarm(catalog: catalog, spotKey: spotKey),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildUnsupportedAlarmFormEmptyState() {
+    return _LiveNewAlarmCard(
+      child: Text(
+        'No hay estaciones compatibles con alarmas para este spot ahora mismo.',
+        style: Theme.of(context).textTheme.bodyMedium,
       ),
     );
   }
@@ -221,6 +239,25 @@ extension _SpotDetailLiveAlarmsSection on _SpotDetailPageState {
     required String spotKey,
   }) async {
     final wasEditing = _editingAlarmId != null;
+    final selectedStation = _findStationByKey(_alarmStation);
+    if (selectedStation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecciona una estacion compatible para la alarma.'),
+        ),
+      );
+      return;
+    }
+    if (!_supportsCustomAlarmProvider(selectedStation)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Alarmas no soportadas temporalmente para Meteoclimatic: ${selectedStation.name}.',
+          ),
+        ),
+      );
+      return;
+    }
     if (_alarmDirections.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -265,6 +302,14 @@ extension _SpotDetailLiveAlarmsSection on _SpotDetailPageState {
         ),
       );
     }
+  }
+
+  String _alarmStationLabelForKey(String key) {
+    final station = _findStationByKey(key);
+    if (station?.provider == 'METEOCLIMATIC') {
+      return '${_stationLabelForKey(key)} · alarmas no soportadas';
+    }
+    return _stationLabelForKey(key);
   }
 
   SpotAlarmRecord _buildAlarmRecord(String spotKey) {

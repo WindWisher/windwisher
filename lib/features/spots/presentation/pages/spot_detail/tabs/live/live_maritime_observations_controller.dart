@@ -17,7 +17,13 @@ extension _SpotDetailLiveMaritimeObservationsController
   bool _canLoadMaritimeObservations() {
     return widget.latitude != null &&
         widget.longitude != null &&
-        _spotMaritimeObservationsClient != null;
+        _spotMaritimeObservationsClient != null &&
+        _hasMaritimeObservationsSupport();
+  }
+
+  bool _hasMaritimeObservationsSupport() {
+    final normalizedName = widget.name.toLowerCase();
+    return normalizedName.contains('tarifa');
   }
 
   Future<void> _loadMaritimeObservations() {

@@ -5,6 +5,22 @@ part of '../../spot_detail_page.dart';
 extension _SpotDetailLiveAlarmsController on _SpotDetailPageState {
   String _currentSpotAlarmKey() => '${widget.name}::${widget.area}';
 
+  bool _supportsCustomAlarmProvider(_NearbyStation station) {
+    return station.provider != 'METEOCLIMATIC';
+  }
+
+  List<_NearbyStation> _supportedCustomAlarmStations(
+    List<_NearbyStation> stations,
+  ) {
+    return stations.where(_supportsCustomAlarmProvider).toList(growable: false);
+  }
+
+  bool _supportsSavedAlarmRecord(SpotAlarmRecord alarm) {
+    final station = _findStationByKey(alarm.stationKey);
+    return alarm.stationProvider != 'METEOCLIMATIC' &&
+        station?.provider != 'METEOCLIMATIC';
+  }
+
   List<SpotAlarmRecord> _savedAlarmsForCurrentSpot() {
     return SpotAlarmCatalog.instance.alarmsForSpot(_currentSpotAlarmKey());
   }

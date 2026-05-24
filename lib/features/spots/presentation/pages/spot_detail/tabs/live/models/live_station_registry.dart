@@ -42,6 +42,13 @@ const String _avametGandiaCamiMarStationName = 'Gandia Cami de la mar';
 const double _avametGandiaCamiMarStationLat = 38.982786;
 const double _avametGandiaCamiMarStationLon = -0.166017;
 
+const String _meteoclimaticGandiaGrauStationId = 'ESPVA4600000046700A';
+const String _meteoclimaticGandiaGrauStationKey =
+    'meteoclimatic:ESPVA4600000046700A';
+const String _meteoclimaticGandiaGrauStationName = 'Meteoclimatic Gandia Grau';
+const double _meteoclimaticGandiaGrauStationLat = 38.99;
+const double _meteoclimaticGandiaGrauStationLon = -0.16;
+
 const String _avametPerellonetEstellStationId = 'c21m235e09';
 const String _avametPerellonetEstellStationKey = 'avamet:c21m235e09';
 const String _avametPerellonetEstellStationName =
@@ -123,6 +130,18 @@ const String _meteoclimaticPerelloStationName = 'Meteoclimatic El Perello';
 const double _meteoclimaticPerelloStationLat = 39.27;
 const double _meteoclimaticPerelloStationLon = -0.28;
 
+const String _weathercloudPerelloBeachStationId = '5411085804';
+const String _weathercloudPerelloBeachStationKey = 'weathercloud:5411085804';
+const String _weathercloudPerelloBeachStationName = 'Weathercloud Perellobeach';
+const double _weathercloudPerelloBeachStationLat = 39.2654413172;
+const double _weathercloudPerelloBeachStationLon = -0.2680706978;
+
+const String _weathercloudPerelloYt60234StationId = '4026174225';
+const String _weathercloudPerelloYt60234StationKey = 'weathercloud:4026174225';
+const String _weathercloudPerelloYt60234StationName = 'Weathercloud YT60234';
+const double _weathercloudPerelloYt60234StationLat = 39.30475;
+const double _weathercloudPerelloYt60234StationLon = -0.2930171;
+
 const String _windguruDkPilesStationId = '51';
 const String _windguruDkPilesStationKey = 'windguru-station:51';
 const String _windguruDkPilesStationName = 'DK Piles Meteo';
@@ -140,6 +159,63 @@ const String _avametDeniaJoanChabasStationKey = 'avamet:c30m063e04';
 const String _avametDeniaJoanChabasStationName = 'Denia Joan Chabas';
 const double _avametDeniaJoanChabasStationLat = 38.8348638889;
 const double _avametDeniaJoanChabasStationLon = 0.1053638889;
+
+const String _avametDeniaClubNauticoStationId = 'c30m063e19';
+const String _avametDeniaClubNauticoStationKey = 'avamet:c30m063e19';
+const String _avametDeniaClubNauticoStationName = 'Denia Club Nautico';
+const double _avametDeniaClubNauticoStationLat = 38.8387083333;
+const double _avametDeniaClubNauticoStationLon = 0.115975;
+
+const String _avametDeniaLesRotesStationId = 'c30m063e16';
+const String _avametDeniaLesRotesStationKey = 'avamet:c30m063e16';
+const String _avametDeniaLesRotesStationName = 'Denia les Rotes';
+const double _avametDeniaLesRotesStationLat = 38.8276888889;
+const double _avametDeniaLesRotesStationLon = 0.1493944444;
+
+const String _avametDeniaLaXaraStationId = 'c30m063e15';
+const String _avametDeniaLaXaraStationKey = 'avamet:c30m063e15';
+const String _avametDeniaLaXaraStationName = 'Denia la Xara';
+const double _avametDeniaLaXaraStationLat = 38.8290444444;
+const double _avametDeniaLaXaraStationLon = 0.0628666667;
+
+const String _avametDeniaJesusPobreStationId = 'c30m063e01';
+const String _avametDeniaJesusPobreStationKey = 'avamet:c30m063e01';
+const String _avametDeniaJesusPobreStationName = 'Denia Jesus Pobre';
+const double _avametDeniaJesusPobreStationLat = 38.792725;
+const double _avametDeniaJesusPobreStationLon = 0.0825777778;
+
+const String _avametDeniaMontgoCalafatStationId = 'c30m063e18';
+const String _avametDeniaMontgoCalafatStationKey = 'avamet:c30m063e18';
+const String _avametDeniaMontgoCalafatStationName = 'Denia Montgo Calafat';
+const double _avametDeniaMontgoCalafatStationLat = 38.8187222222;
+const double _avametDeniaMontgoCalafatStationLon = 0.1236388889;
+
+const String _xussDeniaStationId = 'denia';
+const String _xussDeniaStationKey = 'xuss:denia';
+const String _xussDeniaStationName = 'Xuss Denia Joan Chabas';
+const double _xussDeniaStationLat = 38.85;
+const double _xussDeniaStationLon = -0.10528;
+
+const String _weathercloudPaqueboteStationId = '3711662418';
+const String _weathercloudPaqueboteStationKey = 'weathercloud:3711662418';
+const String _weathercloudPaqueboteStationName = 'Weathercloud ElPaquebote';
+const double _weathercloudPaqueboteStationLat = 38.864213676;
+const double _weathercloudPaqueboteStationLon = 0.0227826834;
+
+const String _weathercloudLesDevesesStationId = '5629095484';
+const String _weathercloudLesDevesesStationKey = 'weathercloud:5629095484';
+const String _weathercloudLesDevesesStationName =
+    'Weathercloud Platja de les Deveses';
+const double _weathercloudLesDevesesStationLat = 38.8808333333;
+const double _weathercloudLesDevesesStationLon = -0.0305555556;
+
+const String _meteoclimaticDeniaSantaLlusiaStationId = 'ESPVA0300000003700F';
+const String _meteoclimaticDeniaSantaLlusiaStationKey =
+    'meteoclimatic:ESPVA0300000003700F';
+const String _meteoclimaticDeniaSantaLlusiaStationName =
+    'Meteoclimatic Denia Santa Llucia';
+const double _meteoclimaticDeniaSantaLlusiaStationLat = 38.82;
+const double _meteoclimaticDeniaSantaLlusiaStationLon = 0.12;
 
 const String _avametCalpStationId = 'c30m047e03';
 const String _avametCalpStationKey = 'avamet:c30m047e03';
