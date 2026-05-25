@@ -138,6 +138,18 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     _addLiveStationMetadata(
       stations: stations,
       seenKeys: seenKeys,
+      stationKey: _weathercloudPilesVjStationKey,
+      stationName: _weathercloudPilesVjStationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudPilesVjStationId,
+      latitude: _weathercloudPilesVjStationLat,
+      longitude: _weathercloudPilesVjStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
       stationKey: _windguruDkPilesStationKey,
       stationName: _windguruDkPilesStationName,
       provider: 'WINDGURU_STATION',
@@ -176,6 +188,54 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
       stationId: _meteoclimaticGandiaGrauStationId,
       latitude: _meteoclimaticGandiaGrauStationLat,
       longitude: _meteoclimaticGandiaGrauStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _weathercloudGandiaSimyoStationKey,
+      stationName: _weathercloudGandiaSimyoStationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudGandiaSimyoStationId,
+      latitude: _weathercloudGandiaSimyoStationLat,
+      longitude: _weathercloudGandiaSimyoStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _weathercloudGandiaGrauStationKey,
+      stationName: _weathercloudGandiaGrauStationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudGandiaGrauStationId,
+      latitude: _weathercloudGandiaGrauStationLat,
+      longitude: _weathercloudGandiaGrauStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _weathercloudGandiaKgcStationKey,
+      stationName: _weathercloudGandiaKgcStationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudGandiaKgcStationId,
+      latitude: _weathercloudGandiaKgcStationLat,
+      longitude: _weathercloudGandiaKgcStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _weathercloudGandiaRicardoStationKey,
+      stationName: _weathercloudGandiaRicardoStationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudGandiaRicardoStationId,
+      latitude: _weathercloudGandiaRicardoStationLat,
+      longitude: _weathercloudGandiaRicardoStationLon,
       referenceLatitude: latitude,
       referenceLongitude: longitude,
     );
@@ -743,18 +803,6 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     required List<_NearbyStation> stations,
     required Set<String> seenKeys,
   }) {
-    _addLiveStationMetadata(
-      stations: stations,
-      seenKeys: seenKeys,
-      stationKey: _avametXeracoPlayaStationKey,
-      stationName: _avametXeracoPlayaStationName,
-      provider: 'AVAMET',
-      stationId: _avametXeracoPlayaStationId,
-      latitude: _avametXeracoPlayaStationLat,
-      longitude: _avametXeracoPlayaStationLon,
-      referenceLatitude: latitude,
-      referenceLongitude: longitude,
-    );
     _addLiveStationMetadata(
       stations: stations,
       seenKeys: seenKeys,

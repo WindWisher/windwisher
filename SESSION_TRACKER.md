@@ -16893,3 +16893,33 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - invocado el colector en Supabase tras despliegue para confirmar que las estaciones retiradas ya no aparecen,
       - `local.env.json` sigue ignorado por git y no se versiona,
       - `.tmp/` queda fuera de git como carpeta temporal de investigacion.
+
+
+  - bloque nuevo `2026-05-25`:
+    - ajustes Live para Xeraco, Gandia Playa y Piles,
+    - tiempo real trabajado en este tramo: `70 min` aprox. de trabajo efectivo,
+    - live / Xeraco:
+      - investigado por que `AVAMET Xeraco Playa` no mostraba historico,
+      - confirmado que `mxo_i.php` para `c25m143e02` se queda en timeout y que `mx-dia.php` devuelve datos antiguos de agosto de 2023,
+      - retirada `AVAMET Xeraco Playa` del selector Live para evitar una fuente aparentemente rota,
+      - configurada `WU Platja de Xeraco` (`wunderground:IXERACO2`) como estacion Live predeterminada,
+      - comprobado que WU `IXERACO2` devuelve dato actual y serie historica diaria.
+    - live / Gandia Playa:
+      - consultado el mapa publico de Weathercloud alrededor del spot,
+      - descartadas inicialmente `IGANDI23` y `Marjal` por timeouts al pedir lecturas reales,
+      - anadidas `Weathercloud Simyo Station`, `Weathercloud WS GANDIA GRAU`, `Weathercloud KGC & Windsports` y `Weathercloud Ricardo H`,
+      - conectadas las cuatro estaciones al colector backend para historico en Supabase,
+      - comprobado por invocacion real que el colector recoge las nuevas estaciones de Gandia.
+    - live / Piles:
+      - anadida `Weathercloud vj` (`weathercloud:6074243991`) al selector Live del spot,
+      - conectada `Weathercloud vj` al colector backend para historico,
+      - comprobado por invocacion real que el colector recoge `weathercloud:6074243991`.
+    - backend:
+      - desplegado `spot-live-observation-collector` tras agregar las estaciones nuevas,
+      - invocado manualmente el collector para validar `collected` y `insertedOrUpdated`,
+      - el collector queda con estaciones Weathercloud nuevas para Gandia y Piles.
+    - verificacion:
+      - `flutter analyze` limpio en los modulos Live tocados,
+      - `deno check` limpio en `spot-live-observation-collector`,
+      - `local.env.json` sigue ignorado por git y no se versiona,
+      - `.tmp/` queda fuera de git como carpeta temporal de investigacion.

@@ -64,6 +64,36 @@ const stations: LiveStationConfig[] = [
   },
   {
     provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:6074243991",
+    stationId: "6074243991",
+    stationName: "Weathercloud vj",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:5676427857",
+    stationId: "5676427857",
+    stationName: "Weathercloud Simyo Station",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:4447233755",
+    stationId: "4447233755",
+    stationName: "Weathercloud WS GANDIA GRAU",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:8448335204",
+    stationId: "8448335204",
+    stationName: "Weathercloud KGC & Windsports",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:1097806057",
+    stationId: "1097806057",
+    stationName: "Weathercloud Ricardo H",
+  },
+  {
+    provider: "WEATHERCLOUD",
     stationKey: "weathercloud:4227028590",
     stationId: "4227028590",
     stationName: "Weathercloud Piscina MB",

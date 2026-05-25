@@ -36,6 +36,12 @@ const String _wundergroundOliva94StationName = 'WU Oliva IOLIVA94';
 const double _wundergroundOliva94StationLat = 38.93356;
 const double _wundergroundOliva94StationLon = -0.116067;
 
+const String _weathercloudPilesVjStationId = '6074243991';
+const String _weathercloudPilesVjStationKey = 'weathercloud:6074243991';
+const String _weathercloudPilesVjStationName = 'Weathercloud vj';
+const double _weathercloudPilesVjStationLat = 38.93457253521319;
+const double _weathercloudPilesVjStationLon = -0.10244965553283691;
+
 const String _avametGandiaCamiMarStationId = 'c25m131e15';
 const String _avametGandiaCamiMarStationKey = 'avamet:c25m131e15';
 const String _avametGandiaCamiMarStationName = 'Gandia Cami de la mar';
@@ -48,6 +54,31 @@ const String _meteoclimaticGandiaGrauStationKey =
 const String _meteoclimaticGandiaGrauStationName = 'Meteoclimatic Gandia Grau';
 const double _meteoclimaticGandiaGrauStationLat = 38.99;
 const double _meteoclimaticGandiaGrauStationLon = -0.16;
+
+const String _weathercloudGandiaSimyoStationId = '5676427857';
+const String _weathercloudGandiaSimyoStationKey = 'weathercloud:5676427857';
+const String _weathercloudGandiaSimyoStationName = 'Weathercloud Simyo Station';
+const double _weathercloudGandiaSimyoStationLat = 39.00554531647736;
+const double _weathercloudGandiaSimyoStationLon = -0.2009725570678711;
+
+const String _weathercloudGandiaGrauStationId = '4447233755';
+const String _weathercloudGandiaGrauStationKey = 'weathercloud:4447233755';
+const String _weathercloudGandiaGrauStationName = 'Weathercloud WS GANDIA GRAU';
+const double _weathercloudGandiaGrauStationLat = 38.98306043578205;
+const double _weathercloudGandiaGrauStationLon = -0.16596972942352295;
+
+const String _weathercloudGandiaKgcStationId = '8448335204';
+const String _weathercloudGandiaKgcStationKey = 'weathercloud:8448335204';
+const String _weathercloudGandiaKgcStationName =
+    'Weathercloud KGC & Windsports';
+const double _weathercloudGandiaKgcStationLat = 38.983831869318216;
+const double _weathercloudGandiaKgcStationLon = -0.14732837677001953;
+
+const String _weathercloudGandiaRicardoStationId = '1097806057';
+const String _weathercloudGandiaRicardoStationKey = 'weathercloud:1097806057';
+const String _weathercloudGandiaRicardoStationName = 'Weathercloud Ricardo H';
+const double _weathercloudGandiaRicardoStationLat = 38.9752122;
+const double _weathercloudGandiaRicardoStationLon = -0.1820308;
 
 const String _avametPerellonetEstellStationId = 'c21m235e09';
 const String _avametPerellonetEstellStationKey = 'avamet:c21m235e09';
@@ -143,12 +174,6 @@ const String _wundergroundXeracoStationKey = 'wunderground:IXERACO2';
 const String _wundergroundXeracoStationName = 'WU Platja de Xeraco';
 const double _wundergroundXeracoStationLat = 39.039879;
 const double _wundergroundXeracoStationLon = -0.190068;
-
-const String _avametXeracoPlayaStationId = 'c25m143e02';
-const String _avametXeracoPlayaStationKey = 'avamet:c25m143e02';
-const String _avametXeracoPlayaStationName = 'Xeraco Playa';
-const double _avametXeracoPlayaStationLat = 39.042236;
-const double _avametXeracoPlayaStationLon = -0.192328;
 
 const String _meteoclimaticXeracoStationId = 'ESPVA4600000046770B';
 const String _meteoclimaticXeracoStationKey =
