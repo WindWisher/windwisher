@@ -663,6 +663,78 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
       referenceLatitude: latitude,
       referenceLongitude: longitude,
     );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _weathercloudCulleraPiscinaMbStationKey,
+      stationName: _weathercloudCulleraPiscinaMbStationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudCulleraPiscinaMbStationId,
+      latitude: _weathercloudCulleraPiscinaMbStationLat,
+      longitude: _weathercloudCulleraPiscinaMbStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _weathercloudCulleraEdificioDoselStationKey,
+      stationName: _weathercloudCulleraEdificioDoselStationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudCulleraEdificioDoselStationId,
+      latitude: _weathercloudCulleraEdificioDoselStationLat,
+      longitude: _weathercloudCulleraEdificioDoselStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _weathercloudCulleraFaroStationKey,
+      stationName: _weathercloudCulleraFaroStationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudCulleraFaroStationId,
+      latitude: _weathercloudCulleraFaroStationLat,
+      longitude: _weathercloudCulleraFaroStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _weathercloudCulleraCulMeteoStationKey,
+      stationName: _weathercloudCulleraCulMeteoStationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudCulleraCulMeteoStationId,
+      latitude: _weathercloudCulleraCulMeteoStationLat,
+      longitude: _weathercloudCulleraCulMeteoStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _weathercloudCulleraSaganStationKey,
+      stationName: _weathercloudCulleraSaganStationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudCulleraSaganStationId,
+      latitude: _weathercloudCulleraSaganStationLat,
+      longitude: _weathercloudCulleraSaganStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _weathercloudCulleraIbizaStationKey,
+      stationName: _weathercloudCulleraIbizaStationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudCulleraIbizaStationId,
+      latitude: _weathercloudCulleraIbizaStationLat,
+      longitude: _weathercloudCulleraIbizaStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
   }
 
   void _addXeracoLiveStations({
@@ -715,18 +787,6 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     required List<_NearbyStation> stations,
     required Set<String> seenKeys,
   }) {
-    _addLiveStationMetadata(
-      stations: stations,
-      seenKeys: seenKeys,
-      stationKey: _weathercloudPerelloBeachStationKey,
-      stationName: _weathercloudPerelloBeachStationName,
-      provider: 'WEATHERCLOUD',
-      stationId: _weathercloudPerelloBeachStationId,
-      latitude: _weathercloudPerelloBeachStationLat,
-      longitude: _weathercloudPerelloBeachStationLon,
-      referenceLatitude: latitude,
-      referenceLongitude: longitude,
-    );
     _addLiveStationMetadata(
       stations: stations,
       seenKeys: seenKeys,

@@ -1012,7 +1012,7 @@ async function fetchWeathercloudObservation(stationKey: string) {
   const deviceId = extractStationId(stationKey);
   const stats = await fetchWeathercloudStats(deviceId);
   const observedAt = weathercloudObservedAt(stats);
-  const windMps = weathercloudPairNumber(stats.wspdavg_current);
+  const windMps = weathercloudFreshPairNumber(stats, "wspdavg_current");
   if (observedAt == null || windMps == null) {
     return null;
   }
@@ -1020,7 +1020,7 @@ async function fetchWeathercloudObservation(stationKey: string) {
     observedAt,
     windKnots: Number((windMps * 1.9438444924406).toFixed(2)),
     windDirectionBucket: directionBucket(
-      weathercloudPairNumber(stats.wdiravg_current),
+      weathercloudFreshPairNumber(stats, "wdiravg_current", false),
     ),
     observedTotalMinutesLocal: localTotalMinutesFromDate(observedAt),
   };
@@ -1074,6 +1074,34 @@ function weathercloudPairNumber(value: unknown): number | null {
   }
   const numberValue = Number(value[1]);
   return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+function weathercloudFreshPairNumber(
+  stats: Record<string, unknown>,
+  key: string,
+  allowNegative = true,
+): number | null {
+  const value = stats[key];
+  if (!Array.isArray(value) || value.length < 2) {
+    return weathercloudPairNumber(value);
+  }
+  const pairEpoch = Number(value[0]);
+  const lastUpdateEpoch = parseNumber(stats.last_update);
+  const numberValue = weathercloudPairNumber(value);
+  if (numberValue == null) {
+    return null;
+  }
+  if (!allowNegative && numberValue < 0) {
+    return null;
+  }
+  if (
+    Number.isFinite(pairEpoch) &&
+    lastUpdateEpoch != null &&
+    pairEpoch < lastUpdateEpoch
+  ) {
+    return null;
+  }
+  return numberValue;
 }
 
 function evaluateAlarm(

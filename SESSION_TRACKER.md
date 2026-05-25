@@ -16868,3 +16868,28 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - `deno check` limpio en `spot-live-observation-collector`,
       - `local.env.json` sigue ignorado por git y no se versiona,
       - `.tmp/` queda fuera de git como carpeta temporal de investigacion.
+
+
+  - bloque nuevo `2026-05-25`:
+    - ajuste final de estaciones Live Weathercloud para Cullera y El Perellonet,
+    - tiempo real trabajado en este tramo: `55 min` aprox. de trabajo efectivo,
+    - live / Cullera - El Pollo:
+      - anadidas estaciones Weathercloud cercanas al perfil Live de Cullera para validacion en campo,
+      - retirada la estacion duplicada `Weathercloud Cullera-Sant Antoni`, manteniendo `WU Cullera Sant Antoni` como fuente valida,
+      - configurada `Weathercloud Piscina MB` como estacion Live predeterminada del spot por ser la mas cercana,
+      - retirada `Weathercloud Bega` del selector y del colector backend porque marcaba viento 0 de forma persistente,
+      - evitada la precarga bloqueante de todas las estaciones Weathercloud al abrir el tab Live para que Cullera no tarde tanto en entrar.
+    - live / El Perellonet:
+      - retirada `Weathercloud Perellobeach` del selector Live y del colector backend,
+      - mantenida `Weathercloud YT60234` como fuente Weathercloud disponible.
+    - backend:
+      - desplegado `spot-live-observation-collector` tras retirar estaciones descartadas,
+      - el colector queda alineado con las estaciones visibles en la app para no guardar historicos de fuentes eliminadas,
+      - reforzado el uso de lecturas Weathercloud frescas comparando timestamp de cada campo con `last_update`,
+      - revisado `spot-alarm-runner` para mantener la misma logica de frescura en alarmas Weathercloud.
+    - verificacion:
+      - `flutter analyze` limpio en los modulos Live tocados,
+      - `deno check` limpio en `spot-live-observation-collector` y `spot-alarm-runner`,
+      - invocado el colector en Supabase tras despliegue para confirmar que las estaciones retiradas ya no aparecen,
+      - `local.env.json` sigue ignorado por git y no se versiona,
+      - `.tmp/` queda fuera de git como carpeta temporal de investigacion.

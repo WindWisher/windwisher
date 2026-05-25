@@ -58,15 +58,45 @@ const stations: LiveStationConfig[] = [
   },
   {
     provider: "WEATHERCLOUD",
-    stationKey: "weathercloud:5411085804",
-    stationId: "5411085804",
-    stationName: "Weathercloud Perellobeach",
-  },
-  {
-    provider: "WEATHERCLOUD",
     stationKey: "weathercloud:4026174225",
     stationId: "4026174225",
     stationName: "Weathercloud YT60234",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:4227028590",
+    stationId: "4227028590",
+    stationName: "Weathercloud Piscina MB",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:8722640612",
+    stationId: "8722640612",
+    stationName: "Weathercloud Cullera Edificio Dosel",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:3117140332",
+    stationId: "3117140332",
+    stationName: "Weathercloud Cullera Faro",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:9767745419",
+    stationId: "9767745419",
+    stationName: "Weathercloud CulMeteo",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:2487023427",
+    stationId: "2487023427",
+    stationName: "Weathercloud Sagan",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:1503665819",
+    stationId: "1503665819",
+    stationName: "Weathercloud Cullera-Ibiza",
   },
 ];
 
@@ -269,16 +299,24 @@ async function fetchWeathercloudObservation(
   }
 
   return baseObservation(station, observedAt, {
-    wind_knots: mpsToKnots(weathercloudPairNumber(stats.wspdavg_current)),
-    wind_min_knots: null,
-    gust_knots: mpsToKnots(weathercloudPairNumber(stats.wspdhi_current)),
-    wind_direction_deg: roundNullable(
-      weathercloudPairNumber(stats.wdiravg_current),
+    wind_knots: mpsToKnots(
+      weathercloudFreshPairNumber(stats, "wspdavg_current"),
     ),
-    temp_c: weathercloudPairNumber(stats.temp_current),
-    pressure_hpa: roundNullable(weathercloudPairNumber(stats.bar_current)),
-    humidity_pct: roundNullable(weathercloudPairNumber(stats.hum_current)),
-    rain_mm: weathercloudPairNumber(stats.rain_day_total),
+    wind_min_knots: null,
+    gust_knots: mpsToKnots(
+      weathercloudFreshPairNumber(stats, "wspdhi_current"),
+    ),
+    wind_direction_deg: roundNullable(
+      weathercloudFreshPairNumber(stats, "wdiravg_current", false),
+    ),
+    temp_c: weathercloudFreshPairNumber(stats, "temp_current"),
+    pressure_hpa: roundNullable(
+      weathercloudFreshPairNumber(stats, "bar_current"),
+    ),
+    humidity_pct: roundNullable(
+      weathercloudFreshPairNumber(stats, "hum_current"),
+    ),
+    rain_mm: weathercloudFreshPairNumber(stats, "rain_day_total"),
     raw_payload: stats,
   });
 }
@@ -330,6 +368,34 @@ function weathercloudPairNumber(value: unknown): number | null {
   }
   const numberValue = Number(value[1]);
   return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+function weathercloudFreshPairNumber(
+  stats: Record<string, unknown>,
+  key: string,
+  allowNegative = true,
+): number | null {
+  const value = stats[key];
+  if (!Array.isArray(value) || value.length < 2) {
+    return weathercloudPairNumber(value);
+  }
+  const pairEpoch = Number(value[0]);
+  const lastUpdateEpoch = readObjectNumber(stats, "last_update");
+  const numberValue = weathercloudPairNumber(value);
+  if (numberValue == null) {
+    return null;
+  }
+  if (!allowNegative && numberValue < 0) {
+    return null;
+  }
+  if (
+    Number.isFinite(pairEpoch) &&
+    lastUpdateEpoch != null &&
+    pairEpoch < lastUpdateEpoch
+  ) {
+    return null;
+  }
+  return numberValue;
 }
 
 async function fetchMeteoclimaticObservation(

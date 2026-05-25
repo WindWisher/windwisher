@@ -97,6 +97,47 @@ const String _inforatgeCulleraDosserStationName = 'Inforatge Cullera Dosser';
 const double _inforatgeCulleraDosserStationLat = 39.1889;
 const double _inforatgeCulleraDosserStationLon = -0.2263;
 
+const String _weathercloudCulleraPiscinaMbStationId = '4227028590';
+const String _weathercloudCulleraPiscinaMbStationKey =
+    'weathercloud:4227028590';
+const String _weathercloudCulleraPiscinaMbStationName =
+    'Weathercloud Piscina MB';
+const double _weathercloudCulleraPiscinaMbStationLat = 39.2262985;
+const double _weathercloudCulleraPiscinaMbStationLon = -0.249365;
+
+const String _weathercloudCulleraEdificioDoselStationId = '8722640612';
+const String _weathercloudCulleraEdificioDoselStationKey =
+    'weathercloud:8722640612';
+const String _weathercloudCulleraEdificioDoselStationName =
+    'Weathercloud Cullera Edificio Dosel';
+const double _weathercloudCulleraEdificioDoselStationLat = 39.1890255802;
+const double _weathercloudCulleraEdificioDoselStationLon = -0.2245545387;
+
+const String _weathercloudCulleraFaroStationId = '3117140332';
+const String _weathercloudCulleraFaroStationKey = 'weathercloud:3117140332';
+const String _weathercloudCulleraFaroStationName = 'Weathercloud Cullera Faro';
+const double _weathercloudCulleraFaroStationLat = 39.1884351736;
+const double _weathercloudCulleraFaroStationLon = -0.2244579792;
+
+const String _weathercloudCulleraCulMeteoStationId = '9767745419';
+const String _weathercloudCulleraCulMeteoStationKey = 'weathercloud:9767745419';
+const String _weathercloudCulleraCulMeteoStationName = 'Weathercloud CulMeteo';
+const double _weathercloudCulleraCulMeteoStationLat = 39.1866469;
+const double _weathercloudCulleraCulMeteoStationLon = -0.2234821;
+
+const String _weathercloudCulleraSaganStationId = '2487023427';
+const String _weathercloudCulleraSaganStationKey = 'weathercloud:2487023427';
+const String _weathercloudCulleraSaganStationName = 'Weathercloud Sagan';
+const double _weathercloudCulleraSaganStationLat = 39.1839499;
+const double _weathercloudCulleraSaganStationLon = -0.2248468;
+
+const String _weathercloudCulleraIbizaStationId = '1503665819';
+const String _weathercloudCulleraIbizaStationKey = 'weathercloud:1503665819';
+const String _weathercloudCulleraIbizaStationName =
+    'Weathercloud Cullera-Ibiza';
+const double _weathercloudCulleraIbizaStationLat = 39.1750624;
+const double _weathercloudCulleraIbizaStationLon = -0.2398807;
+
 const String _wundergroundXeracoStationId = 'IXERACO2';
 const String _wundergroundXeracoStationKey = 'wunderground:IXERACO2';
 const String _wundergroundXeracoStationName = 'WU Platja de Xeraco';
@@ -129,12 +170,6 @@ const String _meteoclimaticPerelloStationKey =
 const String _meteoclimaticPerelloStationName = 'Meteoclimatic El Perello';
 const double _meteoclimaticPerelloStationLat = 39.27;
 const double _meteoclimaticPerelloStationLon = -0.28;
-
-const String _weathercloudPerelloBeachStationId = '5411085804';
-const String _weathercloudPerelloBeachStationKey = 'weathercloud:5411085804';
-const String _weathercloudPerelloBeachStationName = 'Weathercloud Perellobeach';
-const double _weathercloudPerelloBeachStationLat = 39.2654413172;
-const double _weathercloudPerelloBeachStationLon = -0.2680706978;
 
 const String _weathercloudPerelloYt60234StationId = '4026174225';
 const String _weathercloudPerelloYt60234StationKey = 'weathercloud:4026174225';
