@@ -16870,6 +16870,27 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - `.tmp/` queda fuera de git como carpeta temporal de investigacion.
 
 
+  - bloque nuevo `2026-05-26`:
+    - ajustes Live Weathercloud para `Oliva Canal - Platja dels Gorgs`,
+    - tiempo real trabajado en este tramo: `45 min` aprox. de trabajo efectivo,
+    - live / Oliva Canal:
+      - consultado el mapa publico de Weathercloud alrededor del spot,
+      - revisadas estaciones cercanas como `IOLIVA24`, `Xelo`, `la bomba`, `Paco`, `Oliva Nova`, `MeteoRosa`, `Magnolia`, `vj`, `Timerandals`, `Osqui42`, `CarlosBertomeu` y `Meteo_Marjal`,
+      - confirmado que `Xelo` (`weathercloud:0444100906`) reporta viento fresco desde `device/stats`,
+      - confirmado que `IOLIVA24` (`weathercloud:9778698522`) reporta viento real en el endpoint de mapa y posteriormente tambien entro correctamente en el collector,
+      - anadidas `Weathercloud Xelo` y `Weathercloud IOLIVA24` como estaciones alternativas del selector Live de Oliva Canal,
+      - mantenida la estacion principal actual de Oliva Canal sin cambios.
+    - backend:
+      - anadidas `weathercloud:0444100906` y `weathercloud:9778698522` a `spot-live-observation-collector`,
+      - desplegado el collector tras las altas,
+      - invocado manualmente el collector y confirmado que recoge ambas estaciones con `status: collected`.
+    - verificacion:
+      - `flutter analyze` limpio en los modulos Live tocados,
+      - `deno check` limpio en `spot-live-observation-collector`,
+      - `local.env.json` sigue ignorado por git y no se versiona,
+      - `.tmp/` queda fuera de git como carpeta temporal de investigacion.
+
+
   - bloque nuevo `2026-05-25`:
     - ajuste final de estaciones Live Weathercloud para Cullera y El Perellonet,
     - tiempo real trabajado en este tramo: `55 min` aprox. de trabajo efectivo,

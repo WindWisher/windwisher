@@ -64,6 +64,18 @@ const stations: LiveStationConfig[] = [
   },
   {
     provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:0444100906",
+    stationId: "0444100906",
+    stationName: "Weathercloud Xelo",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:9778698522",
+    stationId: "9778698522",
+    stationName: "Weathercloud IOLIVA24",
+  },
+  {
+    provider: "WEATHERCLOUD",
     stationKey: "weathercloud:6074243991",
     stationId: "6074243991",
     stationName: "Weathercloud vj",

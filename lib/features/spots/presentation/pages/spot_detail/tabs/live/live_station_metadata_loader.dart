@@ -91,6 +91,30 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
       referenceLatitude: latitude,
       referenceLongitude: longitude,
     );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _weathercloudOlivaXeloStationKey,
+      stationName: _weathercloudOlivaXeloStationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudOlivaXeloStationId,
+      latitude: _weathercloudOlivaXeloStationLat,
+      longitude: _weathercloudOlivaXeloStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _weathercloudOlivaIoliva24StationKey,
+      stationName: _weathercloudOlivaIoliva24StationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudOlivaIoliva24StationId,
+      latitude: _weathercloudOlivaIoliva24StationLat,
+      longitude: _weathercloudOlivaIoliva24StationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
   }
 
   void _addPilesLiveStations({

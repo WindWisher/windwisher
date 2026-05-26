@@ -30,6 +30,18 @@ const String _wundergroundOliva107StationName = 'WU Oliva IOLIVA107';
 const double _wundergroundOliva107StationLat = 38.924614;
 const double _wundergroundOliva107StationLon = -0.087877;
 
+const String _weathercloudOlivaXeloStationId = '0444100906';
+const String _weathercloudOlivaXeloStationKey = 'weathercloud:0444100906';
+const String _weathercloudOlivaXeloStationName = 'Weathercloud Xelo';
+const double _weathercloudOlivaXeloStationLat = 38.9245947;
+const double _weathercloudOlivaXeloStationLon = -0.0878745;
+
+const String _weathercloudOlivaIoliva24StationId = '9778698522';
+const String _weathercloudOlivaIoliva24StationKey = 'weathercloud:9778698522';
+const String _weathercloudOlivaIoliva24StationName = 'Weathercloud IOLIVA24';
+const double _weathercloudOlivaIoliva24StationLat = 38.9211599;
+const double _weathercloudOlivaIoliva24StationLon = -0.0853693;
+
 const String _wundergroundOliva94StationId = 'IOLIVA94';
 const String _wundergroundOliva94StationKey = 'wunderground:IOLIVA94';
 const String _wundergroundOliva94StationName = 'WU Oliva IOLIVA94';
