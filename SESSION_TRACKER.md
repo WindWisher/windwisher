@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 219h 47m`.
+- `Total historico minimo consolidado del proyecto: 220h 22m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -29,10 +29,11 @@
   - bloque consolidado adicional en `2026-05-06`: `+55m` reales observables (`Spots: modularizacion de pagina Spots, sheets y mapa custom`)
   - bloque consolidado adicional en `2026-05-06`: `+1h 25m` reales observables (`Spots: spot patron Oliva Canal, capacidades replicables y tablas forecast por proveedor`)
   - bloque consolidado adicional en `2026-05-20`: `+2h 15m` reales aproximados (`El Perellonet: live stations, Meteoclimatic, backend safety and webcam review`)
+  - bloque consolidado adicional en `2026-05-27`: `+35m` reales aproximados (`Les Deveses / Molins: Xuss history and alarms`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-05-20`: `+2h 15m` reales aproximados (`El Perellonet: live stations, Meteoclimatic, backend safety and webcam review`).
+  - ultima consolidacion manual anadida el `2026-05-27`: `+35m` reales aproximados (`Les Deveses / Molins: Xuss history and alarms`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -51,6 +52,42 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-05-27 - Les Deveses / Molins: Xuss history and alarms
+
+- Bloque consolidado adicional: `+35m` reales aproximados.
+- Medicion real usada:
+  - tramo de trabajo efectivo dedicado a revisar la fuente Xuss, corregir backend y validar despliegues,
+  - no incluye esperas largas ni pausas externas.
+- Live / Denia - Les Deveses:
+  - retirada `Denia Platja de Pego` del selector del spot al no reportar viento util,
+  - retiradas `Denia la Xara`, `Denia Jesus Pobre` y `Estacion meteorologica Gandia Serpis` del perfil Live de Les Deveses,
+  - mantenidas las estaciones Weathercloud validas del spot y confirmado que sus historicos backend muestran lecturas recientes.
+- Live / Denia - Punta Els Molins:
+  - comparadas las dos fuentes Joan Chabas y confirmado que representan la misma estacion,
+  - retirada la version AVAMET de `Denia Joan Chabas` del perfil de Molins,
+  - mantenida `Xuss Denia Joan Chabas` como fuente directa para el spot.
+- Historico:
+  - agregado soporte backend de historico para `XUSS` en el collector,
+  - anadida `xuss:denia` al collector de Supabase,
+  - corregida la conversion de hora local Europe/Madrid a UTC para evitar registros futuros o desfasados,
+  - validada una insercion real de Xuss con viento, racha, direccion, temperatura y `observed_at` correcto.
+- Alarmas:
+  - confirmado que `spot-alarm-runner` ya soportaba proveedor `XUSS`,
+  - corregido `parseXussObservedAt` en el runner para interpretar la hora de Xuss como `Europe/Madrid`,
+  - desplegado `spot-alarm-runner` en Supabase tras la correccion,
+  - ejecutado manualmente el runner y confirmado que responde correctamente.
+- Rendimiento / UI:
+  - optimizada la carga de historicos desde backend priorizando REST para reducir esperas en estaciones Weathercloud,
+  - ajustado el grafico de historico para enfocar el ultimo dato despues de cargar,
+  - ampliada la identidad de foco del grafico para reaccionar al cambio de estacion, numero de puntos y ultimo dato.
+- Verificacion:
+  - `deno check` limpio en `spot-live-observation-collector`,
+  - `deno check` limpio en `spot-alarm-runner`,
+  - `flutter analyze` limpio en los modulos Live tocados,
+  - desplegados `spot-live-observation-collector` y `spot-alarm-runner`,
+  - `local.env.json` sigue ignorado por git y no se versiona,
+  - `.tmp/` queda fuera de git como carpeta temporal de investigacion.
 
 ### 2026-05-20 - El Perellonet: live stations, Meteoclimatic, backend safety and webcams
 

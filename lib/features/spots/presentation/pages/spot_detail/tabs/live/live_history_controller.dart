@@ -34,6 +34,8 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
           latest.historicalSeriesByStation,
         );
         updatedHistory[station.stationKey] = refreshedHistory;
+        _historyChartFocusKey = null;
+        _historyChartFullscreenFocusKey = null;
         _liveStationsLoadResult = _LiveStationsLoadResult(
           stations: latest.stations,
           liveDataByStation: latest.liveDataByStation,
@@ -172,6 +174,8 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
     return station?.provider == 'WINDGURU_STATION' ||
         station?.provider == 'METEOPILES' ||
         station?.provider == 'METEOCLIMATIC' ||
+        station?.provider == 'WEATHERCLOUD' ||
+        station?.provider == 'XUSS' ||
         station?.provider == 'MADIS_MARITIME' ||
         station?.provider == 'COPERNICUS_MARINE';
   }

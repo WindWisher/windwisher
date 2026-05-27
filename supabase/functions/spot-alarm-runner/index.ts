@@ -911,7 +911,15 @@ function parseXussObservedAt(body: string) {
   ) {
     return null;
   }
-  return new Date(year, month - 1, day, hour, minute);
+  return zonedDateTimeToUtc({
+    timeZone: "Europe/Madrid",
+    year,
+    month,
+    day,
+    hour,
+    minute,
+    second: 0,
+  });
 }
 
 function parseXussMonth(raw: string | undefined) {
@@ -1175,6 +1183,69 @@ function madridTotalMinutes(value: Date) {
     parts.find((part) => part.type === "minute")?.value ?? "0",
   );
   return (hour * 60) + minute;
+}
+
+function zonedDateTimeToUtc({
+  timeZone,
+  year,
+  month,
+  day,
+  hour,
+  minute,
+  second,
+}: {
+  timeZone: string;
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+}): Date {
+  const utcGuess = new Date(
+    Date.UTC(year, month - 1, day, hour, minute, second),
+  );
+  const offsetMs = timeZoneOffsetMs(timeZone, utcGuess);
+  return new Date(utcGuess.getTime() - offsetMs);
+}
+
+function timeZoneOffsetMs(timeZone: string, date: Date): number {
+  const parts = datePartsInTimeZone(date, timeZone);
+  const zonedAsUtc = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+  );
+  return zonedAsUtc - date.getTime();
+}
+
+function datePartsInTimeZone(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const values = Object.fromEntries(
+    parts
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, Number.parseInt(part.value, 10)]),
+  );
+  return {
+    year: values.year,
+    month: values.month,
+    day: values.day,
+    hour: values.hour,
+    minute: values.minute,
+    second: values.second,
+  };
 }
 
 function localTotalMinutesFromDate(value: Date | null) {

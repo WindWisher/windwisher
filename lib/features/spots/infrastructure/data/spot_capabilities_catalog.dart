@@ -115,7 +115,6 @@ const deniaLesDevesesSpotCapabilities = SpotCapabilities(
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
   preferredLiveStationKey: deniaLesDevesesPreferredLiveStationKey,
-  portusRealtimeStationIds: <int>[4634],
   navigationLatitude: 38.883244386654184,
   navigationLongitude: -0.03539319215620903,
   navigationLabel: 'Llegada Denia - Les Deveses',

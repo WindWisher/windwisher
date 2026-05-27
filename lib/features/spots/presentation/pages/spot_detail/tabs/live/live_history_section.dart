@@ -44,6 +44,8 @@ extension _SpotDetailLiveHistorySection on _SpotDetailPageState {
           chartWidth: chartWidth,
           viewportWidth: constraints.maxWidth,
           xFractions: xFractions,
+          focusIdentity:
+              '$_selectedStation|${points.length}|${labels.isEmpty ? '' : labels.last}',
         );
 
         return Stack(

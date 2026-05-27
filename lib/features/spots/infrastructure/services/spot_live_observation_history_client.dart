@@ -43,17 +43,7 @@ class SpotLiveObservationHistoryClient {
     }
 
     final since = DateTime.now().toUtc().subtract(range).toIso8601String();
-    final rows = await _fetchRowsWithSdk(stationKey: stationKey, since: since)
-        .onError((error, stackTrace) async {
-          debugPrint(
-            'SpotLiveObservationHistory sdk-fallback stationKey=$stationKey '
-            'error=$error',
-          );
-          return _fetchRowsWithRestFallback(
-            stationKey: stationKey,
-            since: since,
-          );
-        });
+    final rows = await _fetchRows(stationKey: stationKey, since: since);
 
     final points = rows
         .whereType<Map<String, dynamic>>()
@@ -66,6 +56,35 @@ class SpotLiveObservationHistoryClient {
       'last=${points.isEmpty ? null : points.last.observedAt.toIso8601String()}',
     );
     return points;
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchRows({
+    required String stationKey,
+    required String since,
+  }) async {
+    if (!kIsWeb) {
+      return _fetchRowsWithRest(stationKey: stationKey, since: since).onError((
+        error,
+        stackTrace,
+      ) async {
+        debugPrint(
+          'SpotLiveObservationHistory rest-primary-fallback stationKey=$stationKey '
+          'error=$error',
+        );
+        return _fetchRowsWithSdk(stationKey: stationKey, since: since);
+      });
+    }
+
+    return _fetchRowsWithSdk(stationKey: stationKey, since: since).onError((
+      error,
+      stackTrace,
+    ) async {
+      debugPrint(
+        'SpotLiveObservationHistory sdk-fallback stationKey=$stationKey '
+        'error=$error',
+      );
+      return _fetchRowsWithRest(stationKey: stationKey, since: since);
+    });
   }
 
   Future<List<Map<String, dynamic>>> _fetchRowsWithSdk({
@@ -85,7 +104,7 @@ class SpotLiveObservationHistoryClient {
     return rows.whereType<Map<String, dynamic>>().toList(growable: false);
   }
 
-  Future<List<Map<String, dynamic>>> _fetchRowsWithRestFallback({
+  Future<List<Map<String, dynamic>>> _fetchRowsWithRest({
     required String stationKey,
     required String since,
   }) async {

@@ -3,7 +3,12 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/http.ts";
 
 type LiveStationConfig = {
-  provider: "METEOPILES" | "WINDGURU_STATION" | "WEATHERCLOUD";
+  provider:
+    | "METEOPILES"
+    | "WINDGURU_STATION"
+    | "WEATHERCLOUD"
+    | "WUNDERGROUND"
+    | "XUSS";
   stationKey: string;
   stationId: string;
   stationName: string;
@@ -37,6 +42,20 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
+const olivaXeloWuDiagnosticSamples: Record<
+  string,
+  { stationKey: string; stationName: string }
+> = {
+  "weathercloud:0444100906": {
+    stationKey: "diagnostic:oliva-xelo-sampled-5m",
+    stationName: "Diagnostic Oliva Xelo sampled 5m",
+  },
+  "wunderground:IOLIVA107": {
+    stationKey: "diagnostic:oliva-wu107-sampled-5m",
+    stationName: "Diagnostic Oliva WU IOLIVA107 sampled 5m",
+  },
+};
+
 const stations: LiveStationConfig[] = [
   {
     provider: "WINDGURU_STATION",
@@ -49,6 +68,12 @@ const stations: LiveStationConfig[] = [
     stationKey: "weathercloud:3711662418",
     stationId: "3711662418",
     stationName: "Weathercloud ElPaquebote",
+  },
+  {
+    provider: "XUSS",
+    stationKey: "xuss:denia",
+    stationId: "denia",
+    stationName: "Xuss Denia Joan Chabas",
   },
   {
     provider: "WEATHERCLOUD",
@@ -67,6 +92,12 @@ const stations: LiveStationConfig[] = [
     stationKey: "weathercloud:0444100906",
     stationId: "0444100906",
     stationName: "Weathercloud Xelo",
+  },
+  {
+    provider: "WUNDERGROUND",
+    stationKey: "wunderground:IOLIVA107",
+    stationId: "IOLIVA107",
+    stationName: "WU Oliva IOLIVA107",
   },
   {
     provider: "WEATHERCLOUD",
@@ -169,6 +200,7 @@ Deno.serve(async (request) => {
 
   const diagnostics: Record<string, unknown>[] = [];
   const observations: LiveObservation[] = [];
+  const diagnosticObservedAt = collectionSlotDate().toISOString();
 
   for (const station of stations) {
     try {
@@ -181,11 +213,19 @@ Deno.serve(async (request) => {
         continue;
       }
       observations.push(observation);
+      const diagnosticSample = diagnosticSampleObservation(
+        observation,
+        diagnosticObservedAt,
+      );
+      if (diagnosticSample != null) {
+        observations.push(diagnosticSample);
+      }
       diagnostics.push({
         stationKey: station.stationKey,
         status: "collected",
         observedAt: observation.observed_at,
         windKnots: observation.wind_knots,
+        diagnosticObservedAt: diagnosticSample?.observed_at,
       });
     } catch (error) {
       diagnostics.push({
@@ -244,6 +284,10 @@ async function fetchStationObservation(
       return await fetchWindguruStationObservation(station);
     case "WEATHERCLOUD":
       return await fetchWeathercloudObservation(station);
+    case "WUNDERGROUND":
+      return await fetchWundergroundObservation(station);
+    case "XUSS":
+      return await fetchXussDeniaObservation(station);
   }
 }
 
@@ -360,6 +404,119 @@ async function fetchWeathercloudObservation(
     ),
     rain_mm: weathercloudFreshPairNumber(stats, "rain_day_total"),
     raw_payload: stats,
+  });
+}
+
+async function fetchWundergroundObservation(
+  station: LiveStationConfig,
+): Promise<LiveObservation | null> {
+  const apiKey = await fetchWundergroundApiKey(station.stationId);
+  const url = new URL("https://api.weather.com/v2/pws/observations/current");
+  url.searchParams.set("stationId", station.stationId);
+  url.searchParams.set("numericPrecision", "decimal");
+  url.searchParams.set("format", "json");
+  url.searchParams.set("units", "m");
+  url.searchParams.set("apiKey", apiKey);
+
+  const payload = await fetchJsonObject(url.toString(), {
+    referer: "https://www.wunderground.com/",
+    "user-agent": "WindWisher/1.0",
+  });
+  const observations = Array.isArray(payload.observations)
+    ? payload.observations
+    : [];
+  const latest = readRecord(observations[0]);
+  if (latest == null) {
+    return null;
+  }
+  const metric = readRecord(latest.metric);
+  if (metric == null) {
+    return null;
+  }
+  const observedAt = parseWundergroundObservedAt(latest);
+  const windKmh = readUnknownNumber(metric.windSpeed);
+  if (observedAt == null || windKmh == null || isStale(observedAt)) {
+    return null;
+  }
+
+  return baseObservation(station, observedAt, {
+    wind_knots: kmhToKnots(windKmh),
+    wind_min_knots: null,
+    gust_knots: kmhToKnots(readUnknownNumber(metric.windGust)),
+    wind_direction_deg: roundNullable(readUnknownNumber(latest.winddir)),
+    temp_c: readUnknownNumber(metric.temp),
+    pressure_hpa: roundNullable(readUnknownNumber(metric.pressure)),
+    humidity_pct: roundNullable(readUnknownNumber(latest.humidity)),
+    rain_mm: readUnknownNumber(metric.precipTotal),
+    raw_payload: latest,
+  });
+}
+
+async function fetchWundergroundApiKey(stationId: string) {
+  const dashboardUrl = `https://www.wunderground.com/dashboard/pws/${
+    encodeURIComponent(stationId)
+  }`;
+  const response = await fetch(dashboardUrl, {
+    headers: {
+      accept: "text/html,application/xhtml+xml,*/*",
+      referer: "https://www.wunderground.com/",
+      "user-agent": "WindWisher/1.0",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`wunderground-dashboard-http-${response.status}`);
+  }
+  const dashboard = await response.text();
+  const apiKey = dashboard.match(/apiKey=([A-Za-z0-9]+)/)?.[1];
+  if (!apiKey) {
+    throw new Error("wunderground-api-key-not-found");
+  }
+  return apiKey;
+}
+
+async function fetchXussDeniaObservation(
+  station: LiveStationConfig,
+): Promise<LiveObservation | null> {
+  const response = await fetch("http://www.xuss.es/Meteo/Denia.php", {
+    headers: {
+      "user-agent": "WindWisher/1.0",
+      accept: "text/html,*/*",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`xuss-http-${response.status}`);
+  }
+  const body = new TextDecoder("iso-8859-1").decode(
+    await response.arrayBuffer(),
+  );
+  const observedAt = parseXussObservedAt(body);
+  const wind = parseXussKmhKts(body, "Velocidad media del viento");
+  if (observedAt == null || wind?.knots == null || isStale(observedAt)) {
+    return null;
+  }
+
+  return baseObservation(station, observedAt, {
+    wind_knots: wind.knots,
+    wind_min_knots: null,
+    gust_knots: parseXussKmhKts(body, "ráfagas maxima")?.knots ?? null,
+    wind_direction_deg: roundNullable(
+      parseXussDegrees(body, "Direcci[oó]n del viento"),
+    ),
+    temp_c: parseXussNumberAfter(body, String.raw`Temperatura actual.*?<b>`),
+    pressure_hpa: roundNullable(
+      parseXussNumberAfter(body, String.raw`Bar[oó]metro.*?>`),
+    ),
+    humidity_pct: roundNullable(
+      parseXussNumberAfter(body, String.raw`Humedad\s*</td>\s*<td>`),
+    ),
+    rain_mm: parseXussNumberAfter(
+      body,
+      String.raw`Lluvia.*?\(desde medianoche\).*?>`,
+    ),
+    raw_payload: {
+      source: "xuss-denia-html",
+      observedAtLabel: parseXussObservedAtLabel(body),
+    },
   });
 }
 
@@ -515,6 +672,37 @@ function baseObservation(
   };
 }
 
+function collectionSlotDate(now = new Date()): Date {
+  const slot = new Date(now);
+  const minute = slot.getUTCMinutes();
+  slot.setUTCMinutes(minute - (minute % 5), 0, 0);
+  return slot;
+}
+
+function diagnosticSampleObservation(
+  observation: LiveObservation,
+  diagnosticObservedAt: string,
+): LiveObservation | null {
+  const diagnostic = olivaXeloWuDiagnosticSamples[observation.station_key];
+  if (diagnostic == null) {
+    return null;
+  }
+  return {
+    ...observation,
+    station_provider: `${observation.station_provider}_DIAGNOSTIC`,
+    station_key: diagnostic.stationKey,
+    station_name: diagnostic.stationName,
+    observed_at: diagnosticObservedAt,
+    raw_payload: {
+      diagnostic: "oliva-xelo-vs-wu-sampled-5m",
+      sourceStationProvider: observation.station_provider,
+      sourceStationKey: observation.station_key,
+      sourceObservedAt: observation.observed_at,
+      sourceRawPayload: observation.raw_payload,
+    },
+  };
+}
+
 function decodeJsonp(raw: string, callback: string): string {
   const prefix = `${callback}(`;
   if (raw.startsWith(prefix) && raw.endsWith(");")) {
@@ -640,6 +828,10 @@ function readObjectNumber(
   key: string,
 ): number | null {
   const value = data[key];
+  return readUnknownNumber(value);
+}
+
+function readUnknownNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
   }
@@ -648,6 +840,143 @@ function readObjectNumber(
     return Number.isFinite(parsed) ? parsed : null;
   }
   return null;
+}
+
+function readRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+function parseWundergroundObservedAt(
+  observation: Record<string, unknown>,
+): Date | null {
+  const epoch = readUnknownNumber(observation.epoch);
+  if (epoch != null) {
+    return new Date(epoch * 1000);
+  }
+  const utc = typeof observation.obsTimeUtc === "string"
+    ? observation.obsTimeUtc
+    : null;
+  if (utc == null) {
+    return null;
+  }
+  const parsed = new Date(utc);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function parseXussObservedAt(body: string): Date | null {
+  const match = body.match(
+    /Ultima grabaci[oó]n a:\s*(\d{1,2}):(\d{2}).*?Data:\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/is,
+  );
+  if (!match) {
+    return null;
+  }
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const day = Number(match[3]);
+  const month = parseXussMonth(match[4]);
+  const year = Number(match[5]);
+  if (
+    !Number.isFinite(hour) ||
+    !Number.isFinite(minute) ||
+    !Number.isFinite(day) ||
+    month == null ||
+    !Number.isFinite(year)
+  ) {
+    return null;
+  }
+  return zonedDateTimeToUtc({
+    timeZone: "Europe/Madrid",
+    year,
+    month,
+    day,
+    hour,
+    minute,
+    second: 0,
+  });
+}
+
+function parseXussObservedAtLabel(body: string): string | null {
+  return body.match(/Ultima grabaci[oó]n a:\s*([^<]+)/i)?.[1]?.trim() ?? null;
+}
+
+function parseXussKmhKts(
+  body: string,
+  labelPattern: string,
+): { kmh: number | null; knots: number | null } | null {
+  const match = body.match(
+    new RegExp(
+      `${labelPattern}.*?<td[^>]*>\\s*([0-9.,]+)\\s*kmh\\s*\\(([0-9.,]+)\\s*kts\\)`,
+      "is",
+    ),
+  );
+  if (!match) {
+    return null;
+  }
+  return {
+    kmh: parseXussNumber(match[1]),
+    knots: parseXussNumber(match[2]),
+  };
+}
+
+function parseXussDegrees(body: string, labelPattern: string): number | null {
+  const match = body.match(
+    new RegExp(`${labelPattern}.*?<td[^>]*>.*?\\(([0-9.,]+)&deg;\\)`, "is"),
+  );
+  return parseXussNumber(match?.[1]);
+}
+
+function parseXussNumberAfter(
+  body: string,
+  prefixPattern: string,
+): number | null {
+  const match = body.match(new RegExp(`${prefixPattern}\\s*([0-9.,]+)`, "is"));
+  return parseXussNumber(match?.[1]);
+}
+
+function parseXussNumber(raw: string | undefined): number | null {
+  if (!raw) {
+    return null;
+  }
+  const parsed = Number(raw.replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseXussMonth(raw: string | undefined): number | null {
+  switch (raw?.toLowerCase()) {
+    case "jan":
+    case "ene":
+      return 1;
+    case "feb":
+      return 2;
+    case "mar":
+      return 3;
+    case "apr":
+    case "abr":
+      return 4;
+    case "may":
+      return 5;
+    case "jun":
+      return 6;
+    case "jul":
+      return 7;
+    case "aug":
+    case "ago":
+      return 8;
+    case "sep":
+      return 9;
+    case "oct":
+      return 10;
+    case "nov":
+      return 11;
+    case "dec":
+    case "dic":
+      return 12;
+    default:
+      return null;
+  }
 }
 
 function roundNullable(value: number | null): number | null {

@@ -39,10 +39,11 @@ extension _SpotDetailLiveHistorySeriesController on _SpotDetailPageState {
     required double chartWidth,
     required double viewportWidth,
     required List<double> xFractions,
+    required String focusIdentity,
   }) {
     final lastFraction = xFractions.isEmpty ? 1.0 : xFractions.last;
     final focusKey =
-        '${chartWidth.toStringAsFixed(1)}|${viewportWidth.toStringAsFixed(1)}|${lastFraction.toStringAsFixed(4)}|$fullscreen';
+        '${chartWidth.toStringAsFixed(1)}|${viewportWidth.toStringAsFixed(1)}|${lastFraction.toStringAsFixed(4)}|$fullscreen|$focusIdentity';
     final currentKey = fullscreen
         ? _historyChartFullscreenFocusKey
         : _historyChartFocusKey;

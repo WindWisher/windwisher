@@ -116,6 +116,10 @@ extension _SpotDetailLiveHistoryDataLoader on _SpotDetailPageState {
       return _fetchBackendCollectedLiveHistory(station);
     }
 
+    if (station.provider == 'XUSS') {
+      return _fetchBackendCollectedLiveHistory(station);
+    }
+
     if (station.provider == 'WUNDERGROUND') {
       final stationId = station.stationId;
       if (stationId == null) {

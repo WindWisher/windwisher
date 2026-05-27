@@ -226,9 +226,6 @@ const String _avametDeniaPlatjaPegoStationName = 'Denia Platja de Pego';
 const double _avametDeniaPlatjaPegoStationLat = 38.8744583333;
 const double _avametDeniaPlatjaPegoStationLon = -0.0216888889;
 
-const String _avametDeniaJoanChabasStationId = 'c30m063e04';
-const String _avametDeniaJoanChabasStationKey = 'avamet:c30m063e04';
-const String _avametDeniaJoanChabasStationName = 'Denia Joan Chabas';
 const double _avametDeniaJoanChabasStationLat = 38.8348638889;
 const double _avametDeniaJoanChabasStationLon = 0.1053638889;
 
@@ -265,8 +262,8 @@ const double _avametDeniaMontgoCalafatStationLon = 0.1236388889;
 const String _xussDeniaStationId = 'denia';
 const String _xussDeniaStationKey = 'xuss:denia';
 const String _xussDeniaStationName = 'Xuss Denia Joan Chabas';
-const double _xussDeniaStationLat = 38.85;
-const double _xussDeniaStationLon = -0.10528;
+const double _xussDeniaStationLat = _avametDeniaJoanChabasStationLat;
+const double _xussDeniaStationLon = _avametDeniaJoanChabasStationLon;
 
 const String _weathercloudPaqueboteStationId = '3711662418';
 const String _weathercloudPaqueboteStationKey = 'weathercloud:3711662418';
