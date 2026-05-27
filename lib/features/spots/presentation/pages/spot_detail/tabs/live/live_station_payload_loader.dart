@@ -152,6 +152,12 @@ extension _SpotDetailLiveStationPayloadLoader on _SpotDetailPageState {
       if (stationId == null) {
         return null;
       }
+      final backendSnapshot = await _fetchLatestBackendWeathercloudLiveData(
+        station,
+      );
+      if (backendSnapshot != null) {
+        return backendSnapshot;
+      }
       final snapshot = await _weathercloudLiveClient.fetchCurrent(
         deviceId: stationId,
       );
@@ -231,6 +237,38 @@ extension _SpotDetailLiveStationPayloadLoader on _SpotDetailPageState {
       humidityPct: snapshot.humidityPct,
       rainMm: snapshot.rainMm,
       observedAt: snapshot.observedAt,
+    );
+  }
+
+  Future<_StationLiveData?> _fetchLatestBackendWeathercloudLiveData(
+    _NearbyStation station,
+  ) async {
+    final client = _spotLiveObservationHistoryClient;
+    if (client == null) {
+      return null;
+    }
+    final points = await client.fetchStationHistory(
+      stationKey: station.stationKey,
+      range: const Duration(hours: 2),
+    );
+    if (points.isEmpty) {
+      return null;
+    }
+    final latest = points.last;
+    final age = DateTime.now().difference(latest.observedAt);
+    if (age.isNegative || age > const Duration(minutes: 30)) {
+      return null;
+    }
+    return _StationLiveData(
+      windKnots: latest.windKnots,
+      windMinKnots: latest.windMinKnots,
+      windDeg: latest.windDirectionDeg,
+      gustKnots: latest.gustKnots,
+      tempC: latest.tempC,
+      pressureHpa: latest.pressureHpa,
+      humidityPct: latest.humidityPct,
+      rainMm: latest.rainMm,
+      observedAt: latest.observedAt,
     );
   }
 }

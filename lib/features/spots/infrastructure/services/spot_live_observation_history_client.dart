@@ -13,6 +13,10 @@ class SpotLiveObservationHistoryPoint {
     required this.windMinKnots,
     required this.gustKnots,
     required this.windDirectionDeg,
+    this.tempC,
+    this.pressureHpa,
+    this.humidityPct,
+    this.rainMm,
   });
 
   final DateTime observedAt;
@@ -20,6 +24,10 @@ class SpotLiveObservationHistoryPoint {
   final double? windMinKnots;
   final double? gustKnots;
   final int? windDirectionDeg;
+  final double? tempC;
+  final int? pressureHpa;
+  final int? humidityPct;
+  final double? rainMm;
 }
 
 class SpotLiveObservationHistoryClient {
@@ -47,7 +55,7 @@ class SpotLiveObservationHistoryClient {
 
     final points = rows
         .whereType<Map<String, dynamic>>()
-        .map(_parsePoint)
+        .map((row) => _parsePoint(row, stationKey: stationKey))
         .nonNulls
         .toList(growable: false);
     debugPrint(
@@ -94,7 +102,7 @@ class SpotLiveObservationHistoryClient {
     final rows = await _client
         .from('spot_live_observations')
         .select(
-          'observed_at, wind_knots, wind_min_knots, gust_knots, wind_direction_deg',
+          'observed_at, wind_knots, wind_min_knots, gust_knots, wind_direction_deg, temp_c, pressure_hpa, humidity_pct, rain_mm',
         )
         .eq('station_key', stationKey)
         .gte('observed_at', since)
@@ -119,7 +127,7 @@ class SpotLiveObservationHistoryClient {
 
     final uri = Uri.parse(
       '$baseUrl/rest/v1/spot_live_observations'
-      '?select=observed_at,wind_knots,wind_min_knots,gust_knots,wind_direction_deg'
+      '?select=observed_at,wind_knots,wind_min_knots,gust_knots,wind_direction_deg,temp_c,pressure_hpa,humidity_pct,rain_mm'
       '&station_key=eq.${Uri.encodeQueryComponent(stationKey)}'
       '&observed_at=gte.${Uri.encodeQueryComponent(since)}'
       '&order=observed_at.asc'
@@ -158,7 +166,10 @@ class SpotLiveObservationHistoryClient {
     }
   }
 
-  SpotLiveObservationHistoryPoint? _parsePoint(Map<String, dynamic> row) {
+  SpotLiveObservationHistoryPoint? _parsePoint(
+    Map<String, dynamic> row, {
+    required String stationKey,
+  }) {
     final observedAt = DateTime.tryParse(row['observed_at'] as String? ?? '');
     if (observedAt == null) {
       return null;
@@ -168,7 +179,14 @@ class SpotLiveObservationHistoryClient {
       windKnots: _readDouble(row['wind_knots']),
       windMinKnots: _readDouble(row['wind_min_knots']),
       gustKnots: _readDouble(row['gust_knots']),
-      windDirectionDeg: _readDouble(row['wind_direction_deg'])?.round(),
+      windDirectionDeg: _correctWindDirectionDeg(
+        stationKey,
+        _readDouble(row['wind_direction_deg']),
+      ),
+      tempC: _readDouble(row['temp_c']),
+      pressureHpa: _readDouble(row['pressure_hpa'])?.round(),
+      humidityPct: _readDouble(row['humidity_pct'])?.round(),
+      rainMm: _readDouble(row['rain_mm']),
     );
   }
 
@@ -181,4 +199,21 @@ class SpotLiveObservationHistoryClient {
     }
     return null;
   }
+
+  int? _correctWindDirectionDeg(String stationKey, double? value) {
+    if (value == null) {
+      return null;
+    }
+    final correction = _windDirectionCorrectionsDeg[stationKey] ?? 0;
+    return _normalizeDirectionDeg(value + correction);
+  }
+
+  int _normalizeDirectionDeg(double value) {
+    final rounded = value.round();
+    return ((rounded % 360) + 360) % 360;
+  }
 }
+
+const Map<String, int> _windDirectionCorrectionsDeg = {
+  'weathercloud:5629095484': 180,
+};

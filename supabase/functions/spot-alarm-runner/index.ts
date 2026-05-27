@@ -28,6 +28,10 @@ type AlarmRow = {
 
 const MAX_OBSERVATION_AGE_MINUTES = 80;
 
+const windDirectionCorrectionsDeg: Record<string, number> = {
+  "weathercloud:5629095484": 180,
+};
+
 type PushSubscriptionRow = {
   user_id: string;
   device_token: string;
@@ -1028,7 +1032,10 @@ async function fetchWeathercloudObservation(stationKey: string) {
     observedAt,
     windKnots: Number((windMps * 1.9438444924406).toFixed(2)),
     windDirectionBucket: directionBucket(
-      weathercloudFreshPairNumber(stats, "wdiravg_current", false),
+      correctedWindDirectionDeg(
+        stationKey,
+        weathercloudFreshPairNumber(stats, "wdiravg_current", false),
+      ),
     ),
     observedTotalMinutesLocal: localTotalMinutesFromDate(observedAt),
   };
@@ -1110,6 +1117,18 @@ function weathercloudFreshPairNumber(
     return null;
   }
   return numberValue;
+}
+
+function correctedWindDirectionDeg(stationKey: string, value: number | null) {
+  if (value == null) {
+    return null;
+  }
+  const correction = windDirectionCorrectionsDeg[stationKey] ?? 0;
+  return normalizeDirectionDeg(value + correction);
+}
+
+function normalizeDirectionDeg(value: number) {
+  return ((Math.round(value) % 360) + 360) % 360;
 }
 
 function evaluateAlarm(

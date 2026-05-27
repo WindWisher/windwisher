@@ -48,6 +48,18 @@ const String _wundergroundOliva94StationName = 'WU Oliva IOLIVA94';
 const double _wundergroundOliva94StationLat = 38.93356;
 const double _wundergroundOliva94StationLon = -0.116067;
 
+const String _wundergroundDenia129StationId = 'IDNIA129';
+const String _wundergroundDenia129StationKey = 'wunderground:IDNIA129';
+const String _wundergroundDenia129StationName = 'WU Deveses IDNIA129';
+const double _wundergroundDenia129StationLat = 38.883802;
+const double _wundergroundDenia129StationLon = -0.037023;
+
+const String _wundergroundOliva49StationId = 'IOLIVA49';
+const String _wundergroundOliva49StationKey = 'wunderground:IOLIVA49';
+const String _wundergroundOliva49StationName = 'WU Platja d\'Oliva IOLIVA49';
+const double _wundergroundOliva49StationLat = 38.89;
+const double _wundergroundOliva49StationLon = -0.047;
+
 const String _weathercloudPilesVjStationId = '6074243991';
 const String _weathercloudPilesVjStationKey = 'weathercloud:6074243991';
 const String _weathercloudPilesVjStationName = 'Weathercloud vj';
@@ -277,6 +289,84 @@ const String _weathercloudLesDevesesStationName =
     'Weathercloud Platja de les Deveses';
 const double _weathercloudLesDevesesStationLat = 38.8808333333;
 const double _weathercloudLesDevesesStationLon = -0.0305555556;
+
+const String _wundergroundDenia15StationId = 'IDNIA15';
+const String _wundergroundDenia15StationKey = 'wunderground:IDNIA15';
+const String _wundergroundDenia15StationName = 'WU Les Marines IDNIA15';
+const double _wundergroundDenia15StationLat = 38.853786;
+const double _wundergroundDenia15StationLon = 0.054154;
+
+const String _wundergroundElsPoblets7StationId = 'IELSPO7';
+const String _wundergroundElsPoblets7StationKey = 'wunderground:IELSPO7';
+const String _wundergroundElsPoblets7StationName = 'WU Els Poblets IELSPO7';
+const double _wundergroundElsPoblets7StationLat = 38.858095;
+const double _wundergroundElsPoblets7StationLon = 0.019308;
+
+const String _wundergroundElsPoblets8StationId = 'IELSPO8';
+const String _wundergroundElsPoblets8StationKey = 'wunderground:IELSPO8';
+const String _wundergroundElsPoblets8StationName = 'WU Mira-rosa IELSPO8';
+const double _wundergroundElsPoblets8StationLat = 38.860568;
+const double _wundergroundElsPoblets8StationLon = 0.006804;
+
+const String _wundergroundElVerger21StationId = 'IELVER21';
+const String _wundergroundElVerger21StationKey = 'wunderground:IELVER21';
+const String _wundergroundElVerger21StationName = 'WU El Verger IELVER21';
+const double _wundergroundElVerger21StationLat = 38.862;
+const double _wundergroundElVerger21StationLon = -0.001;
+
+const String _wundergroundElsPoblets5StationId = 'IELSPO5';
+const String _wundergroundElsPoblets5StationKey = 'wunderground:IELSPO5';
+const String _wundergroundElsPoblets5StationName = 'WU Els Poblets IELSPO5';
+const double _wundergroundElsPoblets5StationLat = 38.858;
+const double _wundergroundElsPoblets5StationLon = 0.007;
+
+const String _wundergroundElsPoblets14StationId = 'IELSPO14';
+const String _wundergroundElsPoblets14StationKey = 'wunderground:IELSPO14';
+const String _wundergroundElsPoblets14StationName = 'WU Mira-rosa IELSPO14';
+const double _wundergroundElsPoblets14StationLat = 38.857033;
+const double _wundergroundElsPoblets14StationLon = 0.010607;
+
+const String _wundergroundDenia157StationId = 'IDNIA157';
+const String _wundergroundDenia157StationKey = 'wunderground:IDNIA157';
+const String _wundergroundDenia157StationName = 'WU Les Marines IDNIA157';
+const double _wundergroundDenia157StationLat = 38.852;
+const double _wundergroundDenia157StationLon = 0.076;
+
+const String _wundergroundDenia70StationId = 'IDNIA70';
+const String _wundergroundDenia70StationKey = 'wunderground:IDNIA70';
+const String _wundergroundDenia70StationName = 'WU Les Marines IDNIA70';
+const double _wundergroundDenia70StationLat = 38.852446;
+const double _wundergroundDenia70StationLon = 0.090378;
+
+const String _wundergroundDenia123StationId = 'IDNIA123';
+const String _wundergroundDenia123StationKey = 'wunderground:IDNIA123';
+const String _wundergroundDenia123StationName = 'WU Les Marines IDNIA123';
+const double _wundergroundDenia123StationLat = 38.849;
+const double _wundergroundDenia123StationLon = 0.092;
+
+const String _wundergroundDenia121StationId = 'IDNIA121';
+const String _wundergroundDenia121StationKey = 'wunderground:IDNIA121';
+const String _wundergroundDenia121StationName = 'WU Denia IDNIA121';
+const double _wundergroundDenia121StationLat = 38.84145;
+const double _wundergroundDenia121StationLon = 0.113415;
+
+const String _wundergroundDenia35StationId = 'IDNIA35';
+const String _wundergroundDenia35StationKey = 'wunderground:IDNIA35';
+const String _wundergroundDenia35StationName = 'WU Denia IDNIA35';
+const double _wundergroundDenia35StationLat = 38.836;
+const double _wundergroundDenia35StationLon = 0.119;
+
+const String _wundergroundDenia142StationId = 'IDNIA142';
+const String _wundergroundDenia142StationKey = 'wunderground:IDNIA142';
+const String _wundergroundDenia142StationName = 'WU Denia IDNIA142';
+const double _wundergroundDenia142StationLat = 38.831654;
+const double _wundergroundDenia142StationLon = 0.14471;
+
+const String _wundergroundDenia140StationId = 'IDNIA140';
+const String _wundergroundDenia140StationKey = 'wunderground:IDNIA140';
+const String _wundergroundDenia140StationName = 'WU Rotes IDNIA140';
+const double _wundergroundDenia140StationLat = 38.822;
+const double _wundergroundDenia140StationLon = 0.15;
 
 const String _meteoclimaticDeniaSantaLlusiaStationId = 'ESPVA0300000003700F';
 const String _meteoclimaticDeniaSantaLlusiaStationKey =

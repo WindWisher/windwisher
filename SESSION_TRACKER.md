@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 220h 22m`.
+- `Total historico minimo consolidado del proyecto: 221h 17m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -30,10 +30,11 @@
   - bloque consolidado adicional en `2026-05-06`: `+1h 25m` reales observables (`Spots: spot patron Oliva Canal, capacidades replicables y tablas forecast por proveedor`)
   - bloque consolidado adicional en `2026-05-20`: `+2h 15m` reales aproximados (`El Perellonet: live stations, Meteoclimatic, backend safety and webcam review`)
   - bloque consolidado adicional en `2026-05-27`: `+35m` reales aproximados (`Les Deveses / Molins: Xuss history and alarms`)
+  - bloque consolidado adicional en `2026-05-27`: `+55m` reales aproximados (`Les Deveses and Molins WU stations plus Weathercloud direction correction`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-05-27`: `+35m` reales aproximados (`Les Deveses / Molins: Xuss history and alarms`).
+  - ultima consolidacion manual anadida el `2026-05-27`: `+55m` reales aproximados (`Les Deveses and Molins WU stations plus Weathercloud direction correction`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -52,6 +53,42 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-05-27 - Les Deveses and Molins: WU stations and Weathercloud direction correction
+
+- Bloque consolidado adicional: `+55m` reales aproximados.
+- Medicion real usada:
+  - tramo de trabajo efectivo dedicado a altas WU, validacion de lecturas reales, despliegues Supabase y correccion de direccion,
+  - no incluye esperas largas ni pausas externas.
+- Live / Denia - Les Deveses:
+  - anadidas `WU Deveses IDNIA129` y `WU Platja d'Oliva IOLIVA49` al perfil Live de Les Deveses,
+  - comprobado que ambas estaciones devuelven viento actual desde Wunderground,
+  - conectadas ambas estaciones al `spot-live-observation-collector` para persistencia backend.
+- Live / Denia - Punta Els Molins:
+  - anadidas estaciones Wunderground solicitadas al selector Live del spot:
+    - `IDNIA15`, `IELSPO7`, `IELSPO8`, `IELVER21`, `IELSPO5`, `IELSPO14`, `IDNIA157`, `IDNIA70`, `IDNIA123`, `IDNIA121`, `IDNIA35`, `IDNIA142` y `IDNIA140`,
+  - retirada `IDNIA49` tras comprobar que estaba marcando viento `0`,
+  - conectadas las estaciones mantenidas al collector backend,
+  - desplegado `spot-live-observation-collector` y validado por ejecucion real que las 13 estaciones mantenidas entran como `collected`.
+- Weathercloud / Les Deveses:
+  - investigada la direccion de `Weathercloud Platja de les Deveses` (`weathercloud:5629095484`),
+  - confirmado que la app estaba leyendo el dato bruto correctamente, pero la veleta parece configurada invertida por el propietario,
+  - aplicada correccion especifica de `+180 grados` para esta estacion en:
+    - lectura live directa de Weathercloud,
+    - historico leido desde Supabase,
+    - evaluacion de alarmas en `spot-alarm-runner`,
+  - mantenido el dato bruto sin corregir en Supabase para no mezclar historico corregido/no corregido dentro de la tabla.
+- Alarmas:
+  - confirmado que las estaciones WU nuevas quedan cubiertas por el soporte generico `WUNDERGROUND` del runner,
+  - desplegado `spot-alarm-runner` con la correccion de direccion de `weathercloud:5629095484`,
+  - ejecutado manualmente el runner y confirmado `ok: true`.
+- Verificacion:
+  - `flutter analyze` limpio en los modulos Live y clientes tocados,
+  - `deno check` limpio en `spot-live-observation-collector` y `spot-alarm-runner`,
+  - `spot-live-observation-collector` desplegado tras las altas WU,
+  - `spot-alarm-runner` desplegado tras la correccion de direccion,
+  - `local.env.json` sigue ignorado por git y no se versiona,
+  - `.tmp/` queda fuera de git como carpeta temporal de investigacion.
 
 ### 2026-05-27 - Les Deveses / Molins: Xuss history and alarms
 
