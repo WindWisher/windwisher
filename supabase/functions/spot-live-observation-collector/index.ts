@@ -172,6 +172,24 @@ const stations: LiveStationConfig[] = [
     stationName: "WU Platja d'Oliva IOLIVA49",
   },
   {
+    provider: "WUNDERGROUND",
+    stationKey: "wunderground:ICALP39",
+    stationId: "ICALP39",
+    stationName: "WU Calp San Gabriel ICALP39",
+  },
+  {
+    provider: "WUNDERGROUND",
+    stationKey: "wunderground:ICALP32",
+    stationId: "ICALP32",
+    stationName: "WU Calp ICALP32",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:5819243918",
+    stationId: "5819243918",
+    stationName: "Weathercloud Calpe",
+  },
+  {
     provider: "WEATHERCLOUD",
     stationKey: "weathercloud:4026174225",
     stationId: "4026174225",

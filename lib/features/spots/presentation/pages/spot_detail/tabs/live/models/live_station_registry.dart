@@ -394,6 +394,24 @@ const String _avametCalpToixMascaratStationName = 'Calp Toix - Mascarat';
 const double _avametCalpToixMascaratStationLat = 38.6362916667;
 const double _avametCalpToixMascaratStationLon = 0.011725;
 
+const String _wundergroundCalp39StationId = 'ICALP39';
+const String _wundergroundCalp39StationKey = 'wunderground:ICALP39';
+const String _wundergroundCalp39StationName = 'WU Calp San Gabriel ICALP39';
+const double _wundergroundCalp39StationLat = 38.641979;
+const double _wundergroundCalp39StationLon = 0.052143;
+
+const String _wundergroundCalp32StationId = 'ICALP32';
+const String _wundergroundCalp32StationKey = 'wunderground:ICALP32';
+const String _wundergroundCalp32StationName = 'WU Calp ICALP32';
+const double _wundergroundCalp32StationLat = 38.639887;
+const double _wundergroundCalp32StationLon = 0.041167;
+
+const String _weathercloudCalpeStationId = '5819243918';
+const String _weathercloudCalpeStationKey = 'weathercloud:5819243918';
+const String _weathercloudCalpeStationName = 'Weathercloud Calpe';
+const double _weathercloudCalpeStationLat = 38.6436111111;
+const double _weathercloudCalpeStationLon = 0.06;
+
 const String _avametAlteaClubNauticoStationId = 'c31m018e06';
 const String _avametAlteaClubNauticoStationKey = 'avamet:c31m018e06';
 const String _avametAlteaClubNauticoStationName = 'Altea Club Nautico';

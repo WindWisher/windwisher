@@ -101,7 +101,7 @@ class WeathercloudLiveClient {
         data['wdiravg_current'],
         lastUpdateEpoch,
         allowNegative: false,
-      )._correctWeathercloudWindDirection(deviceId),
+      )._normalizeWeathercloudWindDirection(),
       gustKnots: _mpsToKnots(
         _readFreshPairNumber(data['wspdhi_current'], lastUpdateEpoch),
       ),
@@ -225,20 +225,15 @@ class WeathercloudLiveClient {
 }
 
 extension on double? {
-  int? _correctWeathercloudWindDirection(String deviceId) {
+  int? _normalizeWeathercloudWindDirection() {
     final value = this;
     if (value == null) {
       return null;
     }
-    final correction = _weathercloudWindDirectionCorrectionsDeg[deviceId] ?? 0;
-    final rounded = (value + correction).round();
+    final rounded = value.round();
     return ((rounded % 360) + 360) % 360;
   }
 }
-
-const Map<String, int> _weathercloudWindDirectionCorrectionsDeg = {
-  '5629095484': 180,
-};
 
 class _WeathercloudSession {
   const _WeathercloudSession({

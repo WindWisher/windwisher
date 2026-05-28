@@ -334,6 +334,62 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     _addLiveStationMetadata(
       stations: stations,
       seenKeys: seenKeys,
+      stationKey: _avametDeniaClubNauticoStationKey,
+      stationName: _avametDeniaClubNauticoStationName,
+      provider: 'AVAMET',
+      stationId: _avametDeniaClubNauticoStationId,
+      latitude: _avametDeniaClubNauticoStationLat,
+      longitude: _avametDeniaClubNauticoStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametDeniaLesRotesStationKey,
+      stationName: _avametDeniaLesRotesStationName,
+      provider: 'AVAMET',
+      stationId: _avametDeniaLesRotesStationId,
+      latitude: _avametDeniaLesRotesStationLat,
+      longitude: _avametDeniaLesRotesStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _avametDeniaMontgoCalafatStationKey,
+      stationName: _avametDeniaMontgoCalafatStationName,
+      provider: 'AVAMET',
+      stationId: _avametDeniaMontgoCalafatStationId,
+      latitude: _avametDeniaMontgoCalafatStationLat,
+      longitude: _avametDeniaMontgoCalafatStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _meteoclimaticDeniaSantaLlusiaStationKey,
+      stationName: _meteoclimaticDeniaSantaLlusiaStationName,
+      provider: 'METEOCLIMATIC',
+      stationId: _meteoclimaticDeniaSantaLlusiaStationId,
+      latitude: _meteoclimaticDeniaSantaLlusiaStationLat,
+      longitude: _meteoclimaticDeniaSantaLlusiaStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+  }
+
+  void _addDeniaPuntaMolinsWundergroundStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
       stationKey: _wundergroundDenia15StationKey,
       stationName: _wundergroundDenia15StationName,
       provider: 'WUNDERGROUND',
@@ -487,54 +543,6 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
       referenceLatitude: latitude,
       referenceLongitude: longitude,
     );
-    _addLiveStationMetadata(
-      stations: stations,
-      seenKeys: seenKeys,
-      stationKey: _avametDeniaClubNauticoStationKey,
-      stationName: _avametDeniaClubNauticoStationName,
-      provider: 'AVAMET',
-      stationId: _avametDeniaClubNauticoStationId,
-      latitude: _avametDeniaClubNauticoStationLat,
-      longitude: _avametDeniaClubNauticoStationLon,
-      referenceLatitude: latitude,
-      referenceLongitude: longitude,
-    );
-    _addLiveStationMetadata(
-      stations: stations,
-      seenKeys: seenKeys,
-      stationKey: _avametDeniaLesRotesStationKey,
-      stationName: _avametDeniaLesRotesStationName,
-      provider: 'AVAMET',
-      stationId: _avametDeniaLesRotesStationId,
-      latitude: _avametDeniaLesRotesStationLat,
-      longitude: _avametDeniaLesRotesStationLon,
-      referenceLatitude: latitude,
-      referenceLongitude: longitude,
-    );
-    _addLiveStationMetadata(
-      stations: stations,
-      seenKeys: seenKeys,
-      stationKey: _avametDeniaMontgoCalafatStationKey,
-      stationName: _avametDeniaMontgoCalafatStationName,
-      provider: 'AVAMET',
-      stationId: _avametDeniaMontgoCalafatStationId,
-      latitude: _avametDeniaMontgoCalafatStationLat,
-      longitude: _avametDeniaMontgoCalafatStationLon,
-      referenceLatitude: latitude,
-      referenceLongitude: longitude,
-    );
-    _addLiveStationMetadata(
-      stations: stations,
-      seenKeys: seenKeys,
-      stationKey: _meteoclimaticDeniaSantaLlusiaStationKey,
-      stationName: _meteoclimaticDeniaSantaLlusiaStationName,
-      provider: 'METEOCLIMATIC',
-      stationId: _meteoclimaticDeniaSantaLlusiaStationId,
-      latitude: _meteoclimaticDeniaSantaLlusiaStationLat,
-      longitude: _meteoclimaticDeniaSantaLlusiaStationLon,
-      referenceLatitude: latitude,
-      referenceLongitude: longitude,
-    );
   }
 
   void _addDeniaPuntaMolinsLiveStations({
@@ -578,6 +586,12 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
       longitude: _weathercloudPaqueboteStationLon,
       referenceLatitude: latitude,
       referenceLongitude: longitude,
+    );
+    _addDeniaPuntaMolinsWundergroundStations(
+      latitude: latitude,
+      longitude: longitude,
+      stations: stations,
+      seenKeys: seenKeys,
     );
     _addLiveStationMetadata(
       stations: stations,
@@ -692,6 +706,42 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
       stationId: _avametCalpToixMascaratStationId,
       latitude: _avametCalpToixMascaratStationLat,
       longitude: _avametCalpToixMascaratStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _wundergroundCalp39StationKey,
+      stationName: _wundergroundCalp39StationName,
+      provider: 'WUNDERGROUND',
+      stationId: _wundergroundCalp39StationId,
+      latitude: _wundergroundCalp39StationLat,
+      longitude: _wundergroundCalp39StationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _wundergroundCalp32StationKey,
+      stationName: _wundergroundCalp32StationName,
+      provider: 'WUNDERGROUND',
+      stationId: _wundergroundCalp32StationId,
+      latitude: _wundergroundCalp32StationLat,
+      longitude: _wundergroundCalp32StationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _weathercloudCalpeStationKey,
+      stationName: _weathercloudCalpeStationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudCalpeStationId,
+      latitude: _weathercloudCalpeStationLat,
+      longitude: _weathercloudCalpeStationLon,
       referenceLatitude: latitude,
       referenceLongitude: longitude,
     );

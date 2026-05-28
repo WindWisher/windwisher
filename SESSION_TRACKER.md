@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 221h 17m`.
+- `Total historico minimo consolidado del proyecto: 222h 27m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -31,10 +31,11 @@
   - bloque consolidado adicional en `2026-05-20`: `+2h 15m` reales aproximados (`El Perellonet: live stations, Meteoclimatic, backend safety and webcam review`)
   - bloque consolidado adicional en `2026-05-27`: `+35m` reales aproximados (`Les Deveses / Molins: Xuss history and alarms`)
   - bloque consolidado adicional en `2026-05-27`: `+55m` reales aproximados (`Les Deveses and Molins WU stations plus Weathercloud direction correction`)
+  - bloque consolidado adicional en `2026-05-28`: `+1h 10m` reales aproximados (`Calpe Live stations, Les Deveses cleanup and Weathercloud direction rollback`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-05-27`: `+55m` reales aproximados (`Les Deveses and Molins WU stations plus Weathercloud direction correction`).
+  - ultima consolidacion manual anadida el `2026-05-28`: `+1h 10m` reales aproximados (`Calpe Live stations, Les Deveses cleanup and Weathercloud direction rollback`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -53,6 +54,36 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-05-28 - Calpe Live, Les Deveses cleanup and Weathercloud direction rollback
+
+- Bloque consolidado adicional: `+1h 10m` reales aproximados.
+- Medicion real usada:
+  - tramo de trabajo efectivo dedicado a altas Live, validaciones backend, limpieza de perfiles y despliegue de Edge Function,
+  - no incluye esperas largas ni pausas externas.
+- Live / Calpe:
+  - anadidas `WU Calp San Gabriel ICALP39` y `WU Calp ICALP32` al selector Live de Calpe,
+  - anadida `Weathercloud Calpe` (`weathercloud:5819243918`) como fuente Weathercloud disponible,
+  - conectadas las tres estaciones al `spot-live-observation-collector`,
+  - desplegado el collector y validado por invocacion real que las tres fuentes entran como `collected`,
+  - comprobado que el soporte generico de alarmas cubre `WUNDERGROUND` y `WEATHERCLOUD` para estas estaciones.
+- Live / Denia - Les Deveses y Punta Els Molins:
+  - detectado que las estaciones WU de Punta Els Molins se habian colado en el perfil Live de Les Deveses,
+  - extraida esa lista a un helper especifico de Molins para evitar mezclas futuras,
+  - Les Deveses queda sin las WU de Molins en su selector,
+  - Punta Els Molins conserva las WU solicitadas dentro de su perfil correcto.
+- Weathercloud / Les Deveses:
+  - deshecha la correccion temporal de `+180 grados` para `Weathercloud Platja de les Deveses` (`weathercloud:5629095484`),
+  - retirada la correccion tanto de la aguja/live como del historico,
+  - retirada tambien la correccion del `spot-alarm-runner`,
+  - desplegado `spot-alarm-runner` para que las alarmas usen la direccion original de Weathercloud.
+- Verificacion:
+  - `flutter analyze` limpio en los servicios Weathercloud/historico y modulos Live tocados,
+  - `deno check` limpio en `spot-live-observation-collector` y `spot-alarm-runner`,
+  - `spot-live-observation-collector` desplegado tras las altas de Calpe,
+  - `spot-alarm-runner` desplegado tras retirar la correccion de direccion,
+  - `local.env.json` sigue ignorado por git y no se versiona,
+  - `.tmp/` queda fuera de git como carpeta temporal de investigacion.
 
 ### 2026-05-27 - Les Deveses and Molins: WU stations and Weathercloud direction correction
 

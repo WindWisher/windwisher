@@ -55,7 +55,7 @@ class SpotLiveObservationHistoryClient {
 
     final points = rows
         .whereType<Map<String, dynamic>>()
-        .map((row) => _parsePoint(row, stationKey: stationKey))
+        .map(_parsePoint)
         .nonNulls
         .toList(growable: false);
     debugPrint(
@@ -166,10 +166,7 @@ class SpotLiveObservationHistoryClient {
     }
   }
 
-  SpotLiveObservationHistoryPoint? _parsePoint(
-    Map<String, dynamic> row, {
-    required String stationKey,
-  }) {
+  SpotLiveObservationHistoryPoint? _parsePoint(Map<String, dynamic> row) {
     final observedAt = DateTime.tryParse(row['observed_at'] as String? ?? '');
     if (observedAt == null) {
       return null;
@@ -179,8 +176,7 @@ class SpotLiveObservationHistoryClient {
       windKnots: _readDouble(row['wind_knots']),
       windMinKnots: _readDouble(row['wind_min_knots']),
       gustKnots: _readDouble(row['gust_knots']),
-      windDirectionDeg: _correctWindDirectionDeg(
-        stationKey,
+      windDirectionDeg: _normalizeDirectionDeg(
         _readDouble(row['wind_direction_deg']),
       ),
       tempC: _readDouble(row['temp_c']),
@@ -200,20 +196,11 @@ class SpotLiveObservationHistoryClient {
     return null;
   }
 
-  int? _correctWindDirectionDeg(String stationKey, double? value) {
+  int? _normalizeDirectionDeg(double? value) {
     if (value == null) {
       return null;
     }
-    final correction = _windDirectionCorrectionsDeg[stationKey] ?? 0;
-    return _normalizeDirectionDeg(value + correction);
-  }
-
-  int _normalizeDirectionDeg(double value) {
     final rounded = value.round();
     return ((rounded % 360) + 360) % 360;
   }
 }
-
-const Map<String, int> _windDirectionCorrectionsDeg = {
-  'weathercloud:5629095484': 180,
-};
