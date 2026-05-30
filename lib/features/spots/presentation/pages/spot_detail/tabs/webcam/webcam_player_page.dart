@@ -7,6 +7,189 @@ import 'package:windwisher/features/spots/domain/entities/spot_webcam.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/webcam/widgets/webcam_web_embed.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
+
+bool _isSkylineWebcamUrl(String url) {
+  final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+  return host == 'skylinewebcams.com' || host == 'www.skylinewebcams.com';
+}
+
+void _fitSkylineWebcamFrame(WebViewController? controller, String url) {
+  if (controller == null || !_isSkylineWebcamUrl(url)) return;
+  controller.runJavaScript(r'''
+(function () {
+  function fitWebcamFrame() {
+    var webcam = document.querySelector('#webcam');
+    if (!webcam) {
+      return;
+    }
+    if (!document.getElementById('windwisher-skyline-frame-style')) {
+      var style = document.createElement('style');
+      style.id = 'windwisher-skyline-frame-style';
+      style.textContent = `
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+          overflow: hidden !important;
+          background: #000 !important;
+        }
+        body > *:not(.windwisher-skyline-frame-host) {
+          display: none !important;
+        }
+        .windwisher-skyline-frame-host {
+          position: fixed !important;
+          inset: 0 !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #000 !important;
+          z-index: 2147483647 !important;
+        }
+        .windwisher-skyline-frame-host #webcam,
+        .windwisher-skyline-frame-host #skylinewebcams,
+        .windwisher-skyline-frame-host #live,
+        .windwisher-skyline-frame-host .embed-responsive,
+        .windwisher-skyline-frame-host .embed-responsive-16by9,
+        .windwisher-skyline-frame-host .embed-responsive-item {
+          position: absolute !important;
+          inset: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #000 !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    var host = document.querySelector('.windwisher-skyline-frame-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.className = 'windwisher-skyline-frame-host';
+      document.body.appendChild(host);
+    }
+    if (webcam.parentElement !== host) {
+      host.appendChild(webcam);
+    }
+    window.dispatchEvent(new Event('resize'));
+    if (window.player) {
+      if (typeof window.player.resize === 'function') {
+        try {
+          window.player.resize();
+        } catch (e) {}
+      }
+      if (typeof window.player.mute === 'function') {
+        try {
+          window.player.mute();
+        } catch (e) {}
+      }
+      if (typeof window.player.play === 'function') {
+        try {
+          window.player.play();
+        } catch (e) {}
+      }
+    }
+    var video = webcam.querySelector('video');
+    if (video) {
+      video.muted = true;
+      video.playsInline = true;
+      video.setAttribute('muted', 'muted');
+      video.setAttribute('playsinline', 'playsinline');
+      video.setAttribute('webkit-playsinline', 'webkit-playsinline');
+      video.play().catch(function () {});
+    }
+  }
+  fitWebcamFrame();
+  setTimeout(fitWebcamFrame, 250);
+  setTimeout(fitWebcamFrame, 700);
+  setTimeout(fitWebcamFrame, 1600);
+})();
+''');
+}
+
+String _iframeEmbedHtml(String url) {
+  return '''
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+    iframe {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+  <iframe
+    src="$url"
+    frameborder="0"
+    scrolling="no"
+    marginwidth="0"
+    marginheight="0"
+    allow="autoplay; fullscreen"
+    allowfullscreen=""
+    webkitallowfullscreen=""
+    mozallowfullscreen=""
+    oallowfullscreen=""
+    msallowfullscreen=""
+  ></iframe>
+</body>
+</html>
+''';
+}
+
+Future<void> _configureAndroidWebcamController(
+  WebViewController controller,
+  String url,
+) async {
+  if (controller.platform case final AndroidWebViewController android) {
+    await android.setMediaPlaybackRequiresUserGesture(false);
+    await android.setUseWideViewPort(true);
+    await android.setTextZoom(100);
+  }
+}
+
+void _logWebcamConsoleMessage(JavaScriptConsoleMessage message) {
+  if (!kDebugMode) return;
+  debugPrint(
+    'WebcamWebView console level=${message.level.name} '
+    'message="${message.message}"',
+  );
+}
+
+void _logWebcamResourceError(WebResourceError error) {
+  if (!kDebugMode) return;
+  debugPrint(
+    'WebcamWebView resourceError code=${error.errorCode} '
+    'type=${error.errorType} description="${error.description}" '
+    'url=${error.url}',
+  );
+}
+
+void _logWebcamHttpError(HttpResponseError error) {
+  if (!kDebugMode) return;
+  debugPrint(
+    'WebcamWebView httpError status=${error.response?.statusCode} '
+    'url=${error.request?.uri}',
+  );
+}
 
 class WebcamPlayerPage extends StatefulWidget {
   const WebcamPlayerPage({
@@ -20,6 +203,8 @@ class WebcamPlayerPage extends StatefulWidget {
     this.summary,
     this.streamManifestUrl,
     this.previewImageUrl,
+    this.embedAsIframe = false,
+    this.focusIframeUrlContains,
   });
 
   final String webcamName;
@@ -31,6 +216,8 @@ class WebcamPlayerPage extends StatefulWidget {
   final String? summary;
   final String? streamManifestUrl;
   final String? previewImageUrl;
+  final bool embedAsIframe;
+  final String? focusIframeUrlContains;
 
   @override
   State<WebcamPlayerPage> createState() => _WebcamPlayerPageState();
@@ -40,6 +227,8 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
   static const _isFlutterTest = bool.fromEnvironment('FLUTTER_TEST');
   WebViewController? _controller;
   int _loadingProgress = 0;
+  bool _isOpeningRotationFullscreen = false;
+  bool _isSkylinePlayerPreparing = false;
 
   String get _pageUrl =>
       widget.primaryPageUrl ??
@@ -93,7 +282,7 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
     function refreshImage() {
       document.getElementById('webcam-image').src = baseUrl + '?t=' + Date.now();
     }
-    setInterval(refreshImage, 50000);
+    setInterval(refreshImage, 10000);
   </script>
 </body>
 </html>
@@ -165,12 +354,14 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
     }
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setOnConsoleMessage(_logWebcamConsoleMessage)
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (_) {
             if (!mounted) return;
             setState(() {
               _loadingProgress = 0;
+              _isSkylinePlayerPreparing = widget.embedAsIframe;
             });
           },
           onProgress: (progress) {
@@ -184,43 +375,72 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
             setState(() {
               _loadingProgress = 100;
             });
+            _fitSkylineWebcamFrame(_controller, _pageUrl);
+            _finishSkylinePlayerPreparing();
           },
+          onWebResourceError: _logWebcamResourceError,
+          onHttpError: _logWebcamHttpError,
           onNavigationRequest: _handleNavigationRequest,
         ),
       );
+    _loadPlayer();
+  }
+
+  Future<void> _loadPlayer() async {
+    final controller = _controller;
+    if (controller == null) return;
+    if (mounted) {
+      setState(() {
+        _isSkylinePlayerPreparing = widget.embedAsIframe;
+      });
+    }
+    await _configureAndroidWebcamController(controller, _pageUrl);
     if (_streamManifestUrl.isNotEmpty) {
-      _controller!.loadHtmlString(_streamEmbedHtml());
+      controller.loadHtmlString(_streamEmbedHtml());
       return;
     }
     if (_usesDirectImage) {
-      _controller!.loadHtmlString(_directImageEmbedHtml(_pageUrl));
+      controller.loadHtmlString(_directImageEmbedHtml(_pageUrl));
+      return;
+    }
+    if (widget.embedAsIframe) {
+      controller.loadHtmlString(_iframeEmbedHtml(_pageUrl));
       return;
     }
     if (_pageUrl.isNotEmpty) {
-      _controller!.loadRequest(Uri.parse(_pageUrl));
+      controller.loadRequest(Uri.parse(_pageUrl));
     }
   }
 
-  void _openFullscreen() {
-    Navigator.of(context).push(
+  Future<void> _finishSkylinePlayerPreparing() async {
+    if (!widget.embedAsIframe) return;
+    await Future<void>.delayed(const Duration(milliseconds: 2600));
+    if (!mounted) return;
+    setState(() {
+      _isSkylinePlayerPreparing = false;
+    });
+  }
+
+  Future<void> _openFullscreen({bool forcePortraitOnClose = false}) async {
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => _WebcamFullscreenView(
           webcamName: widget.webcamName,
           streamManifestUrl: _streamManifestUrl,
           previewImageUrl: widget.previewImageUrl,
           pageUrl: _pageUrl,
+          embedAsIframe: widget.embedAsIframe,
+          focusIframeUrlContains: widget.focusIframeUrlContains,
           directImageHtml: _usesDirectImage
               ? _directImageEmbedHtml(_pageUrl)
               : null,
+          forcePortraitOnClose: forcePortraitOnClose,
         ),
       ),
     );
-  }
-
-  Future<void> _forcePortraitMode() async {
-    await SystemChrome.setPreferredOrientations(const [
-      DeviceOrientation.portraitUp,
-    ]);
+    if (!mounted) return;
+    _isOpeningRotationFullscreen = false;
+    _loadPlayer();
   }
 
   NavigationDecision _handleNavigationRequest(NavigationRequest request) {
@@ -301,11 +521,15 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
               ? WebcamWebEmbed(
                   html: _streamManifestUrl.isNotEmpty
                       ? _streamEmbedHtml()
+                      : widget.embedAsIframe
+                      ? _iframeEmbedHtml(_pageUrl)
                       : _usesDirectImage
                       ? _directImageEmbedHtml(_pageUrl)
                       : null,
                   url:
                       _streamManifestUrl.isEmpty &&
+                          !_isSkylineWebcamUrl(_pageUrl) &&
+                          !widget.embedAsIframe &&
                           !_usesDirectImage &&
                           _pageUrl.isNotEmpty
                       ? _pageUrl
@@ -355,6 +579,22 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
               minHeight: 3,
             ),
           ),
+        if (_isSkylinePlayerPreparing)
+          Positioned.fill(
+            child: ColoredBox(
+              color: Colors.black,
+              child: Center(
+                child: SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Colors.white.withValues(alpha: 0.86),
+                  ),
+                ),
+              ),
+            ),
+          ),
         if (showFullscreenButton && !kIsWeb)
           Positioned(
             right: 10,
@@ -373,37 +613,18 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
     );
   }
 
-  Widget _buildFullscreenByRotation() {
+  Widget _buildRotationFullscreenPlaceholder() {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          _buildPlayerSurface(fill: true, showFullscreenButton: false),
-          if (!kIsWeb)
-            Positioned(
-              top: AppSpacing.sm,
-              right: AppSpacing.sm,
-              child: SafeArea(
-                child: SizedBox(
-                  width: 38,
-                  height: 38,
-                  child: FloatingActionButton(
-                    mini: true,
-                    heroTag: 'webcamRotateFullscreenClose',
-                    tooltip: 'Salir de fullscreen',
-                    elevation: 0,
-                    highlightElevation: 0,
-                    backgroundColor: Colors.black.withValues(alpha: 0.28),
-                    foregroundColor: Colors.white.withValues(alpha: 0.92),
-                    shape: const CircleBorder(),
-                    onPressed: _forcePortraitMode,
-                    child: const Icon(Icons.close_rounded, size: 18),
-                  ),
-                ),
-              ),
-            ),
-        ],
+      body: Center(
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            color: Colors.white.withValues(alpha: 0.86),
+          ),
+        ),
       ),
     );
   }
@@ -412,7 +633,14 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
   Widget build(BuildContext context) {
     final orientation = MediaQuery.orientationOf(context);
     if (!kIsWeb && orientation == Orientation.landscape) {
-      return _buildFullscreenByRotation();
+      if (!_isOpeningRotationFullscreen) {
+        _isOpeningRotationFullscreen = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _openFullscreen(forcePortraitOnClose: true);
+        });
+      }
+      return _buildRotationFullscreenPlaceholder();
     }
     final infoLines = <String>[
       widget.source,
@@ -468,6 +696,9 @@ class _WebcamFullscreenView extends StatelessWidget {
     required this.webcamName,
     required this.pageUrl,
     required this.streamManifestUrl,
+    required this.forcePortraitOnClose,
+    required this.embedAsIframe,
+    this.focusIframeUrlContains,
     this.directImageHtml,
     this.previewImageUrl,
   });
@@ -475,6 +706,9 @@ class _WebcamFullscreenView extends StatelessWidget {
   final String webcamName;
   final String pageUrl;
   final String streamManifestUrl;
+  final bool forcePortraitOnClose;
+  final bool embedAsIframe;
+  final String? focusIframeUrlContains;
   final String? directImageHtml;
   final String? previewImageUrl;
 
@@ -544,6 +778,9 @@ class _WebcamFullscreenView extends StatelessWidget {
       directImageHtml: directImageHtml,
       previewImageUrl: previewImageUrl,
       streamEmbedHtml: _streamEmbedHtml(),
+      forcePortraitOnClose: forcePortraitOnClose,
+      embedAsIframe: embedAsIframe,
+      focusIframeUrlContains: focusIframeUrlContains,
     );
   }
 }
@@ -554,6 +791,9 @@ class _WebcamFullscreenScaffold extends StatefulWidget {
     required this.pageUrl,
     required this.streamManifestUrl,
     required this.streamEmbedHtml,
+    required this.forcePortraitOnClose,
+    required this.embedAsIframe,
+    this.focusIframeUrlContains,
     this.directImageHtml,
     this.previewImageUrl,
   });
@@ -562,6 +802,9 @@ class _WebcamFullscreenScaffold extends StatefulWidget {
   final String pageUrl;
   final String streamManifestUrl;
   final String streamEmbedHtml;
+  final bool forcePortraitOnClose;
+  final bool embedAsIframe;
+  final String? focusIframeUrlContains;
   final String? directImageHtml;
   final String? previewImageUrl;
 
@@ -572,6 +815,7 @@ class _WebcamFullscreenScaffold extends StatefulWidget {
 
 class _WebcamFullscreenScaffoldState extends State<_WebcamFullscreenScaffold> {
   WebViewController? _controller;
+  bool _isSkylinePlayerPreparing = false;
 
   @override
   void initState() {
@@ -584,27 +828,56 @@ class _WebcamFullscreenScaffoldState extends State<_WebcamFullscreenScaffold> {
       ]);
       _controller = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setOnConsoleMessage(_logWebcamConsoleMessage)
         ..setNavigationDelegate(
-          NavigationDelegate(onNavigationRequest: _handleNavigationRequest),
+          NavigationDelegate(
+            onPageStarted: (_) {
+              if (!mounted) return;
+              setState(() {
+                _isSkylinePlayerPreparing = widget.embedAsIframe;
+              });
+            },
+            onPageFinished: (_) {
+              _fitSkylineWebcamFrame(_controller, widget.pageUrl);
+              _finishSkylinePlayerPreparing();
+            },
+            onWebResourceError: _logWebcamResourceError,
+            onHttpError: _logWebcamHttpError,
+            onNavigationRequest: _handleNavigationRequest,
+          ),
         );
-      if (widget.streamManifestUrl.isNotEmpty) {
-        _controller!.loadHtmlString(widget.streamEmbedHtml);
-      } else if (widget.directImageHtml != null) {
-        _controller!.loadHtmlString(widget.directImageHtml!);
-      } else if (widget.pageUrl.isNotEmpty) {
-        _controller!.loadRequest(Uri.parse(widget.pageUrl));
-      }
+      _loadFullscreenPlayer();
     }
+  }
+
+  Future<void> _loadFullscreenPlayer() async {
+    final controller = _controller;
+    if (controller == null) return;
+    await _configureAndroidWebcamController(controller, widget.pageUrl);
+    if (widget.streamManifestUrl.isNotEmpty) {
+      await controller.loadHtmlString(widget.streamEmbedHtml);
+    } else if (widget.directImageHtml != null) {
+      await controller.loadHtmlString(widget.directImageHtml!);
+    } else if (widget.embedAsIframe) {
+      await controller.loadHtmlString(_iframeEmbedHtml(widget.pageUrl));
+    } else if (widget.pageUrl.isNotEmpty) {
+      await controller.loadRequest(Uri.parse(widget.pageUrl));
+    }
+  }
+
+  Future<void> _finishSkylinePlayerPreparing() async {
+    if (!widget.embedAsIframe) return;
+    await Future<void>.delayed(const Duration(milliseconds: 2600));
+    if (!mounted) return;
+    setState(() {
+      _isSkylinePlayerPreparing = false;
+    });
   }
 
   Future<void> _closeFullscreen() async {
     if (!kIsWeb) {
       await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      await SystemChrome.setPreferredOrientations(const [
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
+      await _restoreOrientations();
     }
     if (!mounted) return;
     Navigator.of(context).pop();
@@ -614,13 +887,22 @@ class _WebcamFullscreenScaffoldState extends State<_WebcamFullscreenScaffold> {
   void dispose() {
     if (!kIsWeb) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      SystemChrome.setPreferredOrientations(const [
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
+      _restoreOrientations();
     }
     super.dispose();
+  }
+
+  Future<void> _restoreOrientations() {
+    if (widget.forcePortraitOnClose) {
+      return SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.portraitUp,
+      ]);
+    }
+    return SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
   }
 
   NavigationDecision _handleNavigationRequest(NavigationRequest request) {
@@ -697,11 +979,7 @@ class _WebcamFullscreenScaffoldState extends State<_WebcamFullscreenScaffold> {
       onPopInvokedWithResult: (didPop, result) {
         if (!kIsWeb) {
           SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-          SystemChrome.setPreferredOrientations(const [
-            DeviceOrientation.portraitUp,
-            DeviceOrientation.landscapeLeft,
-            DeviceOrientation.landscapeRight,
-          ]);
+          _restoreOrientations();
         }
       },
       child: Scaffold(
@@ -713,9 +991,13 @@ class _WebcamFullscreenScaffoldState extends State<_WebcamFullscreenScaffold> {
               WebcamWebEmbed(
                 html: widget.streamManifestUrl.isNotEmpty
                     ? widget.streamEmbedHtml
+                    : widget.embedAsIframe
+                    ? _iframeEmbedHtml(widget.pageUrl)
                     : widget.directImageHtml,
                 url:
                     widget.streamManifestUrl.isEmpty &&
+                        !_isSkylineWebcamUrl(widget.pageUrl) &&
+                        !widget.embedAsIframe &&
                         widget.directImageHtml == null &&
                         widget.pageUrl.isNotEmpty
                     ? widget.pageUrl
@@ -725,6 +1007,22 @@ class _WebcamFullscreenScaffoldState extends State<_WebcamFullscreenScaffold> {
               WebViewWidget(controller: _controller!)
             else
               const ColoredBox(color: Colors.black),
+            if (_isSkylinePlayerPreparing)
+              Positioned.fill(
+                child: ColoredBox(
+                  color: Colors.black,
+                  child: Center(
+                    child: SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white.withValues(alpha: 0.86),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             if (!kIsWeb)
               Positioned(
                 top: AppSpacing.sm,

@@ -8,6 +8,8 @@ class SpotWebcam {
     this.summary,
     this.streamManifestUrl,
     this.previewImageUrl,
+    this.embedAsIframe = false,
+    this.focusIframeUrlContains,
     this.locationLabel,
     this.latitude,
     this.longitude,
@@ -22,6 +24,8 @@ class SpotWebcam {
   final String? summary;
   final String? streamManifestUrl;
   final String? previewImageUrl;
+  final bool embedAsIframe;
+  final String? focusIframeUrlContains;
   final String? locationLabel;
   final double? latitude;
   final double? longitude;

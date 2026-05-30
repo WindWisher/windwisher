@@ -137,12 +137,6 @@ const stations: LiveStationConfig[] = [
   },
   {
     provider: "WUNDERGROUND",
-    stationKey: "wunderground:IDNIA121",
-    stationId: "IDNIA121",
-    stationName: "WU Denia IDNIA121",
-  },
-  {
-    provider: "WUNDERGROUND",
     stationKey: "wunderground:IDNIA35",
     stationId: "IDNIA35",
     stationName: "WU Denia IDNIA35",

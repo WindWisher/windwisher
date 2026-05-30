@@ -126,6 +126,8 @@ extension _SpotDetailWebcamSection on _SpotDetailPageState {
           summary: webcam.summary,
           streamManifestUrl: webcam.streamManifestUrl,
           previewImageUrl: webcam.previewImageUrl,
+          embedAsIframe: webcam.embedAsIframe,
+          focusIframeUrlContains: webcam.focusIframeUrlContains,
           relatedPages: relatedPages,
         ),
       ),

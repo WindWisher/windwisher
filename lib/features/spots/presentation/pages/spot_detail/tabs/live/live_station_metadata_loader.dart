@@ -498,18 +498,6 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     _addLiveStationMetadata(
       stations: stations,
       seenKeys: seenKeys,
-      stationKey: _wundergroundDenia121StationKey,
-      stationName: _wundergroundDenia121StationName,
-      provider: 'WUNDERGROUND',
-      stationId: _wundergroundDenia121StationId,
-      latitude: _wundergroundDenia121StationLat,
-      longitude: _wundergroundDenia121StationLon,
-      referenceLatitude: latitude,
-      referenceLongitude: longitude,
-    );
-    _addLiveStationMetadata(
-      stations: stations,
-      seenKeys: seenKeys,
       stationKey: _wundergroundDenia35StationKey,
       stationName: _wundergroundDenia35StationName,
       provider: 'WUNDERGROUND',
@@ -551,18 +539,6 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     required List<_NearbyStation> stations,
     required Set<String> seenKeys,
   }) {
-    _addLiveStationMetadata(
-      stations: stations,
-      seenKeys: seenKeys,
-      stationKey: _avametDeniaPlatjaPegoStationKey,
-      stationName: _avametDeniaPlatjaPegoStationName,
-      provider: 'AVAMET',
-      stationId: _avametDeniaPlatjaPegoStationId,
-      latitude: _avametDeniaPlatjaPegoStationLat,
-      longitude: _avametDeniaPlatjaPegoStationLon,
-      referenceLatitude: latitude,
-      referenceLongitude: longitude,
-    );
     _addLiveStationMetadata(
       stations: stations,
       seenKeys: seenKeys,
@@ -614,30 +590,6 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
       stationId: _avametDeniaLesRotesStationId,
       latitude: _avametDeniaLesRotesStationLat,
       longitude: _avametDeniaLesRotesStationLon,
-      referenceLatitude: latitude,
-      referenceLongitude: longitude,
-    );
-    _addLiveStationMetadata(
-      stations: stations,
-      seenKeys: seenKeys,
-      stationKey: _avametDeniaLaXaraStationKey,
-      stationName: _avametDeniaLaXaraStationName,
-      provider: 'AVAMET',
-      stationId: _avametDeniaLaXaraStationId,
-      latitude: _avametDeniaLaXaraStationLat,
-      longitude: _avametDeniaLaXaraStationLon,
-      referenceLatitude: latitude,
-      referenceLongitude: longitude,
-    );
-    _addLiveStationMetadata(
-      stations: stations,
-      seenKeys: seenKeys,
-      stationKey: _avametDeniaJesusPobreStationKey,
-      stationName: _avametDeniaJesusPobreStationName,
-      provider: 'AVAMET',
-      stationId: _avametDeniaJesusPobreStationId,
-      latitude: _avametDeniaJesusPobreStationLat,
-      longitude: _avametDeniaJesusPobreStationLon,
       referenceLatitude: latitude,
       referenceLongitude: longitude,
     );

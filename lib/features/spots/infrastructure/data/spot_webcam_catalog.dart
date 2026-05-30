@@ -186,6 +186,57 @@ const List<SpotWebcam> _deniaLesDevesesWebcams = [
 
 const List<SpotWebcam> _calpeWebcams = [
   SpotWebcam(
+    name: 'Calp Playa Arenal-Bol',
+    source: 'Ibericam / Ayuntamiento de Calp',
+    status: 'Directo',
+    resolution: 'Player web',
+    primaryPageUrl:
+        'https://ibericam.com/player/modern/player.html?s=4&a=live&v=calpe-playa-del-arenal-bol&i=image-4&l=ibericam&primaryColor=%230044aaff',
+    summary:
+        'Webcam en directo desde Playa Arenal-Bol con vista al Penon de Ifach.',
+    previewImageUrl:
+        'https://image-4.ibericam.com/poster/webcam-calpe-playa-del-arenal-bol.webp',
+    locationLabel: 'Playa Arenal-Bol',
+    latitude: 38.6422,
+    longitude: 0.0469,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Calp Arenal-Bol · Ayuntamiento de Calp',
+        url: 'https://www.calp.es/es/webcams',
+      ),
+      WebcamReferencePage(
+        title: 'Calpe Playa del Arenal-Bol · Ibericam',
+        url: 'https://ibericam.com/alicante/webcam-calpe-playa-del-arenal-bol/',
+      ),
+    ],
+  ),
+  SpotWebcam(
+    name: 'Calp Solymar Gran Hotel',
+    source: 'IPCamLive / Estimar Hotels',
+    status: 'Directo',
+    resolution: 'Player web',
+    primaryPageUrl:
+        'https://g0.ipcamlive.com/player/player.php?alias=5c35e0c28ae9d&autoplay=1',
+    summary:
+        'Webcam del Hotel Solymar con vista directa a la Playa Arenal-Bol.',
+    previewImageUrl:
+        'https://www.turismolive.es/wp-content/uploads/2025/03/25-03-02-A-Calpe-Playa-del-Arenal.jpg',
+    locationLabel: 'SOLYMAR Gran Hotel',
+    latitude: 38.6424,
+    longitude: 0.0494,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Live Cam SOLYMAR Gran Hotel · Estimar Hotels',
+        url: 'https://estimarhotels.com/calpe/solymar-gran-hotel/live-cam/',
+      ),
+      WebcamReferencePage(
+        title: 'Calpe Playa Arenal-Bol · Turismo Live',
+        url:
+            'https://www.turismolive.es/webcam-calpe-alicante-playa-del-arenal-bol/',
+      ),
+    ],
+  ),
+  SpotWebcam(
     name: 'Calp Playa de la Fossa',
     source: 'Comunitat Valenciana',
     status: 'Directo',
@@ -206,6 +257,65 @@ const List<SpotWebcam> _calpeWebcams = [
         title: 'Calp Playa de la Fossa · Comunitat Valenciana',
         url:
             'https://www.comunitatvalenciana.com/es/alacant-alicante/calp/webcams/calp-playa-de-la-fossa',
+      ),
+      WebcamReferencePage(
+        title: 'Calpe · Vision-Environnement',
+        url:
+            'https://www.vision-environnement.com/es/webcam/espana/alicante/836-calpe/',
+      ),
+    ],
+  ),
+  SpotWebcam(
+    name: 'Calp Club Nautico',
+    source: 'Comunitat Valenciana',
+    status: 'Directo',
+    resolution: 'Web oficial',
+    primaryPageUrl:
+        'https://www.comunitatvalenciana.com/es/alacant-alicante/calp/webcams/calp-club-nautico',
+    summary:
+        'Webcam oficial del Club Nautico de Calp con vista a la bahia y al Penon de Ifach.',
+    streamManifestUrl:
+        'https://streaming.comunitatvalenciana.com/webcam/CalpeNautico/manifest.mpd',
+    previewImageUrl:
+        'https://streaming.comunitatvalenciana.com/static/CalpeNautico/webcam_mini.png',
+    locationLabel: 'Club Nautico de Calp',
+    latitude: 38.6427,
+    longitude: 0.0694,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Calp Club Nautico · Comunitat Valenciana',
+        url:
+            'https://www.comunitatvalenciana.com/es/alacant-alicante/calp/webcams/calp-club-nautico',
+      ),
+      WebcamReferencePage(
+        title: 'Calp Yacht Club · Comunitat Valenciana',
+        url:
+            'https://www.comunitatvalenciana.com/en/alacant-alicante/calp/webcams/calp-yacht-club',
+      ),
+    ],
+  ),
+  SpotWebcam(
+    name: 'Calp Penon de Ifach y puerto',
+    source: 'SkylineWebcams / Hotel Porto Calpe',
+    status: 'Directo',
+    resolution: 'Player web',
+    primaryPageUrl:
+        'https://www.skylinewebcams.com/es/webcam/espana/comunidad-valenciana/alicante/calpe-penon-de-ifach.html',
+    summary:
+        'Vista panoramica del Penon de Ifach y el puerto deportivo de Calp.',
+    previewImageUrl: 'https://cdn.skylinewebcams.com/social3032.jpg',
+    locationLabel: 'Puerto de Calp',
+    latitude: 38.6399,
+    longitude: 0.0692,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Calp Penon de Ifach · SkylineWebcams',
+        url:
+            'https://www.skylinewebcams.com/es/webcam/espana/comunidad-valenciana/alicante/calpe-penon-de-ifach.html',
+      ),
+      WebcamReferencePage(
+        title: 'Webcams · Ayuntamiento de Calp',
+        url: 'https://www.calp.es/es/webcams',
       ),
     ],
   ),

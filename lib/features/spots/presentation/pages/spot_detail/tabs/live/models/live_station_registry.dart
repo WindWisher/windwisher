@@ -232,12 +232,6 @@ const String _windguruDkPilesStationName = 'DK Piles Meteo';
 const double _windguruDkPilesStationLat = 38.9519444444;
 const double _windguruDkPilesStationLon = -0.1144444444;
 
-const String _avametDeniaPlatjaPegoStationId = 'c30m063e10';
-const String _avametDeniaPlatjaPegoStationKey = 'avamet:c30m063e10';
-const String _avametDeniaPlatjaPegoStationName = 'Denia Platja de Pego';
-const double _avametDeniaPlatjaPegoStationLat = 38.8744583333;
-const double _avametDeniaPlatjaPegoStationLon = -0.0216888889;
-
 const double _avametDeniaJoanChabasStationLat = 38.8348638889;
 const double _avametDeniaJoanChabasStationLon = 0.1053638889;
 
@@ -252,18 +246,6 @@ const String _avametDeniaLesRotesStationKey = 'avamet:c30m063e16';
 const String _avametDeniaLesRotesStationName = 'Denia les Rotes';
 const double _avametDeniaLesRotesStationLat = 38.8276888889;
 const double _avametDeniaLesRotesStationLon = 0.1493944444;
-
-const String _avametDeniaLaXaraStationId = 'c30m063e15';
-const String _avametDeniaLaXaraStationKey = 'avamet:c30m063e15';
-const String _avametDeniaLaXaraStationName = 'Denia la Xara';
-const double _avametDeniaLaXaraStationLat = 38.8290444444;
-const double _avametDeniaLaXaraStationLon = 0.0628666667;
-
-const String _avametDeniaJesusPobreStationId = 'c30m063e01';
-const String _avametDeniaJesusPobreStationKey = 'avamet:c30m063e01';
-const String _avametDeniaJesusPobreStationName = 'Denia Jesus Pobre';
-const double _avametDeniaJesusPobreStationLat = 38.792725;
-const double _avametDeniaJesusPobreStationLon = 0.0825777778;
 
 const String _avametDeniaMontgoCalafatStationId = 'c30m063e18';
 const String _avametDeniaMontgoCalafatStationKey = 'avamet:c30m063e18';
@@ -343,12 +325,6 @@ const String _wundergroundDenia123StationKey = 'wunderground:IDNIA123';
 const String _wundergroundDenia123StationName = 'WU Les Marines IDNIA123';
 const double _wundergroundDenia123StationLat = 38.849;
 const double _wundergroundDenia123StationLon = 0.092;
-
-const String _wundergroundDenia121StationId = 'IDNIA121';
-const String _wundergroundDenia121StationKey = 'wunderground:IDNIA121';
-const String _wundergroundDenia121StationName = 'WU Denia IDNIA121';
-const double _wundergroundDenia121StationLat = 38.84145;
-const double _wundergroundDenia121StationLon = 0.113415;
 
 const String _wundergroundDenia35StationId = 'IDNIA35';
 const String _wundergroundDenia35StationKey = 'wunderground:IDNIA35';

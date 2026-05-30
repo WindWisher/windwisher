@@ -139,7 +139,7 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
   String? _selectedHistoricalUnavailableDescription() {
     final station = _findStationByKey(_selectedStation);
     if (station?.provider == 'METEOCLIMATIC') {
-      return 'Meteoclimatic bloquea las lecturas desde Supabase, asi que por ahora esta estacion solo muestra datos en directo.';
+      return 'Meteoclimatic no muestra historico, solo datos en directo.';
     }
     return null;
   }

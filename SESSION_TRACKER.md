@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 222h 27m`.
+- `Total historico minimo consolidado del proyecto: 223h 52m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -32,10 +32,11 @@
   - bloque consolidado adicional en `2026-05-27`: `+35m` reales aproximados (`Les Deveses / Molins: Xuss history and alarms`)
   - bloque consolidado adicional en `2026-05-27`: `+55m` reales aproximados (`Les Deveses and Molins WU stations plus Weathercloud direction correction`)
   - bloque consolidado adicional en `2026-05-28`: `+1h 10m` reales aproximados (`Calpe Live stations, Les Deveses cleanup and Weathercloud direction rollback`)
+  - bloque consolidado adicional en `2026-05-31`: `+1h 25m` reales aproximados (`Calpe webcams, Skyline frame fitting and webcam player hardening`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-05-28`: `+1h 10m` reales aproximados (`Calpe Live stations, Les Deveses cleanup and Weathercloud direction rollback`).
+  - ultima consolidacion manual anadida el `2026-05-31`: `+1h 25m` reales aproximados (`Calpe webcams, Skyline frame fitting and webcam player hardening`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -54,6 +55,36 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-05-31 - Calpe webcams, Skyline frame fitting and webcam player hardening
+
+- Bloque consolidado adicional: `+1h 25m` reales aproximados.
+- Medicion real usada:
+  - trabajo efectivo dedicado a localizar fuentes, ajustar el visor de webcams, validar comportamiento en Android y limpiar avisos,
+  - no incluye esperas externas ni pruebas manuales prolongadas fuera del IDE.
+- Webcams / Calpe:
+  - mantenida `Calp Playa Arenal-Bol` con el player limpio de Ibericam, que queda funcionando correctamente,
+  - anadida y ajustada `Calp Solymar Gran Hotel` con el player directo de IPCamLive/Estimar,
+  - anadida `Calp Club Nautico` usando el manifest oficial de Comunitat Valenciana,
+  - anadida `Calp Playa de la Fossa` como webcam oficial de Comunitat Valenciana,
+  - configurada `Calp Penon de Ifach y puerto` con la URL espanola directa de SkylineWebcams,
+  - ajustado el visor para encuadrar el frame real `#webcam` de Skyline dentro del contenedor de WindWisher,
+  - anadido intento suave de autoplay sobre Skyline despues del encuadre, manteniendo el boton manual como fallback,
+  - confirmado por prueba manual del usuario que todas las webcams de Calpe funcionan correctamente.
+- Webcams / visor:
+  - extendida la entidad `SpotWebcam` para soportar `embedAsIframe` y un selector opcional de iframe si se necesita en futuras fuentes,
+  - propagadas esas opciones desde el catalogo hasta `WebcamPlayerPage`,
+  - reforzado el WebView Android para permitir reproduccion multimedia sin gesto de usuario,
+  - mantenida la gestion de fullscreen y rotacion en el visor de webcam,
+  - anadidos logs de consola/recurso/HTTP del WebView en debug para diagnosticar fuentes problematicas.
+- Live / limpieza:
+  - eliminadas constantes huérfanas en `live_station_registry.dart` de estaciones retiradas (`Denia Platja de Pego`, `Denia la Xara`, `Denia Jesus Pobre`, `WU Denia IDNIA121`),
+  - conservada la configuracion activa de estaciones Live ya validada en sesiones anteriores.
+- Verificacion:
+  - `flutter pub get` ejecutado tras declarar `webview_flutter_android`,
+  - `flutter analyze` limpio en los modulos de webcams tocados,
+  - `flutter analyze` limpio en `live_station_registry.dart`,
+  - `.tmp/` queda fuera de git como carpeta temporal de investigacion.
 
 ### 2026-05-28 - Calpe Live, Les Deveses cleanup and Weathercloud direction rollback
 
