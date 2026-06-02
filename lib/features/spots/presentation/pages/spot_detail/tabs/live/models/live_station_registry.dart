@@ -388,6 +388,45 @@ const String _weathercloudCalpeStationName = 'Weathercloud Calpe';
 const double _weathercloudCalpeStationLat = 38.6436111111;
 const double _weathercloudCalpeStationLon = 0.06;
 
+const String _weathercloudAlteaMeteoAlteaStationId = '0871101282';
+const String _weathercloudAlteaMeteoAlteaStationKey = 'weathercloud:0871101282';
+const String _weathercloudAlteaMeteoAlteaStationName =
+    'Weathercloud MeteoAltea';
+const double _weathercloudAlteaMeteoAlteaStationLat = 38.604508;
+const double _weathercloudAlteaMeteoAlteaStationLon = -0.060345;
+
+const String _weathercloudAlteaLaVellaStationId = '7926547128';
+const String _weathercloudAlteaLaVellaStationKey = 'weathercloud:7926547128';
+const String _weathercloudAlteaLaVellaStationName = 'Weathercloud kr_la_vella';
+const double _weathercloudAlteaLaVellaStationLat = 38.638244;
+const double _weathercloudAlteaLaVellaStationLon = -0.032208;
+
+const String _weathercloudAlteaCasaSuerteStationId = '3944187991';
+const String _weathercloudAlteaCasaSuerteStationKey = 'weathercloud:3944187991';
+const String _weathercloudAlteaCasaSuerteStationName =
+    'Weathercloud Casa Suerte Altea';
+const double _weathercloudAlteaCasaSuerteStationLat = 38.640615;
+const double _weathercloudAlteaCasaSuerteStationLon = -0.038388;
+
+const String _wundergroundAltea13StationId = 'IALTEA13';
+const String _wundergroundAltea13StationKey = 'wunderground:IALTEA13';
+const String _wundergroundAltea13StationName = 'WU La Lloma IALTEA13';
+const double _wundergroundAltea13StationLat = 38.598801;
+const double _wundergroundAltea13StationLon = -0.0514;
+
+const String _wundergroundAltea38StationId = 'IALTEA38';
+const String _wundergroundAltea38StationKey = 'wunderground:IALTEA38';
+const String _wundergroundAltea38StationName = 'WU Altea IALTEA38';
+const double _wundergroundAltea38StationLat = 38.60252;
+const double _wundergroundAltea38StationLon = -0.044987;
+
+const String _wundergroundAltea48StationId = 'IALTEA48';
+const String _wundergroundAltea48StationKey = 'wunderground:IALTEA48';
+const String _wundergroundAltea48StationName =
+    "WU Carretera de l'Albir IALTEA48";
+const double _wundergroundAltea48StationLat = 38.578;
+const double _wundergroundAltea48StationLon = -0.064;
+
 const String _avametAlteaClubNauticoStationId = 'c31m018e06';
 const String _avametAlteaClubNauticoStationKey = 'avamet:c31m018e06';
 const String _avametAlteaClubNauticoStationName = 'Altea Club Nautico';

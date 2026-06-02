@@ -346,6 +346,122 @@ const List<SpotWebcam> _alteaCapNegretWebcams = [
       ),
     ],
   ),
+  SpotWebcam(
+    name: 'Altea Cap-Blanch Playa',
+    source: 'Camping Cap-Blanch / YouTube',
+    status: 'Directo',
+    resolution: 'YouTube live',
+    primaryPageUrl: 'https://www.youtube.com/watch?v=hvsK8Fvz4rE',
+    summary:
+        'Webcam de playa del Camping Cap-Blanch, muy cercana a Altea y Cap Negret.',
+    previewImageUrl: 'https://img.youtube.com/vi/hvsK8Fvz4rE/hqdefault.jpg',
+    locationLabel: 'Camping Cap-Blanch',
+    latitude: 38.57451,
+    longitude: -0.064749,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Camping Cap-Blanch · Webcam Playa de Altea',
+        url: 'https://www.camping-capblanch.com/webcam1.html',
+      ),
+      WebcamReferencePage(
+        title: 'Playa de Altea · YouTube',
+        url: 'https://www.youtube.com/watch?v=hvsK8Fvz4rE',
+      ),
+    ],
+  ),
+  SpotWebcam(
+    name: 'Altea Cap-Blanch Entrada',
+    source: 'Camping Cap-Blanch / YouTube',
+    status: 'Directo',
+    resolution: 'YouTube live',
+    primaryPageUrl: 'https://www.youtube.com/watch?v=SE1Oh8qn9Sk',
+    summary:
+        'Webcam de entrada del Camping Cap-Blanch, util como referencia secundaria.',
+    previewImageUrl: 'https://img.youtube.com/vi/SE1Oh8qn9Sk/hqdefault.jpg',
+    locationLabel: 'Camping Cap-Blanch',
+    latitude: 38.57451,
+    longitude: -0.064749,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Camping Cap-Blanch · Webcam entrada',
+        url: 'https://www.camping-capblanch.com/webcam2.html',
+      ),
+      WebcamReferencePage(
+        title: 'Entrada Camping Cap-Blanch · YouTube',
+        url: 'https://www.youtube.com/watch?v=SE1Oh8qn9Sk',
+      ),
+    ],
+  ),
+  SpotWebcam(
+    name: 'Altea Cap-Blanch Interior',
+    source: 'Camping Cap-Blanch / YouTube',
+    status: 'Directo',
+    resolution: 'YouTube live',
+    primaryPageUrl: 'https://www.youtube.com/watch?v=9ebySyOCIqg',
+    summary:
+        'Webcam interior del Camping Cap-Blanch, anadida temporalmente para pruebas.',
+    previewImageUrl: 'https://img.youtube.com/vi/9ebySyOCIqg/hqdefault.jpg',
+    locationLabel: 'Camping Cap-Blanch',
+    latitude: 38.57451,
+    longitude: -0.064749,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Camping Cap-Blanch · Webcam interior',
+        url: 'https://www.camping-capblanch.com/webcam3.html',
+      ),
+      WebcamReferencePage(
+        title: 'Interior Camping Cap-Blanch · YouTube',
+        url: 'https://www.youtube.com/watch?v=9ebySyOCIqg',
+      ),
+    ],
+  ),
+  SpotWebcam(
+    name: 'Altea Cap-Blanch Albir',
+    source: 'Camping Cap-Blanch / YouTube',
+    status: 'Directo',
+    resolution: 'YouTube live',
+    primaryPageUrl: 'https://www.youtube.com/watch?v=mdOqWWUxIJw',
+    summary:
+        'Webcam hacia Playa del Albir y Sierra Helada desde Camping Cap-Blanch.',
+    previewImageUrl: 'https://img.youtube.com/vi/mdOqWWUxIJw/hqdefault.jpg',
+    locationLabel: 'Camping Cap-Blanch',
+    latitude: 38.57451,
+    longitude: -0.064749,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Camping Cap-Blanch · Webcam Playa del Albir',
+        url: 'https://www.camping-capblanch.com/webcam4.html',
+      ),
+      WebcamReferencePage(
+        title: 'Playa del Albir · YouTube',
+        url: 'https://www.youtube.com/watch?v=mdOqWWUxIJw',
+      ),
+    ],
+  ),
+  SpotWebcam(
+    name: "L'Alfas del Pi",
+    source: 'Comunitat Valenciana',
+    status: 'Directo',
+    resolution: 'Web oficial',
+    primaryPageUrl:
+        'https://www.comunitatvalenciana.com/es/alacant-alicante/lalfas-del-pi/webcams/l-alfas-del-pi',
+    summary:
+        'Webcam oficial de L\'Alfas del Pi, cercana a Altea por la zona de Albir.',
+    streamManifestUrl:
+        'https://streaming.comunitatvalenciana.com/webcam/Alfaselpi/manifest.mpd',
+    previewImageUrl:
+        'https://streaming.comunitatvalenciana.com/static/Alfaselpi/webcam_mini.png',
+    locationLabel: "L'Alfas del Pi",
+    latitude: 38.57451,
+    longitude: -0.064749,
+    referencePages: [
+      WebcamReferencePage(
+        title: "L'Alfas del Pi · Comunitat Valenciana",
+        url:
+            'https://www.comunitatvalenciana.com/es/alacant-alicante/lalfas-del-pi/webcams/l-alfas-del-pi',
+      ),
+    ],
+  ),
 ];
 
 const List<SpotWebcam> _villajoyosaEspigonWebcams = [

@@ -185,6 +185,42 @@ const stations: LiveStationConfig[] = [
   },
   {
     provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:0871101282",
+    stationId: "0871101282",
+    stationName: "Weathercloud MeteoAltea",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:7926547128",
+    stationId: "7926547128",
+    stationName: "Weathercloud kr_la_vella",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:3944187991",
+    stationId: "3944187991",
+    stationName: "Weathercloud Casa Suerte Altea",
+  },
+  {
+    provider: "WUNDERGROUND",
+    stationKey: "wunderground:IALTEA13",
+    stationId: "IALTEA13",
+    stationName: "WU La Lloma IALTEA13",
+  },
+  {
+    provider: "WUNDERGROUND",
+    stationKey: "wunderground:IALTEA38",
+    stationId: "IALTEA38",
+    stationName: "WU Altea IALTEA38",
+  },
+  {
+    provider: "WUNDERGROUND",
+    stationKey: "wunderground:IALTEA48",
+    stationId: "IALTEA48",
+    stationName: "WU Carretera de l'Albir IALTEA48",
+  },
+  {
+    provider: "WEATHERCLOUD",
     stationKey: "weathercloud:4026174225",
     stationId: "4026174225",
     stationName: "Weathercloud YT60234",

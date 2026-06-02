@@ -741,6 +741,78 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
       referenceLatitude: latitude,
       referenceLongitude: longitude,
     );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _weathercloudAlteaMeteoAlteaStationKey,
+      stationName: _weathercloudAlteaMeteoAlteaStationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudAlteaMeteoAlteaStationId,
+      latitude: _weathercloudAlteaMeteoAlteaStationLat,
+      longitude: _weathercloudAlteaMeteoAlteaStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _weathercloudAlteaLaVellaStationKey,
+      stationName: _weathercloudAlteaLaVellaStationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudAlteaLaVellaStationId,
+      latitude: _weathercloudAlteaLaVellaStationLat,
+      longitude: _weathercloudAlteaLaVellaStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _weathercloudAlteaCasaSuerteStationKey,
+      stationName: _weathercloudAlteaCasaSuerteStationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudAlteaCasaSuerteStationId,
+      latitude: _weathercloudAlteaCasaSuerteStationLat,
+      longitude: _weathercloudAlteaCasaSuerteStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _wundergroundAltea13StationKey,
+      stationName: _wundergroundAltea13StationName,
+      provider: 'WUNDERGROUND',
+      stationId: _wundergroundAltea13StationId,
+      latitude: _wundergroundAltea13StationLat,
+      longitude: _wundergroundAltea13StationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _wundergroundAltea38StationKey,
+      stationName: _wundergroundAltea38StationName,
+      provider: 'WUNDERGROUND',
+      stationId: _wundergroundAltea38StationId,
+      latitude: _wundergroundAltea38StationLat,
+      longitude: _wundergroundAltea38StationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _wundergroundAltea48StationKey,
+      stationName: _wundergroundAltea48StationName,
+      provider: 'WUNDERGROUND',
+      stationId: _wundergroundAltea48StationId,
+      latitude: _wundergroundAltea48StationLat,
+      longitude: _wundergroundAltea48StationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
   }
 
   void _addVillajoyosaEspigonLiveStations({

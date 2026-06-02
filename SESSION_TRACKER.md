@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 223h 52m`.
+- `Total historico minimo consolidado del proyecto: 225h 12m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -33,10 +33,11 @@
   - bloque consolidado adicional en `2026-05-27`: `+55m` reales aproximados (`Les Deveses and Molins WU stations plus Weathercloud direction correction`)
   - bloque consolidado adicional en `2026-05-28`: `+1h 10m` reales aproximados (`Calpe Live stations, Les Deveses cleanup and Weathercloud direction rollback`)
   - bloque consolidado adicional en `2026-05-31`: `+1h 25m` reales aproximados (`Calpe webcams, Skyline frame fitting and webcam player hardening`)
+  - bloque consolidado adicional en `2026-06-02`: `+1h 20m` reales aproximados (`Altea Live stations, webcams and alarm validation`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-05-31`: `+1h 25m` reales aproximados (`Calpe webcams, Skyline frame fitting and webcam player hardening`).
+  - ultima consolidacion manual anadida el `2026-06-02`: `+1h 20m` reales aproximados (`Altea Live stations, webcams and alarm validation`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -55,6 +56,31 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-06-02 - Altea Live stations, webcams and alarm validation
+
+- Bloque consolidado adicional: `+1h 20m` reales aproximados.
+- Medicion real usada:
+  - trabajo efectivo dedicado a configurar fuentes Live/Webcam de Altea, comprobar historicos backend y validar alarmas,
+  - no incluye esperas externas prolongadas ni tiempo de prueba manual fuera del IDE.
+- Live / Altea:
+  - anadidas estaciones Weathercloud y Weather Underground al perfil Live de `Altea - Cap Negret`,
+  - mantenidas estaciones AVAMET de Altea como fuentes Live directas,
+  - retirada `Weathercloud Club Nautico de Altea` al comprobar que no tenia historico guardado y que el endpoint actual devolvia `404`,
+  - actualizado `spot-live-observation-collector` para recoger solo las fuentes Weathercloud/WU utiles de Altea.
+- Webcams / Altea:
+  - anadidas webcams de Camping Cap-Blanch con el mismo patron YouTube usado en Cullera Marenyet,
+  - retirada `Altea SH Villa Gadea` hasta que vuelva a funcionar correctamente,
+  - retirada temporalmente y despues restaurada `Altea Maritimo` al confirmar el usuario que la camara volvia a funcionar.
+- Alarmas:
+  - comprobado que las estaciones Live de Calpe usan proveedores soportados (`AVAMET`, `WUNDERGROUND`, `WEATHERCLOUD`) y devuelven datos utiles,
+  - comprobado que las estaciones Live de Altea usan proveedores soportados y que las AVAMET devuelven viento parseable,
+  - confirmado historico reciente con viento para `Weathercloud MeteoAltea`, `Weathercloud Casa Suerte Altea` y las WU de Altea,
+  - detectada `Weathercloud kr_la_vella` como tecnicamente operativa pero con lecturas recientes a `0 kt`, por lo que queda vigilada como fuente poco util si persiste ese patron.
+- Verificacion:
+  - `flutter analyze` limpio en los modulos Live revisados,
+  - `deno check` limpio en `spot-alarm-runner` y `spot-live-observation-collector`,
+  - `.tmp/` queda fuera de git como carpeta temporal de investigacion.
 
 ### 2026-05-31 - Calpe webcams, Skyline frame fitting and webcam player hardening
 
