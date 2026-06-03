@@ -40,7 +40,7 @@ const String villajoyosaPlayaParaisoLiveStationProfile =
 const String villajoyosaPlayaParaisoWebcamProfile =
     'villajoyosa_playa_paraiso_webcams';
 const String villajoyosaPlayaParaisoPreferredLiveStationKey =
-    'avamet:c31m139e05';
+    'weathercloud:5741540482';
 const String villajoyosaPlayaParaisoSpotName = 'Villajoyosa - Playa Paraiso';
 const String santaPolaPlatjaLissaWebcamProfile =
     'santa_pola_platja_lissa_webcams';

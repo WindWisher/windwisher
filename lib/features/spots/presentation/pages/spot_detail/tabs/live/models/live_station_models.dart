@@ -44,6 +44,9 @@ class _StationLiveData {
     required this.humidityPct,
     required this.rainMm,
     required this.observedAt,
+    this.seaSurfaceTempC,
+    this.waveHeightM,
+    this.wavePeriodS,
     this.observedAtLabel,
   });
 
@@ -56,6 +59,9 @@ class _StationLiveData {
   final int? humidityPct;
   final double? rainMm;
   final DateTime? observedAt;
+  final double? seaSurfaceTempC;
+  final double? waveHeightM;
+  final double? wavePeriodS;
   final String? observedAtLabel;
 }
 

@@ -6,7 +6,9 @@ extension _SpotDetailLiveAlarmsController on _SpotDetailPageState {
   String _currentSpotAlarmKey() => '${widget.name}::${widget.area}';
 
   bool _supportsCustomAlarmProvider(_NearbyStation station) {
-    return station.provider != 'METEOCLIMATIC';
+    return station.provider != 'METEOCLIMATIC' &&
+        station.provider != 'MADIS_MARITIME' &&
+        station.provider != 'COPERNICUS_MARINE';
   }
 
   List<_NearbyStation> _supportedCustomAlarmStations(
@@ -18,7 +20,11 @@ extension _SpotDetailLiveAlarmsController on _SpotDetailPageState {
   bool _supportsSavedAlarmRecord(SpotAlarmRecord alarm) {
     final station = _findStationByKey(alarm.stationKey);
     return alarm.stationProvider != 'METEOCLIMATIC' &&
-        station?.provider != 'METEOCLIMATIC';
+        alarm.stationProvider != 'MADIS_MARITIME' &&
+        alarm.stationProvider != 'COPERNICUS_MARINE' &&
+        station?.provider != 'METEOCLIMATIC' &&
+        station?.provider != 'MADIS_MARITIME' &&
+        station?.provider != 'COPERNICUS_MARINE';
   }
 
   List<SpotAlarmRecord> _savedAlarmsForCurrentSpot() {

@@ -464,6 +464,68 @@ const String _avametVillajoyosaCarabassotStationName =
 const double _avametVillajoyosaCarabassotStationLat = 38.506944;
 const double _avametVillajoyosaCarabassotStationLon = -0.285278;
 
+const String _wundergroundVillajoyosaLavil16StationId = 'ILAVIL16';
+const String _wundergroundVillajoyosaLavil16StationKey =
+    'wunderground:ILAVIL16';
+const String _wundergroundVillajoyosaLavil16StationName =
+    'WU Villajoyosa ILAVIL16';
+const double _wundergroundVillajoyosaLavil16StationLat = 38.510997;
+const double _wundergroundVillajoyosaLavil16StationLon = -0.233971;
+
+const String _wundergroundVillajoyosaLavil24StationId = 'ILAVIL24';
+const String _wundergroundVillajoyosaLavil24StationKey =
+    'wunderground:ILAVIL24';
+const String _wundergroundVillajoyosaLavil24StationName =
+    'WU La Vila Joiosa ILAVIL24';
+const double _wundergroundVillajoyosaLavil24StationLat = 38.50114;
+const double _wundergroundVillajoyosaLavil24StationLon = -0.242691;
+
+const String _wundergroundVillajoyosaLavil41StationId = 'ILAVIL41';
+const String _wundergroundVillajoyosaLavil41StationKey =
+    'wunderground:ILAVIL41';
+const String _wundergroundVillajoyosaLavil41StationName =
+    'WU Villajoyosa ILAVIL41';
+const double _wundergroundVillajoyosaLavil41StationLat = 38.50469;
+const double _wundergroundVillajoyosaLavil41StationLon = -0.234324;
+
+const String _wundergroundVillajoyosaVilla310StationId = 'IVILLA310';
+const String _wundergroundVillajoyosaVilla310StationKey =
+    'wunderground:IVILLA310';
+const String _wundergroundVillajoyosaVilla310StationName =
+    'WU Villajoyosa IVILLA310';
+const double _wundergroundVillajoyosaVilla310StationLat = 38.509643;
+const double _wundergroundVillajoyosaVilla310StationLon = -0.255386;
+
+const String _weathercloudVillajoyosaMallaetaStationId = '4405621503';
+const String _weathercloudVillajoyosaMallaetaStationKey =
+    'weathercloud:4405621503';
+const String _weathercloudVillajoyosaMallaetaStationName =
+    'Weathercloud Mallaeta';
+const double _weathercloudVillajoyosaMallaetaStationLat = 38.5014467;
+const double _weathercloudVillajoyosaMallaetaStationLon = -0.2428;
+
+const String _weathercloudVillajoyosaArthurStationId = '5741540482';
+const String _weathercloudVillajoyosaArthurStationKey =
+    'weathercloud:5741540482';
+const String _weathercloudVillajoyosaArthurStationName = 'Weathercloud Arthur';
+const double _weathercloudVillajoyosaArthurStationLat = 38.4980278;
+const double _weathercloudVillajoyosaArthurStationLon = -0.2585959;
+
+const String _weathercloudVillajoyosaMontiboliStationId = '0027612103';
+const String _weathercloudVillajoyosaMontiboliStationKey =
+    'weathercloud:0027612103';
+const String _weathercloudVillajoyosaMontiboliStationName =
+    'Weathercloud Urb. Montiboli';
+const double _weathercloudVillajoyosaMontiboliStationLat = 38.495657261670694;
+const double _weathercloudVillajoyosaMontiboliStationLon = -0.2647501230239868;
+
+const String _copernicusVillajoyosaBuoyStationId = 'VillajoyosaBuoy___MO';
+const String _copernicusVillajoyosaBuoyStationKey =
+    'copernicus-marine:VillajoyosaBuoy___MO';
+const String _copernicusVillajoyosaBuoyStationName = 'Boya Villajoyosa';
+const double _copernicusVillajoyosaBuoyStationLat = 38.4971;
+const double _copernicusVillajoyosaBuoyStationLon = -0.204;
+
 const String _meteoclimaticOlivaNovaStationId = 'ESPVA4600000046780B';
 const String _meteoclimaticOlivaNovaStationKey =
     'meteoclimatic:ESPVA4600000046780B';

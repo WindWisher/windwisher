@@ -489,6 +489,31 @@ const List<SpotWebcam> _villajoyosaEspigonWebcams = [
       ),
     ],
   ),
+  SpotWebcam(
+    name: 'Villajoyosa Sea View',
+    source: 'SkylineWebcams / Hotel Montiboli',
+    status: 'Directo',
+    resolution: 'Player web',
+    primaryPageUrl:
+        'https://www.skylinewebcams.com/es/webcam/espana/comunidad-valenciana/alicante/villajoyosa.html',
+    summary:
+        'Vista panoramica de la costa de Villajoyosa desde la zona de Montiboli.',
+    previewImageUrl: 'https://cdn.skylinewebcams.com/social2675.jpg',
+    locationLabel: 'Hotel Montiboli',
+    latitude: 38.5096,
+    longitude: -0.1947,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Villajoyosa · SkylineWebcams',
+        url:
+            'https://www.skylinewebcams.com/es/webcam/espana/comunidad-valenciana/alicante/villajoyosa.html',
+      ),
+      WebcamReferencePage(
+        title: 'Webcam · Hotel Montiboli',
+        url: 'https://www.montiboli.com/es/entorno/webcam/',
+      ),
+    ],
+  ),
 ];
 
 const List<SpotWebcam> _santaPolaPlatjaLissaWebcams = [

@@ -215,7 +215,34 @@ extension _SpotDetailLiveStationPayloadLoader on _SpotDetailPageState {
     }
     if (station.provider == 'MADIS_MARITIME' ||
         station.provider == 'COPERNICUS_MARINE') {
-      return _resolvedLiveDataByStation()[station.stationKey];
+      final cachedLiveData = _resolvedLiveDataByStation()[station.stationKey];
+      if (cachedLiveData != null) {
+        return cachedLiveData;
+      }
+      final client = _spotMaritimeObservationsClient;
+      if (client == null) {
+        return null;
+      }
+      final observation = await client.fetchLatestStation(
+        stationKey: station.stationKey,
+      );
+      if (observation == null) {
+        return null;
+      }
+      return _StationLiveData(
+        windKnots: observation.windKnots,
+        windDeg: observation.windDirDeg,
+        gustKnots: observation.gustKnots,
+        tempC: observation.airTempC,
+        pressureHpa: observation.pressureHpa,
+        humidityPct: observation.humidityPct,
+        rainMm: null,
+        observedAt: observation.observedAt,
+        observedAtLabel: observation.platformType,
+        seaSurfaceTempC: observation.seaSurfaceTempC,
+        waveHeightM: observation.waveHeightM,
+        wavePeriodS: observation.wavePeriodS,
+      );
     }
     if (station.stationId == null) {
       return null;

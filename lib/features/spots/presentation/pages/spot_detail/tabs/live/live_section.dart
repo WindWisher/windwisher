@@ -98,6 +98,21 @@ extension _SpotDetailLiveSection on _SpotDetailPageState {
           label: 'Lluvia',
           value: _formatOptionalDouble(liveData.rainMm, ' mm'),
         ),
+      if (liveData.seaSurfaceTempC != null)
+        _LiveMetricData(
+          label: 'Temp. agua',
+          value: _formatOptionalDouble(liveData.seaSurfaceTempC, ' C'),
+        ),
+      if (liveData.waveHeightM != null)
+        _LiveMetricData(
+          label: 'Oleaje',
+          value: _formatOptionalDouble(liveData.waveHeightM, ' m'),
+        ),
+      if (liveData.wavePeriodS != null)
+        _LiveMetricData(
+          label: 'Periodo',
+          value: _formatOptionalDouble(liveData.wavePeriodS, ' s'),
+        ),
     ];
     return _LiveMetricsGrid(metrics: metrics);
   }
@@ -150,7 +165,7 @@ extension _SpotDetailLiveSection on _SpotDetailPageState {
                   ? null
                   : _loadMoreMaritimeObservations,
               icon: const Icon(Icons.add_circle_outline),
-              label: const Text('Cargar 10 barcos mas'),
+              label: const Text('Cargar 10 observaciones mas'),
             ),
           ],
         ],

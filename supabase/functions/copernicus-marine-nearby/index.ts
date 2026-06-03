@@ -57,6 +57,17 @@ type MaritimeObservationRow = {
   raw_payload: Record<string, unknown>;
 };
 
+type CopernicusPlatformObservation = {
+  platformId: string;
+  platformType: string | null;
+  institution: string | null;
+  latitude: number;
+  longitude: number;
+  distanceKm: number;
+  observedAt: string;
+  values: Map<string, { value: number; observedAt: string }>;
+};
+
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const copernicusUsername = Deno.env.get("COPERNICUSMARINE_SERVICE_USERNAME") ??
@@ -220,19 +231,14 @@ async function fetchCachedRows(
     .lte("distance_km", radiusKm)
     .gte("source_fetched_at", freshSince)
     .order("distance_km", { ascending: true })
-    .range(offset, offset + maxResults - 1);
+    .order("observed_at", { ascending: false });
   if (error) throw error;
-  const { count, error: countError } = await supabase
-    .from("spot_maritime_observations")
-    .select("id", { count: "exact", head: true })
-    .eq("spot_key", spotKey)
-    .eq("provider", provider)
-    .lte("distance_km", radiusKm)
-    .gte("source_fetched_at", freshSince);
-  if (countError) throw countError;
+  const latestRows = latestObservationRowsByPlatform(
+    ((data ?? []) as MaritimeObservationRow[]),
+  );
   return {
-    rows: (data ?? []) as MaritimeObservationRow[],
-    total: count ?? data?.length ?? 0,
+    rows: latestRows.slice(offset, offset + maxResults),
+    total: latestRows.length,
   };
 }
 
@@ -262,20 +268,12 @@ async function collectNearbyCopernicusRows(params: {
     end: now,
   });
   const fetchedAt = new Date().toISOString();
-  const byPlatform = new Map<string, {
-    platformId: string;
-    platformType: string | null;
-    institution: string | null;
-    latitude: number;
-    longitude: number;
-    distanceKm: number;
-    observedAt: string;
-    values: Map<string, { value: number; observedAt: string }>;
-  }>();
+  const byPlatformAndObservedAt = new Map<string, CopernicusPlatformObservation>();
 
   for (const row of parsedRows) {
     const platformId = sanitizePlatformId(row.platform_id);
     const observedAt = new Date(row.time * 1000);
+    const observedAtIso = observedAt.toISOString();
     const latitude = row.latitude;
     const longitude = row.longitude;
     const value = row.value;
@@ -294,50 +292,63 @@ async function collectNearbyCopernicusRows(params: {
     if (distanceKm > params.radiusKm) {
       continue;
     }
-    const existing = byPlatform.get(platformId);
+    const groupKey = `${platformId}|${observedAtIso}`;
+    const existing = byPlatformAndObservedAt.get(groupKey);
     if (!existing) {
-      byPlatform.set(platformId, {
+      byPlatformAndObservedAt.set(groupKey, {
         platformId,
         platformType: row.platform_type || null,
         institution: null,
         latitude,
         longitude,
         distanceKm,
-        observedAt: observedAt.toISOString(),
+        observedAt: observedAtIso,
         values: new Map([
-          [row.variable, { value, observedAt: observedAt.toISOString() }],
+          [row.variable, { value, observedAt: observedAtIso }],
         ]),
       });
       continue;
     }
     const existingVariable = existing.values.get(row.variable);
-    if (
-      !existingVariable ||
-      observedAt.getTime() > Date.parse(existingVariable.observedAt)
-    ) {
+    if (!existingVariable) {
       existing.values.set(row.variable, {
         value,
-        observedAt: observedAt.toISOString(),
+        observedAt: observedAtIso,
       });
-    }
-    if (observedAt.getTime() > Date.parse(existing.observedAt)) {
-      existing.observedAt = observedAt.toISOString();
-      existing.latitude = latitude;
-      existing.longitude = longitude;
-      existing.distanceKm = distanceKm;
     }
   }
 
-  const allRows = [...byPlatform.values()]
+  const allRows = [...byPlatformAndObservedAt.values()]
     .map((platform) => toObservationRow(params, platform, fetchedAt))
-    .sort((a, b) => a.distance_km - b.distance_km);
+    .sort((a, b) => {
+      const distanceDelta = a.distance_km - b.distance_km;
+      if (distanceDelta !== 0) return distanceDelta;
+      return Date.parse(b.observed_at) - Date.parse(a.observed_at);
+    });
+  const latestRows = latestObservationRowsByPlatform(allRows);
 
   return {
-    rows: allRows.slice(params.offset, params.offset + params.maxResults),
+    rows: latestRows.slice(params.offset, params.offset + params.maxResults),
     allRows,
-    total: allRows.length,
+    total: latestRows.length,
     sourceFile: `${datasetId}:${start.toISOString()}/${now.toISOString()}`,
   };
+}
+
+function latestObservationRowsByPlatform(
+  rows: MaritimeObservationRow[],
+): MaritimeObservationRow[] {
+  const byPlatform = new Map<string, MaritimeObservationRow>();
+  for (const row of rows) {
+    const existing = byPlatform.get(row.platform_id);
+    if (
+      !existing ||
+      Date.parse(row.observed_at) > Date.parse(existing.observed_at)
+    ) {
+      byPlatform.set(row.platform_id, row);
+    }
+  }
+  return [...byPlatform.values()].sort((a, b) => a.distance_km - b.distance_km);
 }
 
 async function fetchCopernicusRows(params: {

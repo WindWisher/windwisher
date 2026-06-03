@@ -220,6 +220,48 @@ const stations: LiveStationConfig[] = [
     stationName: "WU Carretera de l'Albir IALTEA48",
   },
   {
+    provider: "WUNDERGROUND",
+    stationKey: "wunderground:ILAVIL16",
+    stationId: "ILAVIL16",
+    stationName: "WU Villajoyosa ILAVIL16",
+  },
+  {
+    provider: "WUNDERGROUND",
+    stationKey: "wunderground:ILAVIL24",
+    stationId: "ILAVIL24",
+    stationName: "WU La Vila Joiosa ILAVIL24",
+  },
+  {
+    provider: "WUNDERGROUND",
+    stationKey: "wunderground:ILAVIL41",
+    stationId: "ILAVIL41",
+    stationName: "WU Villajoyosa ILAVIL41",
+  },
+  {
+    provider: "WUNDERGROUND",
+    stationKey: "wunderground:IVILLA310",
+    stationId: "IVILLA310",
+    stationName: "WU Villajoyosa IVILLA310",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:4405621503",
+    stationId: "4405621503",
+    stationName: "Weathercloud Mallaeta",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:5741540482",
+    stationId: "5741540482",
+    stationName: "Weathercloud Arthur",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:0027612103",
+    stationId: "0027612103",
+    stationName: "Weathercloud Urb. Montiboli",
+  },
+  {
     provider: "WEATHERCLOUD",
     stationKey: "weathercloud:4026174225",
     stationId: "4026174225",

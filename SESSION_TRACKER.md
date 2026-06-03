@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 225h 12m`.
+- `Total historico minimo consolidado del proyecto: 228h 17m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -34,10 +34,11 @@
   - bloque consolidado adicional en `2026-05-28`: `+1h 10m` reales aproximados (`Calpe Live stations, Les Deveses cleanup and Weathercloud direction rollback`)
   - bloque consolidado adicional en `2026-05-31`: `+1h 25m` reales aproximados (`Calpe webcams, Skyline frame fitting and webcam player hardening`)
   - bloque consolidado adicional en `2026-06-02`: `+1h 20m` reales aproximados (`Altea Live stations, webcams and alarm validation`)
+  - bloque consolidado adicional en `2026-06-04`: `+3h 05m` reales aproximados (`Villajoyosa Live stations, maritime buoy, Weathercloud and Playa Paraiso defaults`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-06-02`: `+1h 20m` reales aproximados (`Altea Live stations, webcams and alarm validation`).
+  - ultima consolidacion manual anadida el `2026-06-04`: `+3h 05m` reales aproximados (`Villajoyosa Live stations, maritime buoy, Weathercloud and Playa Paraiso defaults`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -56,6 +57,64 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-06-04 - Villajoyosa Live stations, maritime buoy and Playa Paraiso defaults
+
+- Bloque consolidado adicional: `+3h 05m` reales aproximados.
+- Medicion real usada:
+  - tramo de trabajo efectivo dedicado a configurar Live de los dos spots de Villajoyosa, integrar la boya, validar WeatherCloud/WU, desplegar collector y comprobar persistencia,
+  - incluye esperas tecnicas cortas de endpoints WeatherCloud/Supabase durante validacion,
+  - no incluye pruebas manuales prolongadas fuera del IDE.
+- Live / Villajoyosa:
+  - retirada la necesidad del boton de barrido de observaciones maritimas para los spots de Villajoyosa,
+  - anadida `Boya Villajoyosa` (`copernicus-marine:VillajoyosaBuoy___MO`) como estacion fija del selector Live,
+  - la boya queda disponible en `Villajoyosa - Espigon` y `Villajoyosa - Playa Paraiso`,
+  - revisada `WU Villajoyosa ILAVIL41`, confirmando que no pisa las WU existentes y que devuelve viento fresco,
+  - anadida `WU Villajoyosa ILAVIL41` al perfil Live de `Villajoyosa - Espigon`,
+  - anadidas las WU `ILAVIL16`, `ILAVIL24`, `ILAVIL41` e `IVILLA310` al perfil Live de `Villajoyosa - Playa Paraiso`,
+  - anadida `Weathercloud Mallaeta` (`weathercloud:4405621503`) como estacion WeatherCloud compartida para Villajoyosa,
+  - descartada `Weathercloud Estacion Villajoyosa` (`weathercloud:6462941483`) por pisar practicamente a `WU ILAVIL41` y responder peor en `device/stats`,
+  - anadidas `Weathercloud Arthur` (`weathercloud:5741540482`) y `Weathercloud Urb. Montiboli` (`weathercloud:0027612103`) al perfil de `Villajoyosa - Playa Paraiso`,
+  - configurada `Weathercloud Arthur` como estacion Live predeterminada de `Villajoyosa - Playa Paraiso`,
+  - limpiado el perfil de `Villajoyosa - Espigon` para evitar duplicados internos y no mezclar estaciones especificas de Playa Paraiso,
+  - la carga Live de estaciones maritimas usa el ultimo dato cacheado en `spot_maritime_observations` por `station_key`,
+  - el historico maritimo consulta por `station_key` para compartir la serie de la boya entre spots cercanos,
+  - las tarjetas Live muestran viento, racha, temperatura del agua, oleaje y periodo cuando Copernicus trae esos campos.
+- Webcams / Villajoyosa:
+  - anadida webcam `Villajoyosa Sea View` de SkylineWebcams / Hotel Montiboli al catalogo del perfil de Espigon.
+- Backend:
+  - `spot-alarm-runner` soporta `MADIS_MARITIME` y `COPERNICUS_MARINE` leyendo el ultimo dato cacheado,
+  - las alarmas maritimas solo usan datos con menos de 4 horas para evitar disparos con lecturas caducadas,
+  - anadido scheduler manual `supabase/manual/villajoyosa_maritime_observation_scheduler.sql`,
+  - instalado en Supabase el job `villajoyosa-maritime-observation-every-30-min`,
+  - el scheduler refresca `copernicus-marine-nearby` cada 30 minutos para Villajoyosa con radio 10 km,
+  - la retencion de `spot_maritime_observations` queda limitada a 72 horas mediante `prune_spot_maritime_observations`,
+  - corregida `copernicus-marine-nearby` para guardar todos los timestamps reales de las ultimas 72 horas por plataforma, no solo el ultimo punto del barrido.
+- App:
+  - excluidas las fuentes maritimas `MADIS_MARITIME` y `COPERNICUS_MARINE` del selector de alarmas por su cadencia lenta,
+  - ocultadas tambien posibles alarmas guardadas antiguas de proveedores maritimos para no enredar al usuario,
+  - reforzado el historico maritimo en Android con consulta REST primaria y fallback al SDK de Supabase,
+  - el parseo del historico maritimo acepta mapas genericos para evitar quedarse sin puntos por tipado runtime.
+- Backend WU:
+  - anadida `wunderground:ILAVIL41` a `spot-live-observation-collector`,
+  - anadidas al collector `wunderground:ILAVIL16`, `wunderground:ILAVIL24`, `wunderground:ILAVIL41`, `wunderground:IVILLA310`,
+  - anadidas al collector `weathercloud:4405621503`, `weathercloud:5741540482` y `weathercloud:0027612103`,
+  - desplegado `spot-live-observation-collector`,
+  - confirmado en `spot_live_observations` que WU y WeatherCloud de Villajoyosa guardan viento, racha, direccion y temperatura cuando el proveedor la trae.
+- Verificacion:
+  - verificado en `cron.job` que el scheduler esta activo con `*/30 * * * *`,
+  - ejecutada una recogida manual de `copernicus-marine-nearby` para sembrar/validar la boya,
+  - confirmado en `spot_maritime_observations` el ultimo dato de `copernicus-marine:VillajoyosaBuoy___MO`,
+  - confirmado que el historico de la boya queda con `136` puntos reales en 72 horas tras el backfill,
+  - validada la consulta REST anon de `spot_maritime_observations` para la boya con mas de `130` filas devueltas,
+  - confirmadas lecturas persistidas en Supabase para `weathercloud:4405621503`, `weathercloud:5741540482`, `weathercloud:0027612103` y las WU de Villajoyosa,
+  - confirmado que las estaciones terrestres de ambos spots tienen historico y alarmas soportadas,
+  - confirmado que la boya mantiene historico pero queda excluida del selector de alarmas por decision de producto,
+  - comprobado que la respuesta cacheada de `copernicus-marine-nearby` sigue devolviendo una sola observacion actual para el listado Live,
+  - `flutter analyze` limpio en los modulos Live maritimos tocados,
+  - `flutter analyze` limpio en `live_station_metadata_loader.dart`, `live_station_registry.dart` y `spot_capabilities_catalog.dart`,
+  - `deno check` limpio en `spot-alarm-runner`, `spot-live-observation-collector` y `copernicus-marine-nearby`,
+  - desplegadas `copernicus-marine-nearby` y `spot-live-observation-collector` tras las correcciones.
 
 ### 2026-06-02 - Altea Live stations, webcams and alarm validation
 

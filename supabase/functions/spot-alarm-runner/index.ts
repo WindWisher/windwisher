@@ -622,6 +622,9 @@ async function fetchObservationForAlarm(alarm: AlarmRow) {
     case "PUERTOS":
     case "PORTUS":
       return await fetchPortusObservation(alarm.station_key);
+    case "MADIS_MARITIME":
+    case "COPERNICUS_MARINE":
+      return await fetchMaritimeCachedObservation(alarm.station_key);
     default:
       return null;
   }
@@ -638,7 +641,9 @@ function supportsStationProvider(provider: string) {
     provider === "XUSS" ||
     provider === "METEOCLIMATIC" ||
     provider === "PUERTOS" ||
-    provider === "PORTUS";
+    provider === "PORTUS" ||
+    provider === "MADIS_MARITIME" ||
+    provider === "COPERNICUS_MARINE";
 }
 
 async function fetchAemetStationObservation(stationId: string) {
@@ -785,6 +790,35 @@ async function fetchPortusObservation(stationKey: string) {
   return {
     observedAt,
     windKnots: Number((windMps * 1.9438444924406).toFixed(2)),
+    windDirectionBucket: directionBucket(windDeg),
+    observedTotalMinutesLocal: localTotalMinutesFromDate(observedAt),
+  };
+}
+
+async function fetchMaritimeCachedObservation(stationKey: string) {
+  const { data, error } = await supabase
+    .from("spot_maritime_observations")
+    .select("observed_at, wind_speed_knots, wind_dir_deg")
+    .eq("station_key", stationKey)
+    .order("observed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) {
+    return null;
+  }
+  const observedAt = parseDate(data.observed_at);
+  const windKnots = parseNumber(data.wind_speed_knots);
+  const windDeg = parseNumber(data.wind_dir_deg);
+  if (!observedAt || windKnots == null) {
+    return null;
+  }
+  const ageMs = Date.now() - observedAt.getTime();
+  if (ageMs < 0 || ageMs > 4 * 60 * 60 * 1000) {
+    return null;
+  }
+  return {
+    observedAt,
+    windKnots,
     windDirectionBucket: directionBucket(windDeg),
     observedTotalMinutesLocal: localTotalMinutesFromDate(observedAt),
   };

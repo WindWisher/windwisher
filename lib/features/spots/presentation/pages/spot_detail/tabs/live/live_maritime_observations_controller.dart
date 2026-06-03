@@ -124,6 +124,9 @@ extension _SpotDetailLiveMaritimeObservationsController
             rainMm: null,
             observedAt: observation.observedAt,
             observedAtLabel: observation.platformType,
+            seaSurfaceTempC: observation.seaSurfaceTempC,
+            waveHeightM: observation.waveHeightM,
+            wavePeriodS: observation.wavePeriodS,
           );
         }
 

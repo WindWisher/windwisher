@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
@@ -177,6 +181,26 @@ class SpotMaritimeObservationsClient {
     );
   }
 
+  Future<SpotMaritimeObservation?> fetchLatestStation({
+    required String stationKey,
+  }) async {
+    if (!EnvConfig.supabaseConfigured) {
+      return null;
+    }
+    final rows = await _client
+        .from('spot_maritime_observations')
+        .select('*')
+        .eq('station_key', stationKey)
+        .order('observed_at', ascending: false)
+        .limit(1)
+        .timeout(const Duration(seconds: 8));
+    final row = rows.whereType<Map>().firstOrNull;
+    if (row == null) {
+      return null;
+    }
+    return _parseObservation(row.cast<String, dynamic>());
+  }
+
   Future<List<SpotLiveObservationHistoryPoint>> fetchHistory({
     required String spotName,
     required String stationKey,
@@ -186,21 +210,122 @@ class SpotMaritimeObservationsClient {
       return const <SpotLiveObservationHistoryPoint>[];
     }
     final since = DateTime.now().toUtc().subtract(range).toIso8601String();
+    final rows = await _fetchHistoryRows(stationKey: stationKey, since: since);
+    final points = rows
+        .whereType<Map>()
+        .map((row) => _parseHistoryPoint(row.cast<String, dynamic>()))
+        .nonNulls
+        .toList(growable: false);
+    debugPrint(
+      'SpotMaritimeObservations history stationKey=$stationKey rows=${rows.length} '
+      'points=${points.length} first=${points.isEmpty ? null : points.first.observedAt.toIso8601String()} '
+      'last=${points.isEmpty ? null : points.last.observedAt.toIso8601String()}',
+    );
+    return points;
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchHistoryRows({
+    required String stationKey,
+    required String since,
+  }) async {
+    if (!kIsWeb) {
+      return _fetchHistoryRowsWithRest(
+        stationKey: stationKey,
+        since: since,
+      ).onError((error, stackTrace) async {
+        debugPrint(
+          'SpotMaritimeObservations history rest-primary-fallback '
+          'stationKey=$stationKey error=$error',
+        );
+        return _fetchHistoryRowsWithSdk(stationKey: stationKey, since: since);
+      });
+    }
+
+    return _fetchHistoryRowsWithSdk(
+      stationKey: stationKey,
+      since: since,
+    ).onError((error, stackTrace) async {
+      debugPrint(
+        'SpotMaritimeObservations history sdk-fallback '
+        'stationKey=$stationKey error=$error',
+      );
+      return _fetchHistoryRowsWithRest(stationKey: stationKey, since: since);
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchHistoryRowsWithSdk({
+    required String stationKey,
+    required String since,
+  }) async {
     final rows = await _client
         .from('spot_maritime_observations')
         .select('observed_at, wind_speed_knots, gust_knots, wind_dir_deg')
-        .eq('spot_key', _spotKey(spotName))
         .eq('station_key', stationKey)
         .gte('observed_at', since)
         .order('observed_at')
         .limit(1000)
         .timeout(const Duration(seconds: 12));
-
     return rows
-        .whereType<Map<String, dynamic>>()
-        .map(_parseHistoryPoint)
-        .nonNulls
+        .whereType<Map>()
+        .map((row) => row.cast<String, dynamic>())
         .toList(growable: false);
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchHistoryRowsWithRest({
+    required String stationKey,
+    required String since,
+  }) async {
+    if (kIsWeb) {
+      return const <Map<String, dynamic>>[];
+    }
+    final baseUrl = EnvConfig.supabaseUrl.trim();
+    final anonKey = EnvConfig.supabaseAnonKey.trim();
+    if (baseUrl.isEmpty || anonKey.isEmpty) {
+      return const <Map<String, dynamic>>[];
+    }
+
+    final uri = Uri.parse(
+      '$baseUrl/rest/v1/spot_maritime_observations'
+      '?select=observed_at,wind_speed_knots,gust_knots,wind_dir_deg'
+      '&station_key=eq.${Uri.encodeQueryComponent(stationKey)}'
+      '&observed_at=gte.${Uri.encodeQueryComponent(since)}'
+      '&order=observed_at.asc'
+      '&limit=1000',
+    );
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 8);
+    try {
+      final request = await client
+          .getUrl(uri)
+          .timeout(const Duration(seconds: 8));
+      request.headers
+        ..set(HttpHeaders.acceptHeader, 'application/json')
+        ..set('apikey', anonKey)
+        ..set(HttpHeaders.authorizationHeader, 'Bearer $anonKey')
+        ..set(HttpHeaders.userAgentHeader, 'WindWisher/1.0');
+      final response = await request.close().timeout(
+        const Duration(seconds: 12),
+      );
+      final body = await response
+          .transform(utf8.decoder)
+          .join()
+          .timeout(const Duration(seconds: 12));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw HttpException(
+          'spot-maritime-history-http-${response.statusCode}:$body',
+          uri: uri,
+        );
+      }
+      final decoded = jsonDecode(body);
+      if (decoded is! List) {
+        return const <Map<String, dynamic>>[];
+      }
+      return decoded
+          .whereType<Map>()
+          .map((row) => row.cast<String, dynamic>())
+          .toList(growable: false);
+    } finally {
+      client.close(force: true);
+    }
   }
 
   SpotMaritimeObservation? _parseObservation(Map<String, dynamic> row) {
