@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 228h 17m`.
+- `Total historico minimo consolidado del proyecto: 228h 57m`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -35,10 +35,11 @@
   - bloque consolidado adicional en `2026-05-31`: `+1h 25m` reales aproximados (`Calpe webcams, Skyline frame fitting and webcam player hardening`)
   - bloque consolidado adicional en `2026-06-02`: `+1h 20m` reales aproximados (`Altea Live stations, webcams and alarm validation`)
   - bloque consolidado adicional en `2026-06-04`: `+3h 05m` reales aproximados (`Villajoyosa Live stations, maritime buoy, Weathercloud and Playa Paraiso defaults`)
+  - bloque consolidado adicional en `2026-06-04`: `+40m` reales aproximados (`El Perellonet: Valencia buoy discovery and hourly scheduler`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-06-04`: `+3h 05m` reales aproximados (`Villajoyosa Live stations, maritime buoy, Weathercloud and Playa Paraiso defaults`).
+  - ultima consolidacion manual anadida el `2026-06-04`: `+40m` reales aproximados (`El Perellonet: Valencia buoy discovery and hourly scheduler`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -57,6 +58,31 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-06-04 - El Perellonet: Valencia buoy discovery and hourly scheduler
+
+- Bloque consolidado adicional: `+40m` reales aproximados.
+- Medicion real usada:
+  - comprobacion de EMODnet/Copernicus para localizar boyas utiles cerca de El Perellonet y Oliva,
+  - validacion de la cadencia real de `Valencia buoy` en Copernicus,
+  - alta de la boya en el selector Live de El Perellonet y preparacion del scheduler backend.
+- Live / El Perellonet:
+  - anadida `Boya Valencia` como estacion fija del selector Live de `El Perellonet`,
+  - configurada con provider `COPERNICUS_MARINE`,
+  - corregido el identificador operativo desde el codigo EMODnet `6100281` al ID real de Copernicus `6100281___MO`,
+  - clave final de estacion: `copernicus-marine:6100281___MO`,
+  - mantenida la exclusion de fuentes maritimas del selector de alarmas por cadencia lenta.
+- Backend:
+  - anadido `supabase/manual/el_perellonet_valencia_buoy_scheduler.sql`,
+  - el scheduler llama a `copernicus-marine-nearby` para `El Perellonet` con radio 50 km,
+  - ajustada la cadencia a horaria (`8 * * * *`) tras confirmar que la boya publica datos aproximadamente cada hora,
+  - se mantiene retencion de 72 horas en `spot_maritime_observations` mediante la funcion existente.
+- Verificacion:
+  - confirmada en EMODnet la plataforma `6100281 / Valencia buoy` con parametros de viento, olas, meteorologia, corrientes y temperatura,
+  - comprobado en Copernicus que las filas reales llegan como `6100281___MO`,
+  - comprobados timestamps recientes con cadencia horaria,
+  - `flutter analyze` limpio en `live_station_registry.dart` y `live_station_metadata_loader.dart`,
+  - `git diff --check` limpio.
 
 ### 2026-06-04 - Villajoyosa Live stations, maritime buoy and Playa Paraiso defaults
 

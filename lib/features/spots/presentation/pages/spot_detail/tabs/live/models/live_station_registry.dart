@@ -226,6 +226,13 @@ const String _weathercloudPerelloYt60234StationName = 'Weathercloud YT60234';
 const double _weathercloudPerelloYt60234StationLat = 39.30475;
 const double _weathercloudPerelloYt60234StationLon = -0.2930171;
 
+const String _copernicusValenciaBuoyStationId = '6100281___MO';
+const String _copernicusValenciaBuoyStationKey =
+    'copernicus-marine:6100281___MO';
+const String _copernicusValenciaBuoyStationName = 'Boya Valencia';
+const double _copernicusValenciaBuoyStationLat = 39.51;
+const double _copernicusValenciaBuoyStationLon = 0.2;
+
 const String _windguruDkPilesStationId = '51';
 const String _windguruDkPilesStationKey = 'windguru-station:51';
 const String _windguruDkPilesStationName = 'DK Piles Meteo';

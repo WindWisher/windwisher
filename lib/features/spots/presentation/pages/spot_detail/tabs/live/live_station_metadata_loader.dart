@@ -1260,6 +1260,18 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     _addLiveStationMetadata(
       stations: stations,
       seenKeys: seenKeys,
+      stationKey: _copernicusValenciaBuoyStationKey,
+      stationName: _copernicusValenciaBuoyStationName,
+      provider: 'COPERNICUS_MARINE',
+      stationId: _copernicusValenciaBuoyStationId,
+      latitude: _copernicusValenciaBuoyStationLat,
+      longitude: _copernicusValenciaBuoyStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
       stationKey: _avametPerellonetEstellStationKey,
       stationName: _avametPerellonetEstellStationName,
       provider: 'AVAMET',
