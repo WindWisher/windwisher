@@ -815,6 +815,110 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     );
   }
 
+  void _addElCampelloPlayaMuchavistaLiveStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _wundergroundElCampello26StationKey,
+      stationName: _wundergroundElCampello26StationName,
+      provider: 'WUNDERGROUND',
+      stationId: _wundergroundElCampello26StationId,
+      latitude: _wundergroundElCampello26StationLat,
+      longitude: _wundergroundElCampello26StationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _wundergroundElCampello18StationKey,
+      stationName: _wundergroundElCampello18StationName,
+      provider: 'WUNDERGROUND',
+      stationId: _wundergroundElCampello18StationId,
+      latitude: _wundergroundElCampello18StationLat,
+      longitude: _wundergroundElCampello18StationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _weathercloudElCampelloJuntamarStationKey,
+      stationName: _weathercloudElCampelloJuntamarStationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudElCampelloJuntamarStationId,
+      latitude: _weathercloudElCampelloJuntamarStationLat,
+      longitude: _weathercloudElCampelloJuntamarStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _wundergroundSantJoan177StationKey,
+      stationName: _wundergroundSantJoan177StationName,
+      provider: 'WUNDERGROUND',
+      stationId: _wundergroundSantJoan177StationId,
+      latitude: _wundergroundSantJoan177StationLat,
+      longitude: _wundergroundSantJoan177StationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _wundergroundAlicante69StationKey,
+      stationName: _wundergroundAlicante69StationName,
+      provider: 'WUNDERGROUND',
+      stationId: _wundergroundAlicante69StationId,
+      latitude: _wundergroundAlicante69StationLat,
+      longitude: _wundergroundAlicante69StationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _wundergroundElCampello27StationKey,
+      stationName: _wundergroundElCampello27StationName,
+      provider: 'WUNDERGROUND',
+      stationId: _wundergroundElCampello27StationId,
+      latitude: _wundergroundElCampello27StationLat,
+      longitude: _wundergroundElCampello27StationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _wundergroundElCampello35StationKey,
+      stationName: _wundergroundElCampello35StationName,
+      provider: 'WUNDERGROUND',
+      stationId: _wundergroundElCampello35StationId,
+      latitude: _wundergroundElCampello35StationLat,
+      longitude: _wundergroundElCampello35StationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _wundergroundAlicante17StationKey,
+      stationName: _wundergroundAlicante17StationName,
+      provider: 'WUNDERGROUND',
+      stationId: _wundergroundAlicante17StationId,
+      latitude: _wundergroundAlicante17StationLat,
+      longitude: _wundergroundAlicante17StationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+  }
+
   void _addVillajoyosaEspigonLiveStations({
     required double latitude,
     required double longitude,
@@ -1462,6 +1566,12 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     return capabilities.liveStationProfile == alteaCapNegretLiveStationProfile;
   }
 
+  bool _usesElCampelloPlayaMuchavistaLiveProfile() {
+    final capabilities = _resolvedSpotCapabilities();
+    return capabilities.liveStationProfile ==
+        elCampelloPlayaMuchavistaLiveStationProfile;
+  }
+
   bool _usesVillajoyosaEspigonLiveProfile() {
     final capabilities = _resolvedSpotCapabilities();
     return capabilities.liveStationProfile ==
@@ -1540,6 +1650,10 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     }
     if (capabilities.liveStationProfile == alteaCapNegretLiveStationProfile) {
       return alteaCapNegretSpotCapabilities;
+    }
+    if (capabilities.liveStationProfile ==
+        elCampelloPlayaMuchavistaLiveStationProfile) {
+      return elCampelloPlayaMuchavistaSpotCapabilities;
     }
     if (capabilities.liveStationProfile ==
         villajoyosaEspigonLiveStationProfile) {

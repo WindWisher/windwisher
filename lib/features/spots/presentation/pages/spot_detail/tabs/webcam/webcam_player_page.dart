@@ -238,7 +238,14 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
 
   bool get _usesDirectImage => _isDirectImageUrl(_pageUrl);
 
+  bool get _usesRapidDirectImage => _isRapidDirectImageUrl(_pageUrl);
+
   static bool _isDirectImageUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri?.host == 'cams.elcampello.es' &&
+        uri?.path.startsWith('/image/') == true) {
+      return true;
+    }
     final normalized = url.toLowerCase().split('?').first;
     return normalized.endsWith('.jpg') ||
         normalized.endsWith('.jpeg') ||
@@ -246,7 +253,21 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
         normalized.endsWith('.webp');
   }
 
+  static bool _isRapidDirectImageUrl(String url) {
+    final uri = Uri.tryParse(url);
+    return uri?.host == 'cams.elcampello.es' &&
+        uri?.path == '/image/muchavista';
+  }
+
+  static int _directImageRefreshMs(String url) {
+    if (_isRapidDirectImageUrl(url)) {
+      return 400;
+    }
+    return 10000;
+  }
+
   String _directImageEmbedHtml(String imageUrl) {
+    final refreshMs = _directImageRefreshMs(imageUrl);
     return '''
 <!doctype html>
 <html lang="es">
@@ -279,10 +300,28 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
   <img id="webcam-image" src="$imageUrl" alt="Webcam">
   <script>
     const baseUrl = '$imageUrl'.split('?')[0];
-    function refreshImage() {
-      document.getElementById('webcam-image').src = baseUrl + '?t=' + Date.now();
+    const refreshMs = $refreshMs;
+    let currentObjectUrl = null;
+    async function refreshImage() {
+      try {
+        const response = await fetch(baseUrl, { cache: 'no-store' });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const nextObjectUrl = URL.createObjectURL(await response.blob());
+        const image = document.getElementById('webcam-image');
+        image.onload = function() {
+          if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+          currentObjectUrl = nextObjectUrl;
+          setTimeout(refreshImage, refreshMs);
+        };
+        image.src = nextObjectUrl;
+      } catch (_) {
+        setTimeout(refreshImage, Math.max(refreshMs, 1000));
+      }
     }
-    setInterval(refreshImage, 10000);
+    setTimeout(refreshImage, refreshMs);
+    window.addEventListener('beforeunload', function() {
+      if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+    });
   </script>
 </body>
 </html>
@@ -389,6 +428,9 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
   Future<void> _loadPlayer() async {
     final controller = _controller;
     if (controller == null) return;
+    if (_usesRapidDirectImage) {
+      await controller.clearCache();
+    }
     if (mounted) {
       setState(() {
         _isSkylinePlayerPreparing = widget.embedAsIframe;
@@ -410,6 +452,15 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
     if (_pageUrl.isNotEmpty) {
       controller.loadRequest(Uri.parse(_pageUrl));
     }
+  }
+
+  @override
+  void dispose() {
+    final controller = _controller;
+    if (_usesRapidDirectImage && controller != null) {
+      controller.clearCache().ignore();
+    }
+    super.dispose();
   }
 
   Future<void> _finishSkylinePlayerPreparing() async {
@@ -817,6 +868,9 @@ class _WebcamFullscreenScaffoldState extends State<_WebcamFullscreenScaffold> {
   WebViewController? _controller;
   bool _isSkylinePlayerPreparing = false;
 
+  bool get _usesRapidDirectImage =>
+      _WebcamPlayerPageState._isRapidDirectImageUrl(widget.pageUrl);
+
   @override
   void initState() {
     super.initState();
@@ -853,6 +907,9 @@ class _WebcamFullscreenScaffoldState extends State<_WebcamFullscreenScaffold> {
   Future<void> _loadFullscreenPlayer() async {
     final controller = _controller;
     if (controller == null) return;
+    if (_usesRapidDirectImage) {
+      await controller.clearCache();
+    }
     await _configureAndroidWebcamController(controller, widget.pageUrl);
     if (widget.streamManifestUrl.isNotEmpty) {
       await controller.loadHtmlString(widget.streamEmbedHtml);
@@ -885,6 +942,10 @@ class _WebcamFullscreenScaffoldState extends State<_WebcamFullscreenScaffold> {
 
   @override
   void dispose() {
+    final controller = _controller;
+    if (_usesRapidDirectImage && controller != null) {
+      controller.clearCache().ignore();
+    }
     if (!kIsWeb) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       _restoreOrientations();

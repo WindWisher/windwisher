@@ -545,6 +545,49 @@ const List<SpotWebcam> _santaPolaPlatjaLissaWebcams = [
 
 const List<SpotWebcam> _elCampelloPlayaMuchavistaWebcams = [
   SpotWebcam(
+    name: 'Playa Muchavista',
+    source: 'Ayuntamiento de El Campello',
+    status: 'Directo',
+    resolution: 'Imagen live',
+    primaryPageUrl: 'http://cams.elcampello.es:85/image/muchavista',
+    summary:
+        'Webcam municipal situada en Playa Muchavista, la referencia visual mas cercana al spot.',
+    previewImageUrl: 'http://cams.elcampello.es:85/image/muchavista',
+    locationLabel: 'Playa Muchavista',
+    latitude: 38.384911564997914,
+    longitude: -0.4089188575744629,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Webcams Ayuntamiento de El Campello',
+        url: 'https://www.elcampello.es/index.php?s=webcams',
+      ),
+    ],
+  ),
+  SpotWebcam(
+    name: 'Playa El Campello · Camaramar',
+    source: 'Camaramar',
+    status: 'Directo',
+    resolution: 'HLS',
+    primaryPageUrl:
+        'https://www.camaramar.com/webcam/comunidad-valenciana_alicante_campello',
+    summary:
+        'Webcam de Camaramar/Campello Surf Club con vista de playa y previsiones de surf.',
+    streamManifestUrl:
+        'https://wow.camaramar.com/camaramar/42_campello.stream/playlist.m3u8',
+    previewImageUrl:
+        'https://www.camaramar.com/uploads/webcam/98d64c89-1847-44b1-a4d3-5ff88a05f697.webp',
+    locationLabel: 'Playa El Campello',
+    latitude: 38.39511242726364,
+    longitude: -0.40633815737892465,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Webcam Playa El Campello · Camaramar',
+        url:
+            'https://www.camaramar.com/webcam/comunidad-valenciana_alicante_campello',
+      ),
+    ],
+  ),
+  SpotWebcam(
     name: 'El Campello',
     source: 'Comunitat Valenciana',
     status: 'Directo',

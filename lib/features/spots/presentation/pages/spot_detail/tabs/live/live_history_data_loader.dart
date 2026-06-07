@@ -121,6 +121,12 @@ extension _SpotDetailLiveHistoryDataLoader on _SpotDetailPageState {
     }
 
     if (station.provider == 'WUNDERGROUND') {
+      if (_usesBackendHistoryForWundergroundStation(station)) {
+        final backendHistory = await _fetchBackendCollectedLiveHistory(station);
+        if (backendHistory.isNotEmpty) {
+          return backendHistory;
+        }
+      }
       final stationId = station.stationId;
       if (stationId == null) {
         return null;

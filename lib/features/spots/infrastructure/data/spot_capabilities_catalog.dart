@@ -47,6 +47,10 @@ const String santaPolaPlatjaLissaWebcamProfile =
 const String santaPolaPlatjaLissaSpotName = 'Santa Pola - Platja Lissa';
 const String elCampelloPlayaMuchavistaWebcamProfile =
     'el_campello_playa_muchavista_webcams';
+const String elCampelloPlayaMuchavistaLiveStationProfile =
+    'el_campello_playa_muchavista';
+const String elCampelloPlayaMuchavistaPreferredLiveStationKey =
+    'wunderground:IELCAM26';
 const String elCampelloPlayaMuchavistaSpotName =
     'El Campello - Playa Muchavista';
 const String elPerellonetLiveStationProfile = 'el_perellonet';
@@ -186,9 +190,11 @@ const santaPolaPlatjaLissaSpotCapabilities = SpotCapabilities(
 );
 
 const elCampelloPlayaMuchavistaSpotCapabilities = SpotCapabilities(
+  liveStationProfile: elCampelloPlayaMuchavistaLiveStationProfile,
   webcamProfile: elCampelloPlayaMuchavistaWebcamProfile,
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
+  preferredLiveStationKey: elCampelloPlayaMuchavistaPreferredLiveStationKey,
   portusRealtimeStationIds: <int>[4651, 4652, 4653],
   navigationLatitude: 38.39502060831646,
   navigationLongitude: -0.4071727602994512,

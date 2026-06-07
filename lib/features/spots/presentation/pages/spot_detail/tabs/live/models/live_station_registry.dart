@@ -434,6 +434,58 @@ const String _wundergroundAltea48StationName =
 const double _wundergroundAltea48StationLat = 38.578;
 const double _wundergroundAltea48StationLon = -0.064;
 
+const String _wundergroundElCampello26StationId = 'IELCAM26';
+const String _wundergroundElCampello26StationKey = 'wunderground:IELCAM26';
+const String _wundergroundElCampello26StationName = 'WU Muchavista IELCAM26';
+const double _wundergroundElCampello26StationLat = 38.398196;
+const double _wundergroundElCampello26StationLon = -0.406481;
+
+const String _wundergroundElCampello18StationId = 'IELCAM18';
+const String _wundergroundElCampello18StationKey = 'wunderground:IELCAM18';
+const String _wundergroundElCampello18StationName =
+    'WU Urbanitzacio Mutxavista IELCAM18';
+const double _wundergroundElCampello18StationLat = 38.38757;
+const double _wundergroundElCampello18StationLon = -0.40898;
+
+const String _weathercloudElCampelloJuntamarStationId = '3871698854';
+const String _weathercloudElCampelloJuntamarStationKey =
+    'weathercloud:3871698854';
+const String _weathercloudElCampelloJuntamarStationName =
+    'Weathercloud Juntamar';
+const double _weathercloudElCampelloJuntamarStationLat = 38.3933472;
+const double _weathercloudElCampelloJuntamarStationLon = -0.4081945;
+
+const String _wundergroundAlicante69StationId = 'IALICA69';
+const String _wundergroundAlicante69StationKey = 'wunderground:IALICA69';
+const String _wundergroundAlicante69StationName = 'WU Alicante IALICA69';
+const double _wundergroundAlicante69StationLat = 38.371632;
+const double _wundergroundAlicante69StationLon = -0.410488;
+
+const String _wundergroundElCampello27StationId = 'IELCAM27';
+const String _wundergroundElCampello27StationKey = 'wunderground:IELCAM27';
+const String _wundergroundElCampello27StationName = 'WU El Campello IELCAM27';
+const double _wundergroundElCampello27StationLat = 38.426564;
+const double _wundergroundElCampello27StationLon = -0.398083;
+
+const String _wundergroundElCampello35StationId = 'IELCAM35';
+const String _wundergroundElCampello35StationKey = 'wunderground:IELCAM35';
+const String _wundergroundElCampello35StationName = 'WU El Campello IELCAM35';
+const double _wundergroundElCampello35StationLat = 38.431;
+const double _wundergroundElCampello35StationLon = -0.402;
+
+const String _wundergroundAlicante17StationId = 'IALICA17';
+const String _wundergroundAlicante17StationKey = 'wunderground:IALICA17';
+const String _wundergroundAlicante17StationName = 'WU Alicante IALICA17';
+const double _wundergroundAlicante17StationLat = 38.361572;
+const double _wundergroundAlicante17StationLon = -0.496405;
+
+const String _wundergroundSantJoan177StationId = 'ISANTJ177';
+const String _wundergroundSantJoan177StationKey = 'wunderground:ISANTJ177';
+const String _wundergroundSantJoan177StationName =
+    "WU Sant Joan d'Alacant ISANTJ177";
+const double _wundergroundSantJoan177StationLat = 38.400875;
+const double _wundergroundSantJoan177StationLon = -0.430521;
+
 const String _avametAlteaClubNauticoStationId = 'c31m018e06';
 const String _avametAlteaClubNauticoStationKey = 'avamet:c31m018e06';
 const String _avametAlteaClubNauticoStationName = 'Altea Club Nautico';

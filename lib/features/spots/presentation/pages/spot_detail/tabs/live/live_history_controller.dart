@@ -155,7 +155,8 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
     if (station.provider == 'AIGUABLANCA') {
       return false;
     }
-    if (station.provider == 'WUNDERGROUND') {
+    if (station.provider == 'WUNDERGROUND' &&
+        !_usesBackendHistoryForWundergroundStation(station)) {
       return false;
     }
     if (station.provider == 'AEMET' && station.stationId == '8058X') {
@@ -176,8 +177,50 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
         station?.provider == 'METEOCLIMATIC' ||
         station?.provider == 'WEATHERCLOUD' ||
         station?.provider == 'XUSS' ||
+        (station != null &&
+            _usesBackendHistoryForWundergroundStation(station)) ||
         station?.provider == 'MADIS_MARITIME' ||
         station?.provider == 'COPERNICUS_MARINE';
+  }
+
+  bool _usesBackendHistoryForWundergroundStation(_NearbyStation station) {
+    if (station.provider != 'WUNDERGROUND') {
+      return false;
+    }
+    return switch (station.stationKey) {
+      _wundergroundOliva107StationKey ||
+      _wundergroundDenia129StationKey ||
+      _wundergroundOliva49StationKey ||
+      _wundergroundDenia15StationKey ||
+      _wundergroundElsPoblets7StationKey ||
+      _wundergroundElsPoblets8StationKey ||
+      _wundergroundElVerger21StationKey ||
+      _wundergroundElsPoblets5StationKey ||
+      _wundergroundElsPoblets14StationKey ||
+      _wundergroundDenia157StationKey ||
+      _wundergroundDenia70StationKey ||
+      _wundergroundDenia123StationKey ||
+      _wundergroundDenia35StationKey ||
+      _wundergroundDenia142StationKey ||
+      _wundergroundDenia140StationKey ||
+      _wundergroundCalp39StationKey ||
+      _wundergroundCalp32StationKey ||
+      _wundergroundSantJoan177StationKey ||
+      _wundergroundElCampello26StationKey ||
+      _wundergroundElCampello18StationKey ||
+      _wundergroundAlicante69StationKey ||
+      _wundergroundElCampello27StationKey ||
+      _wundergroundElCampello35StationKey ||
+      _wundergroundAlicante17StationKey ||
+      _wundergroundAltea13StationKey ||
+      _wundergroundAltea38StationKey ||
+      _wundergroundAltea48StationKey ||
+      _wundergroundVillajoyosaLavil16StationKey ||
+      _wundergroundVillajoyosaLavil24StationKey ||
+      _wundergroundVillajoyosaLavil41StationKey ||
+      _wundergroundVillajoyosaVilla310StationKey => true,
+      _ => false,
+    };
   }
 
   String _historicalSeriesDisplayLabel() {

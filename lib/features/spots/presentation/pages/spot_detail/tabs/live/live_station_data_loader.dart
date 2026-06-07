@@ -24,6 +24,8 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
           _usesDeniaPuntaMolinsLiveProfile();
       final usesCalpeLiveProfile = _usesCalpeLiveProfile();
       final usesAlteaCapNegretLiveProfile = _usesAlteaCapNegretLiveProfile();
+      final usesElCampelloPlayaMuchavistaLiveProfile =
+          _usesElCampelloPlayaMuchavistaLiveProfile();
       final usesVillajoyosaEspigonLiveProfile =
           _usesVillajoyosaEspigonLiveProfile();
       final usesVillajoyosaPlayaParaisoLiveProfile =
@@ -48,6 +50,7 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
           !usesDeniaPuntaMolinsLiveProfile &&
           !usesCalpeLiveProfile &&
           !usesAlteaCapNegretLiveProfile &&
+          !usesElCampelloPlayaMuchavistaLiveProfile &&
           !usesVillajoyosaEspigonLiveProfile &&
           !usesVillajoyosaPlayaParaisoLiveProfile &&
           !usesElPerellonetLiveProfile &&
@@ -171,6 +174,14 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
       }
       if (usesAlteaCapNegretLiveProfile) {
         _addAlteaCapNegretLiveStations(
+          latitude: latitude,
+          longitude: longitude,
+          stations: stations,
+          seenKeys: seenKeys,
+        );
+      }
+      if (usesElCampelloPlayaMuchavistaLiveProfile) {
+        _addElCampelloPlayaMuchavistaLiveStations(
           latitude: latitude,
           longitude: longitude,
           stations: stations,

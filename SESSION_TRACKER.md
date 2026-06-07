@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 228h 57m`.
+- `Total historico minimo consolidado del proyecto: 231h 05m 12s`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -35,11 +35,12 @@
   - bloque consolidado adicional en `2026-05-31`: `+1h 25m` reales aproximados (`Calpe webcams, Skyline frame fitting and webcam player hardening`)
   - bloque consolidado adicional en `2026-06-02`: `+1h 20m` reales aproximados (`Altea Live stations, webcams and alarm validation`)
   - bloque consolidado adicional en `2026-06-04`: `+3h 05m` reales aproximados (`Villajoyosa Live stations, maritime buoy, Weathercloud and Playa Paraiso defaults`)
-  - bloque consolidado adicional en `2026-06-04`: `+40m` reales aproximados (`El Perellonet: Valencia buoy discovery and hourly scheduler`)
+  - bloque consolidado adicional en `2026-06-04`: `+1m 11s` reales (`El Perellonet: Valencia buoy discovery and hourly scheduler`)
+  - bloque consolidado adicional en `2026-06-07`: `+2h 47m 01s` reales verificables (`El Campello Live stations, history, alarms and webcams`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-06-04`: `+40m` reales aproximados (`El Perellonet: Valencia buoy discovery and hourly scheduler`).
+  - ultima consolidacion manual anadida el `2026-06-07`: `+2h 47m 01s` reales verificables (`El Campello Live stations, history, alarms and webcams`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -59,9 +60,47 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 
 ## Registro de sesiones
 
+### 2026-06-07 - El Campello Live stations, history, alarms and webcams
+
+- Bloque consolidado adicional: `+2h 47m 01s` reales verificables.
+- Medicion real usada:
+  - `2026-06-05 17:24:56` a `2026-06-05 17:56:23`: `31m 27s`,
+  - `2026-06-07 10:57:51` a `2026-06-07 13:13:25`: `2h 15m 34s`,
+  - se registra solo el minimo respaldado por marcas horarias reales de comprobaciones y despliegues; no se suma trabajo previo sin medicion verificable.
+- Live / El Campello - Playa Muchavista:
+  - creado perfil Live especifico para el spot y configurada `WU Muchavista IELCAM26` como estacion principal,
+  - anadidas las estaciones WU `IELCAM26`, `IELCAM18`, `ISANTJ177`, `IALICA69`, `IELCAM27`, `IELCAM35` e `IALICA17`,
+  - anadida `Weathercloud Juntamar` (`weathercloud:3871698854`), situada junto al spot,
+  - conectadas todas las estaciones nuevas al collector backend y al historico de 72 horas,
+  - desplegado e invocado `spot-live-observation-collector` tras las altas,
+  - confirmado que las ocho estaciones tienen lecturas recientes y viento persistido en `spot_live_observations`.
+- Historicos y alarmas:
+  - generalizado el uso del historico backend para las estaciones WU incluidas en el collector,
+  - auditadas las ocho estaciones de El Campello con filas reales recientes,
+  - confirmado que siete estaciones publican viento y direccion completos,
+  - detectado que `IALICA69` publica viento pero no direccion en ninguna de sus lecturas,
+  - excluida `IALICA69` del selector de alarmas para evitar alarmas direccionales imposibles de cumplir,
+  - confirmado soporte de `WUNDERGROUND` y `WEATHERCLOUD` en `spot-alarm-runner`,
+  - desplegado `spot-alarm-runner` actualizado sin ejecutarlo manualmente para evitar disparar avisos reales.
+- Webcams / El Campello:
+  - mantenida la webcam oficial de Comunitat Valenciana,
+  - anadida la imagen live municipal de Playa Muchavista desde `cams.elcampello.es:85/image/muchavista`,
+  - anadido el stream HLS de Camaramar Playa El Campello,
+  - permitido trafico HTTP Android exclusivamente para `cams.elcampello.es` mediante `network_security_config.xml`,
+  - ajustada la imagen live municipal a su cadencia real medida de aproximadamente `2.5 fps` (`400 ms`),
+  - sustituido el refresco con query variable por descargas secuenciales `no-store`,
+  - cada frame reemplaza al anterior y revoca su URL temporal; la cache del WebView se limpia al abrir y cerrar el visor/fullscreen.
+- Verificacion:
+  - `flutter analyze` limpio en los modulos Live y Webcam tocados,
+  - `deno check` limpio en `spot-live-observation-collector` y `spot-alarm-runner`,
+  - collector y runner confirmados como funciones activas en Supabase,
+  - `xmllint` limpio para el manifest y la configuracion de red Android,
+  - `git diff --check` limpio,
+  - `.tmp/` queda fuera de git como carpeta temporal de investigacion.
+
 ### 2026-06-04 - El Perellonet: Valencia buoy discovery and hourly scheduler
 
-- Bloque consolidado adicional: `+40m` reales aproximados.
+- Bloque consolidado adicional: `+1m 11s` reales.
 - Medicion real usada:
   - comprobacion de EMODnet/Copernicus para localizar boyas utiles cerca de El Perellonet y Oliva,
   - validacion de la cadencia real de `Valencia buoy` en Copernicus,
