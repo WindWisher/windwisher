@@ -185,6 +185,92 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     );
   }
 
+  void _addTarifaWundergroundStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    for (final station in [
+      (
+        stationKey: _wundergroundTarifa47StationKey,
+        stationName: _wundergroundTarifa47StationName,
+        stationId: _wundergroundTarifa47StationId,
+        latitude: _wundergroundTarifa47StationLat,
+        longitude: _wundergroundTarifa47StationLon,
+      ),
+      (
+        stationKey: _wundergroundTarifa23StationKey,
+        stationName: _wundergroundTarifa23StationName,
+        stationId: _wundergroundTarifa23StationId,
+        latitude: _wundergroundTarifa23StationLat,
+        longitude: _wundergroundTarifa23StationLon,
+      ),
+      (
+        stationKey: _wundergroundTarifa56StationKey,
+        stationName: _wundergroundTarifa56StationName,
+        stationId: _wundergroundTarifa56StationId,
+        latitude: _wundergroundTarifa56StationLat,
+        longitude: _wundergroundTarifa56StationLon,
+      ),
+      (
+        stationKey: _wundergroundTarifa53StationKey,
+        stationName: _wundergroundTarifa53StationName,
+        stationId: _wundergroundTarifa53StationId,
+        latitude: _wundergroundTarifa53StationLat,
+        longitude: _wundergroundTarifa53StationLon,
+      ),
+      (
+        stationKey: _wundergroundTarifa54StationKey,
+        stationName: _wundergroundTarifa54StationName,
+        stationId: _wundergroundTarifa54StationId,
+        latitude: _wundergroundTarifa54StationLat,
+        longitude: _wundergroundTarifa54StationLon,
+      ),
+      (
+        stationKey: _wundergroundTarifa10StationKey,
+        stationName: _wundergroundTarifa10StationName,
+        stationId: _wundergroundTarifa10StationId,
+        latitude: _wundergroundTarifa10StationLat,
+        longitude: _wundergroundTarifa10StationLon,
+      ),
+      (
+        stationKey: _wundergroundTarifa51StationKey,
+        stationName: _wundergroundTarifa51StationName,
+        stationId: _wundergroundTarifa51StationId,
+        latitude: _wundergroundTarifa51StationLat,
+        longitude: _wundergroundTarifa51StationLon,
+      ),
+      (
+        stationKey: _wundergroundTarifa29StationKey,
+        stationName: _wundergroundTarifa29StationName,
+        stationId: _wundergroundTarifa29StationId,
+        latitude: _wundergroundTarifa29StationLat,
+        longitude: _wundergroundTarifa29StationLon,
+      ),
+      (
+        stationKey: _wundergroundTarifa35StationKey,
+        stationName: _wundergroundTarifa35StationName,
+        stationId: _wundergroundTarifa35StationId,
+        latitude: _wundergroundTarifa35StationLat,
+        longitude: _wundergroundTarifa35StationLon,
+      ),
+    ]) {
+      _addLiveStationMetadata(
+        stations: stations,
+        seenKeys: seenKeys,
+        stationKey: station.stationKey,
+        stationName: station.stationName,
+        provider: 'WUNDERGROUND',
+        stationId: station.stationId,
+        latitude: station.latitude,
+        longitude: station.longitude,
+        referenceLatitude: latitude,
+        referenceLongitude: longitude,
+      );
+    }
+  }
+
   void _addGandiaPlayaLiveStations({
     required double latitude,
     required double longitude,
@@ -1312,6 +1398,24 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
       stationId: _aemetTarifaStationId,
       latitude: _aemetTarifaStationLat,
       longitude: _aemetTarifaStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addTarifaWundergroundStations(
+      latitude: latitude,
+      longitude: longitude,
+      stations: stations,
+      seenKeys: seenKeys,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _weathercloudTarifaLericheStationKey,
+      stationName: _weathercloudTarifaLericheStationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudTarifaLericheStationId,
+      latitude: _weathercloudTarifaLericheStationLat,
+      longitude: _weathercloudTarifaLericheStationLon,
       referenceLatitude: latitude,
       referenceLongitude: longitude,
     );

@@ -63,6 +63,10 @@ const String elPerellonetPreferredLiveStationKey =
 const String elPerellonetSpotName = 'El Perellonet';
 const String tarifaLiveStationProfile = 'tarifa';
 const String tarifaPreferredLiveStationKey = '6001';
+const String tarifaBalnearioWebcamProfile = 'tarifa_balneario_webcams';
+const String tarifaCampoFutbolWebcamProfile = 'tarifa_campo_futbol_webcams';
+const String tarifaLosLancesWebcamProfile = 'tarifa_los_lances_webcams';
+const String tarifaValdevaquerosWebcamProfile = 'tarifa_valdevaqueros_webcams';
 const String tarifaBalnearioSpotName = 'Tarifa - Balneario';
 const String tarifaCampoFutbolSpotName = 'Tarifa - Campo de futbol';
 const String tarifaLosLancesSpotName = 'Tarifa - Los Lances';
@@ -220,6 +224,7 @@ const elPerellonetSpotCapabilities = SpotCapabilities(
 
 const tarifaBalnearioSpotCapabilities = SpotCapabilities(
   liveStationProfile: tarifaLiveStationProfile,
+  webcamProfile: tarifaBalnearioWebcamProfile,
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
   preferredLiveStationKey: tarifaPreferredLiveStationKey,
@@ -231,6 +236,7 @@ const tarifaBalnearioSpotCapabilities = SpotCapabilities(
 
 const tarifaCampoFutbolSpotCapabilities = SpotCapabilities(
   liveStationProfile: tarifaLiveStationProfile,
+  webcamProfile: tarifaCampoFutbolWebcamProfile,
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
   preferredLiveStationKey: tarifaPreferredLiveStationKey,
@@ -242,6 +248,7 @@ const tarifaCampoFutbolSpotCapabilities = SpotCapabilities(
 
 const tarifaLosLancesSpotCapabilities = SpotCapabilities(
   liveStationProfile: tarifaLiveStationProfile,
+  webcamProfile: tarifaLosLancesWebcamProfile,
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
   preferredLiveStationKey: tarifaPreferredLiveStationKey,
@@ -253,6 +260,7 @@ const tarifaLosLancesSpotCapabilities = SpotCapabilities(
 
 const tarifaValdevaquerosSpotCapabilities = SpotCapabilities(
   liveStationProfile: tarifaLiveStationProfile,
+  webcamProfile: tarifaValdevaquerosWebcamProfile,
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
   preferredLiveStationKey: tarifaPreferredLiveStationKey,

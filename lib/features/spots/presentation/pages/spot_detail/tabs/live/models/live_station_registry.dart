@@ -12,6 +12,67 @@ const String _aemetTarifaStationName = 'AEMET Tarifa';
 const double _aemetTarifaStationLat = 36.013985;
 const double _aemetTarifaStationLon = -5.59883;
 
+const String _wundergroundTarifa47StationId = 'ITARIF47';
+const String _wundergroundTarifa47StationKey = 'wunderground:ITARIF47';
+const String _wundergroundTarifa47StationName = 'WU Tarifa ITARIF47';
+const double _wundergroundTarifa47StationLat = 36.020132;
+const double _wundergroundTarifa47StationLon = -5.61464;
+
+const String _wundergroundTarifa23StationId = 'ITARIF23';
+const String _wundergroundTarifa23StationKey = 'wunderground:ITARIF23';
+const String _wundergroundTarifa23StationName = 'WU Tarifa ITARIF23';
+const double _wundergroundTarifa23StationLat = 36.021;
+const double _wundergroundTarifa23StationLon = -5.614;
+
+const String _wundergroundTarifa56StationId = 'ITARIF56';
+const String _wundergroundTarifa56StationKey = 'wunderground:ITARIF56';
+const String _wundergroundTarifa56StationName = 'WU Tarifa ITARIF56';
+const double _wundergroundTarifa56StationLat = 36.065;
+const double _wundergroundTarifa56StationLon = -5.54;
+
+const String _wundergroundTarifa53StationId = 'ITARIF53';
+const String _wundergroundTarifa53StationKey = 'wunderground:ITARIF53';
+const String _wundergroundTarifa53StationName = 'WU Tarifa ITARIF53';
+const double _wundergroundTarifa53StationLat = 36.067145;
+const double _wundergroundTarifa53StationLon = -5.538682;
+
+const String _wundergroundTarifa54StationId = 'ITARIF54';
+const String _wundergroundTarifa54StationKey = 'wunderground:ITARIF54';
+const String _wundergroundTarifa54StationName = 'WU Tarifa ITARIF54';
+const double _wundergroundTarifa54StationLat = 36.065;
+const double _wundergroundTarifa54StationLon = -5.725;
+
+const String _wundergroundTarifa10StationId = 'ITARIF10';
+const String _wundergroundTarifa10StationKey = 'wunderground:ITARIF10';
+const String _wundergroundTarifa10StationName = 'WU Tarifa ITARIF10';
+const double _wundergroundTarifa10StationLat = 36.109925;
+const double _wundergroundTarifa10StationLon = -5.823297;
+
+const String _wundergroundTarifa51StationId = 'ITARIF51';
+const String _wundergroundTarifa51StationKey = 'wunderground:ITARIF51';
+const String _wundergroundTarifa51StationName = 'WU Tarifa ITARIF51';
+const double _wundergroundTarifa51StationLat = 36.142055;
+const double _wundergroundTarifa51StationLon = -5.691096;
+
+const String _wundergroundTarifa29StationId = 'ITARIF29';
+const String _wundergroundTarifa29StationKey = 'wunderground:ITARIF29';
+const String _wundergroundTarifa29StationName = 'WU Tarifa ITARIF29';
+const double _wundergroundTarifa29StationLat = 36.156772;
+const double _wundergroundTarifa29StationLon = -5.678994;
+
+const String _wundergroundTarifa35StationId = 'ITARIF35';
+const String _wundergroundTarifa35StationKey = 'wunderground:ITARIF35';
+const String _wundergroundTarifa35StationName = 'WU Tarifa ITARIF35';
+const double _wundergroundTarifa35StationLat = 36.109102;
+const double _wundergroundTarifa35StationLon = -5.766749;
+
+const String _weathercloudTarifaLericheStationId = '0187798221';
+const String _weathercloudTarifaLericheStationKey = 'weathercloud:0187798221';
+const String _weathercloudTarifaLericheStationName =
+    'Weathercloud LERICHE Christophe';
+const double _weathercloudTarifaLericheStationLat = 36.116606;
+const double _weathercloudTarifaLericheStationLon = -5.828336;
+
 const String _avametOlivaStationId = 'c25m181e07';
 const String _avametOlivaStationKey = 'avamet:c25m181e07';
 const String _avametOlivaStationName = 'Club Nautico de Oliva';

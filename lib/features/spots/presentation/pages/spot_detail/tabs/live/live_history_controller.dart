@@ -221,6 +221,15 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
       _wundergroundElche99StationKey ||
       _wundergroundElche115StationKey ||
       _wundergroundElche66StationKey ||
+      _wundergroundTarifa47StationKey ||
+      _wundergroundTarifa23StationKey ||
+      _wundergroundTarifa56StationKey ||
+      _wundergroundTarifa53StationKey ||
+      _wundergroundTarifa54StationKey ||
+      _wundergroundTarifa10StationKey ||
+      _wundergroundTarifa51StationKey ||
+      _wundergroundTarifa29StationKey ||
+      _wundergroundTarifa35StationKey ||
       _wundergroundAltea13StationKey ||
       _wundergroundAltea38StationKey ||
       _wundergroundAltea48StationKey ||

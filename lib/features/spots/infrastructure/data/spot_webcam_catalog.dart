@@ -850,6 +850,112 @@ const List<SpotWebcam> _xeracoWebcams = [
   ),
 ];
 
+const List<SpotWebcam> _tarifaBalnearioWebcams = [
+  SpotWebcam(
+    name: 'Tarifa Balneario',
+    source: 'Camaramar',
+    status: 'Directo',
+    resolution: 'Web oficial',
+    primaryPageUrl: 'https://www.camaramar.com/webcam/tarifa-balneario',
+    summary: 'Webcam en directo de la playa del Balneario y Los Lances Sur.',
+    locationLabel: 'Playa del Balneario',
+    latitude: 36.00911890458527,
+    longitude: -5.60893187013924,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Tarifa Balneario · Camaramar',
+        url: 'https://www.camaramar.com/webcam/tarifa-balneario',
+      ),
+      WebcamReferencePage(
+        title: 'Los Lances Sur · Spotfav',
+        url: 'https://www.spotfav.com/dashboard/spots/los-lances-sur',
+      ),
+    ],
+  ),
+];
+
+const List<SpotWebcam> _tarifaCampoFutbolWebcams = [
+  SpotWebcam(
+    name: 'Tarifa Rio Jara',
+    source: 'Ozu Tarifa',
+    status: 'Directo',
+    resolution: 'Web oficial',
+    primaryPageUrl:
+        'https://www.kiteschool-ozutarifa.com/webcam-kitesurf-tarifa/',
+    summary: 'Webcam en directo de Rio Jara y el spot Campo de futbol.',
+    previewImageUrl:
+        'https://www.kiteschool-ozutarifa.com/wp-content/uploads/2024/02/webcam.jpg',
+    locationLabel: 'Rio Jara',
+    latitude: 36.02129962247533,
+    longitude: -5.616776453751289,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Webcam kitesurf Tarifa · Ozu Tarifa',
+        url: 'https://www.kiteschool-ozutarifa.com/webcam-kitesurf-tarifa/',
+      ),
+      WebcamReferencePage(
+        title: 'Campo de futbol - Rio Jara · Spotfav',
+        url: 'https://www.spotfav.com/dashboard/spots/campo-de-futbol-rio-jara',
+      ),
+      WebcamReferencePage(
+        title: 'Tarifa Rio Jara · WorldCam',
+        url:
+            'https://worldcam.eu/webcams/europe/spain/35943-tarifa-rio-jara-kitesurf-spot',
+      ),
+    ],
+  ),
+];
+
+const List<SpotWebcam> _tarifaLosLancesWebcams = [
+  SpotWebcam(
+    name: 'Tarifa Los Lances',
+    source: 'Meteo365',
+    status: 'Directo',
+    resolution: 'Web oficial',
+    primaryPageUrl: 'https://meteo365.es/livecams/tarifa.php',
+    summary: 'Webcam en directo de la playa de Los Lances.',
+    locationLabel: 'Playa de Los Lances',
+    latitude: 36.046076176197694,
+    longitude: -5.640893942328883,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Tarifa Los Lances · Meteo365',
+        url: 'https://meteo365.es/livecams/tarifa.php',
+      ),
+      WebcamReferencePage(
+        title: 'Tarifa Playa · Meteo365',
+        url: 'https://meteo365.es/livecams/tarifa-playa.php',
+      ),
+    ],
+  ),
+];
+
+const List<SpotWebcam> _tarifaValdevaquerosWebcams = [
+  SpotWebcam(
+    name: 'Tarifa Valdevaqueros Spin Out',
+    source: 'Spin Out',
+    status: 'Directo',
+    resolution: 'Web oficial',
+    primaryPageUrl:
+        'https://www.tarifaspinout.com/weather-webcam-tarifa-spin-out',
+    summary: 'Webcam en directo de la playa de Valdevaqueros.',
+    locationLabel: 'Valdevaqueros',
+    latitude: 36.06686048995999,
+    longitude: -5.6851553052299035,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Weather & webcam Tarifa · Spin Out',
+        url: 'https://www.tarifaspinout.com/weather-webcam-tarifa-spin-out',
+      ),
+      WebcamReferencePage(
+        title: 'Tarifa Valdevaqueros · WorldCam',
+        url:
+            'https://es.worldcam.eu/webcams/europe/spain/23926-tarifa-valdevaqueros',
+      ),
+    ],
+  ),
+];
+
 List<SpotWebcam> webcamsForProfile(String? profile) {
   return switch (profile) {
     olivaCanalGorgsWebcamProfile => _olivaCanalGorgsWebcams,
@@ -864,6 +970,10 @@ List<SpotWebcam> webcamsForProfile(String? profile) {
     santaPolaPlatjaLissaWebcamProfile => _santaPolaPlatjaLissaWebcams,
     elCampelloPlayaMuchavistaWebcamProfile => _elCampelloPlayaMuchavistaWebcams,
     elPerellonetWebcamProfile => _elPerellonetWebcams,
+    tarifaBalnearioWebcamProfile => _tarifaBalnearioWebcams,
+    tarifaCampoFutbolWebcamProfile => _tarifaCampoFutbolWebcams,
+    tarifaLosLancesWebcamProfile => _tarifaLosLancesWebcams,
+    tarifaValdevaquerosWebcamProfile => _tarifaValdevaquerosWebcams,
     culleraDosselWebcamProfile => _culleraDosselWebcams,
     xeracoWebcamProfile => _xeracoWebcams,
     _ => const <SpotWebcam>[],
@@ -891,6 +1001,10 @@ const List<SpotWebcam> _allProfileWebcams = [
   ..._santaPolaPlatjaLissaWebcams,
   ..._elCampelloPlayaMuchavistaWebcams,
   ..._elPerellonetWebcams,
+  ..._tarifaBalnearioWebcams,
+  ..._tarifaCampoFutbolWebcams,
+  ..._tarifaLosLancesWebcams,
+  ..._tarifaValdevaquerosWebcams,
   ..._culleraDosselWebcams,
   ..._xeracoWebcams,
 ];

@@ -17259,3 +17259,23 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - `deno check` limpio en `spot-live-observation-collector`,
       - `local.env.json` sigue ignorado por git y no se versiona,
       - `.tmp/` queda fuera de git como carpeta temporal de investigacion.
+  - bloque nuevo `2026-06-11`:
+    - configuracion Live y webcams para los spots de Tarifa,
+    - tiempo real trabajado en este tramo: `25 min` aprox. de trabajo efectivo,
+    - live / estaciones:
+      - anadidas nueve estaciones Weather Underground de Tarifa al selector Live,
+      - habilitada la carga de historico para las nuevas estaciones WU,
+      - anadida `Weathercloud LERICHE Christophe` como fuente Weathercloud disponible,
+      - conectadas las nuevas estaciones al colector backend para persistir historico,
+    - webcams:
+      - realizada una busqueda intensiva de webcams activas para las distintas zonas de Tarifa,
+      - creados perfiles independientes de webcams para `Tarifa - Balneario`, `Tarifa - Campo de futbol`, `Tarifa - Los Lances` y `Tarifa - Valdevaqueros`,
+      - anadida la webcam Camaramar para Balneario,
+      - anadida la webcam Ozu Tarifa de Rio Jara para Campo de futbol,
+      - anadida la webcam Meteo365 para Los Lances,
+      - anadida la webcam Spin Out para Valdevaqueros,
+      - descartadas alternativas duplicadas, caidas o bloqueadas con errores `403`,
+    - verificacion:
+      - `flutter analyze` limpio en el catalogo de capacidades, webcams y modulo Webcam,
+      - `git diff --check` limpio,
+      - `.tmp/` queda fuera de git como carpeta temporal de investigacion.
