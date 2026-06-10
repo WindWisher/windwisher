@@ -26,6 +26,8 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
       final usesAlteaCapNegretLiveProfile = _usesAlteaCapNegretLiveProfile();
       final usesElCampelloPlayaMuchavistaLiveProfile =
           _usesElCampelloPlayaMuchavistaLiveProfile();
+      final usesSantaPolaPlatjaLissaLiveProfile =
+          _usesSantaPolaPlatjaLissaLiveProfile();
       final usesVillajoyosaEspigonLiveProfile =
           _usesVillajoyosaEspigonLiveProfile();
       final usesVillajoyosaPlayaParaisoLiveProfile =
@@ -51,6 +53,7 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
           !usesCalpeLiveProfile &&
           !usesAlteaCapNegretLiveProfile &&
           !usesElCampelloPlayaMuchavistaLiveProfile &&
+          !usesSantaPolaPlatjaLissaLiveProfile &&
           !usesVillajoyosaEspigonLiveProfile &&
           !usesVillajoyosaPlayaParaisoLiveProfile &&
           !usesElPerellonetLiveProfile &&
@@ -182,6 +185,14 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
       }
       if (usesElCampelloPlayaMuchavistaLiveProfile) {
         _addElCampelloPlayaMuchavistaLiveStations(
+          latitude: latitude,
+          longitude: longitude,
+          stations: stations,
+          seenKeys: seenKeys,
+        );
+      }
+      if (usesSantaPolaPlatjaLissaLiveProfile) {
+        _addSantaPolaPlatjaLissaLiveStations(
           latitude: latitude,
           longitude: longitude,
           stations: stations,

@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 231h 05m 12s`.
+- `Total historico minimo consolidado del proyecto: 232h 32m 04s`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -37,10 +37,11 @@
   - bloque consolidado adicional en `2026-06-04`: `+3h 05m` reales aproximados (`Villajoyosa Live stations, maritime buoy, Weathercloud and Playa Paraiso defaults`)
   - bloque consolidado adicional en `2026-06-04`: `+1m 11s` reales (`El Perellonet: Valencia buoy discovery and hourly scheduler`)
   - bloque consolidado adicional en `2026-06-07`: `+2h 47m 01s` reales verificables (`El Campello Live stations, history, alarms and webcams`)
+  - bloque consolidado adicional en `2026-06-10`: `+1h 26m 52s` reales verificables (`Santa Pola Live stations, webcams, history and alarm audit`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-06-07`: `+2h 47m 01s` reales verificables (`El Campello Live stations, history, alarms and webcams`).
+  - ultima consolidacion manual anadida el `2026-06-10`: `+1h 26m 52s` reales verificables (`Santa Pola Live stations, webcams, history and alarm audit`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -59,6 +60,34 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-06-10 - Santa Pola Live stations, webcams, history and alarm audit
+
+- Bloque consolidado adicional: `+1h 26m 52s` reales verificables.
+- Medicion real usada:
+  - `2026-06-07 13:15:09` a `2026-06-07 14:42:01`: `1h 26m 52s`,
+  - se registra exclusivamente el intervalo observable entre el commit anterior y la ultima modificacion del lote,
+  - la auditoria posterior se documenta, pero no se suma al tiempo porque no dispone de una marca de inicio fiable.
+- Live / Santa Pola - Platja Lissa:
+  - creado un perfil Live especifico y configurada `WU Els Ciprerets ISANTA2108` como estacion principal,
+  - anadidas nueve estaciones Weather Underground y tres estaciones Weathercloud cercanas,
+  - conectadas las doce estaciones al historico backend de 72 horas y al colector automatico,
+  - confirmado que las doce estaciones disponen de lecturas actuales de velocidad y direccion del viento.
+- Webcams:
+  - anadidas las webcams de Gran Playa, paseo maritimo, Nautica Antonio e Isla de Tabarca,
+  - incorporado soporte directo para flujos MJPEG,
+  - ajustado el refresco de la imagen de Tabarca a la cadencia real aproximada de tres minutos,
+  - permitida la conexion HTTP directa necesaria para la webcam MJPEG de Nautica Antonio.
+- Historicos y alarmas:
+  - auditadas las doce estaciones en `spot_live_observations`; todas muestran puntos reales de viento y direccion durante las ultimas 72 horas,
+  - confirmado que el collector se ejecuta cada cinco minutos y el runner de alarmas cada minuto, ambos con ejecuciones recientes correctas,
+  - invocados manualmente collector y runner con respuesta correcta,
+  - no existen alarmas guardadas actualmente para Santa Pola, por lo que no se pudo verificar una entrega real de notificacion sin crear una alarma de prueba.
+- Verificacion:
+  - `flutter analyze` limpio en los modulos Live y webcam tocados,
+  - `deno check` limpio en `spot-live-observation-collector` y `spot-alarm-runner`,
+  - `git diff --check` limpio,
+  - `.tmp/` queda fuera de git como carpeta temporal de investigacion.
 
 ### 2026-06-07 - El Campello Live stations, history, alarms and webcams
 

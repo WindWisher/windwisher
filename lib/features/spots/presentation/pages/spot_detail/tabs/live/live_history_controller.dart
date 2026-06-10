@@ -212,6 +212,15 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
       _wundergroundElCampello27StationKey ||
       _wundergroundElCampello35StationKey ||
       _wundergroundAlicante17StationKey ||
+      _wundergroundSantaPola2108StationKey ||
+      _wundergroundSantaPola1834StationKey ||
+      _wundergroundSantaPola1907StationKey ||
+      _wundergroundSantaPola2348StationKey ||
+      _wundergroundSantaPola2257StationKey ||
+      _wundergroundElche122StationKey ||
+      _wundergroundElche99StationKey ||
+      _wundergroundElche115StationKey ||
+      _wundergroundElche66StationKey ||
       _wundergroundAltea13StationKey ||
       _wundergroundAltea38StationKey ||
       _wundergroundAltea48StationKey ||

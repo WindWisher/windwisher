@@ -3,4 +3,7 @@
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">cams.elcampello.es</domain>
     </domain-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">nauticaantonio.telecablesantapola.es</domain>
+    </domain-config>
 </network-security-config>

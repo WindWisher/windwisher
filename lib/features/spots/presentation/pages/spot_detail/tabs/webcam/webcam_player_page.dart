@@ -14,6 +14,51 @@ bool _isSkylineWebcamUrl(String url) {
   return host == 'skylinewebcams.com' || host == 'www.skylinewebcams.com';
 }
 
+bool _isMjpegStreamUrl(String url) {
+  final uri = Uri.tryParse(url);
+  final path = uri?.path.toLowerCase() ?? '';
+  return path.contains('/mjpg/') ||
+      path.endsWith('/mjpg/video.cgi') ||
+      path.endsWith('/mjpeg') ||
+      path.endsWith('/mjpeg.cgi');
+}
+
+String _mjpegEmbedHtml(String streamUrl) {
+  return '''
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+  <img src="$streamUrl" alt="Webcam en directo">
+</body>
+</html>
+''';
+}
+
 void _fitSkylineWebcamFrame(WebViewController? controller, String url) {
   if (controller == null || !_isSkylineWebcamUrl(url)) return;
   controller.runJavaScript(r'''
@@ -240,6 +285,8 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
 
   bool get _usesRapidDirectImage => _isRapidDirectImageUrl(_pageUrl);
 
+  bool get _usesMjpegStream => _isMjpegStreamUrl(_pageUrl);
+
   static bool _isDirectImageUrl(String url) {
     final uri = Uri.tryParse(url);
     if (uri?.host == 'cams.elcampello.es' &&
@@ -262,6 +309,11 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
   static int _directImageRefreshMs(String url) {
     if (_isRapidDirectImageUrl(url)) {
       return 400;
+    }
+    final uri = Uri.tryParse(url);
+    if (uri?.host == 'www.avamet.es' &&
+        uri?.path == '/estacions/illaplana/tabarca.jpg') {
+      return 180000;
     }
     return 10000;
   }
@@ -441,6 +493,10 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
       controller.loadHtmlString(_streamEmbedHtml());
       return;
     }
+    if (_usesMjpegStream) {
+      controller.loadHtmlString(_mjpegEmbedHtml(_pageUrl));
+      return;
+    }
     if (_usesDirectImage) {
       controller.loadHtmlString(_directImageEmbedHtml(_pageUrl));
       return;
@@ -482,7 +538,9 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
           pageUrl: _pageUrl,
           embedAsIframe: widget.embedAsIframe,
           focusIframeUrlContains: widget.focusIframeUrlContains,
-          directImageHtml: _usesDirectImage
+          directImageHtml: _usesMjpegStream
+              ? _mjpegEmbedHtml(_pageUrl)
+              : _usesDirectImage
               ? _directImageEmbedHtml(_pageUrl)
               : null,
           forcePortraitOnClose: forcePortraitOnClose,
@@ -572,6 +630,8 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
               ? WebcamWebEmbed(
                   html: _streamManifestUrl.isNotEmpty
                       ? _streamEmbedHtml()
+                      : _usesMjpegStream
+                      ? _mjpegEmbedHtml(_pageUrl)
                       : widget.embedAsIframe
                       ? _iframeEmbedHtml(_pageUrl)
                       : _usesDirectImage
@@ -581,6 +641,7 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
                       _streamManifestUrl.isEmpty &&
                           !_isSkylineWebcamUrl(_pageUrl) &&
                           !widget.embedAsIframe &&
+                          !_usesMjpegStream &&
                           !_usesDirectImage &&
                           _pageUrl.isNotEmpty
                       ? _pageUrl

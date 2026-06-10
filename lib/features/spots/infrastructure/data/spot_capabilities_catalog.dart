@@ -44,6 +44,9 @@ const String villajoyosaPlayaParaisoPreferredLiveStationKey =
 const String villajoyosaPlayaParaisoSpotName = 'Villajoyosa - Playa Paraiso';
 const String santaPolaPlatjaLissaWebcamProfile =
     'santa_pola_platja_lissa_webcams';
+const String santaPolaPlatjaLissaLiveStationProfile = 'santa_pola_platja_lissa';
+const String santaPolaPlatjaLissaPreferredLiveStationKey =
+    'wunderground:ISANTA2108';
 const String santaPolaPlatjaLissaSpotName = 'Santa Pola - Platja Lissa';
 const String elCampelloPlayaMuchavistaWebcamProfile =
     'el_campello_playa_muchavista_webcams';
@@ -180,9 +183,11 @@ const villajoyosaPlayaParaisoSpotCapabilities = SpotCapabilities(
 );
 
 const santaPolaPlatjaLissaSpotCapabilities = SpotCapabilities(
+  liveStationProfile: santaPolaPlatjaLissaLiveStationProfile,
   webcamProfile: santaPolaPlatjaLissaWebcamProfile,
   defaultForecastProvider: 'AEMET',
   defaultForecastModel: kAemetPortusAtmosphereForecastModel,
+  preferredLiveStationKey: santaPolaPlatjaLissaPreferredLiveStationKey,
   portusRealtimeStationIds: <int>[4651, 4652, 4653],
   navigationLatitude: 38.190017240184275,
   navigationLongitude: -0.5902498009788203,

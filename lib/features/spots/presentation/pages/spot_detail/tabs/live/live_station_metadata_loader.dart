@@ -919,6 +919,140 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     );
   }
 
+  void _addSantaPolaPlatjaLissaLiveStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    final configuredStations =
+        <
+          ({
+            String stationKey,
+            String stationName,
+            String stationId,
+            double latitude,
+            double longitude,
+          })
+        >[
+          (
+            stationKey: _wundergroundSantaPola2108StationKey,
+            stationName: _wundergroundSantaPola2108StationName,
+            stationId: _wundergroundSantaPola2108StationId,
+            latitude: _wundergroundSantaPola2108StationLat,
+            longitude: _wundergroundSantaPola2108StationLon,
+          ),
+          (
+            stationKey: _wundergroundSantaPola1834StationKey,
+            stationName: _wundergroundSantaPola1834StationName,
+            stationId: _wundergroundSantaPola1834StationId,
+            latitude: _wundergroundSantaPola1834StationLat,
+            longitude: _wundergroundSantaPola1834StationLon,
+          ),
+          (
+            stationKey: _wundergroundSantaPola1907StationKey,
+            stationName: _wundergroundSantaPola1907StationName,
+            stationId: _wundergroundSantaPola1907StationId,
+            latitude: _wundergroundSantaPola1907StationLat,
+            longitude: _wundergroundSantaPola1907StationLon,
+          ),
+          (
+            stationKey: _wundergroundSantaPola2348StationKey,
+            stationName: _wundergroundSantaPola2348StationName,
+            stationId: _wundergroundSantaPola2348StationId,
+            latitude: _wundergroundSantaPola2348StationLat,
+            longitude: _wundergroundSantaPola2348StationLon,
+          ),
+          (
+            stationKey: _wundergroundSantaPola2257StationKey,
+            stationName: _wundergroundSantaPola2257StationName,
+            stationId: _wundergroundSantaPola2257StationId,
+            latitude: _wundergroundSantaPola2257StationLat,
+            longitude: _wundergroundSantaPola2257StationLon,
+          ),
+          (
+            stationKey: _wundergroundElche122StationKey,
+            stationName: _wundergroundElche122StationName,
+            stationId: _wundergroundElche122StationId,
+            latitude: _wundergroundElche122StationLat,
+            longitude: _wundergroundElche122StationLon,
+          ),
+          (
+            stationKey: _wundergroundElche99StationKey,
+            stationName: _wundergroundElche99StationName,
+            stationId: _wundergroundElche99StationId,
+            latitude: _wundergroundElche99StationLat,
+            longitude: _wundergroundElche99StationLon,
+          ),
+          (
+            stationKey: _wundergroundElche115StationKey,
+            stationName: _wundergroundElche115StationName,
+            stationId: _wundergroundElche115StationId,
+            latitude: _wundergroundElche115StationLat,
+            longitude: _wundergroundElche115StationLon,
+          ),
+          (
+            stationKey: _wundergroundElche66StationKey,
+            stationName: _wundergroundElche66StationName,
+            stationId: _wundergroundElche66StationId,
+            latitude: _wundergroundElche66StationLat,
+            longitude: _wundergroundElche66StationLon,
+          ),
+        ];
+
+    for (final station in configuredStations) {
+      _addLiveStationMetadata(
+        stations: stations,
+        seenKeys: seenKeys,
+        stationKey: station.stationKey,
+        stationName: station.stationName,
+        provider: 'WUNDERGROUND',
+        stationId: station.stationId,
+        latitude: station.latitude,
+        longitude: station.longitude,
+        referenceLatitude: latitude,
+        referenceLongitude: longitude,
+      );
+    }
+
+    for (final station in [
+      (
+        stationKey: _weathercloudSantaPolaShevchukStationKey,
+        stationName: _weathercloudSantaPolaShevchukStationName,
+        stationId: _weathercloudSantaPolaShevchukStationId,
+        latitude: _weathercloudSantaPolaShevchukStationLat,
+        longitude: _weathercloudSantaPolaShevchukStationLon,
+      ),
+      (
+        stationKey: _weathercloudSantaPolaValverdeStationKey,
+        stationName: _weathercloudSantaPolaValverdeStationName,
+        stationId: _weathercloudSantaPolaValverdeStationId,
+        latitude: _weathercloudSantaPolaValverdeStationLat,
+        longitude: _weathercloudSantaPolaValverdeStationLon,
+      ),
+      (
+        stationKey: _weathercloudSantaPolaTbkStationKey,
+        stationName: _weathercloudSantaPolaTbkStationName,
+        stationId: _weathercloudSantaPolaTbkStationId,
+        latitude: _weathercloudSantaPolaTbkStationLat,
+        longitude: _weathercloudSantaPolaTbkStationLon,
+      ),
+    ]) {
+      _addLiveStationMetadata(
+        stations: stations,
+        seenKeys: seenKeys,
+        stationKey: station.stationKey,
+        stationName: station.stationName,
+        provider: 'WEATHERCLOUD',
+        stationId: station.stationId,
+        latitude: station.latitude,
+        longitude: station.longitude,
+        referenceLatitude: latitude,
+        referenceLongitude: longitude,
+      );
+    }
+  }
+
   void _addVillajoyosaEspigonLiveStations({
     required double latitude,
     required double longitude,
@@ -1572,6 +1706,12 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
         elCampelloPlayaMuchavistaLiveStationProfile;
   }
 
+  bool _usesSantaPolaPlatjaLissaLiveProfile() {
+    final capabilities = _resolvedSpotCapabilities();
+    return capabilities.liveStationProfile ==
+        santaPolaPlatjaLissaLiveStationProfile;
+  }
+
   bool _usesVillajoyosaEspigonLiveProfile() {
     final capabilities = _resolvedSpotCapabilities();
     return capabilities.liveStationProfile ==
@@ -1654,6 +1794,10 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     if (capabilities.liveStationProfile ==
         elCampelloPlayaMuchavistaLiveStationProfile) {
       return elCampelloPlayaMuchavistaSpotCapabilities;
+    }
+    if (capabilities.liveStationProfile ==
+        santaPolaPlatjaLissaLiveStationProfile) {
+      return santaPolaPlatjaLissaSpotCapabilities;
     }
     if (capabilities.liveStationProfile ==
         villajoyosaEspigonLiveStationProfile) {

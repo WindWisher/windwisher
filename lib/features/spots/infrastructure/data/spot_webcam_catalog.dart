@@ -541,6 +541,93 @@ const List<SpotWebcam> _santaPolaPlatjaLissaWebcams = [
       ),
     ],
   ),
+  SpotWebcam(
+    name: 'Santa Pola Gran Playa panoramica',
+    source: 'SkylineWebcams',
+    status: 'Directo',
+    resolution: 'Player web',
+    primaryPageUrl:
+        'https://www.skylinewebcams.com/es/webcam/espana/comunidad-valenciana/santa-pola/gran-playa.html',
+    summary:
+        'Vista panoramica elevada de Gran Playa y Playa Lisa, diferente a la webcam oficial situada a nivel de playa.',
+    previewImageUrl: 'https://cdn.skylinewebcams.com/social4821.jpg',
+    locationLabel: 'Gran Playa',
+    latitude: 38.1922,
+    longitude: -0.5656,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Santa Pola Gran Playa · SkylineWebcams',
+        url:
+            'https://www.skylinewebcams.com/es/webcam/espana/comunidad-valenciana/santa-pola/gran-playa.html',
+      ),
+    ],
+  ),
+  SpotWebcam(
+    name: 'Santa Pola paseo maritimo y puerto',
+    source: 'SkylineWebcams',
+    status: 'Directo',
+    resolution: 'Player web',
+    primaryPageUrl:
+        'https://www.skylinewebcams.com/es/webcam/espana/comunidad-valenciana/santa-pola/paseo-maritimo.html',
+    summary:
+        'Vista panoramica del paseo maritimo y del puerto deportivo de Santa Pola.',
+    previewImageUrl: 'https://cdn.skylinewebcams.com/social4828.jpg',
+    locationLabel: 'Puerto deportivo de Santa Pola',
+    latitude: 38.18968,
+    longitude: -0.55438,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Santa Pola paseo maritimo · SkylineWebcams',
+        url:
+            'https://www.skylinewebcams.com/es/webcam/espana/comunidad-valenciana/santa-pola/paseo-maritimo.html',
+      ),
+    ],
+  ),
+  SpotWebcam(
+    name: 'Santa Pola Nautica Antonio',
+    source: 'Nautica Antonio',
+    status: 'Directo',
+    resolution: 'MJPEG',
+    primaryPageUrl:
+        'http://nauticaantonio.telecablesantapola.es:8085/axis-cgi/mjpg/video.cgi?resolution=640x480',
+    summary:
+        'Flujo directo desde el contradique del puerto pesquero de Santa Pola con vista hacia el sur.',
+    previewImageUrl:
+        'https://images.webcamgalore.com/13710-current-webcam-Santa-Pola.jpg',
+    locationLabel: 'Contradique del puerto pesquero',
+    latitude: 38.1869,
+    longitude: -0.562878,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Nautica Antonio vista sur · IpLiveCams',
+        url:
+            'https://www.iplivecams.com/live-cams/nautica-antonio-south-view-alicante-spain/',
+      ),
+      WebcamReferencePage(
+        title: 'Nautica Antonio · Webcam Galore',
+        url: 'https://www.webcamgalore.com/webcam/Spain/Santa-Pola/13710.html',
+      ),
+    ],
+  ),
+  SpotWebcam(
+    name: 'Isla de Tabarca puerto',
+    source: 'AVAMET',
+    status: 'Directo',
+    resolution: 'Imagen live',
+    primaryPageUrl: 'https://www.avamet.es/estacions/illaplana/tabarca.jpg',
+    summary:
+        'Vista norte del puerto de Tabarca, actualizada aproximadamente cada 3 minutos.',
+    previewImageUrl: 'https://www.avamet.es/estacions/illaplana/tabarca.jpg',
+    locationLabel: 'Puerto de Tabarca',
+    latitude: 38.1658,
+    longitude: -0.4815,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Tabarca · AVAMET',
+        url: 'https://www.avamet.org/mxo_i.php?id=c32m014e27',
+      ),
+    ],
+  ),
 ];
 
 const List<SpotWebcam> _elCampelloPlayaMuchavistaWebcams = [

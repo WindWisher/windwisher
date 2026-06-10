@@ -486,6 +486,83 @@ const String _wundergroundSantJoan177StationName =
 const double _wundergroundSantJoan177StationLat = 38.400875;
 const double _wundergroundSantJoan177StationLon = -0.430521;
 
+const String _wundergroundSantaPola2108StationId = 'ISANTA2108';
+const String _wundergroundSantaPola2108StationKey = 'wunderground:ISANTA2108';
+const String _wundergroundSantaPola2108StationName =
+    'WU Els Ciprerets ISANTA2108';
+const double _wundergroundSantaPola2108StationLat = 38.204451;
+const double _wundergroundSantaPola2108StationLon = -0.577362;
+
+const String _wundergroundSantaPola1834StationId = 'ISANTA1834';
+const String _wundergroundSantaPola1834StationKey = 'wunderground:ISANTA1834';
+const String _wundergroundSantaPola1834StationName = 'WU La Colonia ISANTA1834';
+const double _wundergroundSantaPola1834StationLat = 38.213488;
+const double _wundergroundSantaPola1834StationLon = -0.584854;
+
+const String _wundergroundSantaPola1907StationId = 'ISANTA1907';
+const String _wundergroundSantaPola1907StationKey = 'wunderground:ISANTA1907';
+const String _wundergroundSantaPola1907StationName = 'WU Santa Pola ISANTA1907';
+const double _wundergroundSantaPola1907StationLat = 38.195;
+const double _wundergroundSantaPola1907StationLon = -0.556;
+
+const String _wundergroundSantaPola2348StationId = 'ISANTA2348';
+const String _wundergroundSantaPola2348StationKey = 'wunderground:ISANTA2348';
+const String _wundergroundSantaPola2348StationName = 'WU Santa Pola ISANTA2348';
+const double _wundergroundSantaPola2348StationLat = 38.191241;
+const double _wundergroundSantaPola2348StationLon = -0.553218;
+
+const String _wundergroundSantaPola2257StationId = 'ISANTA2257';
+const String _wundergroundSantaPola2257StationKey = 'wunderground:ISANTA2257';
+const String _wundergroundSantaPola2257StationName = 'WU Santa Pola ISANTA2257';
+const double _wundergroundSantaPola2257StationLat = 38.190448;
+const double _wundergroundSantaPola2257StationLon = -0.544739;
+
+const String _wundergroundElche122StationId = 'IELCHE122';
+const String _wundergroundElche122StationKey = 'wunderground:IELCHE122';
+const String _wundergroundElche122StationName = 'WU Elche IELCHE122';
+const double _wundergroundElche122StationLat = 38.229827;
+const double _wundergroundElche122StationLon = -0.596464;
+
+const String _wundergroundElche99StationId = 'IELCHE99';
+const String _wundergroundElche99StationKey = 'wunderground:IELCHE99';
+const String _wundergroundElche99StationName = 'WU Las Bayas IELCHE99';
+const double _wundergroundElche99StationLat = 38.218572;
+const double _wundergroundElche99StationLon = -0.643372;
+
+const String _wundergroundElche115StationId = 'IELCHE115';
+const String _wundergroundElche115StationKey = 'wunderground:IELCHE115';
+const String _wundergroundElche115StationName = 'WU La Marina IELCHE115';
+const double _wundergroundElche115StationLat = 38.151077;
+const double _wundergroundElche115StationLon = -0.634873;
+
+const String _wundergroundElche66StationId = 'IELCHE66';
+const String _wundergroundElche66StationKey = 'wunderground:IELCHE66';
+const String _wundergroundElche66StationName = 'WU La Marina IELCHE66';
+const double _wundergroundElche66StationLat = 38.151504;
+const double _wundergroundElche66StationLon = -0.635504;
+
+const String _weathercloudSantaPolaShevchukStationId = '6249817206';
+const String _weathercloudSantaPolaShevchukStationKey =
+    'weathercloud:6249817206';
+const String _weathercloudSantaPolaShevchukStationName =
+    'Weathercloud Shevchuk';
+const double _weathercloudSantaPolaShevchukStationLat = 38.200934;
+const double _weathercloudSantaPolaShevchukStationLon = -0.553779;
+
+const String _weathercloudSantaPolaValverdeStationId = '2046204426';
+const String _weathercloudSantaPolaValverdeStationKey =
+    'weathercloud:2046204426';
+const String _weathercloudSantaPolaValverdeStationName =
+    'Weathercloud Valverde';
+const double _weathercloudSantaPolaValverdeStationLat = 38.229448;
+const double _weathercloudSantaPolaValverdeStationLon = -0.598491;
+
+const String _weathercloudSantaPolaTbkStationId = '6903909989';
+const String _weathercloudSantaPolaTbkStationKey = 'weathercloud:6903909989';
+const String _weathercloudSantaPolaTbkStationName = 'Weathercloud Tbk';
+const double _weathercloudSantaPolaTbkStationLat = 38.165932;
+const double _weathercloudSantaPolaTbkStationLon = -0.48351;
+
 const String _avametAlteaClubNauticoStationId = 'c31m018e06';
 const String _avametAlteaClubNauticoStationKey = 'avamet:c31m018e06';
 const String _avametAlteaClubNauticoStationName = 'Altea Club Nautico';
