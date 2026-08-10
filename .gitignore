@@ -13,6 +13,8 @@ local.env.json
 firebase-debug.log
 .firebase/
 tmp/
+.tmp/
+.DS_Store
 
 # macOS / Xcode noise
 ios/Pods/

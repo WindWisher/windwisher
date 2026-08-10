@@ -3,7 +3,7 @@
 -- Guarda el service role key como JWT porque copernicus-marine-nearby tiene verify_jwt=true.
 
 select vault.create_secret(
-  'https://tefbkhwaxlsfxvnleutb.supabase.co',
+  'https://uayzvkjqiiupbeevxrtc.supabase.co',
   'windwisher_project_url'
 )
 where not exists (

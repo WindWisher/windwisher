@@ -79,7 +79,12 @@ const String xeracoLiveStationProfile = 'xeraco';
 const String xeracoWebcamProfile = 'xeraco_webcams';
 const String xeracoPreferredLiveStationKey = 'wunderground:IXERACO2';
 const String xeracoSpotName = 'Xeraco';
+const String dakhlaLiveStationProfile = 'dakhla';
+const String dakhlaPreferredLiveStationKey = 'windguru-station:3227';
 const String dakhlaSpotName = 'Dakhla';
+const String essaouiraLiveStationProfile = 'essaouira';
+const String essaouiraWebcamProfile = 'essaouira_webcams';
+const String essaouiraPreferredLiveStationKey = 'wunderground:IESSAO6';
 const String essaouiraSpotName = 'Essaouira';
 
 const olivaCanalGorgsSpotCapabilities = SpotCapabilities(
@@ -292,6 +297,17 @@ const xeracoSpotCapabilities = SpotCapabilities(
   navigationLabel: 'Llegada Xeraco',
 );
 
+const dakhlaSpotCapabilities = SpotCapabilities(
+  liveStationProfile: dakhlaLiveStationProfile,
+  preferredLiveStationKey: dakhlaPreferredLiveStationKey,
+);
+
+const essaouiraSpotCapabilities = SpotCapabilities(
+  liveStationProfile: essaouiraLiveStationProfile,
+  webcamProfile: essaouiraWebcamProfile,
+  preferredLiveStationKey: essaouiraPreferredLiveStationKey,
+);
+
 SpotCapabilities defaultSpotCapabilitiesForName(String name) {
   final normalized = name.trim().toLowerCase();
   if (normalized == olivaCanalGorgsSpotName.toLowerCase()) {
@@ -347,6 +363,12 @@ SpotCapabilities defaultSpotCapabilitiesForName(String name) {
   }
   if (normalized == xeracoSpotName.toLowerCase()) {
     return xeracoSpotCapabilities;
+  }
+  if (normalized == dakhlaSpotName.toLowerCase()) {
+    return dakhlaSpotCapabilities;
+  }
+  if (normalized == essaouiraSpotName.toLowerCase()) {
+    return essaouiraSpotCapabilities;
   }
   return SpotCapabilities.empty;
 }

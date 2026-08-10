@@ -173,6 +173,7 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
   bool _usesRawCollectedHistoryForSelectedStation() {
     final station = _findStationByKey(_selectedStation);
     return station?.provider == 'WINDGURU_STATION' ||
+        station?.provider == 'METAR' ||
         station?.provider == 'METEOPILES' ||
         station?.provider == 'METEOCLIMATIC' ||
         station?.provider == 'WEATHERCLOUD' ||
@@ -236,7 +237,8 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
       _wundergroundVillajoyosaLavil16StationKey ||
       _wundergroundVillajoyosaLavil24StationKey ||
       _wundergroundVillajoyosaLavil41StationKey ||
-      _wundergroundVillajoyosaVilla310StationKey => true,
+      _wundergroundVillajoyosaVilla310StationKey ||
+      _wundergroundEssaouiraStationKey => true,
       _ => false,
     };
   }
@@ -248,6 +250,8 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
         return 'AEMET';
       case 'AVAMET':
         return 'AVAMET';
+      case 'METAR':
+        return 'METAR aeropuerto';
       case 'WUNDERGROUND':
         return 'Weather Underground';
       case 'METEOCLIMATIC':

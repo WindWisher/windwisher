@@ -12,7 +12,7 @@ select
     $$
     select
       net.http_post(
-        url := 'https://tefbkhwaxlsfxvnleutb.supabase.co/functions/v1/spot-live-observation-collector',
+        url := 'https://uayzvkjqiiupbeevxrtc.supabase.co/functions/v1/spot-live-observation-collector',
         headers := jsonb_build_object(
           'Content-Type', 'application/json',
           'Authorization', 'Bearer REPLACE_WITH_LIVE_WIND_RECORDER_SECRET'

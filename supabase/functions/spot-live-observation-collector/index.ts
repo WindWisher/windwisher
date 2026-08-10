@@ -6,6 +6,7 @@ type LiveStationConfig = {
   provider:
     | "METEOPILES"
     | "WINDGURU_STATION"
+    | "METAR"
     | "WEATHERCLOUD"
     | "WUNDERGROUND"
     | "XUSS";
@@ -37,6 +38,7 @@ const collectorSecret = Deno.env.get("SPOT_LIVE_COLLECTOR_SECRET") ??
   "";
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const collectionBatchSize = 6;
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -57,6 +59,30 @@ const olivaXeloWuDiagnosticSamples: Record<
 };
 
 const stations: LiveStationConfig[] = [
+  {
+    provider: "WUNDERGROUND",
+    stationKey: "wunderground:IESSAO6",
+    stationId: "IESSAO6",
+    stationName: "WU Essaouira IESSAO6",
+  },
+  {
+    provider: "METAR",
+    stationKey: "metar:GMMI",
+    stationId: "GMMI",
+    stationName: "Aeropuerto de Essaouira-Mogador (GMMI)",
+  },
+  {
+    provider: "METAR",
+    stationKey: "metar:GMMH",
+    stationId: "GMMH",
+    stationName: "Aeropuerto de Dakhla (GMMH)",
+  },
+  {
+    provider: "WINDGURU_STATION",
+    stationKey: "windguru-station:3227",
+    stationId: "3227",
+    stationName: "Windguru Dakhla La Tour d'Eole",
+  },
   {
     provider: "WINDGURU_STATION",
     stationKey: "windguru-station:51",
@@ -558,41 +584,30 @@ Deno.serve(async (request) => {
     );
   }
 
+  const requestPayload = await request.json().catch(() => ({}));
+  const requestedStationKeys = readRequestedStationKeys(requestPayload);
+  const selectedStations = requestedStationKeys == null
+    ? stations
+    : stations.filter((station) =>
+      requestedStationKeys.has(station.stationKey)
+    );
+
   const diagnostics: Record<string, unknown>[] = [];
   const observations: LiveObservation[] = [];
   const diagnosticObservedAt = collectionSlotDate().toISOString();
 
-  for (const station of stations) {
-    try {
-      const observation = await fetchStationObservation(station);
-      if (observation == null) {
-        diagnostics.push({
-          stationKey: station.stationKey,
-          status: "missing-observation",
-        });
-        continue;
-      }
-      observations.push(observation);
-      const diagnosticSample = diagnosticSampleObservation(
-        observation,
-        diagnosticObservedAt,
-      );
-      if (diagnosticSample != null) {
-        observations.push(diagnosticSample);
-      }
-      diagnostics.push({
-        stationKey: station.stationKey,
-        status: "collected",
-        observedAt: observation.observed_at,
-        windKnots: observation.wind_knots,
-        diagnosticObservedAt: diagnosticSample?.observed_at,
-      });
-    } catch (error) {
-      diagnostics.push({
-        stationKey: station.stationKey,
-        status: "failed",
-        error: error instanceof Error ? error.message : String(error),
-      });
+  for (
+    let offset = 0;
+    offset < selectedStations.length;
+    offset += collectionBatchSize
+  ) {
+    const batch = selectedStations.slice(offset, offset + collectionBatchSize);
+    const results = await Promise.all(
+      batch.map((station) => collectStation(station, diagnosticObservedAt)),
+    );
+    for (const result of results) {
+      observations.push(...result.observations);
+      diagnostics.push(result.diagnostic);
     }
   }
 
@@ -634,6 +649,64 @@ Deno.serve(async (request) => {
   });
 });
 
+function readRequestedStationKeys(payload: unknown): Set<string> | null {
+  const record = readRecord(payload);
+  if (record == null || !Array.isArray(record.stationKeys)) {
+    return null;
+  }
+  const keys = record.stationKeys
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  return new Set(keys);
+}
+
+async function collectStation(
+  station: LiveStationConfig,
+  diagnosticObservedAt: string,
+): Promise<{
+  observations: LiveObservation[];
+  diagnostic: Record<string, unknown>;
+}> {
+  try {
+    const observation = await fetchStationObservation(station);
+    if (observation == null) {
+      return {
+        observations: [],
+        diagnostic: {
+          stationKey: station.stationKey,
+          status: "missing-observation",
+        },
+      };
+    }
+    const diagnosticSample = diagnosticSampleObservation(
+      observation,
+      diagnosticObservedAt,
+    );
+    return {
+      observations: diagnosticSample == null
+        ? [observation]
+        : [observation, diagnosticSample],
+      diagnostic: {
+        stationKey: station.stationKey,
+        status: "collected",
+        observedAt: observation.observed_at,
+        windKnots: observation.wind_knots,
+        diagnosticObservedAt: diagnosticSample?.observed_at,
+      },
+    };
+  } catch (error) {
+    return {
+      observations: [],
+      diagnostic: {
+        stationKey: station.stationKey,
+        status: "failed",
+        error: error instanceof Error ? error.message : String(error),
+      },
+    };
+  }
+}
+
 async function fetchStationObservation(
   station: LiveStationConfig,
 ): Promise<LiveObservation | null> {
@@ -642,6 +715,8 @@ async function fetchStationObservation(
       return await fetchMeteopilesObservation(station);
     case "WINDGURU_STATION":
       return await fetchWindguruStationObservation(station);
+    case "METAR":
+      return await fetchMetarObservation(station);
     case "WEATHERCLOUD":
       return await fetchWeathercloudObservation(station);
     case "WUNDERGROUND":
@@ -649,6 +724,55 @@ async function fetchStationObservation(
     case "XUSS":
       return await fetchXussDeniaObservation(station);
   }
+}
+
+async function fetchMetarObservation(
+  station: LiveStationConfig,
+): Promise<LiveObservation | null> {
+  const url = new URL("https://aviationweather.gov/api/data/metar");
+  url.searchParams.set("ids", station.stationId);
+  url.searchParams.set("format", "json");
+  url.searchParams.set("taf", "false");
+  url.searchParams.set("hours", "3");
+
+  const response = await fetch(url, {
+    headers: {
+      accept: "application/json",
+      "user-agent": "WindWisher/1.0",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`metar-http-${response.status}`);
+  }
+  const reports = await response.json() as unknown[];
+  const latest = readRecord(reports[0]);
+  if (latest == null) {
+    return null;
+  }
+  const observedAt = parseUnknownDate(latest.reportTime) ??
+    parseUnixSeconds(latest.obsTime);
+  const windKnots = readUnknownNumber(latest.wspd);
+  if (
+    observedAt == null || windKnots == null ||
+    Date.now() - observedAt.getTime() > 3 * 60 * 60 * 1000
+  ) {
+    return null;
+  }
+
+  return baseObservation(station, observedAt, {
+    wind_knots: windKnots,
+    wind_min_knots: null,
+    gust_knots: readUnknownNumber(latest.wgst),
+    wind_direction_deg: roundNullable(readUnknownNumber(latest.wdir)),
+    temp_c: readUnknownNumber(latest.temp),
+    pressure_hpa: roundNullable(readUnknownNumber(latest.altim)),
+    humidity_pct: relativeHumidity(
+      readUnknownNumber(latest.temp),
+      readUnknownNumber(latest.dewp),
+    ),
+    rain_mm: null,
+    raw_payload: latest,
+  });
 }
 
 async function fetchMeteopilesObservation(
@@ -1365,6 +1489,37 @@ function kmhToKnots(value: number | null): number | null {
 
 function mpsToKnots(value: number | null): number | null {
   return value == null ? null : value * 1.9438444924406;
+}
+
+function relativeHumidity(
+  temperatureC: number | null,
+  dewPointC: number | null,
+): number | null {
+  if (temperatureC == null || dewPointC == null) {
+    return null;
+  }
+  const humidity = 100 * Math.exp(
+    (17.625 * dewPointC) / (243.04 + dewPointC) -
+      (17.625 * temperatureC) / (243.04 + temperatureC),
+  );
+  return Math.round(Math.min(100, Math.max(0, humidity)));
+}
+
+function parseUnixSeconds(raw: unknown): Date | null {
+  const seconds = readUnknownNumber(raw);
+  if (seconds == null) {
+    return null;
+  }
+  const parsed = new Date(seconds * 1000);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function parseUnknownDate(raw: unknown): Date | null {
+  if (typeof raw !== "string" || !raw.trim()) {
+    return null;
+  }
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 async function fetchJsonObject(

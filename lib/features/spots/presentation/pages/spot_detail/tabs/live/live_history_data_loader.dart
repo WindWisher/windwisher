@@ -112,6 +112,10 @@ extension _SpotDetailLiveHistoryDataLoader on _SpotDetailPageState {
       return _fetchBackendCollectedLiveHistory(station);
     }
 
+    if (station.provider == 'METAR') {
+      return _fetchBackendCollectedLiveHistory(station);
+    }
+
     if (station.provider == 'WEATHERCLOUD') {
       return _fetchBackendCollectedLiveHistory(station);
     }

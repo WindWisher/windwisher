@@ -866,10 +866,6 @@ const List<SpotWebcam> _tarifaBalnearioWebcams = [
         title: 'Tarifa Balneario · Camaramar',
         url: 'https://www.camaramar.com/webcam/tarifa-balneario',
       ),
-      WebcamReferencePage(
-        title: 'Los Lances Sur · Spotfav',
-        url: 'https://www.spotfav.com/dashboard/spots/los-lances-sur',
-      ),
     ],
   ),
 ];
@@ -892,10 +888,6 @@ const List<SpotWebcam> _tarifaCampoFutbolWebcams = [
       WebcamReferencePage(
         title: 'Webcam kitesurf Tarifa · Ozu Tarifa',
         url: 'https://www.kiteschool-ozutarifa.com/webcam-kitesurf-tarifa/',
-      ),
-      WebcamReferencePage(
-        title: 'Campo de futbol - Rio Jara · Spotfav',
-        url: 'https://www.spotfav.com/dashboard/spots/campo-de-futbol-rio-jara',
       ),
       WebcamReferencePage(
         title: 'Tarifa Rio Jara · WorldCam',
@@ -956,6 +948,34 @@ const List<SpotWebcam> _tarifaValdevaquerosWebcams = [
   ),
 ];
 
+const List<SpotWebcam> _essaouiraWebcams = [
+  SpotWebcam(
+    name: 'Essaouira Ocean Vagabond',
+    source: 'Skaping / Ocean Vagabond',
+    status: 'Directo',
+    resolution: 'Video HD',
+    primaryPageUrl: 'https://www.skaping.com/ocean-vagabond/essaouira',
+    summary:
+        'Webcam en directo de la playa y el spot de kitesurf de Essaouira.',
+    previewImageUrl:
+        'https://api.skaping.com/LmgWk-1VyIO-wAvyy-63nn8/media/latest/thumb.jpg',
+    locationLabel: 'Ocean Vagabond Essaouira',
+    latitude: 31.49712673,
+    longitude: -9.76160730,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Essaouira Ocean Vagabond · Skaping',
+        url: 'https://www.skaping.com/ocean-vagabond/essaouira',
+      ),
+      WebcamReferencePage(
+        title: 'Webcam Essaouira · Allosurf',
+        url:
+            'https://www.allosurf.net/meteo/live/webcam-live-essaouira-spot-surf-kitesurf-397-1000003-vue-1000004.html',
+      ),
+    ],
+  ),
+];
+
 List<SpotWebcam> webcamsForProfile(String? profile) {
   return switch (profile) {
     olivaCanalGorgsWebcamProfile => _olivaCanalGorgsWebcams,
@@ -976,6 +996,7 @@ List<SpotWebcam> webcamsForProfile(String? profile) {
     tarifaValdevaquerosWebcamProfile => _tarifaValdevaquerosWebcams,
     culleraDosselWebcamProfile => _culleraDosselWebcams,
     xeracoWebcamProfile => _xeracoWebcams,
+    essaouiraWebcamProfile => _essaouiraWebcams,
     _ => const <SpotWebcam>[],
   };
 }
@@ -1007,4 +1028,5 @@ const List<SpotWebcam> _allProfileWebcams = [
   ..._tarifaValdevaquerosWebcams,
   ..._culleraDosselWebcams,
   ..._xeracoWebcams,
+  ..._essaouiraWebcams,
 ];

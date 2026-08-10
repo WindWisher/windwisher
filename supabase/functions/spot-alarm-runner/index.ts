@@ -611,6 +611,8 @@ async function fetchObservationForAlarm(alarm: AlarmRow) {
       return await fetchAvametObservation(alarm.station_key);
     case "WINDGURU_STATION":
       return await fetchWindguruStationObservation(alarm.station_key);
+    case "METAR":
+      return await fetchMetarObservation(alarm.station_key);
     case "WUNDERGROUND":
       return await fetchWundergroundObservation(alarm.station_key);
     case "WEATHERCLOUD":
@@ -636,6 +638,7 @@ function supportsStationProvider(provider: string) {
     provider === "INFORATGE" ||
     provider === "AVAMET" ||
     provider === "WINDGURU_STATION" ||
+    provider === "METAR" ||
     provider === "WUNDERGROUND" ||
     provider === "WEATHERCLOUD" ||
     provider === "XUSS" ||
@@ -644,6 +647,35 @@ function supportsStationProvider(provider: string) {
     provider === "PORTUS" ||
     provider === "MADIS_MARITIME" ||
     provider === "COPERNICUS_MARINE";
+}
+
+async function fetchMetarObservation(stationKey: string) {
+  const stationId = extractStationId(stationKey);
+  const url = new URL("https://aviationweather.gov/api/data/metar");
+  url.searchParams.set("ids", stationId);
+  url.searchParams.set("format", "json");
+  url.searchParams.set("taf", "false");
+  url.searchParams.set("hours", "3");
+
+  const reports = await fetchJsonArray(url.toString());
+  const latest = asRecord(reports[0]);
+  if (!latest) {
+    return null;
+  }
+  const observedAt = parseDate(latest.reportTime) ??
+    parseUnixSeconds(latest.obsTime);
+  const windKnots = parseNumber(latest.wspd);
+  if (
+    observedAt == null || windKnots == null ||
+    Date.now() - observedAt.getTime() > 3 * 60 * 60 * 1000
+  ) {
+    return null;
+  }
+  return {
+    observedAt,
+    windKnots,
+    windDirectionBucket: directionBucket(latest.wdir),
+  };
 }
 
 async function fetchAemetStationObservation(stationId: string) {
@@ -1351,6 +1383,15 @@ function parseDate(raw: unknown): Date | null {
     return null;
   }
   const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function parseUnixSeconds(raw: unknown): Date | null {
+  const seconds = parseNumber(raw);
+  if (seconds == null) {
+    return null;
+  }
+  const parsed = new Date(seconds * 1000);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 

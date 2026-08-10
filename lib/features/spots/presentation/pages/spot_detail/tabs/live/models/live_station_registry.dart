@@ -300,6 +300,32 @@ const String _windguruDkPilesStationName = 'DK Piles Meteo';
 const double _windguruDkPilesStationLat = 38.9519444444;
 const double _windguruDkPilesStationLon = -0.1144444444;
 
+const String _windguruDakhlaTourEoleStationId = '3227';
+const String _windguruDakhlaTourEoleStationKey = 'windguru-station:3227';
+const String _windguruDakhlaTourEoleStationName =
+    "Windguru Dakhla La Tour d'Eole";
+const double _windguruDakhlaTourEoleStationLat = 23.73386;
+const double _windguruDakhlaTourEoleStationLon = -15.79093;
+
+const String _metarDakhlaAirportStationId = 'GMMH';
+const String _metarDakhlaAirportStationKey = 'metar:GMMH';
+const String _metarDakhlaAirportStationName = 'Aeropuerto de Dakhla (GMMH)';
+const double _metarDakhlaAirportStationLat = 23.718;
+const double _metarDakhlaAirportStationLon = -15.932;
+
+const String _wundergroundEssaouiraStationId = 'IESSAO6';
+const String _wundergroundEssaouiraStationKey = 'wunderground:IESSAO6';
+const String _wundergroundEssaouiraStationName = 'WU Essaouira IESSAO6';
+const double _wundergroundEssaouiraStationLat = 31.481392;
+const double _wundergroundEssaouiraStationLon = -9.759187;
+
+const String _metarEssaouiraAirportStationId = 'GMMI';
+const String _metarEssaouiraAirportStationKey = 'metar:GMMI';
+const String _metarEssaouiraAirportStationName =
+    'Aeropuerto de Essaouira-Mogador (GMMI)';
+const double _metarEssaouiraAirportStationLat = 31.3975;
+const double _metarEssaouiraAirportStationLon = -9.681667;
+
 const double _avametDeniaJoanChabasStationLat = 38.8348638889;
 const double _avametDeniaJoanChabasStationLon = 0.1053638889;
 

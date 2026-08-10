@@ -6,10 +6,68 @@ ANTIGRAVITY_APP_SUPPORT="${HOME}/Library/Application Support/Antigravity"
 ANTIGRAVITY_GLOBAL_STORAGE="${ANTIGRAVITY_APP_SUPPORT}/User/globalStorage"
 ANTIGRAVITY_GEMINI_ROOT="${HOME}/.gemini/antigravity"
 BACKUP_ROOT="${HOME}/Backups/antigravity-conversations"
+MAX_BACKUPS="${ANTIGRAVITY_BACKUP_RETENTION:-10}"
 TIMESTAMP="$(date +"%Y%m%d-%H%M%S")"
 TARGET_DIR="${BACKUP_ROOT}/${TIMESTAMP}"
 LATEST_LINK="${BACKUP_ROOT}/latest"
 
+if [[ ! "${MAX_BACKUPS}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "ANTIGRAVITY_BACKUP_RETENTION must be a positive integer." >&2
+  exit 1
+fi
+
+remove_snapshot() {
+  local snapshot="$1"
+
+  if [[ ! -d "${snapshot}" || -L "${snapshot}" ||
+      "${snapshot}" != "${BACKUP_ROOT}"/20[0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9] ]]; then
+    echo "Refusing to remove unexpected backup path: ${snapshot}" >&2
+    return 1
+  fi
+
+  xattr -cr "${snapshot}" 2>/dev/null || true
+  chmod -RN "${snapshot}" 2>/dev/null || true
+  chmod -R u+rwX "${snapshot}" 2>/dev/null || true
+  find "${snapshot}" -depth -delete
+}
+
+prune_backups() {
+  local keep="$1"
+  local snapshots=()
+  local delete_count
+  local index
+
+  shopt -s nullglob
+  snapshots=("${BACKUP_ROOT}"/20[0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9])
+  shopt -u nullglob
+
+  delete_count=$((${#snapshots[@]} - keep))
+  if ((delete_count <= 0)); then
+    return
+  fi
+
+  for ((index = 0; index < delete_count; index++)); do
+    echo "Removing old backup: ${snapshots[index]}"
+    remove_snapshot "${snapshots[index]}"
+  done
+}
+
+cleanup_on_exit() {
+  local status=$?
+
+  trap - EXIT
+  if ((status != 0)) && [[ -d "${TARGET_DIR}" ]]; then
+    echo "Removing incomplete backup: ${TARGET_DIR}" >&2
+    remove_snapshot "${TARGET_DIR}" || true
+  fi
+  prune_backups "${MAX_BACKUPS}" || true
+  exit "${status}"
+}
+
+mkdir -p "${BACKUP_ROOT}"
+# Leave room for the snapshot being created, even if the disk is already tight.
+prune_backups "$((MAX_BACKUPS - 1))"
+trap cleanup_on_exit EXIT
 mkdir -p "${TARGET_DIR}"
 
 copy_if_exists() {
@@ -86,6 +144,9 @@ PY
 rm -f "${LATEST_LINK}"
 ln -s "${TARGET_DIR}" "${LATEST_LINK}"
 
+prune_backups "${MAX_BACKUPS}"
+
 echo "Backup completed."
 echo "Latest snapshot: ${LATEST_LINK}"
 echo "Consistency report: ${TARGET_DIR}/consistency_report.txt"
+echo "Retention: latest ${MAX_BACKUPS} snapshots"

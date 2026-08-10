@@ -320,6 +320,28 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
 
   String _directImageEmbedHtml(String imageUrl) {
     final refreshMs = _directImageRefreshMs(imageUrl);
+    const refreshScript = '''
+    let currentObjectUrl = null;
+    async function refreshImage() {
+      try {
+        const response = await fetch(baseUrl, { cache: 'no-store' });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const nextObjectUrl = URL.createObjectURL(await response.blob());
+        const image = document.getElementById('webcam-image');
+        image.onload = function() {
+          if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+          currentObjectUrl = nextObjectUrl;
+          setTimeout(refreshImage, refreshMs);
+        };
+        image.src = nextObjectUrl;
+      } catch (_) {
+        setTimeout(refreshImage, Math.max(refreshMs, 1000));
+      }
+    }
+    window.addEventListener('beforeunload', function() {
+      if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+    });
+''';
     return '''
 <!doctype html>
 <html lang="es">
@@ -353,27 +375,8 @@ class _WebcamPlayerPageState extends State<WebcamPlayerPage> {
   <script>
     const baseUrl = '$imageUrl'.split('?')[0];
     const refreshMs = $refreshMs;
-    let currentObjectUrl = null;
-    async function refreshImage() {
-      try {
-        const response = await fetch(baseUrl, { cache: 'no-store' });
-        if (!response.ok) throw new Error('HTTP ' + response.status);
-        const nextObjectUrl = URL.createObjectURL(await response.blob());
-        const image = document.getElementById('webcam-image');
-        image.onload = function() {
-          if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
-          currentObjectUrl = nextObjectUrl;
-          setTimeout(refreshImage, refreshMs);
-        };
-        image.src = nextObjectUrl;
-      } catch (_) {
-        setTimeout(refreshImage, Math.max(refreshMs, 1000));
-      }
-    }
+    $refreshScript
     setTimeout(refreshImage, refreshMs);
-    window.addEventListener('beforeunload', function() {
-      if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
-    });
   </script>
 </body>
 </html>

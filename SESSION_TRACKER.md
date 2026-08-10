@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 232h 32m 04s`.
+- `Total historico minimo consolidado del proyecto: 236h 24m 47s`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -38,10 +38,11 @@
   - bloque consolidado adicional en `2026-06-04`: `+1m 11s` reales (`El Perellonet: Valencia buoy discovery and hourly scheduler`)
   - bloque consolidado adicional en `2026-06-07`: `+2h 47m 01s` reales verificables (`El Campello Live stations, history, alarms and webcams`)
   - bloque consolidado adicional en `2026-06-10`: `+1h 26m 52s` reales verificables (`Santa Pola Live stations, webcams, history and alarm audit`)
+  - bloque consolidado adicional en `2026-08-11`: `+3h 52m 43s` reales observables (`Supabase migration, Dakhla/Essaouira Live, METAR, backups and web deploy`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-06-10`: `+1h 26m 52s` reales verificables (`Santa Pola Live stations, webcams, history and alarm audit`).
+  - ultima consolidacion manual anadida el `2026-08-11`: `+3h 52m 43s` reales observables (`Supabase migration, Dakhla/Essaouira Live, METAR, backups and web deploy`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -60,6 +61,59 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-08-11 - Supabase migration, Dakhla/Essaouira Live, METAR, backups and web deploy
+
+- Bloque consolidado adicional: `+3h 52m 43s` reales observables.
+- Medicion real usada:
+  - inicio observable: `2026-08-10 21:14:03 +0200`, primera modificacion local verificable del lote actual,
+  - cierre del registro: `2026-08-11 01:06:46 +0200`,
+  - intervalo transcurrido exacto: `3h 52m 43s`, sin redondear ni ampliar,
+  - los cambios heredados con fecha `2026-06-21` se documentan, pero no suman tiempo por no disponer de una marca inicial fiable.
+- Supabase / proyecto activo:
+  - consolidado `uayzvkjqiiupbeevxrtc` como proyecto Supabase operativo,
+  - actualizadas documentacion y plantillas SQL de schedulers para apuntar al proyecto correcto,
+  - anadida migracion para repuntar URLs publicas de Storage desde el proyecto anterior,
+  - reforzada la migracion de roles para que las politicas puedan aplicarse de forma idempotente,
+  - conservada una migracion preflight de roles para instalaciones que aun no tengan el tipo y tabla base.
+- Dakhla / Live:
+  - creado perfil Live especifico para no mezclar estaciones genericas,
+  - anadida `Windguru Dakhla La Tour d'Eole` como estacion principal,
+  - anadida la observacion aeroportuaria METAR `GMMH` como alternativa,
+  - conectado el historico backend real y el soporte de alarmas METAR.
+- Essaouira / Live y webcam:
+  - creado perfil Live especifico con `WU Essaouira IESSAO6` como estacion principal,
+  - anadida la observacion aeroportuaria METAR `GMMI` como alternativa,
+  - conectados historico backend y alarmas para ambas fuentes,
+  - anadida la webcam directa `Ocean Vagabond Essaouira` desde Skaping,
+  - eliminadas referencias de webcams Spotfav para no depender de una fuente con acceso restringido o riesgo de uso no autorizado.
+- METAR y colector backend:
+  - incorporado proveedor `METAR` al colector de observaciones y al runner de alarmas,
+  - el Live usa exclusivamente observaciones reales persistidas, sin sintetizar puntos,
+  - ajustada la validez del dato METAR a `70 min` para cubrir su publicacion horaria sin mantener datos demasiado antiguos,
+  - comprobado en fuente y Supabase viento real para `GMMH` y `GMMI`,
+  - limitado el colector a lotes concurrentes de seis estaciones para evitar agotamiento de recursos,
+  - anadido filtro opcional `stationKeys` para comprobaciones dirigidas sin recorrer todo el catalogo,
+  - desplegado y verificado `spot-live-observation-collector` en el proyecto activo.
+- AEMET Oliva:
+  - comprobada directamente la estacion oficial `8058X`,
+  - confirmado que entrega viento medio, direccion y racha correctamente,
+  - confirmado que AEMET mantiene aproximadamente una hora de retraso entre observacion y publicacion,
+  - descartado retraso adicional en Flutter o en el proxy Supabase.
+- Backups y almacenamiento local:
+  - reforzado `backup_antigravity_conversations.sh` con retencion configurable y limite por defecto de diez snapshots,
+  - anadida poda segura de snapshots antiguos antes y despues de cada copia,
+  - anadida limpieza automatica de backups incompletos para evitar volver a llenar el disco.
+- Build y despliegue web:
+  - ejecutado rebuild completo de Flutter Web,
+  - publicada la version Firebase Hosting `6fea9639bd2b878c`,
+  - verificado `https://windwisher.com` con respuesta `HTTP 200`,
+  - confirmado que el SHA-256 de `main.dart.js` remoto coincide con el build local,
+  - confirmado que la configuracion web publica apunta a `uayzvkjqiiupbeevxrtc` y no expone claves privadas.
+- Verificacion:
+  - `flutter analyze` limpio en los modulos Live modificados,
+  - comprobaciones reales contra AviationWeather, AEMET OpenData y Supabase completadas,
+  - `.tmp/`, `.DS_Store`, `local.env.json` y credenciales externas quedan fuera del commit.
 
 ### 2026-06-10 - Santa Pola Live stations, webcams, history and alarm audit
 

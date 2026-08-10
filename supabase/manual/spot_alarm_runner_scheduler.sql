@@ -15,7 +15,7 @@ select
     $$
     select
       net.http_post(
-        url := 'https://tefbkhwaxlsfxvnleutb.supabase.co/functions/v1/spot-alarm-runner',
+        url := 'https://uayzvkjqiiupbeevxrtc.supabase.co/functions/v1/spot-alarm-runner',
         headers := jsonb_build_object(
           'Content-Type', 'application/json',
           'Authorization', 'Bearer REPLACE_WITH_SPOT_ALARM_RUNNER_SECRET'

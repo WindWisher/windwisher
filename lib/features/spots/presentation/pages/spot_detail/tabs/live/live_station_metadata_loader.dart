@@ -1569,6 +1569,70 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     );
   }
 
+  void _addDakhlaLiveStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _windguruDakhlaTourEoleStationKey,
+      stationName: _windguruDakhlaTourEoleStationName,
+      provider: 'WINDGURU_STATION',
+      stationId: _windguruDakhlaTourEoleStationId,
+      latitude: _windguruDakhlaTourEoleStationLat,
+      longitude: _windguruDakhlaTourEoleStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _metarDakhlaAirportStationKey,
+      stationName: _metarDakhlaAirportStationName,
+      provider: 'METAR',
+      stationId: _metarDakhlaAirportStationId,
+      latitude: _metarDakhlaAirportStationLat,
+      longitude: _metarDakhlaAirportStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+  }
+
+  void _addEssaouiraLiveStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _wundergroundEssaouiraStationKey,
+      stationName: _wundergroundEssaouiraStationName,
+      provider: 'WUNDERGROUND',
+      stationId: _wundergroundEssaouiraStationId,
+      latitude: _wundergroundEssaouiraStationLat,
+      longitude: _wundergroundEssaouiraStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _metarEssaouiraAirportStationKey,
+      stationName: _metarEssaouiraAirportStationName,
+      provider: 'METAR',
+      stationId: _metarEssaouiraAirportStationId,
+      latitude: _metarEssaouiraAirportStationLat,
+      longitude: _metarEssaouiraAirportStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+  }
+
   void _addElPerellonetLiveStations({
     required double latitude,
     required double longitude,
@@ -1846,6 +1910,16 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
   bool _usesXeracoLiveProfile() {
     final capabilities = _resolvedSpotCapabilities();
     return capabilities.liveStationProfile == xeracoLiveStationProfile;
+  }
+
+  bool _usesDakhlaLiveProfile() {
+    final capabilities = _resolvedSpotCapabilities();
+    return capabilities.liveStationProfile == dakhlaLiveStationProfile;
+  }
+
+  bool _usesEssaouiraLiveProfile() {
+    final capabilities = _resolvedSpotCapabilities();
+    return capabilities.liveStationProfile == essaouiraLiveStationProfile;
   }
 
   String _inforatgeStationCodeFor(String? stationId) {

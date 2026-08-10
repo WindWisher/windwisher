@@ -101,15 +101,18 @@ extension _SpotDetailLiveStationPayloadLoader on _SpotDetailPageState {
       );
     }
     if (station.provider == 'WINDGURU_STATION') {
+      if (kIsWeb) {
+        return _fetchLatestBackendLiveData(station);
+      }
       final stationId = int.tryParse(station.stationId ?? '');
       if (stationId == null) {
         return null;
       }
-      final snapshot = await _windguruStationLiveClient.fetchCurrent(
-        stationId: stationId,
-      );
+      final snapshot = await _windguruStationLiveClient
+          .fetchCurrent(stationId: stationId)
+          .onError((error, stackTrace) => null);
       if (snapshot == null) {
-        return null;
+        return _fetchLatestBackendLiveData(station);
       }
       return _StationLiveData(
         windKnots: snapshot.windKnots,
@@ -123,6 +126,9 @@ extension _SpotDetailLiveStationPayloadLoader on _SpotDetailPageState {
         observedAt: snapshot.observedAt,
         observedAtLabel: snapshot.observedAtLabel,
       );
+    }
+    if (station.provider == 'METAR') {
+      return _fetchLatestBackendLiveData(station);
     }
     if (station.provider == 'WUNDERGROUND') {
       final stationId = station.stationId;
@@ -152,9 +158,7 @@ extension _SpotDetailLiveStationPayloadLoader on _SpotDetailPageState {
       if (stationId == null) {
         return null;
       }
-      final backendSnapshot = await _fetchLatestBackendWeathercloudLiveData(
-        station,
-      );
+      final backendSnapshot = await _fetchLatestBackendLiveData(station);
       if (backendSnapshot != null) {
         return backendSnapshot;
       }
@@ -267,7 +271,7 @@ extension _SpotDetailLiveStationPayloadLoader on _SpotDetailPageState {
     );
   }
 
-  Future<_StationLiveData?> _fetchLatestBackendWeathercloudLiveData(
+  Future<_StationLiveData?> _fetchLatestBackendLiveData(
     _NearbyStation station,
   ) async {
     final client = _spotLiveObservationHistoryClient;
@@ -283,7 +287,10 @@ extension _SpotDetailLiveStationPayloadLoader on _SpotDetailPageState {
     }
     final latest = points.last;
     final age = DateTime.now().difference(latest.observedAt);
-    if (age.isNegative || age > const Duration(minutes: 30)) {
+    final maximumAge = station.provider == 'METAR'
+        ? const Duration(minutes: 70)
+        : const Duration(minutes: 30);
+    if (age.isNegative || age > maximumAge) {
       return null;
     }
     return _StationLiveData(

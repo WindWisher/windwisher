@@ -2,7 +2,7 @@
 -- store secrets in Vault, then schedule the HTTP call with pg_cron + pg_net.
 
 select vault.create_secret(
-  'https://tefbkhwaxlsfxvnleutb.supabase.co',
+  'https://uayzvkjqiiupbeevxrtc.supabase.co',
   'account_deletion_runner_project_url'
 );
 

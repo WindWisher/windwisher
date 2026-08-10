@@ -7,7 +7,7 @@ Sacar del cliente Flutter las API keys de proveedores forecast y centralizarlas 
 ## Proyecto actual
 
 - Supabase project URL:
-  - `https://tefbkhwaxlsfxvnleutb.supabase.co`
+  - `https://uayzvkjqiiupbeevxrtc.supabase.co`
 
 ## Estructura activa
 
@@ -87,7 +87,7 @@ supabase functions serve forecast-proxy --env-file supabase/.env
 
 ```bash
 supabase login
-supabase link --project-ref tefbkhwaxlsfxvnleutb
+supabase link --project-ref uayzvkjqiiupbeevxrtc
 supabase db push
 supabase functions deploy forecast-proxy
 ```
