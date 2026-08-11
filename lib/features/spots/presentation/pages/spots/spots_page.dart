@@ -67,11 +67,13 @@ class SpotsPage extends StatefulWidget {
     this.spotsModule,
     this.useLocalPersistence = EnvConfig.spotsLocalPersistenceEnabled,
     this.initialRoles = const <String>{},
+    this.initiallyShowMap = true,
   });
 
   final SpotsModule? spotsModule;
   final bool useLocalPersistence;
   final Set<String> initialRoles;
+  final bool initiallyShowMap;
 
   @override
   State<SpotsPage> createState() => SpotsPageState();
@@ -79,15 +81,18 @@ class SpotsPage extends StatefulWidget {
 
 class SpotsPageState extends State<SpotsPage> {
   late final SpotsModule _spotsModule;
+  late final List<_SpotItem> _catalogSpots;
   final List<_SpotItem> _spots = <_SpotItem>[];
   final _searchController = TextEditingController();
-  _SpotFilter _filter = _SpotFilter.all;
   _SpotSort _sort = _SpotSort.manual;
-  _SpotsViewMode _viewMode = _SpotsViewMode.list;
+  late _SpotsViewMode _viewMode;
   _PendingCardAction _pendingCardAction = _PendingCardAction.none;
   final Set<String> _selectedSpotNames = <String>{};
   final MapController _spotsMapController = MapController();
   _SpotItem? _selectedMapSpot;
+  bool _showMapSearchSuggestions = false;
+  bool _isSpotsMapLoading = true;
+  bool _hasScheduledSpotsMapLoaded = false;
   List<String> _spotOrderKeys = const <String>[];
   String _searchQuery = '';
   StreamSubscription<AuthState>? _authStateSubscription;
@@ -96,6 +101,12 @@ class SpotsPageState extends State<SpotsPage> {
   @override
   void initState() {
     super.initState();
+    _viewMode = widget.initiallyShowMap
+        ? _SpotsViewMode.map
+        : _SpotsViewMode.list;
+    _catalogSpots = List<_SpotItem>.unmodifiable(
+      _availableSpots.map((spot) => spot.toSpotItem()),
+    );
     _spotsModule =
         widget.spotsModule ??
         (widget.useLocalPersistence
@@ -114,22 +125,74 @@ class SpotsPageState extends State<SpotsPage> {
     return _filterAndSortSpots(
       spots: _spots,
       searchQuery: _searchQuery,
-      filter: _filter,
       sort: _sort,
     );
   }
 
-  void _setFilter(_SpotFilter value) {
-    setState(() {
-      _filter = value;
-      _selectedMapSpot = null;
+  List<_SpotItem> get _filteredMapSpots {
+    final query = _searchQuery.trim().toLowerCase();
+    return _catalogSpots
+        .where((spot) => _matchesSpotQuery(spot, query))
+        .toList(growable: false);
+  }
+
+  List<_SpotItem> get _mapSearchSuggestions {
+    if (!_showMapSearchSuggestions) {
+      return const <_SpotItem>[];
+    }
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) {
+      return const <_SpotItem>[];
+    }
+    final matches = _catalogSpots
+        .where((spot) => _matchesSpotQuery(spot, query))
+        .where((spot) => _spotLocationPoint(spot) != null)
+        .toList();
+    matches.sort((a, b) {
+      final aStarts = a.name.toLowerCase().startsWith(query);
+      final bStarts = b.name.toLowerCase().startsWith(query);
+      if (aStarts != bStarts) {
+        return aStarts ? -1 : 1;
+      }
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
     });
+    return matches.take(6).toList(growable: false);
   }
 
   void _setSearchQuery(String value) {
     setState(() {
       _searchQuery = value;
       _selectedMapSpot = null;
+      _showMapSearchSuggestions =
+          _viewMode == _SpotsViewMode.map && value.trim().isNotEmpty;
+    });
+  }
+
+  void _showMapSuggestionsForCurrentQuery() {
+    if (_viewMode != _SpotsViewMode.map || _searchQuery.trim().isEmpty) {
+      return;
+    }
+    setState(() => _showMapSearchSuggestions = true);
+  }
+
+  void _selectMapSearchSuggestion(_SpotItem spot) {
+    final point = _spotLocationPoint(spot);
+    if (point == null) {
+      return;
+    }
+    _searchController
+      ..text = spot.name
+      ..selection = TextSelection.collapsed(offset: spot.name.length);
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      _searchQuery = spot.name;
+      _selectedMapSpot = spot;
+      _showMapSearchSuggestions = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _spotsMapController.move(point.latLng, 16);
+      }
     });
   }
 
@@ -138,6 +201,7 @@ class SpotsPageState extends State<SpotsPage> {
     setState(() {
       _searchQuery = '';
       _selectedMapSpot = null;
+      _showMapSearchSuggestions = false;
     });
   }
 
@@ -154,11 +218,20 @@ class SpotsPageState extends State<SpotsPage> {
     setState(() {
       _viewMode = value;
       _selectedMapSpot = null;
+      _showMapSearchSuggestions = false;
+      if (value == _SpotsViewMode.map) {
+        _isSpotsMapLoading = true;
+        _hasScheduledSpotsMapLoaded = false;
+      }
     });
   }
 
   void _selectMapSpot(_SpotItem spot) {
-    setState(() => _selectedMapSpot = spot);
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      _selectedMapSpot = spot;
+      _showMapSearchSuggestions = false;
+    });
   }
 
   void _clearSelectedMapSpot() {
@@ -166,6 +239,13 @@ class SpotsPageState extends State<SpotsPage> {
       return;
     }
     setState(() => _selectedMapSpot = null);
+  }
+
+  void _markSpotsMapLoaded() {
+    if (!mounted || !_isSpotsMapLoading) {
+      return;
+    }
+    setState(() => _isSpotsMapLoading = false);
   }
 
   @override
@@ -192,17 +272,16 @@ class SpotsPageState extends State<SpotsPage> {
           )
         else
           _buildSpotsMapSection(textTheme),
-        Positioned(
-          right: AppSpacing.md,
-          bottom: _viewMode == _SpotsViewMode.map && _selectedMapSpot != null
-              ? 196
-              : AppSpacing.lg,
-          child: FloatingActionButton(
-            onPressed: _showAddSpotSheet,
-            tooltip: 'Agregar spot',
-            child: const Icon(Icons.add),
+        if (_viewMode == _SpotsViewMode.list)
+          Positioned(
+            right: AppSpacing.md,
+            bottom: AppSpacing.lg,
+            child: FloatingActionButton(
+              onPressed: _showAddSpotSheet,
+              tooltip: 'Agregar spot',
+              child: const Icon(Icons.add),
+            ),
           ),
-        ),
       ],
     );
   }
@@ -213,8 +292,6 @@ class _VerticalBounceNoStretchBehavior extends AppScrollBehavior {
 }
 
 enum _PendingCardAction { none, edit, deleteMany }
-
-enum _SpotFilter { all, official, custom }
 
 enum _SpotSort { manual, recent, az, za }
 

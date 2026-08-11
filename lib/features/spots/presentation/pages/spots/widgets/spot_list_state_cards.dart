@@ -23,7 +23,7 @@ class _SpotsHeaderCard extends StatelessWidget {
             if (!hasAdvancedSpotAccess) ...[
               const SizedBox(height: AppSpacing.xs),
               Text(
-                'Plan user: maximo 2 spots oficiales. Sin spots custom y sin edicion o borrado.',
+                'Plan user: maximo 2 spots guardados.',
                 style: textTheme.bodySmall,
               ),
             ],
@@ -60,7 +60,7 @@ class _NoFilteredSpotsCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Text(
-          'No hay spots para este filtro.',
+          'No hay spots para esta busqueda.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
       ),

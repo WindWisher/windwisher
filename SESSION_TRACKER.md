@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 236h 56m 10s`.
+- `Total historico minimo consolidado del proyecto: 239h 39m 49s`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -40,10 +40,11 @@
   - bloque consolidado adicional en `2026-06-10`: `+1h 26m 52s` reales verificables (`Santa Pola Live stations, webcams, history and alarm audit`)
   - bloque consolidado adicional en `2026-08-11`: `+3h 52m 43s` reales observables (`Supabase migration, Dakhla/Essaouira Live, METAR, backups and web deploy`)
   - bloque consolidado adicional en `2026-08-11`: `+31m 23s` reales observables (`Spots map explorer and legacy failure cleanup`)
+  - bloque consolidado adicional en `2026-08-12`: `+2h 43m 39s` reales observables (`Spots map catalog, predictive search, responsive controls and web deploy`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-08-11`: `+31m 23s` reales observables (`Spots map explorer and legacy failure cleanup`).
+  - ultima consolidacion manual anadida el `2026-08-12`: `+2h 43m 39s` reales observables (`Spots map catalog, predictive search, responsive controls and web deploy`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -62,6 +63,44 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-08-12 - Spots map catalog, predictive search, responsive controls and web deploy
+
+- Bloque consolidado adicional: `+2h 43m 39s` reales observables.
+- Medicion real usada:
+  - inicio observable: `2026-08-11 22:28:41 +0200`, primera modificacion local verificable del lote,
+  - cierre de implementacion y verificacion: `2026-08-12 01:12:20 +0200`,
+  - intervalo transcurrido exacto: `2h 43m 39s`, sin redondear ni ampliar,
+  - el tiempo administrativo posterior dedicado al tracker y a Git no se suma.
+- Catalogo y navegacion del mapa:
+  - la pantalla Spots arranca en modo mapa y presenta los veinte spots oficiales disponibles, aunque todavia no esten guardados por el usuario,
+  - invertido el selector para mostrar `Mapa / Lista` y eliminados los filtros `Todos / Oficiales / Custom` y el alta global desde el mapa,
+  - mantenidos los spots personalizados antiguos sin permitir nuevas altas personalizadas,
+  - anadida una estrella compacta en la ficha para guardar un spot oficial respetando el limite del plan,
+  - simplificada la ficha inferior conservando nombre, ubicacion, dialogo de acceso y apertura del spot.
+- Busqueda, marcadores y camara:
+  - incorporado predictivo de hasta seis spots oficiales con prioridad para coincidencias por prefijo,
+  - al elegir una sugerencia se selecciona el marcador y la camara navega al spot con zoom `16`,
+  - reducidos los marcadores y renovado el estado seleccionado con borde y halo del color primario,
+  - centrado inicial ajustado a la Comunitat Valenciana con zoom `8`,
+  - el control de centrar reajusta los spots visibles y restablece la rotacion norte a `0` grados.
+- Diseno adaptable y rendimiento:
+  - agrupados los controles de zoom y centrado en la esquina inferior derecha sin solaparlos con la ficha,
+  - en horizontal la seccion completa puede desplazarse verticalmente y el mapa conserva zoom, doble toque y rueda sin secuestrar el gesto de scroll,
+  - estabilizada la jerarquia del mapa entre orientaciones para evitar reconstrucciones del controlador,
+  - anadido un estado de carga hasta recibir la primera tesela y ocultada la atribucion visual del mapa.
+- Pruebas y diagnostico:
+  - ampliadas las pruebas de Spots para cubrir catalogo global, sugerencias, guardado con estrella, geometria adaptable y reinicio de rotacion,
+  - comprobado el comportamiento en el Xiaomi conectado; el perfil con Impeller/Vulkan no mostro ANR ni saltos de frames,
+  - descartado el opt-out de Impeller porque OpenGL empeoraba claramente el rendimiento en debug,
+  - `flutter analyze`: sin problemas,
+  - `flutter test test/features/spots`: `79/79` pruebas superadas,
+  - `git diff --check`: limpio.
+- Build y despliegue web:
+  - ejecutado rebuild completo de Flutter Web y desplegada Firebase Hosting version `1e6eb64af1749ecb`,
+  - verificados `https://windwisher.com` y `https://windwisherapp-5ed22.web.app` con respuesta `HTTP 200`,
+  - confirmado que el SHA-256 remoto de `main.dart.js` coincide con el build local,
+  - comprobado que el build publico no contiene credenciales privadas.
 
 ### 2026-08-11 - Spots map explorer and legacy failure cleanup
 

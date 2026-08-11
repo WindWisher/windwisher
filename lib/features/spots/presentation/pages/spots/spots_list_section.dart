@@ -26,8 +26,6 @@ extension _SpotsListSection on SpotsPageState {
       ...topWidgets,
       _buildViewToggle(),
       const SizedBox(height: AppSpacing.sm),
-      _buildFilterChips(),
-      const SizedBox(height: AppSpacing.sm),
       _buildSearchField(),
       ..._buildPendingActionCard(textTheme),
       const SizedBox(height: AppSpacing.sm),
@@ -77,20 +75,17 @@ extension _SpotsListSection on SpotsPageState {
     return const _EmptySpotsCard();
   }
 
-  Widget _buildFilterChips() {
-    return _SpotFilterChips(selectedFilter: _filter, onSelected: _setFilter);
-  }
-
   Widget _buildViewToggle() {
     return _SpotViewToggle(selectedView: _viewMode, onSelected: _setViewMode);
   }
 
-  Widget _buildSearchField() {
+  Widget _buildSearchField({VoidCallback? onTap}) {
     return _SpotSearchField(
       controller: _searchController,
       query: _searchQuery,
       onChanged: _setSearchQuery,
       onClear: _clearSearchQuery,
+      onTap: onTap,
     );
   }
 

@@ -5,8 +5,6 @@ extension _SpotsAccessController on SpotsPageState {
     return _myRoles.any(_advancedRoleNames.contains);
   }
 
-  bool get _canCreateCustomSpots => _hasAdvancedSpotAccess;
-
   bool get _canEditOrDeleteSavedSpots => _hasAdvancedSpotAccess;
 
   int get _officialSpotCount => _spots.where((spot) => !spot.isCustom).length;

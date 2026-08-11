@@ -3,22 +3,23 @@ part of '../spots_page.dart';
 class _SpotMapPreviewCard extends StatelessWidget {
   const _SpotMapPreviewCard({
     required this.spot,
+    required this.isSaved,
     required this.onClose,
     required this.onOpenSpot,
     required this.onShowLocation,
-    required this.onNavigate,
+    required this.onAddSpot,
   });
 
   final _SpotItem spot;
+  final bool isSaved;
   final VoidCallback onClose;
   final VoidCallback onOpenSpot;
   final VoidCallback onShowLocation;
-  final VoidCallback onNavigate;
+  final VoidCallback onAddSpot;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final capabilities = spot.capabilities;
     return Card(
       key: const Key('spot-map-preview-card'),
       elevation: 10,
@@ -66,32 +67,6 @@ class _SpotMapPreviewCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.xs),
-            Wrap(
-              spacing: AppSpacing.xs,
-              runSpacing: AppSpacing.xs,
-              children: [
-                if (capabilities.liveStationProfile != null)
-                  const _SpotMapFeatureChip(
-                    icon: Icons.air_rounded,
-                    label: 'Live',
-                  ),
-                if (capabilities.webcamProfile != null)
-                  const _SpotMapFeatureChip(
-                    icon: Icons.videocam_outlined,
-                    label: 'Webcam',
-                  ),
-                const _SpotMapFeatureChip(
-                  icon: Icons.query_stats_rounded,
-                  label: 'Forecast',
-                ),
-                if (spot.isCustom)
-                  const _SpotMapFeatureChip(
-                    icon: Icons.person_pin_circle_outlined,
-                    label: 'Custom',
-                  ),
-              ],
-            ),
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
@@ -100,13 +75,16 @@ class _SpotMapPreviewCard extends StatelessWidget {
                   onPressed: onShowLocation,
                   icon: const Icon(Icons.map_outlined),
                 ),
-                const SizedBox(width: AppSpacing.xs),
-                IconButton.filledTonal(
-                  tooltip: 'Como llegar',
-                  onPressed: onNavigate,
-                  icon: const Icon(Icons.directions_outlined),
-                ),
                 const SizedBox(width: AppSpacing.sm),
+                if (!isSaved) ...[
+                  IconButton.filledTonal(
+                    key: const Key('add-map-spot-to-list'),
+                    tooltip: 'Agregar a Mis spots',
+                    onPressed: onAddSpot,
+                    icon: const Icon(Icons.star_border_rounded),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                ],
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: onOpenSpot,
@@ -115,41 +93,6 @@ class _SpotMapPreviewCard extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SpotMapFeatureChip extends StatelessWidget {
-  const _SpotMapFeatureChip({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 15, color: colorScheme.onSecondaryContainer),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: colorScheme.onSecondaryContainer,
-                fontWeight: FontWeight.w600,
-              ),
             ),
           ],
         ),

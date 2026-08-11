@@ -6,12 +6,14 @@ class _SpotSearchField extends StatelessWidget {
     required this.query,
     required this.onChanged,
     required this.onClear,
+    this.onTap,
   });
 
   final TextEditingController controller;
   final String query;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -19,6 +21,7 @@ class _SpotSearchField extends StatelessWidget {
       key: const Key('spots-search-input'),
       controller: controller,
       onChanged: onChanged,
+      onTap: onTap,
       decoration: InputDecoration(
         labelText: 'Buscar spots',
         prefixIcon: const Icon(Icons.search),

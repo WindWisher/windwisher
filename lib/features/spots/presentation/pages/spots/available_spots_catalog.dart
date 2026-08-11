@@ -20,6 +20,21 @@ class _AvailableSpot {
   final String? aemetBeachCode;
   final List<String> aemetBeachCodes;
   final SpotCapabilities capabilities;
+
+  _SpotItem toSpotItem({DateTime? createdAt}) {
+    return _SpotItem(
+      name: name,
+      area: area,
+      isCustom: false,
+      createdAt: createdAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+      latitude: latitude,
+      longitude: longitude,
+      aemetMunicipalityCode: aemetMunicipalityCode,
+      aemetBeachCode: aemetBeachCode,
+      aemetBeachCodes: aemetBeachCodes,
+      capabilities: capabilities,
+    );
+  }
 }
 
 const _availableSpots = <_AvailableSpot>[

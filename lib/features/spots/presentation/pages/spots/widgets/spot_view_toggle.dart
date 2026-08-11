@@ -15,14 +15,14 @@ class _SpotViewToggle extends StatelessWidget {
         showSelectedIcon: false,
         segments: const [
           ButtonSegment(
-            value: _SpotsViewMode.list,
-            icon: Icon(Icons.view_agenda_outlined),
-            label: Text('Lista'),
-          ),
-          ButtonSegment(
             value: _SpotsViewMode.map,
             icon: Icon(Icons.public_outlined),
             label: Text('Mapa'),
+          ),
+          ButtonSegment(
+            value: _SpotsViewMode.list,
+            icon: Icon(Icons.view_agenda_outlined),
+            label: Text('Lista'),
           ),
         ],
         selected: {selectedView},

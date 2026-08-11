@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/features/spots/di/spots_module.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_item.dart';
 import 'package:windwisher/features/spots/presentation/pages/spots/spots_page.dart';
@@ -26,13 +28,17 @@ void main() {
     return module;
   }
 
-  Widget buildSpotsTestApp({SpotsModule? spotsModule}) {
+  Widget buildSpotsTestApp({
+    SpotsModule? spotsModule,
+    bool initiallyShowMap = false,
+  }) {
     return MaterialApp(
       home: Scaffold(
         body: SpotsPage(
           spotsModule: spotsModule,
           useLocalPersistence: false,
           initialRoles: const {'pro'},
+          initiallyShowMap: initiallyShowMap,
         ),
       ),
     );
@@ -137,68 +143,23 @@ void main() {
     expect(find.text('Valencia'), findsOneWidget);
   });
 
-  testWidgets('supports custom map point from Personalizado button', (
-    tester,
-  ) async {
+  testWidgets('does not offer custom spot creation', (tester) async {
     await tester.pumpWidget(buildSpotsTestApp());
 
     await tester.tap(find.byTooltip('Agregar spot'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Personalizado'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Selecciona punto en el mapa'), findsOneWidget);
-
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Latitud'),
-      '38.920000',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Longitud'),
-      '-0.090000',
-    );
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Usar punto'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Punto del mapa seleccionado'), findsOneWidget);
+    expect(find.text('Personalizado'), findsNothing);
+    expect(find.text('Selecciona punto en el mapa'), findsNothing);
   });
 
-  testWidgets('prevents adding duplicated spots', (tester) async {
-    final module = buildSpotsModule([
-      buildSpot('Spot duplicado', isCustom: true),
-    ]);
+  testWidgets('does not show obsolete spot type filters', (tester) async {
+    final module = buildSpotsModule([buildSpot(officialSpotName)]);
     await tester.pumpWidget(buildSpotsTestApp(spotsModule: module));
 
-    await tester.tap(find.byTooltip('Agregar spot'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Personalizado'));
-    await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Latitud'),
-      '38.920000',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Longitud'),
-      '-0.090000',
-    );
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Usar punto'));
-    await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Nombre del spot'),
-      'Spot duplicado',
-    );
-    await tester.ensureVisible(find.text('Guardar spot'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Guardar spot'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Ese spot ya esta agregado'), findsOneWidget);
+    expect(find.byKey(const Key('spots-filter-all')), findsNothing);
+    expect(find.byKey(const Key('spots-filter-official')), findsNothing);
+    expect(find.byKey(const Key('spots-filter-custom')), findsNothing);
   });
 
   testWidgets('allows deleting a spot from multi mode selection', (
@@ -306,26 +267,6 @@ void main() {
     );
   });
 
-  testWidgets('filters spots by type', (tester) async {
-    final module = buildSpotsModule([
-      buildSpot(officialSpotName),
-      buildSpot('Spot libre', isCustom: true),
-    ]);
-    await tester.pumpWidget(buildSpotsTestApp(spotsModule: module));
-
-    await tester.tap(find.byKey(const Key('spots-filter-custom')));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Spot libre'), findsOneWidget);
-    expect(find.text(officialSpotName), findsNothing);
-
-    await tester.tap(find.byKey(const Key('spots-filter-official')));
-    await tester.pumpAndSettle();
-
-    expect(find.text(officialSpotName), findsOneWidget);
-    expect(find.text('Spot libre'), findsNothing);
-  });
-
   testWidgets('filters spots by search text', (tester) async {
     final module = buildSpotsModule([
       buildSpot('Oliva Puerto'),
@@ -370,38 +311,167 @@ void main() {
     expect((zaTitles.first.title as Text).data, 'Tarifa');
   });
 
-  testWidgets('opens map view and previews a selected spot marker', (
+  testWidgets('maps catalog spots and adds one to the saved list', (
     tester,
   ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(450, 900);
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+    });
+
     final spotsModule = SpotsModule.inMemory();
-    const spotName = 'Spot mapa test';
-    spotsModule.saveSpot(
-      SpotItem(
-        name: spotName,
-        area: 'Costa test',
-        isCustom: true,
-        createdAt: DateTime(2026),
-        latitude: 38.92,
-        longitude: -0.09,
-      ),
+    const spotName = 'Dakhla';
+
+    await tester.pumpWidget(
+      buildSpotsTestApp(spotsModule: spotsModule, initiallyShowMap: true),
+    );
+    await tester.pump();
+
+    expect(
+      tester.getCenter(find.text('Mapa')).dx,
+      lessThan(tester.getCenter(find.text('Lista')).dx),
     );
 
-    await tester.pumpWidget(buildSpotsTestApp(spotsModule: spotsModule));
-    await tester.pump();
-
-    await tester.tap(find.text('Mapa'));
-    await tester.pump();
-
     expect(find.byKey(const Key('spots-explorer-map')), findsOneWidget);
-    expect(find.byKey(const Key('spot-map-marker-$spotName')), findsOneWidget);
+    expect(find.byKey(const Key('spots-map-loading')), findsOneWidget);
+    expect(find.byTooltip('Agregar spot'), findsNothing);
+    expect(find.byTooltip('Acercar mapa'), findsOneWidget);
+    expect(find.byTooltip('Alejar mapa'), findsOneWidget);
+    expect(find.byTooltip('Ver todos los spots'), findsOneWidget);
 
+    await tester.tap(find.byTooltip('Ver todos los spots'));
+    await tester.pump();
+    expect(find.byKey(const Key('spot-map-marker-$spotName')), findsOneWidget);
     await tester.tap(find.byKey(const Key('spot-map-marker-$spotName')));
     await tester.pump();
 
     expect(find.byKey(const Key('spot-map-preview-card')), findsOneWidget);
-    expect(find.text(spotName), findsOneWidget);
+    expect(
+      find.byKey(const Key('spot-map-marker-label-$spotName')),
+      findsOneWidget,
+    );
+    expect(find.text(spotName), findsNWidgets(2));
     expect(find.text('Abrir spot'), findsOneWidget);
+    expect(find.byTooltip('Agregar a Mis spots'), findsOneWidget);
+    expect(find.byIcon(Icons.star_border_rounded), findsOneWidget);
+    expect(find.byTooltip('Ver ubicacion'), findsOneWidget);
+    expect(find.byTooltip('Como llegar'), findsNothing);
+    expect(find.text('Live'), findsNothing);
+    expect(find.text('Webcam'), findsNothing);
+    expect(find.text('Forecast'), findsNothing);
+    expect(find.textContaining('flutter_map'), findsNothing);
+    expect(find.text('OpenStreetMap · CARTO'), findsNothing);
+    expect(find.byTooltip('Fuentes del mapa'), findsNothing);
+    final controlsRect = tester.getRect(
+      find.byKey(const Key('spots-map-controls')),
+    );
+    final previewRect = tester.getRect(
+      find.byKey(const Key('spot-map-preview-card')),
+    );
+    expect(
+      previewRect.top - controlsRect.bottom,
+      greaterThanOrEqualTo(AppSpacing.sm),
+    );
 
-    spotsModule.deleteSpotByName(spotName);
+    final map = tester.widget<FlutterMap>(
+      find.byKey(const Key('spots-explorer-map')),
+    );
+    map.mapController?.rotate(35);
+    await tester.pump();
+    expect(map.mapController?.camera.rotation, 35);
+
+    await tester.tap(find.byTooltip('Ver todos los spots'));
+    await tester.pump();
+    expect(map.mapController?.camera.rotation, 0);
+
+    await tester.tap(find.byKey(const Key('add-map-spot-to-list')));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.byTooltip('Agregar a Mis spots'), findsNothing);
+
+    await tester.tap(find.text('Lista'));
+    await tester.pumpAndSettle();
+
+    expect(find.text(spotName), findsOneWidget);
+    expect(find.byTooltip('Agregar spot'), findsOneWidget);
+  });
+
+  testWidgets('suggests map spots and zooms to the selected result', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(450, 900);
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+    });
+
+    await tester.pumpWidget(
+      buildSpotsTestApp(
+        spotsModule: SpotsModule.inMemory(),
+        initiallyShowMap: true,
+      ),
+    );
+    await tester.pump();
+
+    await tester.enterText(
+      find.byKey(const Key('spots-search-input')),
+      'Oliva',
+    );
+    await tester.pump();
+
+    final suggestion = find.byKey(
+      const Key('spots-map-search-suggestion-Oliva Canal - Platja dels Gorgs'),
+    );
+    expect(suggestion, findsOneWidget);
+
+    await tester.tap(suggestion);
+    await tester.pump();
+
+    expect(find.byKey(const Key('spots-map-search-suggestions')), findsNothing);
+    expect(
+      find.byKey(
+        const Key('spot-map-marker-label-Oliva Canal - Platja dels Gorgs'),
+      ),
+      findsOneWidget,
+    );
+    final map = tester.widget<FlutterMap>(
+      find.byKey(const Key('spots-explorer-map')),
+    );
+    expect(map.mapController?.camera.zoom, 16);
+  });
+
+  testWidgets('scrolls the complete map section in landscape', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(900, 450);
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+    });
+
+    await tester.pumpWidget(
+      buildSpotsTestApp(
+        spotsModule: SpotsModule.inMemory(),
+        initiallyShowMap: true,
+      ),
+    );
+    await tester.pump();
+
+    final mapFinder = find.byKey(const Key('spots-explorer-map'));
+    final controlsFinder = find.byKey(const Key('spots-map-controls'));
+    final scrollFinder = find.byKey(const Key('spots-map-scroll'));
+    expect(scrollFinder, findsOneWidget);
+
+    final mapRect = tester.getRect(mapFinder);
+    final controlsRect = tester.getRect(controlsFinder);
+    expect(mapRect.bottom - controlsRect.bottom, closeTo(12, 1));
+
+    final initialMapTop = mapRect.top;
+    await tester.drag(scrollFinder, const Offset(0, -140));
+    await tester.pump();
+
+    expect(tester.getTopLeft(mapFinder).dy, lessThan(initialMapTop));
   });
 }

@@ -1,40 +1,5 @@
 part of '../spots_page.dart';
 
-class _SpotFilterChips extends StatelessWidget {
-  const _SpotFilterChips({
-    required this.selectedFilter,
-    required this.onSelected,
-  });
-
-  final _SpotFilter selectedFilter;
-  final ValueChanged<_SpotFilter> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SpotChoiceChipRow<_SpotFilter>(
-      chips: const [
-        _SpotChoiceChipData(
-          key: Key('spots-filter-all'),
-          label: 'Todos',
-          value: _SpotFilter.all,
-        ),
-        _SpotChoiceChipData(
-          key: Key('spots-filter-official'),
-          label: 'Oficiales',
-          value: _SpotFilter.official,
-        ),
-        _SpotChoiceChipData(
-          key: Key('spots-filter-custom'),
-          label: 'Custom',
-          value: _SpotFilter.custom,
-        ),
-      ],
-      selectedValue: selectedFilter,
-      onSelected: onSelected,
-    );
-  }
-}
-
 class _SpotSortChips extends StatelessWidget {
   const _SpotSortChips({required this.selectedSort, required this.onSelected});
 
