@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
+import 'package:windwisher/core/config/env/initialized_supabase_client.dart';
 
 class SpotLiveObservationHistoryPoint {
   const SpotLiveObservationHistoryPoint({
@@ -37,9 +38,10 @@ class SpotLiveObservationHistoryClient {
   final SupabaseClient _client;
 
   static SpotLiveObservationHistoryClient? maybeCreate() {
-    return EnvConfig.supabaseConfigured
-        ? SpotLiveObservationHistoryClient()
-        : null;
+    final client = resolveInitializedSupabaseClient();
+    return client == null
+        ? null
+        : SpotLiveObservationHistoryClient(client: client);
   }
 
   Future<List<SpotLiveObservationHistoryPoint>> fetchStationHistory({

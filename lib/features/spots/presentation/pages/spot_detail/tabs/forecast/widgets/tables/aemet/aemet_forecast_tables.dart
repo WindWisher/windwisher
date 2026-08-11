@@ -13,8 +13,8 @@ class AemetBeachForecastTable extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     const labelColumnWidth = 116.0;
     const dayColumnWidth = 148.0;
-    const headerHeight = 58.0;
-    const rowHeight = 76.0;
+    const headerHeight = 72.0;
+    const rowHeight = 88.0;
     const rowGap = 8.0;
     const rowLabels = [
       'Cielo',

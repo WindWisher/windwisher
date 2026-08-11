@@ -74,7 +74,10 @@ class _CustomMapPickerDialogState extends State<_CustomMapPickerDialog> {
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.sizeOf(context);
     final dialogWidth = math.min(screenSize.width * 0.94, 760.0);
-    final mapHeight = math.min(screenSize.height * 0.62, 520.0);
+    final mapHeight = math.max(
+      120.0,
+      math.min(screenSize.height - 260.0, 520.0),
+    );
 
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),

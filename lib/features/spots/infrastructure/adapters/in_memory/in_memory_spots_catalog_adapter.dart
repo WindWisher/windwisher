@@ -2,7 +2,7 @@ import 'package:windwisher/features/spots/domain/entities/spot_item.dart';
 import 'package:windwisher/features/spots/domain/ports/out/spots_catalog_port.dart';
 
 class InMemorySpotsCatalogAdapter implements SpotsCatalogPort {
-  static final List<SpotItem> _spots = [];
+  final List<SpotItem> _spots = [];
 
   @override
   List<SpotItem> getSpots() {

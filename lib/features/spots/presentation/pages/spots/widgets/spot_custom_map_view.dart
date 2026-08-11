@@ -24,6 +24,7 @@ class _CustomMapView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
+      key: const Key('custom-map-area'),
       height: height,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),

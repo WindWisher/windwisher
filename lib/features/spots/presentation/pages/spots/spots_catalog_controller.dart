@@ -15,6 +15,10 @@ extension _SpotsCatalogController on SpotsPageState {
   }
 
   Future<void> _loadMyRoles() async {
+    if (widget.initialRoles.isNotEmpty) {
+      _setRoles(Set<String>.unmodifiable(widget.initialRoles));
+      return;
+    }
     if (!EnvConfig.supabaseConfigured) {
       return;
     }

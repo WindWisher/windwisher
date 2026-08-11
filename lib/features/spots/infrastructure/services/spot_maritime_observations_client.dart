@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
+import 'package:windwisher/core/config/env/initialized_supabase_client.dart';
 import 'package:windwisher/features/spots/infrastructure/services/spot_live_observation_history_client.dart';
 
 class SpotMaritimeObservation {
@@ -88,9 +89,10 @@ class SpotMaritimeObservationsClient {
   final SupabaseClient _client;
 
   static SpotMaritimeObservationsClient? maybeCreate() {
-    return EnvConfig.supabaseConfigured
-        ? SpotMaritimeObservationsClient()
-        : null;
+    final client = resolveInitializedSupabaseClient();
+    return client == null
+        ? null
+        : SpotMaritimeObservationsClient(client: client);
   }
 
   Future<SpotMaritimeObservationsResult> fetchNearby({

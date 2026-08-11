@@ -38,6 +38,7 @@ part 'spots_delete_controller.dart';
 part 'spots_edit_controller.dart';
 part 'spots_filter_controller.dart';
 part 'spots_list_section.dart';
+part 'spots_map_section.dart';
 part 'spots_order_controller.dart';
 
 part 'widgets/spot_add_form_fields.dart';
@@ -52,9 +53,11 @@ part 'widgets/spot_custom_map_view.dart';
 part 'widgets/spot_edit_sheet_content.dart';
 part 'widgets/spot_filter_sort_chips.dart';
 part 'widgets/spot_list_state_cards.dart';
+part 'widgets/spot_map_preview_card.dart';
 part 'widgets/spot_pending_action_card.dart';
 part 'widgets/spot_search_field.dart';
 part 'widgets/spot_suggestions_list.dart';
+part 'widgets/spot_view_toggle.dart';
 
 typedef _SpotItem = SpotItem;
 
@@ -63,10 +66,12 @@ class SpotsPage extends StatefulWidget {
     super.key,
     this.spotsModule,
     this.useLocalPersistence = EnvConfig.spotsLocalPersistenceEnabled,
+    this.initialRoles = const <String>{},
   });
 
   final SpotsModule? spotsModule;
   final bool useLocalPersistence;
+  final Set<String> initialRoles;
 
   @override
   State<SpotsPage> createState() => SpotsPageState();
@@ -78,8 +83,11 @@ class SpotsPageState extends State<SpotsPage> {
   final _searchController = TextEditingController();
   _SpotFilter _filter = _SpotFilter.all;
   _SpotSort _sort = _SpotSort.manual;
+  _SpotsViewMode _viewMode = _SpotsViewMode.list;
   _PendingCardAction _pendingCardAction = _PendingCardAction.none;
   final Set<String> _selectedSpotNames = <String>{};
+  final MapController _spotsMapController = MapController();
+  _SpotItem? _selectedMapSpot;
   List<String> _spotOrderKeys = const <String>[];
   String _searchQuery = '';
   StreamSubscription<AuthState>? _authStateSubscription;
@@ -93,6 +101,7 @@ class SpotsPageState extends State<SpotsPage> {
         (widget.useLocalPersistence
             ? SpotsModule.auto()
             : SpotsModule.inMemory());
+    _myRoles = Set<String>.unmodifiable(widget.initialRoles);
     _spotOrderKeys = _loadSpotOrderKeys();
     _spots.addAll(_spotsModule.getSpots());
     _applyStoredSpotOrder();
@@ -113,12 +122,14 @@ class SpotsPageState extends State<SpotsPage> {
   void _setFilter(_SpotFilter value) {
     setState(() {
       _filter = value;
+      _selectedMapSpot = null;
     });
   }
 
   void _setSearchQuery(String value) {
     setState(() {
       _searchQuery = value;
+      _selectedMapSpot = null;
     });
   }
 
@@ -126,6 +137,7 @@ class SpotsPageState extends State<SpotsPage> {
     _searchController.clear();
     setState(() {
       _searchQuery = '';
+      _selectedMapSpot = null;
     });
   }
 
@@ -135,10 +147,32 @@ class SpotsPageState extends State<SpotsPage> {
     });
   }
 
+  void _setViewMode(_SpotsViewMode value) {
+    if (_viewMode == value) {
+      return;
+    }
+    setState(() {
+      _viewMode = value;
+      _selectedMapSpot = null;
+    });
+  }
+
+  void _selectMapSpot(_SpotItem spot) {
+    setState(() => _selectedMapSpot = spot);
+  }
+
+  void _clearSelectedMapSpot() {
+    if (_selectedMapSpot == null) {
+      return;
+    }
+    setState(() => _selectedMapSpot = null);
+  }
+
   @override
   void dispose() {
     _authStateSubscription?.cancel();
     _searchController.dispose();
+    _spotsMapController.dispose();
     super.dispose();
   }
 
@@ -148,16 +182,21 @@ class SpotsPageState extends State<SpotsPage> {
 
     return Stack(
       children: [
-        ScrollConfiguration(
-          behavior: const _VerticalBounceNoStretchBehavior(),
-          child: CustomScrollView(
-            physics: kAppBouncingScrollPhysics,
-            slivers: _buildSpotsListSection(textTheme),
-          ),
-        ),
+        if (_viewMode == _SpotsViewMode.list)
+          ScrollConfiguration(
+            behavior: const _VerticalBounceNoStretchBehavior(),
+            child: CustomScrollView(
+              physics: kAppBouncingScrollPhysics,
+              slivers: _buildSpotsListSection(textTheme),
+            ),
+          )
+        else
+          _buildSpotsMapSection(textTheme),
         Positioned(
           right: AppSpacing.md,
-          bottom: AppSpacing.lg,
+          bottom: _viewMode == _SpotsViewMode.map && _selectedMapSpot != null
+              ? 196
+              : AppSpacing.lg,
           child: FloatingActionButton(
             onPressed: _showAddSpotSheet,
             tooltip: 'Agregar spot',
@@ -178,3 +217,5 @@ enum _PendingCardAction { none, edit, deleteMany }
 enum _SpotFilter { all, official, custom }
 
 enum _SpotSort { manual, recent, az, za }
+
+enum _SpotsViewMode { list, map }

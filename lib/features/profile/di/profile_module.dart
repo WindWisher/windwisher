@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:windwisher/core/config/env/env_config.dart';
+import 'package:windwisher/core/config/env/initialized_supabase_client.dart';
 import 'package:windwisher/features/profile/application/use_cases/profile_gear_use_cases.dart';
 import 'package:windwisher/features/profile/application/use_cases/profile_messages_use_cases.dart';
 import 'package:windwisher/features/profile/application/use_cases/profile_use_cases.dart';
@@ -30,14 +30,8 @@ class ProfileModule {
       InMemoryProfileRepositoryAdapter();
   static final InMemoryProfileMessagesRepositoryAdapter _messagesRepository =
       InMemoryProfileMessagesRepositoryAdapter();
-  static final SupabaseProfileMessagesRepositoryAdapter
-  _supabaseMessagesRepository = SupabaseProfileMessagesRepositoryAdapter();
   static final InMemoryProfileGearRepositoryAdapter _gearRepository =
       InMemoryProfileGearRepositoryAdapter();
-  static final SupabaseProfileGearRepositoryAdapter _supabaseGearRepository =
-      SupabaseProfileGearRepositoryAdapter();
-  static final SupabaseProfileRepositoryAdapter _supabaseProfileRepository =
-      SupabaseProfileRepositoryAdapter();
 
   static ProfileRepositoryPort _localProfileRepository() {
     if (kIsWeb) {
@@ -168,17 +162,15 @@ class ProfileModule {
   }
 
   factory ProfileModule.auto() {
-    final hasSupabase =
-        EnvConfig.supabaseUrl.trim().isNotEmpty &&
-        EnvConfig.supabaseAnonKey.trim().isNotEmpty;
-    final profileRepository = hasSupabase
-        ? _supabaseProfileRepository
+    final client = resolveInitializedSupabaseClient();
+    final profileRepository = client != null
+        ? SupabaseProfileRepositoryAdapter(client: client)
         : _localProfileRepository();
-    final messagesRepository = hasSupabase
-        ? _supabaseMessagesRepository
+    final messagesRepository = client != null
+        ? SupabaseProfileMessagesRepositoryAdapter(client: client)
         : _messagesRepository;
-    final gearRepository = hasSupabase
-        ? _supabaseGearRepository
+    final gearRepository = client != null
+        ? SupabaseProfileGearRepositoryAdapter(client: client)
         : _gearRepository;
 
     return ProfileModule(

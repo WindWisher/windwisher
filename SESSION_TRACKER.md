@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 236h 24m 47s`.
+- `Total historico minimo consolidado del proyecto: 236h 56m 10s`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -39,10 +39,11 @@
   - bloque consolidado adicional en `2026-06-07`: `+2h 47m 01s` reales verificables (`El Campello Live stations, history, alarms and webcams`)
   - bloque consolidado adicional en `2026-06-10`: `+1h 26m 52s` reales verificables (`Santa Pola Live stations, webcams, history and alarm audit`)
   - bloque consolidado adicional en `2026-08-11`: `+3h 52m 43s` reales observables (`Supabase migration, Dakhla/Essaouira Live, METAR, backups and web deploy`)
+  - bloque consolidado adicional en `2026-08-11`: `+31m 23s` reales observables (`Spots map explorer and legacy failure cleanup`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-08-11`: `+3h 52m 43s` reales observables (`Supabase migration, Dakhla/Essaouira Live, METAR, backups and web deploy`).
+  - ultima consolidacion manual anadida el `2026-08-11`: `+31m 23s` reales observables (`Spots map explorer and legacy failure cleanup`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -61,6 +62,33 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-08-11 - Spots map explorer and legacy failure cleanup
+
+- Bloque consolidado adicional: `+31m 23s` reales observables.
+- Medicion real usada:
+  - inicio observable: `2026-08-11 20:52:09 +0200`, primera modificacion local verificable del lote,
+  - cierre de implementacion y verificacion: `2026-08-11 21:23:32 +0200`,
+  - intervalo transcurrido exacto: `31m 23s`, sin redondear ni ampliar,
+  - el tiempo administrativo posterior dedicado al tracker y a Git no se suma.
+- Spots / explorador:
+  - incorporado selector `Lista / Mapa` en la pantalla de Spots,
+  - creado mapa global con marcadores diferenciados para spots oficiales y personalizados,
+  - anadidos contador, reajuste de camara y ficha contextual del spot seleccionado,
+  - conectadas desde la ficha las acciones para abrir el spot, ver su ubicacion y navegar con Google Maps,
+  - mantenidos filtros, busqueda y alta de spots en ambos modos de visualizacion,
+  - evitada la consulta remota de roles cuando la pantalla recibe roles iniciales explicitos.
+- Robustez y correcciones:
+  - anadida resolucion segura del cliente Supabase para no confundir credenciales configuradas con SDK inicializado,
+  - aplicado el cliente seguro a perfil, alarmas, historico Live, observaciones maritimas, social y proxies de forecast,
+  - corregida la interpretacion UTC de timestamps Meteostat sin sufijo de zona horaria,
+  - ampliadas las alturas de cabecera y filas AEMET para evitar overflow vertical.
+- Pruebas:
+  - actualizadas las pruebas antiguas de Spots para reflejar estaciones principales, modelos AEMET y carga de historico bajo demanda actuales,
+  - eliminados los doce fallos heredados detectados inicialmente,
+  - `flutter test test/features/spots`: `78/78` pruebas superadas,
+  - `flutter analyze`: sin problemas,
+  - `git diff --check`: limpio.
 
 ### 2026-08-11 - Supabase migration, Dakhla/Essaouira Live, METAR, backups and web deploy
 

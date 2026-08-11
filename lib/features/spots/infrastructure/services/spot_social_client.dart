@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:windwisher/core/config/env/env_config.dart';
+import 'package:windwisher/core/config/env/initialized_supabase_client.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_social_post.dart';
 
 class SpotSocialAttachmentDraft {
@@ -42,17 +42,12 @@ class SpotSocialClient {
   }
 
   factory SpotSocialClient.auto({SupabaseClient? client}) {
-    final hasSupabase =
-        EnvConfig.supabaseUrl.trim().isNotEmpty &&
-        EnvConfig.supabaseAnonKey.trim().isNotEmpty;
+    final resolvedClient = resolveInitializedSupabaseClient(client);
     return SpotSocialClient._(
-      client: hasSupabase ? (client ?? Supabase.instance.client) : null,
-      useSupabase: hasSupabase,
+      client: resolvedClient,
+      useSupabase: resolvedClient != null,
       presenceKey:
-          (hasSupabase ? (client ?? Supabase.instance.client) : null)
-              ?.auth
-              .currentUser
-              ?.id ??
+          resolvedClient?.auth.currentUser?.id ??
           'anon-${DateTime.now().microsecondsSinceEpoch}',
     );
   }

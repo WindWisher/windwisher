@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:windwisher/core/config/env/env_config.dart';
+import 'package:windwisher/core/config/env/initialized_supabase_client.dart';
 import 'package:windwisher/features/spots/presentation/state/spot_alarm_catalog.dart';
 
 class SpotAlarmSyncSnapshot {
@@ -25,12 +25,10 @@ class SpotAlarmSyncClient {
        _useSupabase = useSupabase;
 
   factory SpotAlarmSyncClient.auto({SupabaseClient? client}) {
-    final hasSupabase =
-        EnvConfig.supabaseUrl.trim().isNotEmpty &&
-        EnvConfig.supabaseAnonKey.trim().isNotEmpty;
+    final resolvedClient = resolveInitializedSupabaseClient(client);
     return SpotAlarmSyncClient._(
-      client: hasSupabase ? (client ?? Supabase.instance.client) : null,
-      useSupabase: hasSupabase,
+      client: resolvedClient,
+      useSupabase: resolvedClient != null,
     );
   }
 

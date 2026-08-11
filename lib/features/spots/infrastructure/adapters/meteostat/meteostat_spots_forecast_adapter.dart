@@ -44,8 +44,7 @@ class MeteostatSpotsForecastAdapter implements SpotsForecastPort {
     final rapidApiHost = proxyClient == null
         ? await _resolveRapidApiHost()
         : '';
-    if (proxyClient == null &&
-        (rapidApiKey.isEmpty || rapidApiHost.isEmpty)) {
+    if (proxyClient == null && (rapidApiKey.isEmpty || rapidApiHost.isEmpty)) {
       return const <SpotForecastEntry>[];
     }
 
@@ -58,11 +57,7 @@ class MeteostatSpotsForecastAdapter implements SpotsForecastPort {
             startDate: range.startDate,
             endDate: range.endDate,
           )
-        : await _fetchJson(
-            _buildUrl(location),
-            rapidApiKey,
-            rapidApiHost,
-          );
+        : await _fetchJson(_buildUrl(location), rapidApiKey, rapidApiHost);
     final data = json['data'];
     if (data is! List) {
       return const <SpotForecastEntry>[];
@@ -132,10 +127,7 @@ class MeteostatSpotsForecastAdapter implements SpotsForecastPort {
     final nowUtc = DateTime.now().toUtc();
     final start = DateTime.utc(nowUtc.year, nowUtc.month, nowUtc.day);
     final end = start.add(const Duration(days: 7));
-    return (
-      startDate: _formatDate(start),
-      endDate: _formatDate(end),
-    );
+    return (startDate: _formatDate(start), endDate: _formatDate(end));
   }
 
   Future<String> _resolveRapidApiKey() async {
@@ -182,7 +174,20 @@ class MeteostatSpotsForecastAdapter implements SpotsForecastPort {
       return null;
     }
     try {
-      return DateTime.parse(source.replaceFirst(' ', 'T')).toUtc();
+      final parsed = DateTime.parse(source.replaceFirst(' ', 'T'));
+      if (parsed.isUtc) {
+        return parsed;
+      }
+      return DateTime.utc(
+        parsed.year,
+        parsed.month,
+        parsed.day,
+        parsed.hour,
+        parsed.minute,
+        parsed.second,
+        parsed.millisecond,
+        parsed.microsecond,
+      );
     } catch (_) {
       return null;
     }
@@ -202,7 +207,9 @@ class MeteostatSpotsForecastAdapter implements SpotsForecastPort {
       return fetchJsonOverride(url);
     }
     if (kIsWeb) {
-      throw UnsupportedError('Meteostat direct HttpClient is not available on web.');
+      throw UnsupportedError(
+        'Meteostat direct HttpClient is not available on web.',
+      );
     }
     final httpClient = _httpClient ?? HttpClient();
 

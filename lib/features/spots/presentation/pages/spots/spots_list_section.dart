@@ -24,6 +24,8 @@ extension _SpotsListSection on SpotsPageState {
 
     final controls = <Widget>[
       ...topWidgets,
+      _buildViewToggle(),
+      const SizedBox(height: AppSpacing.sm),
       _buildFilterChips(),
       const SizedBox(height: AppSpacing.sm),
       _buildSearchField(),
@@ -77,6 +79,10 @@ extension _SpotsListSection on SpotsPageState {
 
   Widget _buildFilterChips() {
     return _SpotFilterChips(selectedFilter: _filter, onSelected: _setFilter);
+  }
+
+  Widget _buildViewToggle() {
+    return _SpotViewToggle(selectedView: _viewMode, onSelected: _setViewMode);
   }
 
   Widget _buildSearchField() {

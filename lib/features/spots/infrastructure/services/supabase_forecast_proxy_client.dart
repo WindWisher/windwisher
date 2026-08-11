@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
+import 'package:windwisher/core/config/env/initialized_supabase_client.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseForecastProxyClient {
@@ -15,7 +16,8 @@ class SupabaseForecastProxyClient {
   final SupabaseClient _client;
 
   static SupabaseForecastProxyClient? maybeCreate() {
-    return EnvConfig.supabaseConfigured ? SupabaseForecastProxyClient() : null;
+    final client = resolveInitializedSupabaseClient();
+    return client == null ? null : SupabaseForecastProxyClient(client: client);
   }
 
   Future<List<Map<String, dynamic>>> fetchAemetMunicipalForecast({
@@ -362,9 +364,7 @@ class SupabaseForecastProxyClient {
       final response = await _client.functions
           .invoke(
             'forecast-proxy',
-            headers: const <String, String>{
-              'Content-Type': 'application/json',
-            },
+            headers: const <String, String>{'Content-Type': 'application/json'},
             body: jsonEncode(body),
           )
           .timeout(

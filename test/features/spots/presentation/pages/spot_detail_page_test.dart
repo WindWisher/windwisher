@@ -29,7 +29,7 @@ void main() {
       await _pumpSpotDetailPage(
         tester,
         SpotDetailPage(
-          name: 'Oliva Puerto',
+          name: 'Oliva Canal - Platja dels Gorgs',
           area: 'Valencia',
           isCustom: false,
           aemetBeachCode: '4618102',
@@ -76,10 +76,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Datos reales cargados desde AEMET.'), findsOneWidget);
-      expect(
-        find.text('Tabla Forecast (Prediccion municipal)'),
-        findsOneWidget,
-      );
+      expect(find.text('Tabla Forecast (Puertos del Estado)'), findsOneWidget);
 
       await tester.tap(
         find.widgetWithText(
@@ -98,7 +95,7 @@ void main() {
     },
   );
 
-  testWidgets('live section distinguishes observation source from forecast', (
+  testWidgets('live section shows the selected AEMET observation', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1440, 2200);
@@ -109,7 +106,7 @@ void main() {
     await _pumpSpotDetailPage(
       tester,
       SpotDetailPage(
-        name: 'Oliva Puerto',
+        name: 'Oliva Canal - Platja dels Gorgs',
         area: 'Valencia',
         isCustom: false,
         latitude: 38.904444,
@@ -154,16 +151,21 @@ void main() {
 
     await tester.tap(find.text('Live'));
     await tester.pumpAndSettle();
+    await _selectLiveStation(tester, 'AEMET Oliva');
 
-    expect(find.text('Observacion · AEMET · 8058X'), findsOneWidget);
-    expect(find.text('AEMET Oliva · 1.1 km · N'), findsWidgets);
+    final stationDropdown = _liveStationDropdownFinder();
+    expect(
+      tester.state<FormFieldState<String>>(stationDropdown).value,
+      '8058X',
+    );
+    expect(find.textContaining('Ultimo dato:'), findsOneWidget);
   });
 
   testWidgets('live refresh keeps selected station', (tester) async {
     await _pumpSpotDetailPage(
       tester,
       SpotDetailPage(
-        name: 'Oliva Puerto',
+        name: 'Oliva Canal - Platja dels Gorgs',
         area: 'Valencia',
         isCustom: false,
         latitude: 38.904444,
@@ -250,7 +252,7 @@ void main() {
     await _pumpSpotDetailPage(
       tester,
       SpotDetailPage(
-        name: 'Oliva Puerto',
+        name: 'Oliva Canal - Platja dels Gorgs',
         area: 'Valencia',
         isCustom: false,
         latitude: 38.904444,
@@ -295,6 +297,7 @@ void main() {
 
     await tester.tap(find.text('Live'));
     await tester.pumpAndSettle();
+    await _selectLiveStation(tester, 'AEMET Oliva');
 
     await tester.tap(find.byTooltip('Leyenda del semaforo'));
     await tester.pumpAndSettle();
@@ -311,13 +314,13 @@ void main() {
     expect(find.text('12-14 m'), findsOneWidget);
   });
 
-  testWidgets('live history falls back to AEMET official before AVAMET', (
+  testWidgets('live section defaults to its configured primary station', (
     tester,
   ) async {
     await _pumpSpotDetailPage(
       tester,
       SpotDetailPage(
-        name: 'Oliva Puerto',
+        name: 'Oliva Canal - Platja dels Gorgs',
         area: 'Valencia',
         isCustom: false,
         latitude: 38.904444,
@@ -363,13 +366,9 @@ void main() {
     await tester.tap(find.text('Live'));
     await tester.pumpAndSettle();
 
-    final stationDropdown = find.byWidgetPredicate(
-      (widget) =>
-          widget is DropdownButtonFormField<String> &&
-          widget.decoration.labelText == 'Estacion meteorologica cercana',
-    );
+    final stationDropdown = _liveStationDropdownFinder();
     final state = tester.state<FormFieldState<String>>(stationDropdown).value;
-    expect(state, '8058X');
+    expect(state, 'aiguablanca:aiguablanca');
     expect(
       find.widgetWithText(OutlinedButton, 'Comparar con forecast'),
       findsNothing,
@@ -379,13 +378,13 @@ void main() {
       findsNothing,
     );
   });
-  testWidgets('live history falls back to AVAMET when AEMET official fails', (
+  testWidgets('loads AVAMET history and forecast comparison on demand', (
     tester,
   ) async {
     await _pumpSpotDetailPage(
       tester,
       SpotDetailPage(
-        name: 'Oliva Puerto',
+        name: 'Oliva Canal - Platja dels Gorgs',
         area: 'Valencia',
         isCustom: false,
         latitude: 38.904444,
@@ -443,6 +442,9 @@ void main() {
 
     await tester.tap(find.text('Live'));
     await tester.pumpAndSettle();
+    await _selectLiveStation(tester, 'Club Nautico de Oliva');
+    await tester.tap(find.text('Cargar historico'));
+    await tester.pumpAndSettle();
 
     expect(
       find.widgetWithText(OutlinedButton, 'Comparar con forecast'),
@@ -476,11 +478,7 @@ void main() {
     expect(find.text('7d'), findsNothing);
     expect(find.text('30d'), findsNothing);
 
-    final stationDropdown = find.byWidgetPredicate(
-      (widget) =>
-          widget is DropdownButtonFormField<String> &&
-          widget.decoration.labelText == 'Estacion meteorologica cercana',
-    );
+    final stationDropdown = _liveStationDropdownFinder();
     final state = tester.state<FormFieldState<String>>(stationDropdown).value;
     expect(state, 'avamet:c25m181e07');
 
@@ -496,7 +494,7 @@ void main() {
     await _pumpSpotDetailPage(
       tester,
       SpotDetailPage(
-        name: 'Oliva Puerto',
+        name: 'Oliva Canal - Platja dels Gorgs',
         area: 'Valencia',
         isCustom: false,
         latitude: 38.904444,
@@ -563,7 +561,7 @@ void main() {
     await _pumpSpotDetailPage(
       tester,
       SpotDetailPage(
-        name: 'Oliva Puerto',
+        name: 'Oliva Canal - Platja dels Gorgs',
         area: 'Valencia',
         isCustom: false,
         latitude: 38.904444,
@@ -620,6 +618,10 @@ void main() {
     await tester.tap(
       find.textContaining('Oliva Nova Beach & Golf Resort').last,
     );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Cargar historico'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cargar historico'));
     await tester.pumpAndSettle();
 
     expect(
@@ -1211,9 +1213,9 @@ void main() {
     );
     expect(find.text('Tabla Playa AEMET'), findsOneWidget);
     expect(find.text('Pau-Pi'), findsOneWidget);
-    expect(find.textContaining('Manana: despejado'), findsOneWidget);
-    expect(find.textContaining('Manana: moderado'), findsAtLeastNWidgets(1));
-    expect(find.text('14 C'), findsOneWidget);
+    expect(find.textContaining('Mañana: despejado'), findsOneWidget);
+    expect(find.textContaining('Mañana: moderado'), findsAtLeastNWidgets(1));
+    expect(find.text('14 °C'), findsOneWidget);
 
     await tester.tap(
       find.widgetWithText(
@@ -1230,7 +1232,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text("l'Aigua Blanca"), findsOneWidget);
-    expect(find.textContaining('Manana: nuboso'), findsOneWidget);
+    expect(find.textContaining('Mañana: nuboso'), findsOneWidget);
   });
 
   testWidgets('AEMET coastal model shows dedicated coastal forecast table', (
@@ -1367,9 +1369,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+    final modelDropdown = find.byWidgetPredicate(
+      (widget) =>
+          widget is DropdownButtonFormField<String> &&
+          widget.decoration.labelText == 'Modelo de prevision',
+    );
     expect(
-      find.text("Tabla Forecast (Prediccion de playa (l'Aigua Blanca))"),
-      findsOneWidget,
+      tester.state<FormFieldState<String>>(modelDropdown).value,
+      "Prediccion de playa (l'Aigua Blanca)",
     );
 
     await tester.tap(find.byTooltip('Info del modelo'));
@@ -1572,7 +1579,7 @@ void main() {
 
     expect(calls, hasLength(2));
     expect(calls.last.provider, 'AEMET');
-    expect(calls.last.model, 'Prediccion municipal');
+    expect(calls.last.model, 'Puertos del Estado');
 
     await tester.tap(
       find.widgetWithText(
@@ -1763,6 +1770,24 @@ void main() {
       findsOneWidget,
     );
   });
+}
+
+Finder _liveStationDropdownFinder() {
+  return find.byWidgetPredicate(
+    (widget) =>
+        widget is DropdownButtonFormField<String> &&
+        widget.decoration.labelText == 'Estacion meteorologica cercana',
+  );
+}
+
+Future<void> _selectLiveStation(
+  WidgetTester tester,
+  String stationLabel,
+) async {
+  await tester.tap(_liveStationDropdownFinder());
+  await tester.pumpAndSettle();
+  await tester.tap(find.textContaining(stationLabel).last);
+  await tester.pumpAndSettle();
 }
 
 Future<void> _pumpSpotDetailPage(

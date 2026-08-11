@@ -7,16 +7,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/persistence/app_storage_paths.dart';
+import 'package:windwisher/core/config/env/initialized_supabase_client.dart';
 import 'package:windwisher/features/spots/infrastructure/services/spot_alarm_sync_client.dart';
 
 class SpotAlarmCatalog extends ChangeNotifier {
   SpotAlarmCatalog._() : _syncClient = SpotAlarmSyncClient.auto() {
-    _activeStorageScope = _storageScopeForCurrentUser();
+    final client = resolveInitializedSupabaseClient();
+    _activeStorageScope = _storageScopeForClient(client);
     _load();
-    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange
-        .listen((_) {
-          _handleAuthScopeChanged();
-        });
+    _authStateSubscription = client?.auth.onAuthStateChange.listen((_) {
+      _handleAuthScopeChanged();
+    });
     if (_syncClient.canSync) {
       unawaited(hydrateFromRemote());
     } else if (_pendingSyncAlarmIds.isNotEmpty) {
@@ -64,7 +65,11 @@ class SpotAlarmCatalog extends ChangeNotifier {
   }
 
   String _storageScopeForCurrentUser() {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
+    return _storageScopeForClient(resolveInitializedSupabaseClient());
+  }
+
+  String _storageScopeForClient(SupabaseClient? client) {
+    final userId = client?.auth.currentUser?.id;
     if (userId == null || userId.trim().isEmpty) {
       return 'guest';
     }
