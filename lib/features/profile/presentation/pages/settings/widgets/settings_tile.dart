@@ -8,6 +8,7 @@ class SettingsTile extends StatelessWidget {
     this.subtitle,
     this.subtitleStyle,
     this.onTap,
+    this.showChevron = true,
   });
 
   final String title;
@@ -15,6 +16,7 @@ class SettingsTile extends StatelessWidget {
   final TextStyle? subtitleStyle;
   final IconData icon;
   final VoidCallback? onTap;
+  final bool showChevron;
 
   @override
   Widget build(BuildContext context) {
@@ -30,10 +32,12 @@ class SettingsTile extends StatelessWidget {
                   subtitle!,
                   style: subtitleStyle ?? const TextStyle(color: Colors.grey),
                 ),
-                const Icon(Icons.chevron_right),
+                if (showChevron) const Icon(Icons.chevron_right),
               ],
             )
-          : const Icon(Icons.chevron_right),
+          : showChevron
+          ? const Icon(Icons.chevron_right)
+          : null,
       onTap: onTap,
     );
   }

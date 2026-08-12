@@ -68,12 +68,14 @@ class SpotsPage extends StatefulWidget {
     this.useLocalPersistence = EnvConfig.spotsLocalPersistenceEnabled,
     this.initialRoles = const <String>{},
     this.initiallyShowMap = true,
+    this.onMapViewChanged,
   });
 
   final SpotsModule? spotsModule;
   final bool useLocalPersistence;
   final Set<String> initialRoles;
   final bool initiallyShowMap;
+  final ValueChanged<bool>? onMapViewChanged;
 
   @override
   State<SpotsPage> createState() => SpotsPageState();
@@ -220,10 +222,13 @@ class SpotsPageState extends State<SpotsPage> {
       _selectedMapSpot = null;
       _showMapSearchSuggestions = false;
       if (value == _SpotsViewMode.map) {
+        _pendingCardAction = _PendingCardAction.none;
+        _selectedSpotNames.clear();
         _isSpotsMapLoading = true;
         _hasScheduledSpotsMapLoaded = false;
       }
     });
+    widget.onMapViewChanged?.call(value == _SpotsViewMode.map);
   }
 
   void _selectMapSpot(_SpotItem spot) {

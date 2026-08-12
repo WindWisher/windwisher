@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:windwisher/core/units/app_units_controller.dart';
 import 'package:windwisher/features/spots/application/services/spots_presentation_forecast_support.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/tables/shared/forecast_table_chrome.dart';
 
@@ -43,13 +44,17 @@ class MeteosourceForecastSupplementCard extends StatelessWidget {
                     label: 'Temp',
                     value: current.temperatureC == null
                         ? '-'
-                        : '${current.temperatureC!.toStringAsFixed(1)} C',
+                        : AppUnitsController.instance.formatTemperature(
+                            current.temperatureC!,
+                          ),
                   ),
                   ForecastMetricChip(
                     label: 'Viento',
                     value: current.windKnots == null
                         ? '-'
-                        : '${current.windKnots!.toStringAsFixed(1)} kt',
+                        : AppUnitsController.instance.formatWindSpeed(
+                            current.windKnots!,
+                          ),
                   ),
                   ForecastMetricChip(
                     label: 'Dir',
@@ -97,8 +102,8 @@ class MeteosourceForecastSupplementCard extends StatelessWidget {
                     title: _dayLabel(day.date),
                     width: 172,
                     lines: [
-                      'Temp: ${_fixed(day.tempMinC)} / ${_fixed(day.tempMaxC)} C',
-                      'Viento medio: ${_fixed(day.windMeanKnots)} kt',
+                      'Temp: ${_temperature(day.tempMinC)} / ${_temperature(day.tempMaxC)}',
+                      'Viento medio: ${_wind(day.windMeanKnots)}',
                       'Lluvia: ${_fixed(day.precipitationMm)} mm',
                     ],
                     mutedLines: mutedLines,
@@ -113,6 +118,10 @@ class MeteosourceForecastSupplementCard extends StatelessWidget {
 }
 
 String _fixed(double? value) => value == null ? '-' : value.toStringAsFixed(1);
+String _temperature(double? value) =>
+    value == null ? '-' : AppUnitsController.instance.formatTemperature(value);
+String _wind(double? value) =>
+    value == null ? '-' : AppUnitsController.instance.formatWindSpeed(value);
 
 String _dayLabel(DateTime? value) {
   if (value == null) {

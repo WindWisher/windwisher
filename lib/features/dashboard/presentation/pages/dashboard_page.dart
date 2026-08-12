@@ -30,6 +30,7 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   int _selectedIndex = 0;
   bool _isSessionStartTab = true;
+  bool _isSpotsMapView = true;
   final DashboardToolbarService _toolbarService =
       const DashboardToolbarService();
   final FirstLoginFlowStore _firstLoginFlowStore = FirstLoginFlowStore();
@@ -116,7 +117,15 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   List<Widget> get _pages => [
-    SpotsPage(key: _spotsKey),
+    SpotsPage(
+      key: _spotsKey,
+      onMapViewChanged: (isMapView) {
+        if (!mounted || _isSpotsMapView == isMapView) {
+          return;
+        }
+        setState(() => _isSpotsMapView = isMapView);
+      },
+    ),
     SessionsPage(
       key: _sessionsKey,
       onStartTabChanged: (isStart) {
@@ -323,7 +332,7 @@ class _DashboardPageState extends State<DashboardPage> {
       appBar: AppBar(
         title: const Text('WindWisher'),
         actions: [
-          if (toolbarState.showSpotsMenu)
+          if (toolbarState.showSpotsMenu && !_isSpotsMapView)
             PopupMenuButton<_SpotsToolbarAction>(
               onSelected: _handleSpotsToolbarAction,
               itemBuilder: (context) => const [

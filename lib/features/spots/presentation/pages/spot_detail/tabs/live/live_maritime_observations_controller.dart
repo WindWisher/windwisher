@@ -108,7 +108,9 @@ extension _SpotDetailLiveMaritimeObservationsController
               provider: observation.provider,
               sourceKind: _StationSourceKind.observation,
               stationId: observation.platformId,
-              proximityLabel: '${observation.distanceKm.toStringAsFixed(1)} km',
+              proximityLabel: AppUnitsController.instance.formatDistance(
+                observation.distanceKm,
+              ),
               stationKey: observation.stationKey,
               latitude: observation.latitude,
               longitude: observation.longitude,

@@ -81,7 +81,7 @@ extension _SpotDetailLiveSection on _SpotDetailPageState {
       if (liveData.tempC != null)
         _LiveMetricData(
           label: 'Temperatura',
-          value: _formatOptionalDouble(liveData.tempC, ' C'),
+          value: AppUnitsController.instance.formatTemperature(liveData.tempC!),
         ),
       if (liveData.pressureHpa != null)
         _LiveMetricData(
@@ -101,12 +101,14 @@ extension _SpotDetailLiveSection on _SpotDetailPageState {
       if (liveData.seaSurfaceTempC != null)
         _LiveMetricData(
           label: 'Temp. agua',
-          value: _formatOptionalDouble(liveData.seaSurfaceTempC, ' C'),
+          value: AppUnitsController.instance.formatTemperature(
+            liveData.seaSurfaceTempC!,
+          ),
         ),
       if (liveData.waveHeightM != null)
         _LiveMetricData(
           label: 'Oleaje',
-          value: _formatOptionalDouble(liveData.waveHeightM, ' m'),
+          value: AppUnitsController.instance.formatHeight(liveData.waveHeightM!),
         ),
       if (liveData.wavePeriodS != null)
         _LiveMetricData(

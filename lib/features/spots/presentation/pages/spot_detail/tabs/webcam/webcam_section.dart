@@ -57,7 +57,8 @@ extension _SpotDetailWebcamSection on _SpotDetailPageState {
     final parts = <String>[
       if (webcam.locationLabel != null && webcam.locationLabel!.isNotEmpty)
         webcam.locationLabel!,
-      if (distanceKm != null) '${distanceKm.toStringAsFixed(1)} km',
+      if (distanceKm != null)
+        AppUnitsController.instance.formatDistance(distanceKm),
       webcam.source,
     ];
     if (parts.isNotEmpty) {

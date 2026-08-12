@@ -171,8 +171,9 @@ class ProfileKpiSnapshot {
       commentsReceivedLast30DaysLabel != '--';
   bool get hasAvgSpeed => avgSpeedLabel != '--';
   bool get hasAvgSpeedP95 => avgSpeedP95Label != '--';
-  bool get hasTotalPlaningDistance => totalPlaningDistanceLabel != '0.0 km';
-  bool get hasAvgPlaningDistance => avgPlaningDistanceLabel != '0.0 km';
+  bool get hasTotalPlaningDistance =>
+      !totalPlaningDistanceLabel.startsWith('0.0 ');
+  bool get hasAvgPlaningDistance => !avgPlaningDistanceLabel.startsWith('0.0 ');
   bool get hasAvgTakeoffSpeed => avgTakeoffSpeedLabel != '--';
   bool get hasAvgLandingSpeed => avgLandingSpeedLabel != '--';
   bool get hasAvgCleanLandingRate => avgCleanLandingRateLabel != '--';

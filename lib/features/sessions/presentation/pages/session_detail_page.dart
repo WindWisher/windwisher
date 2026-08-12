@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/core/units/app_units_controller.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
 import 'package:windwisher/features/sessions/presentation/models/session_detail_models.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/session_detail/advanced_metrics_card.dart';
@@ -304,7 +305,7 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
       return 'No disponible';
     }
     final value = heightValues.reduce((a, b) => a > b ? a : b);
-    return '${value.toStringAsFixed(1)} m';
+    return AppUnitsController.instance.formatHeight(value);
   }
 
   String _maxJumpHeightPrefix(String mode) {
@@ -435,7 +436,9 @@ class _JumpHistoryTable extends StatelessWidget {
             (record) => buildRow(
               left: '${record.jumpNumber}',
               h: record.heightMeters > 0
-                  ? '${record.heightMeters.toStringAsFixed(1)} m'
+                  ? AppUnitsController.instance.formatHeight(
+                      record.heightMeters,
+                    )
                   : '--',
               t: '${record.hangtimeSeconds.toStringAsFixed(1)} s',
               maneuver: record.maneuverG == null

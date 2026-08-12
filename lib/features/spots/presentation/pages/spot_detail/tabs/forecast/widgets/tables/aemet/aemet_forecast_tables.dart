@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:windwisher/core/units/app_units_controller.dart';
 import 'package:windwisher/features/spots/application/services/spots_presentation_forecast_support.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/tables/shared/forecast_table_chrome.dart';
 
@@ -9,6 +10,7 @@ class AemetBeachForecastTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final units = AppUnitsController.instance;
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     const labelColumnWidth = 116.0;
@@ -242,7 +244,10 @@ class AemetBeachForecastTable extends StatelessWidget {
                                 (day) => valueCell(
                                   day.maxTempC == null
                                       ? '-'
-                                      : '${day.maxTempC} °C',
+                                      : units.formatTemperature(
+                                          day.maxTempC!.toDouble(),
+                                          decimals: 0,
+                                        ),
                                 ),
                               )
                               .toList(growable: false),
@@ -253,7 +258,10 @@ class AemetBeachForecastTable extends StatelessWidget {
                                 (day) => valueCell(
                                   day.waterTempC == null
                                       ? '-'
-                                      : '${day.waterTempC} °C',
+                                      : units.formatTemperature(
+                                          day.waterTempC!.toDouble(),
+                                          decimals: 0,
+                                        ),
                                 ),
                               )
                               .toList(growable: false),

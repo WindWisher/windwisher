@@ -32,7 +32,8 @@ extension _SpotDetailLiveStationSelection on _SpotDetailPageState {
 
   String _stationLabel(_NearbyStation station) {
     final stationLocationLabel =
-        station.proximityLabel ?? '${station.distanceKm.toStringAsFixed(1)} km';
+        station.proximityLabel ??
+        AppUnitsController.instance.formatDistance(station.distanceKm);
     final directionLabel = _stationDirectionLabel(station);
     if (directionLabel == null) {
       return '${station.name} · $stationLocationLabel';

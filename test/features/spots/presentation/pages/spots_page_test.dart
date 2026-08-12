@@ -31,6 +31,7 @@ void main() {
   Widget buildSpotsTestApp({
     SpotsModule? spotsModule,
     bool initiallyShowMap = false,
+    ValueChanged<bool>? onMapViewChanged,
   }) {
     return MaterialApp(
       home: Scaffold(
@@ -39,10 +40,34 @@ void main() {
           useLocalPersistence: false,
           initialRoles: const {'pro'},
           initiallyShowMap: initiallyShowMap,
+          onMapViewChanged: onMapViewChanged,
         ),
       ),
     );
   }
+
+  testWidgets('reports map and list view changes to its parent', (
+    tester,
+  ) async {
+    final mapViewChanges = <bool>[];
+    final spotsModule = buildSpotsModule([buildSpot('Oliva')]);
+
+    await tester.pumpWidget(
+      buildSpotsTestApp(
+        spotsModule: spotsModule,
+        initiallyShowMap: true,
+        onMapViewChanged: mapViewChanges.add,
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Lista'));
+    await tester.pump();
+    await tester.tap(find.text('Mapa'));
+    await tester.pump();
+
+    expect(mapViewChanges, [false, true]);
+  });
 
   testWidgets('adds a spot from floating action button', (tester) async {
     await tester.pumpWidget(buildSpotsTestApp());
@@ -340,6 +365,11 @@ void main() {
     expect(find.byTooltip('Acercar mapa'), findsOneWidget);
     expect(find.byTooltip('Alejar mapa'), findsOneWidget);
     expect(find.byTooltip('Ver todos los spots'), findsOneWidget);
+    final tileLayer = tester.widget<TileLayer>(find.byType(TileLayer));
+    expect(tileLayer.resolvedRetinaMode, RetinaMode.disabled);
+    expect(tileLayer.panBuffer, 0);
+    expect(tileLayer.keepBuffer, 1);
+    expect(tileLayer.tileDisplay, isA<InstantaneousTileDisplay>());
 
     await tester.tap(find.byTooltip('Ver todos los spots'));
     await tester.pump();

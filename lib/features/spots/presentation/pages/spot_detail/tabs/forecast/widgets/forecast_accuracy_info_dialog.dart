@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/core/units/app_units_controller.dart';
 
 class ForecastAccuracyInfoDialog extends StatelessWidget {
   const ForecastAccuracyInfoDialog({super.key});
@@ -8,6 +9,7 @@ class ForecastAccuracyInfoDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final units = AppUnitsController.instance;
 
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -70,10 +72,10 @@ class ForecastAccuracyInfoDialog extends StatelessWidget {
                 icon: Icons.air_rounded,
                 title: 'Viento',
                 rule:
-                    'Cuenta como acierto cuando la velocidad forecast falla 2 kt o menos.',
-                examples: const [
-                  'Forecast 14 kt vs real 15 kt: acierto',
-                  'Forecast 14 kt vs real 17.5 kt: error',
+                    'Cuenta como acierto cuando la velocidad forecast falla ${units.formatWindSpeed(2)} o menos.',
+                examples: [
+                  'Forecast ${units.formatWindSpeed(14)} vs real ${units.formatWindSpeed(15)}: acierto',
+                  'Forecast ${units.formatWindSpeed(14)} vs real ${units.formatWindSpeed(17.5)}: error',
                 ],
               ),
               const SizedBox(height: AppSpacing.sm),

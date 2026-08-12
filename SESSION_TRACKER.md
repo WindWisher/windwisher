@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 239h 39m 49s`.
+- `Total historico minimo consolidado del proyecto: 242h 13m 01s`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -41,10 +41,11 @@
   - bloque consolidado adicional en `2026-08-11`: `+3h 52m 43s` reales observables (`Supabase migration, Dakhla/Essaouira Live, METAR, backups and web deploy`)
   - bloque consolidado adicional en `2026-08-11`: `+31m 23s` reales observables (`Spots map explorer and legacy failure cleanup`)
   - bloque consolidado adicional en `2026-08-12`: `+2h 43m 39s` reales observables (`Spots map catalog, predictive search, responsive controls and web deploy`)
+  - bloque consolidado adicional en `2026-08-13`: `+2h 33m 12s` reales observables (`Map performance, jump validation lab and per-user unit synchronization`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-08-12`: `+2h 43m 39s` reales observables (`Spots map catalog, predictive search, responsive controls and web deploy`).
+  - ultima consolidacion manual anadida el `2026-08-13`: `+2h 33m 12s` reales observables (`Map performance, jump validation lab and per-user unit synchronization`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -63,6 +64,49 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-08-13 - Map performance, jump validation lab and per-user unit synchronization
+
+- Bloque consolidado adicional: `+2h 33m 12s` reales observables.
+- Medicion real usada:
+  - inicio observable: `2026-08-12 21:31:13 +0200`, primera modificacion local verificable del lote,
+  - cierre de implementacion, prueba real y despliegue: `2026-08-13 00:04:25 +0200`,
+  - intervalo transcurrido exacto: `2h 33m 12s`, sin redondear ni ampliar,
+  - el tiempo administrativo posterior dedicado al tracker y a Git no se suma.
+- Rendimiento y comportamiento de Spots:
+  - aligerada la carga de teselas desactivando retina, reduciendo buffers y mostrando teselas de forma inmediata,
+  - limpiado el estado de seleccion de tarjetas al entrar en el mapa,
+  - comunicado al dashboard el cambio entre mapa y listado para mantener una navegacion consistente,
+  - conservadas las acciones de edicion y borrado exclusivamente en la vista de listado.
+- Laboratorio de validacion de saltos:
+  - documentado un protocolo reproducible para comparar sesiones y algoritmos sin incorporar codigo propietario a la app,
+  - anadidas herramientas locales para extraer muestras FIT, evaluar eventos y medir error frente a referencias,
+  - incorporadas pruebas del evaluador y exclusiones para caches Python temporales,
+  - el trabajo queda desacoplado del runtime de WindWisher y preparado para retomarse cuando existan nuevas sesiones de referencia.
+- Unidades globales:
+  - implementado un controlador unico para velocidad, distancia, temperatura y altura,
+  - configurados por defecto `kt`, `km`, `C` y `m`, manteniendo el selector rapido de velocidad de Live como override exclusivo de esa seccion,
+  - aplicadas conversiones globales a sesiones, perfil, comunidad, forecast, Live y observaciones maritimas,
+  - persistidas las preferencias localmente por usuario y migradas de forma segura desde las claves antiguas,
+  - anadida sincronizacion remota con reintento offline y aislamiento entre cuentas.
+- Supabase y seguridad:
+  - creada y desplegada la tabla `user_unit_preferences` con restricciones, RLS y politica de acceso a la fila propia,
+  - verificada la sincronizacion entre dos sesiones independientes del mismo usuario y el aislamiento de un segundo usuario temporal,
+  - eliminados los usuarios temporales de prueba al finalizar,
+  - confirmado que la configuracion web publicada no contiene la clave `service_role`.
+- Prueba en dispositivo y web:
+  - instalado el APK debug en el Xiaomi conectado y validado el cambio real de `kt` a `km/h`,
+  - reiniciada completamente la app y confirmado que recupera la preferencia persistida,
+  - restaurada la cuenta a `kt`, `km`, `C` y `m`, con restauracion confirmada tambien en Supabase,
+  - compilada y desplegada Firebase Hosting version `6f5a80bcca73f686`,
+  - verificado `https://windwisher.com` con `HTTP 200` y confirmado que el bundle publicado contiene la sincronizacion de unidades.
+- Verificacion:
+  - `flutter analyze`: sin problemas,
+  - `29/29` pruebas dirigidas de unidades, ajustes y Spots superadas,
+  - `1/1` prueba del evaluador del laboratorio de saltos superada,
+  - prueba automatizada de sincronizacion remota e aislamiento completada correctamente,
+  - la suite global actual completa `117` pruebas, pero conserva `33` fallos heredados en pruebas antiguas de login, perfil, sesiones, comunidad y reglas arquitectonicas; no se ocultan ni se contabilizan como validaciones superadas,
+  - `git diff --check`: limpio.
 
 ### 2026-08-12 - Spots map catalog, predictive search, responsive controls and web deploy
 

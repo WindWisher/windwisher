@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/core/units/app_units_controller.dart';
 import 'package:windwisher/features/sessions/presentation/models/session_detail_models.dart';
 
 class SessionTrackCard extends StatelessWidget {
@@ -33,10 +34,15 @@ class SessionTrackCard extends StatelessWidget {
     );
     final distanceLabel = insights.resolvedDistanceKm == null
         ? 'Distancia no disponible'
-        : '${insights.resolvedDistanceKm!.toStringAsFixed(2)} km';
+        : AppUnitsController.instance.formatDistance(
+            insights.resolvedDistanceKm!,
+            decimals: 2,
+          );
     final maxSpeedLabel = insights.resolvedMaxSpeedKnots == null
-        ? '${fastestPoint.speedKnots.toStringAsFixed(1)} kt'
-        : '${insights.resolvedMaxSpeedKnots!.toStringAsFixed(1)} kt';
+        ? AppUnitsController.instance.formatWindSpeed(fastestPoint.speedKnots)
+        : AppUnitsController.instance.formatWindSpeed(
+            insights.resolvedMaxSpeedKnots!,
+          );
 
     return Card(
       child: Padding(

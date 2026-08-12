@@ -201,7 +201,10 @@ extension _SpotsMapSection on SpotsPageState {
               'https://{s}.basemaps.cartocdn.com/$tileStyle/{z}/{x}/{y}{r}.png',
           subdomains: const ['a', 'b', 'c', 'd'],
           userAgentPackageName: 'com.windwisher.app',
-          retinaMode: RetinaMode.isHighDensity(context),
+          retinaMode: false,
+          panBuffer: 0,
+          keepBuffer: 1,
+          tileDisplay: const TileDisplay.instantaneous(),
           tileBuilder: _buildSpotMapTile,
         ),
         MarkerLayer(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/core/units/app_units_controller.dart';
 import 'package:windwisher/features/community/domain/entities/following_session.dart';
 import 'package:windwisher/features/community/domain/entities/session_like_state.dart';
 
@@ -68,10 +69,9 @@ class CommunityFollowingSessionCard extends StatelessWidget {
                       session.hasSessionPhoto
                           ? 'Foto de la sesion'
                           : 'Pantallazo del mapa del spot',
-                      style: Theme.of(context)
-                          .textTheme
-                          .labelMedium
-                          ?.copyWith(color: Colors.white),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelMedium?.copyWith(color: Colors.white),
                     ),
                   ],
                 ),
@@ -107,11 +107,15 @@ class CommunityFollowingSessionCard extends StatelessWidget {
               children: [
                 _SessionStatChip(
                   icon: Icons.height_rounded,
-                  label: '${session.highestJumpMeters.toStringAsFixed(1)} m',
+                  label: AppUnitsController.instance.formatHeight(
+                    session.highestJumpMeters,
+                  ),
                 ),
                 _SessionStatChip(
                   icon: Icons.route_rounded,
-                  label: '${session.distanceKm.toStringAsFixed(1)} km',
+                  label: AppUnitsController.instance.formatDistance(
+                    session.distanceKm,
+                  ),
                 ),
                 _SessionStatChip(
                   icon: Icons.timer_outlined,

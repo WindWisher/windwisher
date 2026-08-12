@@ -13,6 +13,7 @@ import 'package:windwisher/core/notifications/local_notifications_service.dart';
 import 'package:windwisher/core/platform/web_compass.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
+import 'package:windwisher/core/units/app_units_controller.dart';
 import 'package:windwisher/features/profile/di/profile_module.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
 import 'package:windwisher/features/spots/application/services/spots_external_data_clients.dart';

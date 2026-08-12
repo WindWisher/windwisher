@@ -1,3 +1,4 @@
+import 'package:windwisher/core/units/app_units_controller.dart';
 import 'package:windwisher/features/profile/domain/entities/profile_community_stats_snapshot.dart';
 import 'package:windwisher/features/profile/domain/entities/profile_kpi_snapshot.dart';
 import 'package:windwisher/features/profile/domain/entities/profile_session_stats_snapshot.dart';
@@ -9,30 +10,51 @@ class ProfileKpiAggregator {
     ProfileSessionStatsSnapshot stats,
     ProfileCommunityStatsSnapshot community,
   ) {
+    final units = AppUnitsController.instance;
     return ProfileKpiSnapshot(
       totalSessions: stats.totalSessions,
       totalSessionsLabel: stats.totalSessionsLabel,
       waterHoursLabel: stats.waterHoursLabel,
       totalJumpsLabel: stats.totalJumpsLabel,
-      highestJumpLabel: stats.highestJumpLabel,
+      highestJumpLabel: stats.highestJumpMeters == null
+          ? '--'
+          : units.formatHeight(stats.highestJumpMeters!),
       maxHangtimeLabel: stats.maxHangtimeLabel,
       maxAccelerationLabel: stats.maxAccelerationLabel,
       maxRotationLabel: stats.maxRotationLabel,
-      maxSpeedLabel: stats.maxSpeedLabel,
-      avgSpeedLabel: stats.avgSpeedLabel,
-      avgSpeedP95Label: stats.avgSpeedP95Label,
-      totalPlaningDistanceLabel: stats.totalPlaningDistanceLabel,
-      avgPlaningDistanceLabel: stats.avgPlaningDistanceLabel,
-      avgTakeoffSpeedLabel: stats.avgTakeoffSpeedLabel,
-      avgLandingSpeedLabel: stats.avgLandingSpeedLabel,
+      maxSpeedLabel: stats.maxSpeedKnots == null
+          ? '--'
+          : units.formatWindSpeed(stats.maxSpeedKnots!),
+      avgSpeedLabel: stats.avgSpeedKnots == null
+          ? '--'
+          : units.formatWindSpeed(stats.avgSpeedKnots!),
+      avgSpeedP95Label: stats.avgSpeedP95Knots == null
+          ? '--'
+          : units.formatWindSpeed(stats.avgSpeedP95Knots!),
+      totalPlaningDistanceLabel: units.formatDistance(
+        stats.totalPlaningDistanceKm,
+      ),
+      avgPlaningDistanceLabel: units.formatDistance(stats.avgPlaningDistanceKm),
+      avgTakeoffSpeedLabel: stats.avgTakeoffSpeedKnots == null
+          ? '--'
+          : units.formatWindSpeed(stats.avgTakeoffSpeedKnots!),
+      avgLandingSpeedLabel: stats.avgLandingSpeedKnots == null
+          ? '--'
+          : units.formatWindSpeed(stats.avgLandingSpeedKnots!),
       avgCleanLandingRateLabel: stats.avgCleanLandingRateLabel,
-      avgJumpHeightLabel: stats.avgJumpHeightLabel,
+      avgJumpHeightLabel: stats.avgJumpHeightMeters == null
+          ? '--'
+          : units.formatHeight(stats.avgJumpHeightMeters!),
       avgHangtimeLabel: stats.avgHangtimeLabel,
       avgJumpHeightConsistencyLabel: stats.avgJumpHeightConsistencyLabel,
-      avgSpeedVariabilityLabel: stats.avgSpeedVariabilityLabel,
+      avgSpeedVariabilityLabel: stats.avgSpeedVariabilityKnots == null
+          ? '--'
+          : units.formatWindSpeed(stats.avgSpeedVariabilityKnots!),
       avgDirectionalStabilityLabel: stats.avgDirectionalStabilityLabel,
       avgJibeQualityLabel: stats.avgJibeQualityLabel,
-      avgTransitionSpeedLossLabel: stats.avgTransitionSpeedLossLabel,
+      avgTransitionSpeedLossLabel: stats.avgTransitionSpeedLossKnots == null
+          ? '--'
+          : units.formatWindSpeed(stats.avgTransitionSpeedLossKnots!),
       avgPlaningRecoveryLabel: stats.avgPlaningRecoveryLabel,
       totalTransitionsLabel: stats.totalTransitionsLabel,
       avgTransitionsPerHourLabel: stats.avgTransitionsPerHourLabel,
@@ -46,8 +68,12 @@ class ProfileKpiAggregator {
       avgSafetyScoreLabel: stats.avgSafetyScoreLabel,
       maxSessionScoreLabel: stats.maxSessionScoreLabel,
       totalAreaCoverageLabel: stats.totalAreaCoverageLabel,
-      avgNetDriftLabel: stats.avgNetDriftLabel,
-      maxDistanceCoastLabel: stats.maxDistanceCoastLabel,
+      avgNetDriftLabel: stats.avgNetDriftKm == null
+          ? '--'
+          : units.formatDistance(stats.avgNetDriftKm!, decimals: 2),
+      maxDistanceCoastLabel: stats.maxDistanceCoastKm == null
+          ? '--'
+          : units.formatDistance(stats.maxDistanceCoastKm!, decimals: 2),
       totalRiskZoneTimeLabel: stats.totalRiskZoneTimeLabel,
       avgGpsQualityLabel: stats.avgGpsQualityLabel,
       totalOverpowerEventsLabel: stats.totalOverpowerEventsLabel,

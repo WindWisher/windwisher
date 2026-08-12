@@ -233,18 +233,28 @@ extension _SpotDetailForecastTableSection on _SpotDetailPageState {
         ],
       ),
       _forecastMetricRow(
-        label: 'Viento',
+        label:
+            'Viento (${AppUnitsController.instance.windSpeedUnit.shortLabel})',
         rows: rows,
-        valueText: (row) => '${row.windKnots}',
+        valueText: (row) => AppUnitsController.instance
+            .windSpeedFromKnots(row.windKnots.toDouble())
+            .toStringAsFixed(0),
         color: (row) => _windColor(row.windKnots),
         bold: true,
         minHeight: fullscreenRowHeight,
       ),
       if (rows.any((row) => row.gustKnots != null))
         _forecastMetricRow(
-          label: 'Racha',
+          label:
+              'Racha (${AppUnitsController.instance.windSpeedUnit.shortLabel})',
           rows: rows,
-          valueText: (row) => _nullableMetricText(row.gustKnots?.toString()),
+          valueText: (row) => _nullableMetricText(
+            row.gustKnots == null
+                ? null
+                : AppUnitsController.instance
+                      .windSpeedFromKnots(row.gustKnots!.toDouble())
+                      .toStringAsFixed(0),
+          ),
           color: (row) =>
               row.gustKnots == null ? null : _windColor(row.gustKnots!),
           minHeight: fullscreenRowHeight,
@@ -265,10 +275,15 @@ extension _SpotDetailForecastTableSection on _SpotDetailPageState {
       ),
       if (rows.any((row) => row.waveM != null))
         _forecastMetricRow(
-          label: 'Olas',
+          label: 'Olas (${AppUnitsController.instance.heightUnit.shortLabel})',
           rows: rows,
-          valueText: (row) =>
-              _nullableMetricText(row.waveM?.toStringAsFixed(1)),
+          valueText: (row) => _nullableMetricText(
+            row.waveM == null
+                ? null
+                : AppUnitsController.instance
+                      .heightFromMeters(row.waveM!)
+                      .toStringAsFixed(1),
+          ),
           color: (row) => row.waveM == null
               ? null
               : const Color(0xFFB3E5FC).withValues(alpha: 0.75),
@@ -310,7 +325,10 @@ extension _SpotDetailForecastTableSection on _SpotDetailPageState {
       if (rows.any((row) => row.waterTempC != null))
         TableRow(
           children: [
-            _compactLabelCell('Agua', minHeight: fullscreenRowHeight),
+            _compactLabelCell(
+              'Agua (${AppUnitsController.instance.temperatureUnit.shortLabel})',
+              minHeight: fullscreenRowHeight,
+            ),
             ...rows.asMap().entries.map(
               (entry) => _forecastColumnCell(
                 isDayStart: _isForecastDayStart(rows, entry.key),
@@ -318,7 +336,11 @@ extension _SpotDetailForecastTableSection on _SpotDetailPageState {
                   _nullableMetricText(
                     entry.value.waterTempC == null
                         ? null
-                        : '${entry.value.waterTempC}${_SpotDetailPageState._degreeSymbol}',
+                        : AppUnitsController.instance
+                              .temperatureFromCelsius(
+                                entry.value.waterTempC!.toDouble(),
+                              )
+                              .toStringAsFixed(0),
                   ),
                   color: entry.value.waterTempC == null
                       ? null
@@ -384,7 +406,10 @@ extension _SpotDetailForecastTableSection on _SpotDetailPageState {
       if (rows.any((row) => row.tempC != null))
         TableRow(
           children: [
-            _compactLabelCell('Aire', minHeight: fullscreenRowHeight),
+            _compactLabelCell(
+              'Aire (${AppUnitsController.instance.temperatureUnit.shortLabel})',
+              minHeight: fullscreenRowHeight,
+            ),
             ...rows.asMap().entries.map(
               (entry) => _forecastColumnCell(
                 isDayStart: _isForecastDayStart(rows, entry.key),
@@ -392,7 +417,11 @@ extension _SpotDetailForecastTableSection on _SpotDetailPageState {
                   _nullableMetricText(
                     entry.value.tempC == null
                         ? null
-                        : '${entry.value.tempC}${_SpotDetailPageState._degreeSymbol}',
+                        : AppUnitsController.instance
+                              .temperatureFromCelsius(
+                                entry.value.tempC!.toDouble(),
+                              )
+                              .toStringAsFixed(0),
                   ),
                   color: entry.value.tempC == null
                       ? null

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:windwisher/core/units/app_units_controller.dart';
 import 'package:windwisher/features/spots/application/services/spots_presentation_forecast_support.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/tables/shared/forecast_table_chrome.dart';
 
@@ -116,14 +117,18 @@ class MeteoblueForecastSupplementCard extends StatelessWidget {
                   'Temperatura',
                   current.temperatureC == null
                       ? '-'
-                      : '${current.temperatureC!.toStringAsFixed(1)} C',
+                      : AppUnitsController.instance.formatTemperature(
+                          current.temperatureC!,
+                        ),
                 ),
                 _metricChip(
                   context,
                   'Viento',
                   current.windKnots == null
                       ? '-'
-                      : '${current.windKnots!.toStringAsFixed(1)} kt',
+                      : AppUnitsController.instance.formatWindSpeed(
+                          current.windKnots!,
+                        ),
                 ),
                 _metricChip(
                   context,
@@ -343,8 +348,8 @@ class MeteoblueForecastSupplementCard extends StatelessWidget {
                   width: isNarrow ? 144 : 156,
                   padding: EdgeInsets.all(isNarrow ? 8 : 10),
                   lines: [
-                    'Temp: ${_formatFixed(day.tempMinC)} / ${_formatFixed(day.tempMaxC)} C',
-                    'Viento medio: ${_formatFixed(day.windMeanKnots)} kt',
+                    'Temp: ${_formatTemperature(day.tempMinC)} / ${_formatTemperature(day.tempMaxC)}',
+                    'Viento medio: ${_formatWind(day.windMeanKnots)}',
                     'Lluvia: ${_formatFixed(day.precipitationMm)} mm',
                   ],
                   mutedLines: [
@@ -447,6 +452,12 @@ String _dayLabel(DateTime? value) {
 
 String _formatFixed(double? value) =>
     value == null ? '-' : value.toStringAsFixed(1);
+
+String _formatTemperature(double? value) =>
+    value == null ? '-' : AppUnitsController.instance.formatTemperature(value);
+
+String _formatWind(double? value) =>
+    value == null ? '-' : AppUnitsController.instance.formatWindSpeed(value);
 
 String _degreesToCardinal(double degrees) {
   const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];

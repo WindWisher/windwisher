@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/core/units/app_units_controller.dart';
 import 'package:windwisher/features/sessions/presentation/models/session_detail_models.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/session_detail/metric_kpi_tile.dart';
 
@@ -20,7 +21,7 @@ class SessionSummaryCard extends StatelessWidget {
       if (insights.resolvedMaxJumpHeightMeters case final jumpHeight?)
         _SessionSummaryItem(
           label: 'Salto mas alto',
-          value: '${jumpHeight.toStringAsFixed(1)} m',
+          value: AppUnitsController.instance.formatHeight(jumpHeight),
           icon: Icons.vertical_align_top_rounded,
         ),
       if (insights.resolvedJumpsCount case final jumps?)
@@ -43,7 +44,7 @@ class SessionSummaryCard extends StatelessWidget {
       if (insights.resolvedMaxSpeedKnots case final maxSpeed?)
         _SessionSummaryItem(
           label: 'Velocidad max',
-          value: '${maxSpeed.toStringAsFixed(1)} kt',
+          value: AppUnitsController.instance.formatWindSpeed(maxSpeed),
           icon: Icons.speed_rounded,
         ),
     ];

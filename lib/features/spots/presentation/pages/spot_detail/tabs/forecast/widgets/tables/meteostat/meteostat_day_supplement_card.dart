@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:windwisher/core/units/app_units_controller.dart';
 import 'package:windwisher/features/spots/application/services/spots_presentation_forecast_support.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/tables/shared/forecast_table_chrome.dart';
 
@@ -34,10 +35,10 @@ class MeteostatDaySupplementCard extends StatelessWidget {
                   title: _dayLabel(day.date),
                   width: 176,
                   lines: [
-                    'Temp: ${_fixed(day.tempMinC)} / ${_fixed(day.tempMaxC)} C',
-                    'Media: ${_fixed(day.tempAvgC)} C',
-                    'Viento medio: ${_fixed(day.windMeanKnots)} kt',
-                    'Racha: ${_fixed(day.gustKnots)} kt',
+                    'Temp: ${_temperature(day.tempMinC)} / ${_temperature(day.tempMaxC)}',
+                    'Media: ${_temperature(day.tempAvgC)}',
+                    'Viento medio: ${_wind(day.windMeanKnots)}',
+                    'Racha: ${_wind(day.gustKnots)}',
                     'Presion: ${_fixed(day.pressureHpa)} hPa',
                     'Lluvia: ${_fixed(day.precipitationMm)} mm',
                   ],
@@ -54,6 +55,10 @@ class MeteostatDaySupplementCard extends StatelessWidget {
 }
 
 String _fixed(double? value) => value == null ? '-' : value.toStringAsFixed(1);
+String _temperature(double? value) =>
+    value == null ? '-' : AppUnitsController.instance.formatTemperature(value);
+String _wind(double? value) =>
+    value == null ? '-' : AppUnitsController.instance.formatWindSpeed(value);
 
 String _dayLabel(DateTime? value) {
   if (value == null) {

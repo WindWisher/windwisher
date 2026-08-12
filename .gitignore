@@ -15,6 +15,7 @@ firebase-debug.log
 tmp/
 .tmp/
 .DS_Store
+__pycache__/
 
 # macOS / Xcode noise
 ios/Pods/

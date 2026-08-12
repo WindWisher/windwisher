@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/core/units/app_units_controller.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/forecast_accuracy_info_dialog.dart';
 
 class ForecastAccuracyCard extends StatelessWidget {
@@ -133,7 +134,7 @@ class ForecastAccuracyCard extends StatelessWidget {
                         ),
                       ),
                       child: Text(
-                        'Error medio ${meanAbsoluteErrorKnots!.toStringAsFixed(1)} kt',
+                        'Error medio ${AppUnitsController.instance.formatWindSpeed(meanAbsoluteErrorKnots!)}',
                         style: Theme.of(context).textTheme.labelMedium
                             ?.copyWith(fontWeight: FontWeight.w700),
                       ),

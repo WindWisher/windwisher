@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/core/units/app_units_controller.dart';
 import 'package:windwisher/features/community/di/community_module.dart';
 import 'package:windwisher/features/community/domain/entities/following_session.dart';
 import 'package:windwisher/features/community/presentation/support/community_identity_mapper.dart';
@@ -59,10 +60,11 @@ class _CommunityUserSessionsPageState extends State<CommunityUserSessionsPage> {
     if (!mounted) {
       return;
     }
-    final filtered = sessions
-        .where((session) => session.username == widget.username)
-        .toList(growable: false)
-      ..sort((left, right) => right.endedAt.compareTo(left.endedAt));
+    final filtered =
+        sessions
+            .where((session) => session.username == widget.username)
+            .toList(growable: false)
+          ..sort((left, right) => right.endedAt.compareTo(left.endedAt));
     setState(() {
       _profile = loadedProfile ?? _profile;
       _sessions = filtered;
@@ -80,8 +82,7 @@ class _CommunityUserSessionsPageState extends State<CommunityUserSessionsPage> {
     );
     final bestJump = _sessions.fold<double>(
       0,
-      (maxValue, session) =>
-          session.highestJumpMeters > maxValue
+      (maxValue, session) => session.highestJumpMeters > maxValue
           ? session.highestJumpMeters
           : maxValue,
     );
@@ -109,10 +110,14 @@ class _CommunityUserSessionsPageState extends State<CommunityUserSessionsPage> {
                               end: Alignment.bottomRight,
                             )
                           : null,
-                      image: profileMediaImageProvider(_profile.bannerLocalPath) == null
+                      image:
+                          profileMediaImageProvider(_profile.bannerLocalPath) ==
+                              null
                           ? null
                           : DecorationImage(
-                              image: profileMediaImageProvider(_profile.bannerLocalPath)!,
+                              image: profileMediaImageProvider(
+                                _profile.bannerLocalPath,
+                              )!,
                               fit: BoxFit.cover,
                             ),
                     ),
@@ -129,10 +134,11 @@ class _CommunityUserSessionsPageState extends State<CommunityUserSessionsPage> {
                               backgroundImage: profileMediaImageProvider(
                                 _profile.avatarLocalPath,
                               ),
-                              child: profileMediaImageProvider(
-                                    _profile.avatarLocalPath,
-                                  ) ==
-                                  null
+                              child:
+                                  profileMediaImageProvider(
+                                        _profile.avatarLocalPath,
+                                      ) ==
+                                      null
                                   ? Text(
                                       _profile.displayName
                                           .substring(0, 1)
@@ -181,13 +187,17 @@ class _CommunityUserSessionsPageState extends State<CommunityUserSessionsPage> {
                               icon: Icons.air_rounded,
                               label: bestJump == 0
                                   ? 'Sin salto'
-                                  : '${bestJump.toStringAsFixed(1)} m max',
+                                  : '${AppUnitsController.instance.formatHeight(bestJump)} max',
                             ),
                             _CommunitySessionsKpiChip(
                               icon: Icons.straighten_rounded,
                               label: totalDistance == 0
-                                  ? '0.0 km'
-                                  : '${totalDistance.toStringAsFixed(1)} km',
+                                  ? AppUnitsController.instance.formatDistance(
+                                      0,
+                                    )
+                                  : AppUnitsController.instance.formatDistance(
+                                      totalDistance,
+                                    ),
                             ),
                           ],
                         ),
@@ -241,7 +251,7 @@ class _CommunityUserSessionsPageState extends State<CommunityUserSessionsPage> {
                       ),
                       title: Text(session.title),
                       subtitle: Text(
-                        '${session.spot} · ${session.highestJumpMeters.toStringAsFixed(1)} m · ${session.distanceKm.toStringAsFixed(1)} km · ${session.durationLabel}',
+                        '${session.spot} · ${AppUnitsController.instance.formatHeight(session.highestJumpMeters)} · ${AppUnitsController.instance.formatDistance(session.distanceKm)} · ${session.durationLabel}',
                       ),
                       trailing: Column(
                         mainAxisAlignment: MainAxisAlignment.center,

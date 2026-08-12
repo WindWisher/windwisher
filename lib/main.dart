@@ -13,6 +13,8 @@ import 'package:windwisher/core/notifications/push_notification_subscription_ser
 import 'package:windwisher/core/i18n/app_strings.dart';
 import 'package:windwisher/core/persistence/app_storage_paths.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
+import 'package:windwisher/core/units/app_units_controller.dart';
+import 'package:windwisher/core/units/supabase_app_units_remote_store.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
@@ -22,9 +24,43 @@ Future<void> main() async {
   await LocalEnvStore.initialize();
   await AppLocaleController.initialize();
   await _initializeSupabaseIfConfigured();
+  _configureUnitPreferenceSync();
+  await AppUnitsController.instance.initialize(userId: _currentUserId());
+  unawaited(AppUnitsController.instance.syncCurrentUser());
+  _watchUnitPreferenceUserChanges();
   runApp(const ProviderScope(child: AppBootstrap()));
   WidgetsBinding.instance.addPostFrameCallback((_) {
     unawaited(_initializeBackgroundServices());
+  });
+}
+
+void _configureUnitPreferenceSync() {
+  if (EnvConfig.supabaseUrl.trim().isEmpty ||
+      EnvConfig.supabaseAnonKey.trim().isEmpty) {
+    return;
+  }
+  AppUnitsController.instance.configureRemoteStore(
+    SupabaseAppUnitsRemoteStore(Supabase.instance.client),
+  );
+}
+
+String? _currentUserId() {
+  if (EnvConfig.supabaseUrl.trim().isEmpty ||
+      EnvConfig.supabaseAnonKey.trim().isEmpty) {
+    return null;
+  }
+  return Supabase.instance.client.auth.currentUser?.id;
+}
+
+void _watchUnitPreferenceUserChanges() {
+  if (EnvConfig.supabaseUrl.trim().isEmpty ||
+      EnvConfig.supabaseAnonKey.trim().isEmpty) {
+    return;
+  }
+  Supabase.instance.client.auth.onAuthStateChange.listen((authState) {
+    unawaited(
+      AppUnitsController.instance.switchUser(authState.session?.user.id),
+    );
   });
 }
 
@@ -53,18 +89,21 @@ class AppBootstrap extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
     final locale = ref.watch(appLocaleControllerProvider);
-    return MaterialApp.router(
-      title: 'WindWisher',
-      locale: locale,
-      scrollBehavior: const AppScrollBehavior(),
-      supportedLocales: AppStrings.supportedLocales,
-      localizationsDelegates: [
-        ...AppStrings.localizationsDelegates,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      routerConfig: router,
+    return ListenableBuilder(
+      listenable: AppUnitsController.instance,
+      builder: (context, _) => MaterialApp.router(
+        title: 'WindWisher',
+        locale: locale,
+        scrollBehavior: const AppScrollBehavior(),
+        supportedLocales: AppStrings.supportedLocales,
+        localizationsDelegates: [
+          ...AppStrings.localizationsDelegates,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        routerConfig: router,
+      ),
     );
   }
 }

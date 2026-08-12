@@ -12,6 +12,7 @@ import 'package:sensors_plus/sensors_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/core/units/app_units_controller.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
 import 'package:windwisher/features/profile/di/profile_module.dart';
 import 'package:windwisher/features/sessions/di/sessions_module.dart';
@@ -1096,14 +1097,14 @@ class SessionsPageState extends State<SessionsPage> {
             .map((sample) => sample.speedKnots)
             .reduce((a, b) => a + b) /
         recentSamples.length;
-    return '${smoothedKnots.toStringAsFixed(1)} kt';
+    return AppUnitsController.instance.formatWindSpeed(smoothedKnots);
   }
 
   String _recordingMaxSpeedText() {
     if (_recordingMaxSpeedKnots <= 0) {
       return '--';
     }
-    return '${_recordingMaxSpeedKnots.toStringAsFixed(1)} kt';
+    return AppUnitsController.instance.formatWindSpeed(_recordingMaxSpeedKnots);
   }
 
   double _currentTrackSpeedKnots() {
@@ -1112,7 +1113,6 @@ class SessionsPageState extends State<SessionsPage> {
     }
     return _recordingSamples.last.speedKnots;
   }
-
 
   double? _currentApproachCourseDeg() {
     if (_recordingSamples.length < 2) {
@@ -1938,7 +1938,7 @@ class SessionsPageState extends State<SessionsPage> {
     if (meters == null) {
       return '--';
     }
-    return '${meters.toStringAsFixed(1)} m';
+    return AppUnitsController.instance.formatHeight(meters);
   }
 
   String _formatHangtime(double? seconds) {
@@ -1962,13 +1962,17 @@ class SessionsPageState extends State<SessionsPage> {
       durationLabel: _formatDuration(session.duration),
       jumpLabel: insights.resolvedMaxJumpHeightMeters == null
           ? null
-          : '${insights.resolvedMaxJumpHeightMeters!.toStringAsFixed(1)} m',
+          : AppUnitsController.instance.formatHeight(
+              insights.resolvedMaxJumpHeightMeters!,
+            ),
       hangtimeLabel: insights.resolvedMaxHangtimeSeconds == null
           ? null
           : '${insights.resolvedMaxHangtimeSeconds!.toStringAsFixed(1)} s',
       maxSpeedLabel: insights.resolvedMaxSpeedKnots == null
           ? null
-          : '${insights.resolvedMaxSpeedKnots!.toStringAsFixed(1)} kt',
+          : AppUnitsController.instance.formatWindSpeed(
+              insights.resolvedMaxSpeedKnots!,
+            ),
     );
   }
 

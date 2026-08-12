@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
+import 'package:windwisher/core/units/app_units_controller.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
 import 'package:windwisher/features/community/application/use_cases/community_session_comments_use_cases.dart';
 import 'package:windwisher/features/community/application/use_cases/community_following_preferences_use_cases.dart';
@@ -591,9 +592,13 @@ class _CommunityPageState extends State<CommunityPage> {
       deviceKind,
     ).toList(growable: false);
     final measuredValues = <String, String>{
-      'distancia_total': '${session.distanceKm.toStringAsFixed(1)} km',
+      'distancia_total': AppUnitsController.instance.formatDistance(
+        session.distanceKm,
+      ),
       if (session.highestJumpMeters > 0)
-        'salto_mas_alto': '${session.highestJumpMeters.toStringAsFixed(1)} m',
+        'salto_mas_alto': AppUnitsController.instance.formatHeight(
+          session.highestJumpMeters,
+        ),
       if (session.bigAirScore > 0)
         'big_air_score': '${session.bigAirScore}/100',
     };
@@ -618,7 +623,7 @@ class _CommunityPageState extends State<CommunityPage> {
         );
 
     final summary =
-        '${_displayNameForUser(session.username)} en ${session.spot} con salto maximo ${session.highestJumpMeters.toStringAsFixed(1)} m y ${session.distanceKm.toStringAsFixed(1)} km recorridos.';
+        '${_displayNameForUser(session.username)} en ${session.spot} con salto maximo ${AppUnitsController.instance.formatHeight(session.highestJumpMeters)} y ${AppUnitsController.instance.formatDistance(session.distanceKm)} recorridos.';
 
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -807,6 +812,9 @@ class _CommunityPageState extends State<CommunityPage> {
   }
 
   String _leaderboardMetricText(_LeaderboardRow row) {
+    if (_selectedMetricOption().key == 'salto_mas_alto') {
+      return AppUnitsController.instance.formatHeight(row.metricValue);
+    }
     return _orchestration.formatMetricValue(
       value: row.metricValue,
       unit: _selectedMetricOption().unit,
@@ -818,7 +826,7 @@ class _CommunityPageState extends State<CommunityPage> {
     if (option.unit == 'count' || option.unit == 'bin') {
       return option.label;
     }
-    return '${option.label} (${option.unit})';
+    return '${option.label} (${_displayUnit(option)})';
   }
 
   DecorationImage? _leaderboardBannerDecoration(String? bannerPath) {
@@ -1564,6 +1572,13 @@ class _KpiFilterOption {
   final String unit;
 }
 
+String _displayUnit(_KpiFilterOption option) {
+  if (option.key == 'salto_mas_alto') {
+    return AppUnitsController.instance.heightUnit.shortLabel;
+  }
+  return option.unit;
+}
+
 class _KpiOrderFilterField extends StatelessWidget {
   const _KpiOrderFilterField({
     required this.label,
@@ -1590,7 +1605,7 @@ class _KpiOrderFilterField extends StatelessWidget {
           .map(
             (option) => DropdownMenuItem<String>(
               value: option.key,
-              child: Text('${option.label} (${option.unit})'),
+              child: Text('${option.label} (${_displayUnit(option)})'),
             ),
           )
           .toList(),
