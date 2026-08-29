@@ -3,8 +3,10 @@ import 'dart:io';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/notifications/push_notification_subscription_sync_client.dart';
+import 'package:windwisher/core/notifications/push_notification_preferences.dart';
 import 'package:windwisher/core/persistence/app_storage_paths.dart';
 
 enum PushSubscriptionSyncStatus {
@@ -22,19 +24,33 @@ class PushNotificationSubscriptionService extends ChangeNotifier {
 
   static final PushNotificationSubscriptionService instance =
       PushNotificationSubscriptionService._();
+  static const _webStorageKey = 'push_notifications_state_v2';
 
   final File _file;
   final PushNotificationSubscriptionSyncClient _syncClient;
   StreamSubscription<AuthState>? _authStateSubscription;
   bool _initialized = false;
-  bool _enabled = true;
+  final PushNotificationPreferences _preferences =
+      PushNotificationPreferences();
   bool _remoteProviderConfigured = false;
   String? _deviceToken;
   String? _provider;
   String? _platform;
   String? _deviceLabel;
 
-  bool get enabled => _enabled;
+  bool get enabled => _preferences.enabledFor(_currentAccountKey);
+
+  bool categoryEnabled(PushNotificationCategory category) =>
+      _preferences.categoryEnabledFor(_currentAccountKey, category);
+
+  bool get spotAlarmsEnabled =>
+      categoryEnabled(PushNotificationCategory.spotAlarms);
+
+  bool get directMessagesEnabled =>
+      categoryEnabled(PushNotificationCategory.directMessages);
+
+  bool get spotChatMentionsEnabled =>
+      categoryEnabled(PushNotificationCategory.spotChatMentions);
 
   bool get remoteProviderConfigured => _remoteProviderConfigured;
 
@@ -49,14 +65,30 @@ class PushNotificationSubscriptionService extends ChangeNotifier {
     _initialized = true;
     await _load();
     _attachAuthListener();
+    notifyListeners();
   }
 
   Future<PushSubscriptionSyncStatus> setEnabled(bool value) async {
     await initialize();
-    if (_enabled == value) {
+    if (enabled == value) {
       return _syncStatusForCurrentState();
     }
-    _enabled = value;
+    _preferences.setEnabled(_currentAccountKey, value);
+    await _save();
+    await _syncRemoteStateIfPossible();
+    notifyListeners();
+    return _syncStatusForCurrentState();
+  }
+
+  Future<PushSubscriptionSyncStatus> setCategoryEnabled(
+    PushNotificationCategory category,
+    bool value,
+  ) async {
+    await initialize();
+    if (categoryEnabled(category) == value) {
+      return _syncStatusForCurrentState();
+    }
+    _preferences.setCategoryEnabled(_currentAccountKey, category, value);
     await _save();
     await _syncRemoteStateIfPossible();
     notifyListeners();
@@ -119,7 +151,7 @@ class PushNotificationSubscriptionService extends ChangeNotifier {
   }
 
   PushSubscriptionSyncStatus _syncStatusForCurrentState() {
-    if (!_enabled) {
+    if (!enabled) {
       return PushSubscriptionSyncStatus.disabled;
     }
     if (!remoteProviderConfigured) {
@@ -142,6 +174,17 @@ class PushNotificationSubscriptionService extends ChangeNotifier {
 
   Future<void> _load() async {
     if (kIsWeb) {
+      final preferences = await SharedPreferences.getInstance();
+      final raw = preferences.getString(_webStorageKey);
+      if (raw == null || raw.isEmpty) {
+        return;
+      }
+      try {
+        _loadJson(jsonDecode(raw) as Map<String, dynamic>);
+      } catch (_) {
+        _resetState();
+        await preferences.remove(_webStorageKey);
+      }
       return;
     }
     if (!await _file.exists()) {
@@ -150,38 +193,49 @@ class PushNotificationSubscriptionService extends ChangeNotifier {
     }
     try {
       final raw = await _file.readAsString();
-      final json = jsonDecode(raw) as Map<String, dynamic>;
-      _enabled = json['enabled'] as bool? ?? true;
-      _remoteProviderConfigured =
-          json['remoteProviderConfigured'] as bool? ?? false;
-      _deviceToken = json['deviceToken'] as String?;
-      _provider = json['provider'] as String?;
-      _platform = json['platform'] as String?;
-      _deviceLabel = json['deviceLabel'] as String?;
+      _loadJson(jsonDecode(raw) as Map<String, dynamic>);
     } catch (_) {
-      _enabled = true;
-      _remoteProviderConfigured = false;
-      _deviceToken = null;
-      _provider = null;
-      _platform = null;
-      _deviceLabel = null;
+      _resetState();
       await _save();
     }
   }
 
   Future<void> _save() async {
-    if (kIsWeb) {
-      return;
-    }
     final raw = const JsonEncoder.withIndent('  ').convert(<String, dynamic>{
-      'enabled': _enabled,
+      'schemaVersion': 3,
+      'enabledByAccount': _preferences.toJson(),
+      'categoriesByAccount': _preferences.categoriesToJson(),
       'remoteProviderConfigured': _remoteProviderConfigured,
       'deviceToken': _deviceToken,
       'provider': _provider,
       'platform': _platform,
       'deviceLabel': _deviceLabel,
     });
+    if (kIsWeb) {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setString(_webStorageKey, raw);
+      return;
+    }
     await _file.writeAsString(raw);
+  }
+
+  void _loadJson(Map<String, dynamic> json) {
+    _preferences.load(json, legacyAccountKey: _currentAccountKey);
+    _remoteProviderConfigured =
+        json['remoteProviderConfigured'] as bool? ?? false;
+    _deviceToken = json['deviceToken'] as String?;
+    _provider = json['provider'] as String?;
+    _platform = json['platform'] as String?;
+    _deviceLabel = json['deviceLabel'] as String?;
+  }
+
+  void _resetState() {
+    _preferences.clear();
+    _remoteProviderConfigured = false;
+    _deviceToken = null;
+    _provider = null;
+    _platform = null;
+    _deviceLabel = null;
   }
 
   Future<void> _syncRemoteStateIfPossible() async {
@@ -189,7 +243,7 @@ class PushNotificationSubscriptionService extends ChangeNotifier {
     if (!_syncClient.canSync || token == null || token.isEmpty) {
       return;
     }
-    if (!_enabled) {
+    if (!enabled) {
       await _syncClient.setSubscriptionEnabled(
         deviceToken: token,
         enabled: false,
@@ -210,6 +264,9 @@ class PushNotificationSubscriptionService extends ChangeNotifier {
       provider: provider,
       deviceLabel: _deviceLabel,
       enabled: true,
+      spotAlarmsEnabled: spotAlarmsEnabled,
+      directMessagesEnabled: directMessagesEnabled,
+      spotChatMentionsEnabled: spotChatMentionsEnabled,
     );
   }
 
@@ -220,10 +277,19 @@ class PushNotificationSubscriptionService extends ChangeNotifier {
     try {
       _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange
           .listen((_) {
+            notifyListeners();
             unawaited(_syncRemoteStateIfPossible());
           });
     } catch (_) {
       _authStateSubscription = null;
+    }
+  }
+
+  String get _currentAccountKey {
+    try {
+      return Supabase.instance.client.auth.currentUser?.id ?? 'signed-out';
+    } catch (_) {
+      return 'signed-out';
     }
   }
 }

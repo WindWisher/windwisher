@@ -238,7 +238,8 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
       _wundergroundVillajoyosaLavil24StationKey ||
       _wundergroundVillajoyosaLavil41StationKey ||
       _wundergroundVillajoyosaVilla310StationKey ||
-      _wundergroundEssaouiraStationKey => true,
+      _wundergroundEssaouiraStationKey ||
+      _wundergroundValverdeJucarStationKey => true,
       _ => false,
     };
   }

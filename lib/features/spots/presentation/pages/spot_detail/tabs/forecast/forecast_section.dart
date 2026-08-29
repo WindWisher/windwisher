@@ -31,7 +31,7 @@ extension _SpotDetailForecastSection on _SpotDetailPageState {
   }
 
   Widget _buildForecastModelControls() {
-    if (_usesWindguruProvider()) {
+    if (_usesWindguruProvider() || _usesWindyAppProvider()) {
       return const SizedBox.shrink();
     }
     return LayoutBuilder(
@@ -165,6 +165,11 @@ extension _SpotDetailForecastSection on _SpotDetailPageState {
     if (_usesWindguruProvider()) {
       return _buildWindguruForecastSection();
     }
+    if (_usesWindyAppProvider()) {
+      return Column(
+        children: [_buildWindyMapSection(), _buildWindyForecastSection()],
+      );
+    }
     if (_usesAemetBeachForecastModel()) {
       return _buildAemetBeachForecastSection();
     }
@@ -202,7 +207,9 @@ extension _SpotDetailForecastSection on _SpotDetailPageState {
         children: [
           _buildForecastProviderDropdown(),
           const SizedBox(height: AppSpacing.sm),
-          if (!_usesWindguruProvider()) ...[_buildForecastModelControls()],
+          if (!_usesWindguruProvider() && !_usesWindyAppProvider()) ...[
+            _buildForecastModelControls(),
+          ],
           _buildWindMapButtonBlock(),
           _buildForecastSectionBody(),
         ],

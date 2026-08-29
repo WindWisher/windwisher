@@ -8,6 +8,7 @@ import 'package:windwisher/core/i18n/app_locale_controller.dart';
 import 'package:windwisher/core/i18n/app_strings.dart';
 import 'package:windwisher/core/notifications/firebase_push_messaging_service.dart';
 import 'package:windwisher/core/notifications/push_notification_subscription_service.dart';
+import 'package:windwisher/core/notifications/push_notification_preferences.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
 import 'package:windwisher/features/auth/presentation/providers/auth_session_provider.dart';
@@ -24,6 +25,7 @@ import 'package:windwisher/features/profile/presentation/pages/settings/legal/le
 import 'package:windwisher/features/profile/presentation/pages/settings/legal/legal_settings_section.dart';
 import 'package:windwisher/features/profile/presentation/pages/settings/notifications/notifications_settings_controller.dart';
 import 'package:windwisher/features/profile/presentation/pages/settings/notifications/notifications_settings_section.dart';
+import 'package:windwisher/features/profile/presentation/pages/settings/notifications/notification_permission_service.dart';
 import 'package:windwisher/features/profile/presentation/pages/settings/roles/role_panels_access.dart';
 import 'package:windwisher/features/profile/presentation/pages/settings/roles/role_panels_settings_section.dart';
 import 'package:windwisher/features/profile/presentation/pages/settings/roles/user_roles_repository.dart';
@@ -36,8 +38,13 @@ class SettingsPage extends ConsumerStatefulWidget {
   ConsumerState<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends ConsumerState<SettingsPage> {
-  bool _notificationsEnabled = true;
+class _SettingsPageState extends ConsumerState<SettingsPage>
+    with WidgetsBindingObserver {
+  bool _notificationsEnabled = false;
+  bool _isUpdatingNotifications = true;
+  bool _enableNotificationsAfterSettings = false;
+  NotificationPermissionState _notificationPermissionState =
+      NotificationPermissionState.unknown;
   bool _isSigningOut = false;
   bool _isLoadingRoles = false;
   bool _isLoadingDeletionRequest = false;
@@ -49,8 +56,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    PushNotificationSubscriptionService.instance.addListener(
+      _handlePushSubscriptionChanged,
+    );
     _notificationsEnabled =
         PushNotificationSubscriptionService.instance.enabled;
+    unawaited(_refreshNotificationState());
     unawaited(_loadMyRoles());
     unawaited(_loadAccountDeletionRequest());
     unawaited(_loadAppVersionLabel());
@@ -58,8 +70,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    PushNotificationSubscriptionService.instance.removeListener(
+      _handlePushSubscriptionChanged,
+    );
     _accountDeletionCountdownTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_refreshNotificationState());
+    }
   }
 
   @override
@@ -68,9 +91,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final locale = ref.watch(appLocaleControllerProvider);
     final pushService = PushNotificationSubscriptionService.instance;
     final pushStatus = pushService.currentStatus;
-    final pushToken = pushService.deviceToken;
-    final pushInitError =
-        FirebasePushMessagingService.instance.lastInitializationError;
     final rolesAccess = RolePanelsAccess.fromRoles(_myRoles);
     final sessionSummary = AccountSessionRepository.currentSummary();
     final deletionStatusRaw = (_accountDeletionRequest?['status'] as String?)
@@ -93,28 +113,36 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: AppSpacing.md),
           NotificationsSettingsSection(
             notificationsEnabled: _notificationsEnabled,
-            onNotificationsChanged: (newValue) async {
-              final messenger = ScaffoldMessenger.of(context);
-              final result = await NotificationsSettingsController.setEnabled(
-                newValue,
-                pushInitError: pushInitError,
-              );
-              if (!mounted) {
-                return;
-              }
-              setState(() => _notificationsEnabled = result.enabled);
-              messenger.showSnackBar(SnackBar(content: Text(result.message)));
-            },
-            remoteProviderConfigured: PushNotificationSubscriptionService
-                .instance
-                .remoteProviderConfigured,
-            pushInitError: pushInitError,
-            pushStatusLabel: NotificationsSettingsController.pushStatusLabel(
-              pushStatus,
+            permissionState: _notificationPermissionState,
+            syncStatus: pushStatus,
+            remoteProviderConfigured: pushService.remoteProviderConfigured,
+            isBusy: _isUpdatingNotifications,
+            onNotificationsChanged: (newValue) =>
+                unawaited(_setNotificationsEnabled(newValue)),
+            spotAlarmsEnabled: pushService.spotAlarmsEnabled,
+            directMessagesEnabled: pushService.directMessagesEnabled,
+            spotChatMentionsEnabled: pushService.spotChatMentionsEnabled,
+            onSpotAlarmsChanged: (value) => unawaited(
+              _setNotificationCategory(
+                PushNotificationCategory.spotAlarms,
+                value,
+              ),
             ),
-            pushTokenLabel: pushToken == null || pushToken.isEmpty
-                ? 'Token: pendiente'
-                : 'Token: ${NotificationsSettingsController.obfuscatedToken(pushToken)}',
+            onDirectMessagesChanged: (value) => unawaited(
+              _setNotificationCategory(
+                PushNotificationCategory.directMessages,
+                value,
+              ),
+            ),
+            onSpotChatMentionsChanged: (value) => unawaited(
+              _setNotificationCategory(
+                PushNotificationCategory.spotChatMentions,
+                value,
+              ),
+            ),
+            onOpenSystemSettings: () =>
+                unawaited(_openNotificationSystemSettings()),
+            onRetry: () => unawaited(_retryNotificationRegistration()),
           ),
           const SizedBox(height: AppSpacing.md),
           AppSettingsSection(
@@ -167,6 +195,190 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ],
       ),
     );
+  }
+
+  void _handlePushSubscriptionChanged() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _notificationsEnabled =
+          PushNotificationSubscriptionService.instance.enabled;
+    });
+  }
+
+  Future<void> _refreshNotificationState() async {
+    if (mounted) {
+      setState(() => _isUpdatingNotifications = true);
+    }
+    try {
+      await PushNotificationSubscriptionService.instance.initialize();
+      final permissionState = await NotificationsSettingsController
+          .permissionService
+          .currentState();
+      if (permissionState != NotificationPermissionState.granted &&
+          permissionState != NotificationPermissionState.unknown &&
+          PushNotificationSubscriptionService.instance.enabled) {
+        await NotificationsSettingsController.setEnabled(
+          false,
+          pushInitError:
+              FirebasePushMessagingService.instance.lastInitializationError,
+        );
+      }
+      if (_enableNotificationsAfterSettings &&
+          permissionState == NotificationPermissionState.granted) {
+        _enableNotificationsAfterSettings = false;
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _notificationPermissionState = permissionState;
+          _isUpdatingNotifications = false;
+        });
+        await _setNotificationsEnabled(true);
+        return;
+      }
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _notificationPermissionState = permissionState;
+        _notificationsEnabled =
+            PushNotificationSubscriptionService.instance.enabled;
+        _isUpdatingNotifications = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _notificationPermissionState = NotificationPermissionState.unknown;
+        _isUpdatingNotifications = false;
+      });
+    }
+  }
+
+  Future<void> _setNotificationsEnabled(bool newValue) async {
+    if (_isUpdatingNotifications) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _isUpdatingNotifications = true);
+    try {
+      final result = await NotificationsSettingsController.setEnabled(
+        newValue,
+        pushInitError:
+            FirebasePushMessagingService.instance.lastInitializationError,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _notificationsEnabled = result.enabled;
+        _notificationPermissionState = result.permissionState;
+      });
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(result.message)));
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No se ha podido actualizar la configuracion. Intentalo de nuevo.',
+            ),
+          ),
+        );
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdatingNotifications = false);
+      }
+    }
+  }
+
+  Future<void> _setNotificationCategory(
+    PushNotificationCategory category,
+    bool enabled,
+  ) async {
+    if (_isUpdatingNotifications) {
+      return;
+    }
+    setState(() => _isUpdatingNotifications = true);
+    try {
+      await NotificationsSettingsController.setCategoryEnabled(
+        category,
+        enabled,
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No se ha podido actualizar esta preferencia. Intentalo de nuevo.',
+            ),
+          ),
+        );
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdatingNotifications = false);
+      }
+    }
+  }
+
+  Future<void> _openNotificationSystemSettings() async {
+    _enableNotificationsAfterSettings = true;
+    var opened = false;
+    try {
+      opened = await NotificationsSettingsController.permissionService
+          .openSystemSettings();
+    } catch (_) {
+      opened = false;
+    }
+    if (!opened) {
+      _enableNotificationsAfterSettings = false;
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se han podido abrir los ajustes del dispositivo.'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _retryNotificationRegistration() async {
+    if (_isUpdatingNotifications) {
+      return;
+    }
+    setState(() => _isUpdatingNotifications = true);
+    try {
+      await FirebasePushMessagingService.instance.refreshDeviceRegistration();
+      await _refreshNotificationState();
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No se ha podido conectar el servicio. Intentalo de nuevo.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdatingNotifications = false);
+      }
+    }
   }
 
   Future<void> _loadMyRoles() async {

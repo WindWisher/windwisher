@@ -19,6 +19,7 @@ const Map<String, List<String>> baseForecastModelsByProvider = {
   ],
   'AEMET': [kAemetMunicipalForecastModel, kAemetPortusAtmosphereForecastModel],
   'Windguru': ['Widget'],
+  'Windy.app': ['Widget'],
   'Meteoblue': ['Basic', 'Current', 'Day', 'Sea'],
   'Meteostat': ['Hourly', 'Day'],
   'Meteosource': ['Hourly', 'Current', 'Day'],
@@ -30,6 +31,7 @@ List<String> getSpotForecastModels({
   String? spotBeachCode,
   List<String> spotBeachCodes = const <String>[],
   required String provider,
+  bool supportsPortusForecast = true,
 }) {
   final base = baseForecastModelsByProvider[provider];
   if (base == null) {
@@ -52,6 +54,9 @@ List<String> getSpotForecastModels({
   }
 
   final models = List<String>.from(base);
+  if (provider == 'AEMET' && !supportsPortusForecast) {
+    models.remove(kAemetPortusAtmosphereForecastModel);
+  }
   if (provider == 'AEMET' && spotArea != null) {
     final beachModels = <String>{
       if (spotBeachCode != null && spotBeachCode.isNotEmpty)
@@ -86,6 +91,7 @@ String? getSpotDefaultForecastModel({
   String? spotBeachCode,
   List<String> spotBeachCodes = const <String>[],
   required String provider,
+  bool supportsPortusForecast = true,
 }) {
   final models = getSpotForecastModels(
     spotName: spotName,
@@ -93,6 +99,7 @@ String? getSpotDefaultForecastModel({
     spotBeachCode: spotBeachCode,
     spotBeachCodes: spotBeachCodes,
     provider: provider,
+    supportsPortusForecast: supportsPortusForecast,
   );
   if (models.isEmpty) {
     return null;
@@ -108,7 +115,9 @@ String? getSpotDefaultForecastModel({
   }
 
   if (provider == 'AEMET') {
-    return kAemetPortusAtmosphereForecastModel;
+    return models.contains(kAemetPortusAtmosphereForecastModel)
+        ? kAemetPortusAtmosphereForecastModel
+        : models.first;
   }
 
   if (provider == 'Meteoblue') {
@@ -119,7 +128,7 @@ String? getSpotDefaultForecastModel({
     return 'Hourly';
   }
 
-  if (provider == 'Windguru') {
+  if (provider == 'Windguru' || provider == 'Windy.app') {
     return 'Widget';
   }
 

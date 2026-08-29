@@ -259,6 +259,18 @@ SpotForecastModelInfo getSpotForecastModelInfo({
             horizon: 'Segun Windguru',
           );
       }
+    case 'Windy.app':
+      switch (model) {
+        case 'Widget':
+          return const SpotForecastModelInfo(
+            title: 'Widgets Windy.app',
+            description:
+                'Mapa interactivo y tabla de prevision embebidos para las coordenadas exactas del spot.',
+            scope: 'Widgets externos',
+            resolution: 'Segun Windy.app',
+            horizon: 'Segun Windy.app',
+          );
+      }
   }
 
   return SpotForecastModelInfo(

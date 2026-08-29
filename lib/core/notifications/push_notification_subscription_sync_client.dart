@@ -35,6 +35,9 @@ class PushNotificationSubscriptionSyncClient {
     required String provider,
     String? deviceLabel,
     bool enabled = true,
+    bool spotAlarmsEnabled = true,
+    bool directMessagesEnabled = true,
+    bool spotChatMentionsEnabled = true,
   }) async {
     final userId = _currentUserId;
     if (!canSync ||
@@ -49,6 +52,9 @@ class PushNotificationSubscriptionSyncClient {
       'platform': platform.trim(),
       'provider': provider.trim(),
       'enabled': enabled,
+      'spot_alarms_enabled': spotAlarmsEnabled,
+      'direct_messages_enabled': directMessagesEnabled,
+      'spot_chat_mentions_enabled': spotChatMentionsEnabled,
       'device_label': deviceLabel?.trim(),
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     }, onConflict: 'user_id,device_token');

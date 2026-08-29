@@ -1,5 +1,5 @@
 import 'package:windwisher/features/spots/domain/entities/spot_webcam.dart';
-import 'package:windwisher/features/spots/infrastructure/data/spot_capabilities_catalog.dart';
+import 'package:windwisher/features/spots/application/services/spot_capabilities_catalog.dart';
 
 const List<SpotWebcam> _olivaCanalGorgsWebcams = [
   SpotWebcam(

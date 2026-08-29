@@ -506,7 +506,7 @@ extension _SpotDetailForecastRowsController on _SpotDetailPageState {
     if (provider == 'Meteosource') {
       return const [_ForecastRange.d1];
     }
-    if (provider == 'Windguru') {
+    if (provider == 'Windguru' || provider == 'Windy.app') {
       return const [_ForecastRange.d1];
     }
     final availableDays = (_rowsForProvider(provider).length / 8).floor();

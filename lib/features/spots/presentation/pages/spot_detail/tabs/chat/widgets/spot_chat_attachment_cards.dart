@@ -3,7 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_social_post.dart';
-import 'package:windwisher/features/spots/infrastructure/services/spot_social_client.dart';
+import 'package:windwisher/features/spots/application/services/spot_social_service.dart';
 
 class PendingSpotSocialAttachmentCard extends StatelessWidget {
   const PendingSpotSocialAttachmentCard({

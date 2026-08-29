@@ -29,6 +29,10 @@ flutter_macos_podfile_setup
 target 'Runner' do
   use_frameworks!
 
+  # This keeps the protobuf runtime aligned with reactive_ble_mobile while the
+  # Xcode 14.2 compatibility adjustment below removes its newer compiler flag.
+  pod 'SwiftProtobuf', '1.34.0'
+
   flutter_install_all_macos_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do
     inherit! :search_paths
@@ -38,5 +42,86 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
+    if target.name == 'SwiftProtobuf'
+      target.build_configurations.each do |config|
+        config.build_settings['OTHER_SWIFT_FLAGS'] = '$(inherited) -D COCOAPODS'
+      end
+    end
+  end
+
+  # CocoaPods writes this flag into generated xcconfig files after resolving
+  # the pod target, so remove it there as well for Swift 5.7.
+  swift_protobuf_configs = File.join(
+    installer.sandbox.root,
+    'Target Support Files',
+    'SwiftProtobuf',
+    'SwiftProtobuf.*.xcconfig',
+  )
+  Dir.glob(swift_protobuf_configs).each do |config_path|
+    contents = File.read(config_path)
+    File.write(
+      config_path,
+      contents.gsub(' -package-name SwiftProtobuf', ''),
+    )
+  end
+  swift_protobuf_sources = File.join(
+    installer.sandbox.root,
+    'SwiftProtobuf',
+    'Sources',
+    'SwiftProtobuf',
+    '**',
+    '*.swift',
+  )
+  Dir.glob(swift_protobuf_sources).each do |source_path|
+    contents = File.read(source_path)
+    next unless contents.match?(
+      /\bpackage\s+|nonisolated\(unsafe\)\s+|buffer\.initializeElement/,
+    )
+
+    File.chmod(0644, source_path)
+    compatible_contents = contents
+      .gsub(/\bpackage\s+/, 'internal ')
+      .gsub(/nonisolated\(unsafe\)\s+/, '')
+      .gsub(
+        'buffer.initializeElement(at: index, to: nextNullTerminatedString())',
+        'buffer.baseAddress!.advanced(by: index).initialize(to: nextNullTerminatedString())',
+      )
+    File.write(source_path, compatible_contents)
+  end
+
+  firebase_lock_path = File.join(
+    installer.sandbox.root,
+    'FirebaseCoreInternal',
+    'FirebaseCore',
+    'Internal',
+    'Sources',
+    'Utilities',
+    'FIRAllocatedUnfairLock.swift',
+  )
+  if File.exist?(firebase_lock_path)
+    contents = File.read(firebase_lock_path)
+    File.chmod(0644, firebase_lock_path)
+    File.write(
+      firebase_lock_path,
+      contents.gsub('initialState: sending State', 'initialState: State'),
+    )
+  end
+
+  firebase_heartbeats_path = File.join(
+    installer.sandbox.root,
+    'FirebaseCoreInternal',
+    'FirebaseCore',
+    'Internal',
+    'Sources',
+    'HeartbeatLogging',
+    'HeartbeatsPayload.swift',
+  )
+  if File.exist?(firebase_heartbeats_path)
+    contents = File.read(firebase_heartbeats_path)
+    File.chmod(0644, firebase_heartbeats_path)
+    File.write(
+      firebase_heartbeats_path,
+      contents.gsub('internal import ', 'import '),
+    )
   end
 end

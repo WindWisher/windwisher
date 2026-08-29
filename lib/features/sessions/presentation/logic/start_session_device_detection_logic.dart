@@ -4,8 +4,8 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
+import 'package:windwisher/features/sessions/di/sessions_module.dart';
 import 'package:windwisher/features/sessions/domain/entities/linked_device.dart';
-import 'package:windwisher/features/sessions/infrastructure/adapters/ble/ble_session_device_discovery_adapter.dart';
 import 'package:windwisher/features/sessions/presentation/models/start_session_models.dart';
 
 class StartSessionDeviceDetectionLogic {
@@ -18,7 +18,7 @@ class StartSessionDeviceDetectionLogic {
   static Future<SessionExternalDeviceDiscoveryAvailability>
   externalDeviceDiscoveryAvailability() async {
     try {
-      final adapter = BleSessionDeviceDiscoveryAdapter();
+      final adapter = SessionsModule.createDeviceDiscoveryAdapter();
       final status = await adapter.currentStatus();
       return switch (status) {
         BleStatus.ready => SessionExternalDeviceDiscoveryAvailability.ready,
@@ -46,7 +46,7 @@ class StartSessionDeviceDetectionLogic {
     }
 
     try {
-      final adapter = BleSessionDeviceDiscoveryAdapter();
+      final adapter = SessionsModule.createDeviceDiscoveryAdapter();
       final scannedDevices = await adapter.scanSupportedDevices();
       for (final device in scannedDevices) {
         devicesById.putIfAbsent(device.id, () => device);
@@ -155,7 +155,7 @@ class StartSessionDeviceDetectionLogic {
     SessionDetectedCompatibleDeviceData device,
   ) async {
     try {
-      final adapter = BleSessionDeviceDiscoveryAdapter();
+      final adapter = SessionsModule.createDeviceDiscoveryAdapter();
       return await adapter.probeDeviceCapabilities(device);
     } catch (_) {
       return device;

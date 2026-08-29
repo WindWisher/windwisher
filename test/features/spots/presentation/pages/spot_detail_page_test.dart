@@ -20,12 +20,15 @@ import 'package:windwisher/features/spots/infrastructure/services/inforatge_oliv
 import 'package:windwisher/features/spots/infrastructure/services/meteoblue_current_day_client.dart';
 import 'package:windwisher/features/spots/infrastructure/services/meteostat_day_client.dart';
 import 'package:windwisher/features/spots/infrastructure/services/meteosource_current_day_client.dart';
+import 'package:windwisher/features/spots/infrastructure/services/wunderground_pws_client.dart';
+import 'package:windwisher/features/spots/application/services/spot_capabilities_catalog.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/spot_detail_page.dart';
 
 void main() {
   testWidgets(
     'updates forecast banner and model options when provider changes',
     (tester) async {
+      final requestedProviders = <String>[];
       await _pumpSpotDetailPage(
         tester,
         SpotDetailPage(
@@ -43,6 +46,7 @@ void main() {
                     required provider,
                     required model,
                   }) async {
+                    requestedProviders.add(provider);
                     return [
                       _entry(
                         hour: 0,
@@ -64,6 +68,9 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Tabla Forecast (Best match)'), findsOneWidget);
+      expect(find.text('Mapa de viento Windy.app'), findsNothing);
+      expect(find.text('Prevision Windy.app'), findsNothing);
+      expect(requestedProviders, const ['Open-Meteo']);
 
       await tester.tap(
         find.widgetWithText(DropdownButtonFormField<String>, 'Proveedor meteo'),
@@ -72,11 +79,33 @@ void main() {
       expect(find.text('Meteosource'), findsWidgets);
       expect(find.text('Meteostat'), findsWidgets);
       expect(find.text('Windguru'), findsWidgets);
+      expect(find.text('Windy.app'), findsWidgets);
+      await tester.tap(find.text('Windy.app').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Mapa de viento Windy.app'), findsOneWidget);
+      expect(find.text('Prevision Windy.app'), findsOneWidget);
+      expect(requestedProviders, const ['Open-Meteo']);
+      expect(
+        find.widgetWithText(
+          DropdownButtonFormField<String>,
+          'Modelo de prevision',
+        ),
+        findsNothing,
+      );
+
+      await tester.tap(
+        find.widgetWithText(DropdownButtonFormField<String>, 'Proveedor meteo'),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.text('AEMET').last);
       await tester.pumpAndSettle();
 
       expect(find.text('Datos reales cargados desde AEMET.'), findsOneWidget);
       expect(find.text('Tabla Forecast (Puertos del Estado)'), findsOneWidget);
+      expect(find.text('Mapa de viento Windy.app'), findsNothing);
+      expect(find.text('Prevision Windy.app'), findsNothing);
+      expect(requestedProviders, const ['Open-Meteo', 'AEMET']);
 
       await tester.tap(
         find.widgetWithText(
@@ -378,6 +407,85 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets(
+    'Pantano de Alarcon uses WU primary and Weathercloud alternative',
+    (tester) async {
+      await _pumpSpotDetailPage(
+        tester,
+        SpotDetailPage(
+          name: pantanoAlarconSpotName,
+          area: 'Cuenca',
+          isCustom: false,
+          latitude: 39.7026608,
+          longitude: -2.2525999,
+          capabilities: pantanoAlarconSpotCapabilities,
+          spotsModule: _buildTestModule(
+            forecastPort: _FakeSpotsForecastPort(
+              handler:
+                  ({
+                    required spotName,
+                    required area,
+                    required provider,
+                    required model,
+                  }) async => [_entry(hour: 0)],
+            ),
+          ),
+          wundergroundPwsClient: WundergroundPwsClient(
+            fetchText: (uri) async {
+              if (uri.host == 'www.wunderground.com') {
+                return 'apiKey=test123';
+              }
+              return '''
+              {
+                "observations": [
+                  {
+                    "stationID": "IVALVE48",
+                    "obsTimeUtc": "2026-08-17T19:13:14Z",
+                    "obsTimeLocal": "2026-08-17 21:13:14",
+                    "lat": 39.714198,
+                    "lon": -2.224784,
+                    "humidity": 30,
+                    "winddir": 54,
+                    "metric": {
+                      "windSpeed": 3.5,
+                      "windGust": 3.9,
+                      "temp": 32.0,
+                      "pressure": 1014.0,
+                      "precipTotal": 0.0
+                    }
+                  }
+                ]
+              }
+            ''';
+            },
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Live'));
+      await tester.pumpAndSettle();
+
+      final stationDropdown = _liveStationDropdownFinder();
+      expect(
+        tester.state<FormFieldState<String>>(stationDropdown).value,
+        'wunderground:IVALVE48',
+      );
+
+      await tester.tap(stationDropdown);
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('WU Valverde de Júcar IVALVE48'),
+        findsWidgets,
+      );
+      expect(
+        find.textContaining('Weathercloud Vevor Estación Pueblo'),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('loads AVAMET history and forecast comparison on demand', (
     tester,
   ) async {

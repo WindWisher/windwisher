@@ -1,3 +1,6 @@
+import 'dart:ui' show PointerDeviceKind;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -473,6 +476,52 @@ void main() {
     expect(map.mapController?.camera.zoom, 16);
   });
 
+  testWidgets('includes Pantano de Alarcon at Playa Manchamar', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(450, 900);
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+    });
+
+    await tester.pumpWidget(
+      buildSpotsTestApp(
+        spotsModule: SpotsModule.inMemory(),
+        initiallyShowMap: true,
+      ),
+    );
+    await tester.pump();
+
+    await tester.enterText(
+      find.byKey(const Key('spots-search-input')),
+      'Playa Manchamar',
+    );
+    await tester.pump();
+
+    final suggestion = find.byKey(
+      const Key(
+        'spots-map-search-suggestion-Pantano de Alarcón - Playa Manchamar',
+      ),
+    );
+    expect(suggestion, findsOneWidget);
+
+    await tester.tap(suggestion);
+    await tester.pump();
+
+    final map = tester.widget<FlutterMap>(
+      find.byKey(const Key('spots-explorer-map')),
+    );
+    expect(
+      map.mapController?.camera.center.latitude,
+      closeTo(39.7026608, 1e-7),
+    );
+    expect(
+      map.mapController?.camera.center.longitude,
+      closeTo(-2.2525999, 1e-7),
+    );
+    expect(find.text('Cuenca'), findsOneWidget);
+  });
+
   testWidgets('scrolls the complete map section in landscape', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(900, 450);
@@ -494,11 +543,34 @@ void main() {
     final scrollFinder = find.byKey(const Key('spots-map-scroll'));
     expect(scrollFinder, findsOneWidget);
 
+    final map = tester.widget<FlutterMap>(mapFinder);
+    final interactionFlags = map.options.interactionOptions.flags;
+    expect(
+      InteractiveFlag.hasDrag(interactionFlags),
+      kIsWeb,
+      reason: 'Desktop web must pan with the primary mouse button.',
+    );
+    expect(InteractiveFlag.hasScrollWheelZoom(interactionFlags), isTrue);
+
     final mapRect = tester.getRect(mapFinder);
     final controlsRect = tester.getRect(controlsFinder);
     expect(mapRect.bottom - controlsRect.bottom, closeTo(12, 1));
 
     final initialMapTop = mapRect.top;
+    if (kIsWeb) {
+      final initialCenter = map.mapController!.camera.center;
+      final mouseGesture = await tester.startGesture(
+        tester.getCenter(mapFinder),
+        kind: PointerDeviceKind.mouse,
+      );
+      await mouseGesture.moveBy(const Offset(120, 0));
+      await tester.pump();
+      await mouseGesture.up();
+
+      expect(map.mapController!.camera.center, isNot(initialCenter));
+      expect(tester.getTopLeft(mapFinder).dy, initialMapTop);
+      return;
+    }
     await tester.drag(scrollFinder, const Offset(0, -140));
     await tester.pump();
 

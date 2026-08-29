@@ -7,6 +7,15 @@
   "deno.enablePaths": [
     "supabase/functions"
   ],
+  "files.associations": {
+    "**/.tmp/*.html": "plaintext"
+  },
+  "files.watcherExclude": {
+    "**/.tmp/**": true
+  },
+  "search.exclude": {
+    "**/.tmp/**": true
+  },
   "python.defaultInterpreterPath": "${workspaceFolder}/tmp/ble_env/bin/python",
   "chatgpt.openOnStartup": true,
   "java.jdt.ls.java.home": "/Applications/Android Studio.app/Contents/jbr/Contents/Home",

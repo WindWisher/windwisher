@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:windwisher/features/spots/domain/entities/spot_item.dart';
 import 'package:windwisher/features/spots/domain/ports/out/spots_catalog_port.dart';
-import 'package:windwisher/features/spots/infrastructure/data/spot_capabilities_catalog.dart';
+import 'package:windwisher/features/spots/application/services/spot_capabilities_catalog.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseSpotsCatalogAdapter implements SpotsCatalogPort {

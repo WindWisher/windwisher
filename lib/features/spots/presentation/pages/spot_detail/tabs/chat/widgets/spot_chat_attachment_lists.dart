@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_social_post.dart';
-import 'package:windwisher/features/spots/infrastructure/services/spot_social_client.dart';
+import 'package:windwisher/features/spots/application/services/spot_social_service.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/chat/widgets/spot_chat_attachment_cards.dart';
 
 class PendingSpotSocialAttachmentsList extends StatelessWidget {

@@ -167,6 +167,14 @@ const _availableSpots = <_AvailableSpot>[
     capabilities: elPerellonetSpotCapabilities,
   ),
   _AvailableSpot(
+    name: pantanoAlarconSpotName,
+    area: 'Cuenca',
+    latitude: 39.7026608,
+    longitude: -2.2525999,
+    aemetMunicipalityCode: '16003',
+    capabilities: pantanoAlarconSpotCapabilities,
+  ),
+  _AvailableSpot(
     name: tarifaBalnearioSpotName,
     area: 'Cadiz',
     latitude: 36.00911890458527,

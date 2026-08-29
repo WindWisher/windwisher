@@ -3,21 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/config/env/initialized_supabase_client.dart';
-import 'package:windwisher/features/spots/presentation/state/spot_alarm_catalog.dart';
+import 'package:windwisher/features/spots/application/models/spot_alarm_record.dart';
+import 'package:windwisher/features/spots/application/services/spot_alarm_sync_service.dart';
 
-class SpotAlarmSyncSnapshot {
-  const SpotAlarmSyncSnapshot({
-    required this.globalEnabled,
-    required this.spotEnabledByKey,
-    required this.alarms,
-  });
-
-  final bool globalEnabled;
-  final Map<String, bool> spotEnabledByKey;
-  final List<SpotAlarmRecord> alarms;
-}
-
-class SpotAlarmSyncClient {
+class SpotAlarmSyncClient implements SpotAlarmSyncService {
   SpotAlarmSyncClient._({
     required SupabaseClient? client,
     required bool useSupabase,
@@ -38,7 +27,9 @@ class SpotAlarmSyncClient {
   final bool _useSupabase;
   String? _lastError;
 
+  @override
   bool get canSync => _useSupabase && _client?.auth.currentUser != null;
+  @override
   String? get lastError => _lastError;
 
   void _ensureSyncAvailable() {
@@ -61,6 +52,7 @@ class SpotAlarmSyncClient {
     }
   }
 
+  @override
   Future<SpotAlarmSyncSnapshot?> loadSnapshot() async {
     if (!canSync || _client == null) {
       return null;
@@ -109,6 +101,7 @@ class SpotAlarmSyncClient {
     );
   }
 
+  @override
   Future<void> saveAlarm(SpotAlarmRecord alarm) async {
     _ensureSyncAvailable();
     final client = _client!;
@@ -143,6 +136,7 @@ class SpotAlarmSyncClient {
     }
   }
 
+  @override
   Future<void> deleteAlarm(String alarmId) async {
     _ensureSyncAvailable();
     final client = _client!;
@@ -155,6 +149,7 @@ class SpotAlarmSyncClient {
     }
   }
 
+  @override
   Future<void> saveAlarmRuntimeControls({
     required String alarmId,
     DateTime? snoozedUntil,
@@ -178,6 +173,7 @@ class SpotAlarmSyncClient {
     }
   }
 
+  @override
   Future<void> saveAlarmRuntimeControlsFromNotification({
     required String alarmId,
     DateTime? snoozedUntil,
@@ -201,10 +197,12 @@ class SpotAlarmSyncClient {
     }
   }
 
+  @override
   Future<void> saveGlobalEnabled(bool enabled) async {
     await _savePreference(scopeKey: _globalScopeKey, enabled: enabled);
   }
 
+  @override
   Future<void> saveSpotEnabled({
     required String spotKey,
     required bool enabled,

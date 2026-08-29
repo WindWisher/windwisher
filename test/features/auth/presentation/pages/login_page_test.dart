@@ -35,6 +35,6 @@ void main() {
     expect(find.text('Contrasena'), findsOneWidget);
     expect(find.text('Google no disponible'), findsOneWidget);
     expect(find.text('Apple no disponible'), findsOneWidget);
-    expect(find.text('Entrar con bypass'), findsOneWidget);
+    expect(find.text('Entrar con bypass'), findsNothing);
   });
 }

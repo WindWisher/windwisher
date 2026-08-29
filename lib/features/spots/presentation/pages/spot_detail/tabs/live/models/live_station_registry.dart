@@ -319,6 +319,20 @@ const String _wundergroundEssaouiraStationName = 'WU Essaouira IESSAO6';
 const double _wundergroundEssaouiraStationLat = 31.481392;
 const double _wundergroundEssaouiraStationLon = -9.759187;
 
+const String _wundergroundValverdeJucarStationId = 'IVALVE48';
+const String _wundergroundValverdeJucarStationKey = 'wunderground:IVALVE48';
+const String _wundergroundValverdeJucarStationName =
+    'WU Valverde de Júcar IVALVE48';
+const double _wundergroundValverdeJucarStationLat = 39.714198;
+const double _wundergroundValverdeJucarStationLon = -2.224784;
+
+const String _weathercloudValverdeVevorStationId = '3319010289';
+const String _weathercloudValverdeVevorStationKey = 'weathercloud:3319010289';
+const String _weathercloudValverdeVevorStationName =
+    'Weathercloud Vevor Estación Pueblo';
+const double _weathercloudValverdeVevorStationLat = 39.72117;
+const double _weathercloudValverdeVevorStationLon = -2.219301;
+
 const String _metarEssaouiraAirportStationId = 'GMMI';
 const String _metarEssaouiraAirportStationKey = 'metar:GMMI';
 const String _metarEssaouiraAirportStationName =

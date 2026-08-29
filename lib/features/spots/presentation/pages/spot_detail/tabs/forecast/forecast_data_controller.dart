@@ -18,6 +18,7 @@ extension _SpotDetailForecastDataController on _SpotDetailPageState {
       'Open-Meteo',
       'AEMET',
       if (_isWindguruWidgetEnabledForSpot(widget.name)) 'Windguru',
+      if (_isWindyAppWidgetEnabledForSpot(widget.name)) 'Windy.app',
       'Meteoblue',
       'Meteosource',
       'Meteostat',
@@ -31,6 +32,7 @@ extension _SpotDetailForecastDataController on _SpotDetailPageState {
       spotBeachCode: widget.aemetBeachCode,
       spotBeachCodes: widget.aemetBeachCodes,
       provider: provider,
+      supportsPortusForecast: widget.capabilities.supportsPortusForecast,
     );
   }
 
@@ -97,7 +99,7 @@ extension _SpotDetailForecastDataController on _SpotDetailPageState {
     if (provider == 'AEMET') {
       return isAemetPortusAtmosphereForecastModel(model ?? _forecastModel);
     }
-    return provider != 'Windguru';
+    return provider != 'Windguru' && provider != 'Windy.app';
   }
 
   bool _usesAemetBeachForecastModel([String? model]) {
@@ -153,6 +155,10 @@ extension _SpotDetailForecastDataController on _SpotDetailPageState {
 
   bool _usesWindguruProvider() {
     return _forecastProvider == 'Windguru';
+  }
+
+  bool _usesWindyAppProvider() {
+    return _forecastProvider == 'Windy.app';
   }
 
   Future<_ForecastLoadResult> _loadForecastRows() async {
@@ -285,8 +291,13 @@ extension _SpotDetailForecastDataController on _SpotDetailPageState {
   }
 
   void _handleForecastProviderChanged(String value) {
+    final wasUsingWindyApp = _usesWindyAppProvider();
     setState(() {
       _forecastProvider = value;
+      if (wasUsingWindyApp && value != 'Windy.app') {
+        _windyForecastController = null;
+        _windyMapController = null;
+      }
       final models = _modelsForProvider(value);
       if (!models.contains(_forecastModel) && models.isNotEmpty) {
         _forecastModel =
@@ -296,12 +307,14 @@ extension _SpotDetailForecastDataController on _SpotDetailPageState {
               spotBeachCode: widget.aemetBeachCode,
               spotBeachCodes: widget.aemetBeachCodes,
               provider: value,
+              supportsPortusForecast:
+                  widget.capabilities.supportsPortusForecast,
             ) ??
             models.first;
       }
       _syncForecastRangeWithProvider();
     });
-    if (_usesWindguruProvider()) {
+    if (_usesWindguruProvider() || _usesWindyAppProvider()) {
       return;
     }
     if (_usesAemetBeachForecastModel()) {

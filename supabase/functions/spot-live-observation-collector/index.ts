@@ -61,6 +61,18 @@ const olivaXeloWuDiagnosticSamples: Record<
 const stations: LiveStationConfig[] = [
   {
     provider: "WUNDERGROUND",
+    stationKey: "wunderground:IVALVE48",
+    stationId: "IVALVE48",
+    stationName: "WU Valverde de Júcar IVALVE48",
+  },
+  {
+    provider: "WEATHERCLOUD",
+    stationKey: "weathercloud:3319010289",
+    stationId: "3319010289",
+    stationName: "Weathercloud Vevor Estación Pueblo",
+  },
+  {
+    provider: "WUNDERGROUND",
     stationKey: "wunderground:IESSAO6",
     stationId: "IESSAO6",
     stationName: "WU Essaouira IESSAO6",

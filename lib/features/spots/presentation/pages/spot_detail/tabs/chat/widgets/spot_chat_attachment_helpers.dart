@@ -1,6 +1,6 @@
 import 'package:image_picker/image_picker.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_social_post.dart';
-import 'package:windwisher/features/spots/infrastructure/services/spot_social_client.dart';
+import 'package:windwisher/features/spots/application/services/spot_social_service.dart';
 
 String spotChatAttachmentFileName(XFile file) {
   final name = file.name.trim();

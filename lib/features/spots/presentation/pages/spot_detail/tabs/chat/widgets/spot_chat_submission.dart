@@ -1,4 +1,4 @@
-import 'package:windwisher/features/spots/infrastructure/services/spot_social_client.dart';
+import 'package:windwisher/features/spots/application/services/spot_social_service.dart';
 
 class SpotChatPostSubmission {
   const SpotChatPostSubmission({

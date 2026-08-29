@@ -1633,6 +1633,38 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     );
   }
 
+  void _addPantanoAlarconLiveStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _wundergroundValverdeJucarStationKey,
+      stationName: _wundergroundValverdeJucarStationName,
+      provider: 'WUNDERGROUND',
+      stationId: _wundergroundValverdeJucarStationId,
+      latitude: _wundergroundValverdeJucarStationLat,
+      longitude: _wundergroundValverdeJucarStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _weathercloudValverdeVevorStationKey,
+      stationName: _weathercloudValverdeVevorStationName,
+      provider: 'WEATHERCLOUD',
+      stationId: _weathercloudValverdeVevorStationId,
+      latitude: _weathercloudValverdeVevorStationLat,
+      longitude: _weathercloudValverdeVevorStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+  }
+
   void _addElPerellonetLiveStations({
     required double latitude,
     required double longitude,
@@ -1920,6 +1952,11 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
   bool _usesEssaouiraLiveProfile() {
     final capabilities = _resolvedSpotCapabilities();
     return capabilities.liveStationProfile == essaouiraLiveStationProfile;
+  }
+
+  bool _usesPantanoAlarconLiveProfile() {
+    final capabilities = _resolvedSpotCapabilities();
+    return capabilities.liveStationProfile == pantanoAlarconLiveStationProfile;
   }
 
   String _inforatgeStationCodeFor(String? stationId) {

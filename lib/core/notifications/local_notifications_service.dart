@@ -262,6 +262,40 @@ class LocalNotificationsService {
     return grantedValues.any((value) => value);
   }
 
+  Future<void> cancelAllNotifications() async {
+    await initialize();
+    for (final timer in _foregroundAlarmRepeatTimers.values) {
+      timer.cancel();
+    }
+    _foregroundAlarmRepeatTimers.clear();
+    await _plugin.cancelAll();
+  }
+
+  Future<void> cancelSpotAlarmNotifications() async {
+    for (final timer in _foregroundAlarmRepeatTimers.values) {
+      timer.cancel();
+    }
+    _foregroundAlarmRepeatTimers.clear();
+    await _cancelNotificationsForType(
+      type: 'spot_alarm',
+      channelId: _alarmChannelId,
+    );
+  }
+
+  Future<void> cancelDirectMessageNotifications() {
+    return _cancelNotificationsForType(
+      type: 'direct_message',
+      channelId: _directMessageChannelId,
+    );
+  }
+
+  Future<void> cancelSpotChatNotifications() {
+    return _cancelNotificationsForType(
+      type: 'spot_chat',
+      channelId: _spotChatChannelId,
+    );
+  }
+
   Future<void> showDirectMessage({
     required String threadId,
     required String messageId,
@@ -1186,6 +1220,42 @@ class LocalNotificationsService {
     } catch (error, stackTrace) {
       debugPrint(
         'LocalNotificationsService: active alarm notification cleanup failed: $error',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+    }
+  }
+
+  Future<void> _cancelNotificationsForType({
+    required String type,
+    required String channelId,
+  }) async {
+    await initialize();
+    try {
+      final pending = await _plugin.pendingNotificationRequests();
+      for (final notification in pending) {
+        final payload = notification.payload;
+        if (payload == null || payload.isEmpty) {
+          continue;
+        }
+        try {
+          final decoded = jsonDecode(payload);
+          if (decoded is Map<String, dynamic> && decoded['type'] == type) {
+            await _plugin.cancel(id: notification.id);
+          }
+        } catch (_) {
+          continue;
+        }
+      }
+      final active = await _plugin.getActiveNotifications();
+      for (final notification in active) {
+        final id = notification.id;
+        if (id != null && notification.channelId == channelId) {
+          await _plugin.cancel(id: id);
+        }
+      }
+    } catch (error, stackTrace) {
+      debugPrint(
+        'LocalNotificationsService: category cleanup failed type=$type error=$error',
       );
       debugPrintStack(stackTrace: stackTrace);
     }

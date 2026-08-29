@@ -7,6 +7,19 @@ import 'package:windwisher/features/community/presentation/pages/community_page.
 import 'package:windwisher/features/community/presentation/pages/community_user_profile_page.dart';
 import 'package:windwisher/features/community/presentation/pages/community_user_sessions_page.dart';
 
+Future<void> _openAirLucasFeed(WidgetTester tester) async {
+  await tester.tap(find.text('Amigos'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Explorar'));
+  await tester.pumpAndSettle();
+  await tester.enterText(find.byType(TextField), 'air_lucas');
+  await tester.pumpAndSettle();
+  await tester.tap(find.widgetWithText(TextButton, 'Seguir').first);
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Feed'));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets('community shows leaderboard and following segments', (
     tester,
@@ -53,15 +66,15 @@ void main() {
     await tester.tap(find.text('Mostrar filtros'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Salto mas alto').first);
+    await tester.tap(find.text('Salto mas alto (m)').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Big Air score').last);
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.widgetWithText(FilledButton, 'Aplicar filtros'));
+    await tester.tap(find.text('Big Air score (pts)').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('Big Air score (pts)'), findsOneWidget);
+    await tester.tap(find.text('Aplicar filtros'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Big Air score (pts)'), findsWidgets);
   });
 
   testWidgets('leaderboard filters are visible', (tester) async {
@@ -72,14 +85,11 @@ void main() {
     await tester.tap(find.text('Mostrar filtros'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Periodo'), findsWidgets);
+    expect(find.text('Periodo'), findsNothing);
     expect(find.text('Spot'), findsWidgets);
     expect(find.text('Scope'), findsWidgets);
     expect(find.text('Orden'), findsWidgets);
-    expect(
-      find.widgetWithText(FilledButton, 'Aplicar filtros'),
-      findsOneWidget,
-    );
+    expect(find.text('Aplicar filtros'), findsOneWidget);
   });
 
   testWidgets('amigos shows social tabs and feed actions', (tester) async {
@@ -96,9 +106,7 @@ void main() {
     expect(find.text('Seguidores'), findsOneWidget);
     expect(find.text('Explorar'), findsOneWidget);
 
-    expect(find.textContaining('likes'), findsWidgets);
-    expect(find.byTooltip('Dar like'), findsWidgets);
-    expect(find.byTooltip('Comentar'), findsWidgets);
+    expect(find.textContaining('Todavia no sigues a nadie'), findsOneWidget);
   });
 
   testWidgets('amigos explore lets follow and appears in siguiendo', (
@@ -154,8 +162,7 @@ void main() {
       const MaterialApp(home: CommunityPage(useLocalPersistence: false)),
     );
 
-    await tester.tap(find.text('Amigos'));
-    await tester.pumpAndSettle();
+    await _openAirLucasFeed(tester);
 
     expect(find.text('184 likes'), findsOneWidget);
     const firstSessionLikeKey = ValueKey<String>(
@@ -170,8 +177,7 @@ void main() {
       const MaterialApp(home: CommunityPage(useLocalPersistence: false)),
     );
 
-    await tester.tap(find.text('Amigos'));
-    await tester.pumpAndSettle();
+    await _openAirLucasFeed(tester);
 
     expect(find.text('0 comentarios'), findsWidgets);
 
@@ -188,8 +194,7 @@ void main() {
       const MaterialApp(home: CommunityPage(useLocalPersistence: false)),
     );
 
-    await tester.tap(find.text('Amigos'));
-    await tester.pumpAndSettle();
+    await _openAirLucasFeed(tester);
 
     final commentButton = find.byKey(
       const ValueKey<String>('session_comment_sess-air-lucas-20260223-1840'),
@@ -255,8 +260,7 @@ void main() {
       const MaterialApp(home: CommunityPage(useLocalPersistence: false)),
     );
 
-    await tester.tap(find.text('Amigos'));
-    await tester.pumpAndSettle();
+    await _openAirLucasFeed(tester);
 
     final viewSessionFinder = find.byKey(
       const ValueKey<String>('session_view_sess-air-lucas-20260223-1840'),
@@ -271,8 +275,7 @@ void main() {
       const MaterialApp(home: CommunityPage(useLocalPersistence: false)),
     );
 
-    await tester.tap(find.text('Amigos'));
-    await tester.pumpAndSettle();
+    await _openAirLucasFeed(tester);
 
     final viewButton = find.byKey(
       const ValueKey<String>('session_view_sess-air-lucas-20260223-1840'),
@@ -281,10 +284,9 @@ void main() {
     viewButtonWidget.onPressed?.call();
     await tester.pumpAndSettle();
 
-    expect(find.text('Detalle de sesion'), findsOneWidget);
-    expect(find.text('Contexto de sesion'), findsOneWidget);
-    expect(find.text('Origen: Community'), findsOneWidget);
-    expect(find.textContaining('Air Lucas en'), findsOneWidget);
+    expect(find.text('Detalle de sesión'), findsOneWidget);
+    expect(find.text('Sesion sunset en Tarifa'), findsOneWidget);
+    expect(find.text('Resumen post-sesion'), findsOneWidget);
   });
 
   testWidgets('amigos session card tap no longer opens detail', (tester) async {
@@ -292,8 +294,7 @@ void main() {
       const MaterialApp(home: CommunityPage(useLocalPersistence: false)),
     );
 
-    await tester.tap(find.text('Amigos'));
-    await tester.pumpAndSettle();
+    await _openAirLucasFeed(tester);
 
     final sessionPhotoFinder = find.text('Foto de la sesion').first;
     await tester.ensureVisible(sessionPhotoFinder);

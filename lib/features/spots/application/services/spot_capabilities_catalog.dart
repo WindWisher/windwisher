@@ -86,6 +86,9 @@ const String essaouiraLiveStationProfile = 'essaouira';
 const String essaouiraWebcamProfile = 'essaouira_webcams';
 const String essaouiraPreferredLiveStationKey = 'wunderground:IESSAO6';
 const String essaouiraSpotName = 'Essaouira';
+const String pantanoAlarconLiveStationProfile = 'pantano_alarcon';
+const String pantanoAlarconPreferredLiveStationKey = 'wunderground:IVALVE48';
+const String pantanoAlarconSpotName = 'Pantano de Alarcón - Playa Manchamar';
 
 const olivaCanalGorgsSpotCapabilities = SpotCapabilities(
   liveStationProfile: olivaCanalGorgsLiveStationProfile,
@@ -308,6 +311,17 @@ const essaouiraSpotCapabilities = SpotCapabilities(
   preferredLiveStationKey: essaouiraPreferredLiveStationKey,
 );
 
+const pantanoAlarconSpotCapabilities = SpotCapabilities(
+  liveStationProfile: pantanoAlarconLiveStationProfile,
+  preferredLiveStationKey: pantanoAlarconPreferredLiveStationKey,
+  defaultForecastProvider: 'Open-Meteo',
+  defaultForecastModel: 'Best match',
+  supportsPortusForecast: false,
+  navigationLatitude: 39.7026608,
+  navigationLongitude: -2.2525999,
+  navigationLabel: 'Llegada Playa Manchamar',
+);
+
 SpotCapabilities defaultSpotCapabilitiesForName(String name) {
   final normalized = name.trim().toLowerCase();
   if (normalized == olivaCanalGorgsSpotName.toLowerCase()) {
@@ -369,6 +383,9 @@ SpotCapabilities defaultSpotCapabilitiesForName(String name) {
   }
   if (normalized == essaouiraSpotName.toLowerCase()) {
     return essaouiraSpotCapabilities;
+  }
+  if (normalized == pantanoAlarconSpotName.toLowerCase()) {
+    return pantanoAlarconSpotCapabilities;
   }
   return SpotCapabilities.empty;
 }

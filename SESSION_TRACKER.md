@@ -2,7 +2,7 @@
 
 ## Total historico consolidado
 
-- `Total historico minimo consolidado del proyecto: 242h 13m 01s`.
+- `Total historico minimo consolidado del proyecto: 244h 56m 08s`.
 - Referencia de calculo:
   - `Total acumulado de referencia` consolidado en `2026-03-02`: `34h 49m`
   - `Acumulado combinado confirmado del dia` en `2026-03-15`: `21h 35m`
@@ -42,10 +42,11 @@
   - bloque consolidado adicional en `2026-08-11`: `+31m 23s` reales observables (`Spots map explorer and legacy failure cleanup`)
   - bloque consolidado adicional en `2026-08-12`: `+2h 43m 39s` reales observables (`Spots map catalog, predictive search, responsive controls and web deploy`)
   - bloque consolidado adicional en `2026-08-13`: `+2h 33m 12s` reales observables (`Map performance, jump validation lab and per-user unit synchronization`)
+  - bloque consolidado adicional en `2026-08-29`: `+2h 43m 07s` reales observables (`Notifications, Pantano de Alarcon, Spot services, AVAMET time handling, Windy.app experiment and compatibility cleanup`)
 - Nota:
   - esta cifra evita confundir el acumulado del dia con el historico total,
   - debe actualizarse solo cuando exista una nueva consolidacion explicita en el propio tracker.
-  - ultima consolidacion manual anadida el `2026-08-13`: `+2h 33m 12s` reales observables (`Map performance, jump validation lab and per-user unit synchronization`).
+  - ultima consolidacion manual anadida el `2026-08-29`: `+2h 43m 07s` reales observables (`Notifications, Pantano de Alarcon, Spot services, AVAMET time handling, Windy.app experiment and compatibility cleanup`).
   - regla operativa: las futuras consolidaciones deben reflejar el tiempo real transcurrido de programacion, no una estimacion amplia.
 
 ## Rol operativo permanente (MeteoKite Master Prompt v2)
@@ -17444,3 +17445,44 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
       - `flutter analyze` limpio en el catalogo de capacidades, webcams y modulo Webcam,
       - `git diff --check` limpio,
       - `.tmp/` queda fuera de git como carpeta temporal de investigacion.
+
+  - bloque nuevo `2026-08-29`:
+    - consolidacion de ajustes, notificaciones y Spots acumulados desde el commit `52f5b7f`,
+    - tiempo real trabajado en este tramo: `2h 43m 07s` de ejecucion activa observable en `43` turnos,
+    - medicion obtenida de los timestamps reales `task_started` / `task_complete`; no incluye los dias naturales transcurridos entre sesiones,
+    - notificaciones:
+      - anadidas preferencias globales y por categoria aisladas por usuario,
+      - incorporados controles para alarmas, menciones, mensajes directos y actividad social,
+      - sincronizada la configuracion con Supabase y anadida la migracion de categorias push,
+      - simplificado el estado visual y reforzada la gestion del permiso del dispositivo,
+    - arquitectura y compatibilidad:
+      - movidos modelos y servicios de alarmas, capacidades y chat social hacia la capa de aplicacion,
+      - limpiadas dependencias de presentacion sobre clientes de infraestructura,
+      - actualizados tests antiguos de Auth, Community, Profile, Sessions y Spots,
+      - fijada compatibilidad de video y CocoaPods para Xcode 14.2 / macOS SDK 13.1,
+    - Spots:
+      - creado `Pantano de Alarcon - Playa Manchamar` con coordenadas reales,
+      - deshabilitado Puertos del Estado para este spot interior,
+      - configuradas `WU Valverde de Jucar IVALVE48` y `Weathercloud Vevor Estacion Pueblo` para Live e historico backend,
+      - mejorado el desplazamiento del mapa web mediante raton,
+      - mantenida la separacion entre catalogo completo del mapa y lista de spots guardados,
+    - historicos Live:
+      - corregida la interpretacion de timestamps AVAMET para evitar aplicar offsets UTC inexistentes,
+      - anadidas pruebas de hora local, UTC y cambios de horario de verano/invierno,
+      - reforzado el posicionamiento temporal y la seleccion de datos en las graficas,
+    - Forecast / Windy.app:
+      - anadido proveedor experimental `Windy.app` solo para Oliva con mapa y tabla por coordenadas exactas,
+      - implementados WebView nativo e iframe web con inicializacion estrictamente bajo demanda,
+      - evitadas peticiones al backend de forecast al seleccionar el proveedor,
+      - liberados controladores al abandonarlo y reutilizados registros de iframe en web,
+      - documentada la restriccion actual de sus condiciones de uso para aplicaciones meteorologicas; no se amplia a otros spots sin autorizacion escrita,
+    - entorno IDE:
+      - los snapshots HTML de `.tmp` se tratan como texto plano y quedan fuera del watcher y las busquedas de VS Code,
+      - eliminados falsos diagnosticos sin ocultar problemas reales de Dart, Deno o fuentes versionadas,
+    - verificacion:
+      - `flutter analyze`: limpio,
+      - `flutter test`: `163/163` pruebas superadas,
+      - `flutter build web --release --dart-define-from-file=local.env.json`: correcto,
+      - `deno check supabase/functions/spot-live-observation-collector/index.ts`: correcto,
+      - `git diff --cached --check`: limpio,
+      - escaneo de credenciales limpio; `local.env.json` y `.tmp/` permanecen fuera de Git.

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
+import 'package:windwisher/core/notifications/push_notification_subscription_service.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/notifications/local_notifications_service.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
@@ -238,6 +239,11 @@ class ProfilePageState extends State<ProfilePage> {
   Future<void> _notifyForegroundDirectMessagesIfNeeded(
     List<DirectMessageThread> previousThreads,
   ) async {
+    await PushNotificationSubscriptionService.instance.initialize();
+    if (!PushNotificationSubscriptionService.instance.enabled ||
+        !PushNotificationSubscriptionService.instance.directMessagesEnabled) {
+      return;
+    }
     if (_selectedTabIndex == 2 && _activeDirectChatThreadId != null) {
       return;
     }
@@ -1081,6 +1087,8 @@ class ProfilePageState extends State<ProfilePage> {
 
   @override
   void dispose() {
+    _messagesAutoRefreshTimer?.cancel();
+    _messagesRealtimeSubscription?.cancel();
     _messagesController.dispose();
     _messageSearchController.dispose();
     _gearSetupNameController.dispose();
@@ -1157,68 +1165,71 @@ class ProfilePageState extends State<ProfilePage> {
           key: const ValueKey('perfil_tab'),
           children: [
             Center(
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.secondaryContainer,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(_profileSections.length, (index) {
-                    final isSelected = _selectedProfileSectionIndex == index;
-                    final colorScheme = Theme.of(context).colorScheme;
-                    final textTheme = Theme.of(context).textTheme;
-                    return Padding(
-                      padding: EdgeInsets.only(
-                        right: index == _profileSections.length - 1 ? 0 : 4,
-                      ),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () {
-                          setState(() {
-                            _selectedProfileSectionIndex = index;
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          curve: Curves.easeOut,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.lg,
-                            vertical: AppSpacing.sm,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? colorScheme.surface
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: colorScheme.shadow.withValues(
-                                        alpha: 0.08,
-                                      ),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Text(
-                            _profileSections[index],
-                            style: textTheme.titleSmall?.copyWith(
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(_profileSections.length, (index) {
+                      final isSelected = _selectedProfileSectionIndex == index;
+                      final colorScheme = Theme.of(context).colorScheme;
+                      final textTheme = Theme.of(context).textTheme;
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          right: index == _profileSections.length - 1 ? 0 : 4,
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () {
+                            setState(() {
+                              _selectedProfileSectionIndex = index;
+                            });
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            curve: Curves.easeOut,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.lg,
+                              vertical: AppSpacing.sm,
+                            ),
+                            decoration: BoxDecoration(
                               color: isSelected
-                                  ? colorScheme.onSurface
-                                  : colorScheme.onSurfaceVariant,
-                              fontWeight: isSelected
-                                  ? FontWeight.w700
-                                  : FontWeight.w600,
+                                  ? colorScheme.surface
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: colorScheme.shadow.withValues(
+                                          alpha: 0.08,
+                                        ),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Text(
+                              _profileSections[index],
+                              style: textTheme.titleSmall?.copyWith(
+                                color: isSelected
+                                    ? colorScheme.onSurface
+                                    : colorScheme.onSurfaceVariant,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  }),
+                      );
+                    }),
+                  ),
                 ),
               ),
             ),

@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:windwisher/features/spots/application/use_cases/spots_catalog_use_cases.dart';
 import 'package:windwisher/features/spots/application/use_cases/spots_forecast_use_cases.dart';
 import 'package:windwisher/features/spots/application/use_cases/spots_remote_media_use_cases.dart';
+import 'package:windwisher/features/spots/application/services/spot_alarm_sync_service.dart';
+import 'package:windwisher/features/spots/application/services/spot_social_service.dart';
 import 'package:windwisher/features/spots/infrastructure/adapters/aemet/aemet_spots_forecast_adapter.dart';
 import 'package:windwisher/features/spots/infrastructure/adapters/composite/composite_spots_forecast_adapter.dart';
 import 'package:windwisher/features/spots/infrastructure/adapters/in_memory/in_memory_spots_forecast_cache_store.dart';
@@ -14,9 +16,19 @@ import 'package:windwisher/features/spots/infrastructure/adapters/meteosource/me
 import 'package:windwisher/features/spots/infrastructure/adapters/open_meteo/open_meteo_spots_forecast_adapter.dart';
 import 'package:windwisher/features/spots/infrastructure/adapters/portus/portus_spots_forecast_adapter.dart';
 import 'package:windwisher/features/spots/infrastructure/adapters/supabase/supabase_spots_catalog_adapter.dart';
+import 'package:windwisher/features/spots/infrastructure/services/spot_alarm_sync_client.dart';
+import 'package:windwisher/features/spots/infrastructure/services/spot_social_client.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 
 class SpotsModule {
+  static SpotAlarmSyncService createAlarmSyncService() {
+    return SpotAlarmSyncClient.auto();
+  }
+
+  static SpotSocialService createSocialService() {
+    return SpotSocialClient.auto();
+  }
+
   const SpotsModule({
     required this.getSpots,
     required this.saveSpot,

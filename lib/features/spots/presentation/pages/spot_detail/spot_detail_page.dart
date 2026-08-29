@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -17,6 +18,8 @@ import 'package:windwisher/core/units/app_units_controller.dart';
 import 'package:windwisher/features/profile/di/profile_module.dart';
 import 'package:windwisher/features/profile/domain/entities/user_profile_data.dart';
 import 'package:windwisher/features/spots/application/services/spots_external_data_clients.dart';
+import 'package:windwisher/features/spots/application/services/spot_capabilities_catalog.dart';
+import 'package:windwisher/features/spots/application/services/spot_social_service.dart';
 import 'package:windwisher/features/spots/application/services/spot_forecast_model_info.dart';
 import 'package:windwisher/features/spots/application/services/spot_forecast_model_order.dart';
 import 'package:windwisher/features/spots/application/services/spot_forecast_model_recommendations.dart';
@@ -26,7 +29,6 @@ import 'package:windwisher/features/spots/domain/entities/spot_forecast_entry.da
 import 'package:windwisher/features/spots/domain/entities/spot_item.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_social_post.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_webcam.dart';
-import 'package:windwisher/features/spots/infrastructure/data/spot_capabilities_catalog.dart';
 import 'package:windwisher/features/spots/presentation/state/spot_alarm_catalog.dart';
 import 'package:windwisher/features/spots/presentation/pages/wind_map_page.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/chat/widgets/spot_chat_widgets.dart';
@@ -37,8 +39,8 @@ import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/fo
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/tables/meteostat/meteostat_day_supplement_card.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/tables/shared/forecast_table_chrome.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/tables/windguru/windguru_forecast_card.dart';
+import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/forecast/widgets/windy_widget_web_embed.dart';
 import 'package:windwisher/features/spots/presentation/pages/spot_detail/tabs/webcam/webcam_player_page.dart';
-import 'package:windwisher/features/spots/infrastructure/services/spot_social_client.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -53,6 +55,8 @@ part 'tabs/forecast/forecast_status_widgets.dart';
 part 'tabs/forecast/forecast_supplement_loaders.dart';
 part 'tabs/forecast/forecast_supplements_section.dart';
 part 'tabs/forecast/forecast_table_section.dart';
+part 'tabs/forecast/forecast_windy_forecast_section.dart';
+part 'tabs/forecast/forecast_windy_map_section.dart';
 part 'tabs/forecast/widgets/tables/shared/forecast_table_selectors.dart';
 part 'tabs/live/models/live_history_models.dart';
 part 'tabs/live/models/live_station_models.dart';
@@ -230,6 +234,8 @@ class _SpotDetailPageState extends State<SpotDetailPage>
   String? _historyChartFullscreenFocusKey;
   WebViewController? _windguruController;
   WebViewController? _windguruFullscreenController;
+  WebViewController? _windyForecastController;
+  WebViewController? _windyMapController;
   bool _isLiveRefreshing = false;
   bool _isHistoricalRefreshing = false;
   bool _isHistoricalLoading = false;
@@ -280,7 +286,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
       const <SpotSocialAttachmentDraft>[];
   List<SpotSocialAttachmentDraft> _pendingSocialReplyAttachments =
       const <SpotSocialAttachmentDraft>[];
-  late final SpotSocialClient _spotSocialClient;
+  late final SpotSocialService _spotSocialClient;
   late final SpotChatRealtimeController _spotChatRealtimeController;
   late final ProfileModule _profileModule;
   late final UserProfileData _fallbackSocialProfile;
@@ -383,6 +389,7 @@ class _SpotDetailPageState extends State<SpotDetailPage>
           spotBeachCode: widget.aemetBeachCode,
           spotBeachCodes: widget.aemetBeachCodes,
           provider: _forecastProvider,
+          supportsPortusForecast: widget.capabilities.supportsPortusForecast,
         ) ??
         _modelsForProvider(_forecastProvider).first;
     _forecastRowsFuture = _loadForecastRows();

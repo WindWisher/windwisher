@@ -1,6 +1,6 @@
 import 'package:windwisher/features/spots/domain/entities/spot_webcam.dart';
 import 'package:windwisher/features/spots/domain/ports/out/spots_remote_media_port.dart';
-import 'package:windwisher/features/spots/infrastructure/data/spot_capabilities_catalog.dart';
+import 'package:windwisher/features/spots/application/services/spot_capabilities_catalog.dart';
 import 'package:windwisher/features/spots/infrastructure/data/spot_webcam_catalog.dart';
 
 class InMemorySpotsRemoteMediaAdapter implements SpotsRemoteMediaPort {

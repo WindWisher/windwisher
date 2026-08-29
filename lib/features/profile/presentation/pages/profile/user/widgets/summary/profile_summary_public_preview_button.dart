@@ -8,6 +8,7 @@ class ProfileSummaryPublicPreviewButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton.filledTonal(
+      tooltip: 'Vista publica',
       onPressed: onPressed,
       style: IconButton.styleFrom(
         backgroundColor: Colors.white.withValues(alpha: 0.18),

@@ -76,10 +76,7 @@ class AvametIntradayHistoryClient {
     for (final speedPoint in speedPoints) {
       points.add(
         AvametIntradayHistoryPoint(
-          time: DateTime.fromMillisecondsSinceEpoch(
-            speedPoint.timestampMillis,
-            isUtc: true,
-          ).toLocal(),
+          time: _decodeAvametChartTime(speedPoint.timestampMillis),
           windKnots: speedPoint.value * 0.539957,
           windDirectionDeg: _findNearestDirectionDeg(
             directionPoints,
@@ -91,6 +88,25 @@ class AvametIntradayHistoryClient {
 
     points.sort((a, b) => a.time.compareTo(b.time));
     return points;
+  }
+
+  DateTime _decodeAvametChartTime(int timestampMillis) {
+    // AVAMET encodes the station's local wall-clock fields as UTC milliseconds.
+    // Converting that value with toLocal() would shift summer readings by +2 h.
+    final encoded = DateTime.fromMillisecondsSinceEpoch(
+      timestampMillis,
+      isUtc: true,
+    );
+    return DateTime(
+      encoded.year,
+      encoded.month,
+      encoded.day,
+      encoded.hour,
+      encoded.minute,
+      encoded.second,
+      encoded.millisecond,
+      encoded.microsecond,
+    );
   }
 
   List<_SeriesPoint> _parseSeriesPairs(String? rawSeries) {

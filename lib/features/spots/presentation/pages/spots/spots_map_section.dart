@@ -184,15 +184,9 @@ extension _SpotsMapSection on SpotsPageState {
       options: MapOptions(
         initialCenter: const LatLng(38.75, -0.2),
         initialZoom: 8,
-        interactionOptions: isLandscape
-            ? const InteractionOptions(
-                flags:
-                    InteractiveFlag.pinchMove |
-                    InteractiveFlag.pinchZoom |
-                    InteractiveFlag.doubleTapZoom |
-                    InteractiveFlag.scrollWheelZoom,
-              )
-            : const InteractionOptions(),
+        interactionOptions: _spotsMapInteractionOptions(
+          isLandscape: isLandscape,
+        ),
         onTap: (_, _) => _clearSelectedMapSpot(),
       ),
       children: [
@@ -212,6 +206,33 @@ extension _SpotsMapSection on SpotsPageState {
         ),
       ],
     );
+  }
+
+  InteractionOptions _spotsMapInteractionOptions({required bool isLandscape}) {
+    if (kIsWeb) {
+      return InteractionOptions(
+        flags:
+            InteractiveFlag.drag |
+            InteractiveFlag.flingAnimation |
+            InteractiveFlag.pinchMove |
+            InteractiveFlag.pinchZoom |
+            InteractiveFlag.doubleTapZoom |
+            InteractiveFlag.doubleTapDragZoom |
+            InteractiveFlag.scrollWheelZoom,
+        scrollWheelVelocity: 0.0025,
+        cursorKeyboardRotationOptions: CursorKeyboardRotationOptions.disabled(),
+      );
+    }
+    if (isLandscape) {
+      return const InteractionOptions(
+        flags:
+            InteractiveFlag.pinchMove |
+            InteractiveFlag.pinchZoom |
+            InteractiveFlag.doubleTapZoom |
+            InteractiveFlag.scrollWheelZoom,
+      );
+    }
+    return const InteractionOptions();
   }
 
   Marker _buildSpotMapMarker(_SpotItem spot) {

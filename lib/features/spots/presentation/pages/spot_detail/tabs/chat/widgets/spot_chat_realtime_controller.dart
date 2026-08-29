@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:windwisher/features/spots/infrastructure/services/spot_social_client.dart';
+import 'package:windwisher/features/spots/application/services/spot_social_service.dart';
 
 class SpotChatRealtimeController {
   SpotChatRealtimeController({
-    required SpotSocialClient client,
+    required SpotSocialService client,
     required String spotName,
     required String spotArea,
     required Future<void> Function() onFeedChanged,
@@ -19,7 +19,7 @@ class SpotChatRealtimeController {
        _onTypingChanged = onTypingChanged,
        _displayName = displayName;
 
-  final SpotSocialClient _client;
+  final SpotSocialService _client;
   final String _spotName;
   final String _spotArea;
   final Future<void> Function() _onFeedChanged;

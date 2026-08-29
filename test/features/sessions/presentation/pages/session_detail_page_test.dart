@@ -105,7 +105,7 @@ void main() {
     expect(find.text('Altura est.'), findsOneWidget);
     expect(find.text('Hangtime'), findsOneWidget);
     expect(find.text('Maniobra'), findsOneWidget);
-    expect(find.text('Recepcion'), findsOneWidget);
+    expect(find.textContaining('Recepcion:'), findsOneWidget);
     expect(find.text('Min:Seg'), findsOneWidget);
 
     await tester.scrollUntilVisible(

@@ -10,8 +10,13 @@ import 'package:windwisher/features/sessions/infrastructure/adapters/local/local
 import 'package:windwisher/features/sessions/infrastructure/adapters/local/local_file_session_records_adapter.dart';
 import 'package:windwisher/features/sessions/infrastructure/adapters/local/local_file_session_view_preferences_adapter.dart';
 import 'package:windwisher/features/sessions/infrastructure/adapters/supabase/supabase_session_records_adapter.dart';
+import 'package:windwisher/features/sessions/infrastructure/adapters/ble/ble_session_device_discovery_adapter.dart';
 
 class SessionsModule {
+  static BleSessionDeviceDiscoveryAdapter createDeviceDiscoveryAdapter() {
+    return BleSessionDeviceDiscoveryAdapter();
+  }
+
   const SessionsModule({
     required this.getLinkedDevices,
     required this.saveLinkedDevice,

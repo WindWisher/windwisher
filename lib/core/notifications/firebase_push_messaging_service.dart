@@ -18,7 +18,13 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     await ensureNotificationBackgroundDependenciesInitialized();
     await _ensureFirebaseInitializedIfNeeded();
     await LocalNotificationsService.instance.initialize();
+    await PushNotificationSubscriptionService.instance.initialize();
+    final pushPreferences = PushNotificationSubscriptionService.instance;
+    if (!pushPreferences.enabled) {
+      return;
+    }
     if (message.data['type'] == 'direct_message' &&
+        pushPreferences.directMessagesEnabled &&
         (message.notification == null ||
             ((message.notification?.title?.trim().isEmpty ?? true) &&
                 (message.notification?.body?.trim().isEmpty ?? true)))) {
@@ -43,6 +49,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       return;
     }
     if (message.data['type'] == 'spot_chat' &&
+        pushPreferences.spotChatMentionsEnabled &&
         (message.notification == null ||
             ((message.notification?.title?.trim().isEmpty ?? true) &&
                 (message.notification?.body?.trim().isEmpty ?? true)))) {
@@ -76,6 +83,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     final occurrenceIndex =
         int.tryParse(message.data['occurrenceIndex'] ?? '') ?? 0;
     if (message.data['type'] == 'spot_alarm' &&
+        pushPreferences.spotAlarmsEnabled &&
         alarmId != null &&
         alarmId.isNotEmpty &&
         repeatWindowRaw != null &&
@@ -202,7 +210,6 @@ class FirebasePushMessagingService {
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
       final messaging = FirebaseMessaging.instance;
-      await messaging.requestPermission(alert: true, badge: true, sound: true);
       await messaging.setForegroundNotificationPresentationOptions(
         alert: true,
         badge: true,
@@ -380,15 +387,28 @@ class FirebasePushMessagingService {
 
   Future<void> _showForegroundNotification(RemoteMessage message) async {
     final data = message.data;
+    final pushPreferences = PushNotificationSubscriptionService.instance;
+    if (!pushPreferences.enabled) {
+      return;
+    }
     if (data['type'] == 'direct_message') {
+      if (!pushPreferences.directMessagesEnabled) {
+        return;
+      }
       await _showForegroundDirectMessageNotification(message);
       return;
     }
     if (data['type'] == 'spot_chat') {
+      if (!pushPreferences.spotChatMentionsEnabled) {
+        return;
+      }
       await _showForegroundSpotChatNotification(message);
       return;
     }
     if (data['type'] != 'spot_alarm') {
+      return;
+    }
+    if (!pushPreferences.spotAlarmsEnabled) {
       return;
     }
     final alarmId = data['alarmId']?.trim();

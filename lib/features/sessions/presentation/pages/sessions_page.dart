@@ -56,10 +56,13 @@ class SessionsPage extends StatefulWidget {
     super.key,
     this.onStartTabChanged,
     this.useLocalPersistence,
+    this.detectExternalSessionDevices,
   });
 
   final ValueChanged<bool>? onStartTabChanged;
   final bool? useLocalPersistence;
+  final Future<List<SessionDetectedCompatibleDeviceData>> Function()?
+  detectExternalSessionDevices;
 
   @override
   State<SessionsPage> createState() => SessionsPageState();
@@ -484,7 +487,8 @@ class SessionsPageState extends State<SessionsPage> {
 
   Future<void> _hydrateDetectedExternalDevices() async {
     final detected =
-        await StartSessionDeviceDetectionLogic.detectExternalSessionDevices();
+        await (widget.detectExternalSessionDevices ??
+            StartSessionDeviceDetectionLogic.detectExternalSessionDevices)();
     if (!mounted) {
       return;
     }

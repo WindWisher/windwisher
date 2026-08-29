@@ -930,28 +930,36 @@ class SupabaseProfileMessagesRepositoryAdapter
   }
 
   Future<void> _triggerDirectMessagePush(String messageId) async {
-    final response = await _client.functions.invoke(
-      'direct-message-push',
-      headers: const <String, String>{'Content-Type': 'application/json'},
-      body: jsonEncode(<String, String>{'messageId': messageId}),
-    );
-    final data = response.data;
-    if (data is Map<String, dynamic>) {
-      final sent = data['sent'] is num ? (data['sent'] as num).toInt() : int.tryParse('${data['sent']}') ?? 0;
-      final failed = data['failed'] is num ? (data['failed'] as num).toInt() : int.tryParse('${data['failed']}') ?? 0;
+    try {
+      final response = await _client.functions.invoke(
+        'direct-message-push',
+        headers: const <String, String>{'Content-Type': 'application/json'},
+        body: jsonEncode(<String, String>{'messageId': messageId}),
+      );
+      final data = response.data;
+      if (data is! Map<String, dynamic>) {
+        debugPrint(
+          'direct-message-push result: messageId=$messageId raw=$data',
+        );
+        return;
+      }
+      final sent = data['sent'] is num
+          ? (data['sent'] as num).toInt()
+          : int.tryParse('${data['sent']}') ?? 0;
+      final failed = data['failed'] is num
+          ? (data['failed'] as num).toInt()
+          : int.tryParse('${data['failed']}') ?? 0;
       final reason = data['reason']?.toString() ?? 'unknown';
       debugPrint(
         'direct-message-push result: messageId=$messageId sent=$sent failed=$failed reason=$reason',
       );
-      if (sent <= 0) {
-        throw Exception('Push no enviada: $reason');
-      }
-      return;
+    } catch (error, stackTrace) {
+      // The message is already persisted; push delivery must not mark it failed.
+      debugPrint(
+        'direct-message-push failed: messageId=$messageId error=$error',
+      );
+      debugPrintStack(stackTrace: stackTrace);
     }
-    debugPrint(
-      'direct-message-push result: messageId=$messageId raw=${response.data}',
-    );
-    throw Exception('Push no confirmada para el mensaje enviado.');
   }
 
   Future<void> _persistThreadState(String threadId) async {

@@ -4,7 +4,7 @@ part of '../../spot_detail_page.dart';
 
 extension _SpotDetailSocialChatLifecycle on _SpotDetailPageState {
   void _initializeSocialChat() {
-    _spotSocialClient = SpotSocialClient.auto();
+    _spotSocialClient = SpotsModule.createSocialService();
     _spotChatRealtimeController = SpotChatRealtimeController(
       client: _spotSocialClient,
       spotName: widget.name,
@@ -143,7 +143,7 @@ extension _SpotDetailSocialChatLifecycle on _SpotDetailPageState {
         });
         return;
       }
-      final spotKey = SpotSocialClient.buildSpotKey(
+      final spotKey = buildSpotSocialKey(
         spotName: widget.name,
         spotArea: widget.area,
       );

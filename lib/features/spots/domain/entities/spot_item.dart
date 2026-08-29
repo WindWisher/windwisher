@@ -7,6 +7,7 @@ class SpotCapabilities {
     this.preferredLiveStationKey,
     this.preferredAemetLiveStationId,
     this.portusRealtimeStationIds = const <int>[],
+    this.supportsPortusForecast = true,
     this.includeOlivaReferenceLiveStations = false,
     this.navigationLatitude,
     this.navigationLongitude,
@@ -22,6 +23,7 @@ class SpotCapabilities {
   final String? preferredLiveStationKey;
   final String? preferredAemetLiveStationId;
   final List<int> portusRealtimeStationIds;
+  final bool supportsPortusForecast;
   final bool includeOlivaReferenceLiveStations;
   final double? navigationLatitude;
   final double? navigationLongitude;

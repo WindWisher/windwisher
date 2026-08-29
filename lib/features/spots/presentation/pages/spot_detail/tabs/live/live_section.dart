@@ -108,7 +108,9 @@ extension _SpotDetailLiveSection on _SpotDetailPageState {
       if (liveData.waveHeightM != null)
         _LiveMetricData(
           label: 'Oleaje',
-          value: AppUnitsController.instance.formatHeight(liveData.waveHeightM!),
+          value: AppUnitsController.instance.formatHeight(
+            liveData.waveHeightM!,
+          ),
         ),
       if (liveData.wavePeriodS != null)
         _LiveMetricData(

@@ -1,29 +1,10 @@
 import 'dart:async';
-import 'dart:typed_data';
-
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:windwisher/core/config/env/initialized_supabase_client.dart';
+import 'package:windwisher/features/spots/application/services/spot_social_service.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_social_post.dart';
 
-class SpotSocialAttachmentDraft {
-  const SpotSocialAttachmentDraft({
-    required this.type,
-    required this.fileName,
-    required this.bytes,
-    this.mimeType,
-    this.thumbnailBytes,
-    this.thumbnailMimeType,
-  });
-
-  final SpotSocialAttachmentType type;
-  final String fileName;
-  final Uint8List bytes;
-  final String? mimeType;
-  final Uint8List? thumbnailBytes;
-  final String? thumbnailMimeType;
-}
-
-class SpotSocialClient {
+class SpotSocialClient implements SpotSocialService {
   SpotSocialClient._({
     required SupabaseClient? client,
     required bool useSupabase,
@@ -38,7 +19,7 @@ class SpotSocialClient {
     required String spotName,
     required String spotArea,
   }) {
-    return '${spotName.trim().toLowerCase()}::${spotArea.trim().toLowerCase()}';
+    return buildSpotSocialKey(spotName: spotName, spotArea: spotArea);
   }
 
   factory SpotSocialClient.auto({SupabaseClient? client}) {
@@ -59,8 +40,10 @@ class SpotSocialClient {
   final Map<String, List<SpotSocialPost>> _memoryFeedBySpot =
       <String, List<SpotSocialPost>>{};
 
+  @override
   bool get requiresAuthenticatedWrites => _useSupabase;
 
+  @override
   bool get canWrite {
     if (!_useSupabase) {
       return true;
@@ -68,6 +51,7 @@ class SpotSocialClient {
     return _client?.auth.currentUser != null;
   }
 
+  @override
   Stream<void> watchSpotFeed({
     required String spotName,
     required String spotArea,
@@ -121,6 +105,7 @@ class SpotSocialClient {
     return controller.stream;
   }
 
+  @override
   Stream<int> watchSpotPresence({
     required String spotName,
     required String spotArea,
@@ -170,6 +155,7 @@ class SpotSocialClient {
     return controller.stream;
   }
 
+  @override
   Stream<Set<String>> watchSpotTyping({
     required String spotName,
     required String spotArea,
@@ -223,6 +209,7 @@ class SpotSocialClient {
     return controller.stream;
   }
 
+  @override
   Future<void> sendTypingState({
     required String spotName,
     required String spotArea,
@@ -249,6 +236,7 @@ class SpotSocialClient {
     });
   }
 
+  @override
   Future<List<SpotSocialPost>> loadPosts({
     required String spotName,
     required String spotArea,
@@ -368,6 +356,7 @@ class SpotSocialClient {
     return List<SpotSocialPost>.from(posts);
   }
 
+  @override
   Future<SpotSocialPost> addPost({
     required String spotName,
     required String spotArea,
@@ -438,6 +427,7 @@ class SpotSocialClient {
     );
   }
 
+  @override
   Future<SpotSocialReply> addReply({
     required String postId,
     required String authorUsername,
@@ -503,6 +493,7 @@ class SpotSocialClient {
     );
   }
 
+  @override
   Future<SpotSocialPost> updatePost({
     required String postId,
     required String message,
@@ -544,6 +535,7 @@ class SpotSocialClient {
     );
   }
 
+  @override
   Future<SpotSocialReply> updateReply({
     required String replyId,
     required String message,
@@ -584,6 +576,7 @@ class SpotSocialClient {
     );
   }
 
+  @override
   Future<void> deletePost({required String postId}) async {
     if (!_useSupabase || _client == null) {
       for (final entry in _memoryFeedBySpot.entries) {
@@ -599,6 +592,7 @@ class SpotSocialClient {
     await _client.from('spot_social_posts').delete().eq('id', postId);
   }
 
+  @override
   Future<void> deleteReply({required String replyId}) async {
     if (!_useSupabase || _client == null) {
       for (final entry in _memoryFeedBySpot.entries) {

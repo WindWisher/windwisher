@@ -92,7 +92,7 @@ extension _SpotDetailForecastActionsController on _SpotDetailPageState {
   }
 
   bool _supportsWindMapForCurrentForecastSelection() {
-    if (_usesWindguruProvider()) {
+    if (_usesWindguruProvider() || _usesWindyAppProvider()) {
       return false;
     }
     if (_usesAemetBeachForecastModel()) {
