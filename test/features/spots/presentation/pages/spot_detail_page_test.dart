@@ -486,6 +486,47 @@ void main() {
     },
   );
 
+  testWidgets('Porto Pollo uses Panoramicams Wind Bar as primary station', (
+    tester,
+  ) async {
+    await _pumpSpotDetailPage(
+      tester,
+      SpotDetailPage(
+        name: portoPolloSpotName,
+        area: 'Cerdeña, Italia',
+        isCustom: false,
+        latitude: 41.1906069,
+        longitude: 9.3121977,
+        capabilities: portoPolloSpotCapabilities,
+        spotsModule: _buildTestModule(
+          forecastPort: _FakeSpotsForecastPort(
+            handler:
+                ({
+                  required spotName,
+                  required area,
+                  required provider,
+                  required model,
+                }) async => [_entry(hour: 0)],
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Live'));
+    await tester.pumpAndSettle();
+
+    final stationDropdown = _liveStationDropdownFinder();
+    expect(
+      tester.state<FormFieldState<String>>(stationDropdown).value,
+      portoPolloPreferredLiveStationKey,
+    );
+
+    await tester.tap(stationDropdown);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Porto Pollo Wind Bar'), findsWidgets);
+  });
+
   testWidgets('loads AVAMET history and forecast comparison on demand', (
     tester,
   ) async {

@@ -224,4 +224,11 @@ const _availableSpots = <_AvailableSpot>[
     longitude: -9.764221578867195,
     capabilities: essaouiraSpotCapabilities,
   ),
+  _AvailableSpot(
+    name: portoPolloSpotName,
+    area: 'Cerdeña, Italia',
+    latitude: 41.1906069,
+    longitude: 9.3121977,
+    capabilities: portoPolloSpotCapabilities,
+  ),
 ];

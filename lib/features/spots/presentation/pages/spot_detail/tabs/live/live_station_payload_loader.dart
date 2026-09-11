@@ -130,6 +130,9 @@ extension _SpotDetailLiveStationPayloadLoader on _SpotDetailPageState {
     if (station.provider == 'METAR') {
       return _fetchLatestBackendLiveData(station);
     }
+    if (station.provider == 'PANORAMICAMS') {
+      return _fetchLatestBackendLiveData(station);
+    }
     if (station.provider == 'WUNDERGROUND') {
       final stationId = station.stationId;
       if (stationId == null) {

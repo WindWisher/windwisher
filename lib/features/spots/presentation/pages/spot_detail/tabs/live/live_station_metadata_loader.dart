@@ -1665,6 +1665,26 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
     );
   }
 
+  void _addPortoPolloLiveStations({
+    required double latitude,
+    required double longitude,
+    required List<_NearbyStation> stations,
+    required Set<String> seenKeys,
+  }) {
+    _addLiveStationMetadata(
+      stations: stations,
+      seenKeys: seenKeys,
+      stationKey: _panoramicamsPortoPolloStationKey,
+      stationName: _panoramicamsPortoPolloStationName,
+      provider: 'PANORAMICAMS',
+      stationId: _panoramicamsPortoPolloStationId,
+      latitude: _panoramicamsPortoPolloStationLat,
+      longitude: _panoramicamsPortoPolloStationLon,
+      referenceLatitude: latitude,
+      referenceLongitude: longitude,
+    );
+  }
+
   void _addElPerellonetLiveStations({
     required double latitude,
     required double longitude,
@@ -1957,6 +1977,11 @@ extension _SpotDetailLiveStationMetadataLoader on _SpotDetailPageState {
   bool _usesPantanoAlarconLiveProfile() {
     final capabilities = _resolvedSpotCapabilities();
     return capabilities.liveStationProfile == pantanoAlarconLiveStationProfile;
+  }
+
+  bool _usesPortoPolloLiveProfile() {
+    final capabilities = _resolvedSpotCapabilities();
+    return capabilities.liveStationProfile == portoPolloLiveStationProfile;
   }
 
   String _inforatgeStationCodeFor(String? stationId) {

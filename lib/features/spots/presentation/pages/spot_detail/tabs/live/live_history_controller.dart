@@ -174,6 +174,7 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
     final station = _findStationByKey(_selectedStation);
     return station?.provider == 'WINDGURU_STATION' ||
         station?.provider == 'METAR' ||
+        station?.provider == 'PANORAMICAMS' ||
         station?.provider == 'METEOPILES' ||
         station?.provider == 'METEOCLIMATIC' ||
         station?.provider == 'WEATHERCLOUD' ||
@@ -253,6 +254,8 @@ extension _SpotDetailLiveHistoryController on _SpotDetailPageState {
         return 'AVAMET';
       case 'METAR':
         return 'METAR aeropuerto';
+      case 'PANORAMICAMS':
+        return 'Panoramicams';
       case 'WUNDERGROUND':
         return 'Weather Underground';
       case 'METEOCLIMATIC':

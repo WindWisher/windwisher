@@ -39,6 +39,7 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
       final usesDakhlaLiveProfile = _usesDakhlaLiveProfile();
       final usesEssaouiraLiveProfile = _usesEssaouiraLiveProfile();
       final usesPantanoAlarconLiveProfile = _usesPantanoAlarconLiveProfile();
+      final usesPortoPolloLiveProfile = _usesPortoPolloLiveProfile();
       final stations = <_NearbyStation>[];
       final liveDataByStation = <String, _StationLiveData>{};
       final historyByStation = <String, List<_HistoricalWindPoint>>{};
@@ -65,7 +66,8 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
           !usesXeracoLiveProfile &&
           !usesDakhlaLiveProfile &&
           !usesEssaouiraLiveProfile &&
-          !usesPantanoAlarconLiveProfile) {
+          !usesPantanoAlarconLiveProfile &&
+          !usesPortoPolloLiveProfile) {
         try {
           snapshots = await _aemetObservationClient.fetchNearestStations(
             latitude: latitude,
@@ -271,6 +273,14 @@ extension _SpotDetailLiveStationDataLoader on _SpotDetailPageState {
       }
       if (usesPantanoAlarconLiveProfile) {
         _addPantanoAlarconLiveStations(
+          latitude: latitude,
+          longitude: longitude,
+          stations: stations,
+          seenKeys: seenKeys,
+        );
+      }
+      if (usesPortoPolloLiveProfile) {
+        _addPortoPolloLiveStations(
           latitude: latitude,
           longitude: longitude,
           stations: stations,

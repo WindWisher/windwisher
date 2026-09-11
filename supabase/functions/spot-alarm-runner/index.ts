@@ -619,6 +619,8 @@ async function fetchObservationForAlarm(alarm: AlarmRow) {
       return await fetchWeathercloudObservation(alarm.station_key);
     case "XUSS":
       return await fetchXussDeniaObservation();
+    case "PANORAMICAMS":
+      return await fetchMaritimeCachedObservation(alarm.station_key);
     case "METEOCLIMATIC":
       return await fetchMeteoclimaticObservation(alarm.station_key);
     case "PUERTOS":
@@ -642,6 +644,7 @@ function supportsStationProvider(provider: string) {
     provider === "WUNDERGROUND" ||
     provider === "WEATHERCLOUD" ||
     provider === "XUSS" ||
+    provider === "PANORAMICAMS" ||
     provider === "METEOCLIMATIC" ||
     provider === "PUERTOS" ||
     provider === "PORTUS" ||

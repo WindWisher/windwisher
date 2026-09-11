@@ -782,3 +782,10 @@ const String _aiguaBlancaStationKey = 'aiguablanca:aiguablanca';
 const String _aiguaBlancaStationName = "Playa Aigua Blanca";
 const double _aiguaBlancaStationLat = 38.916253794214825;
 const double _aiguaBlancaStationLon = -0.07699978862569694;
+
+const String _panoramicamsPortoPolloStationId = 'portopollo-wind-bar';
+const String _panoramicamsPortoPolloStationKey =
+    'panoramicams:portopollo-wind-bar';
+const String _panoramicamsPortoPolloStationName = 'Porto Pollo Wind Bar';
+const double _panoramicamsPortoPolloStationLat = 41.194008;
+const double _panoramicamsPortoPolloStationLon = 9.318496;

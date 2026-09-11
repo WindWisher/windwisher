@@ -9,7 +9,8 @@ type LiveStationConfig = {
     | "METAR"
     | "WEATHERCLOUD"
     | "WUNDERGROUND"
-    | "XUSS";
+    | "XUSS"
+    | "PANORAMICAMS";
   stationKey: string;
   stationId: string;
   stationName: string;
@@ -59,6 +60,12 @@ const olivaXeloWuDiagnosticSamples: Record<
 };
 
 const stations: LiveStationConfig[] = [
+  {
+    provider: "PANORAMICAMS",
+    stationKey: "panoramicams:portopollo-wind-bar",
+    stationId: "portopollo-wind-bar",
+    stationName: "Porto Pollo Wind Bar",
+  },
   {
     provider: "WUNDERGROUND",
     stationKey: "wunderground:IVALVE48",
@@ -735,7 +742,84 @@ async function fetchStationObservation(
       return await fetchWundergroundObservation(station);
     case "XUSS":
       return await fetchXussDeniaObservation(station);
+    case "PANORAMICAMS":
+      return await fetchPanoramicamsObservation(station);
   }
+}
+
+async function fetchPanoramicamsObservation(
+  station: LiveStationConfig,
+): Promise<LiveObservation | null> {
+  const url = new URL("https://panoramicams.com/ecowitt/get_json.php");
+  url.searchParams.set(
+    "station",
+    "panoramicamsweather_GW1100A-WIFI86B9",
+  );
+  url.searchParams.set("location", "portopollo");
+  const response = await fetch(url, {
+    headers: {
+      accept: "application/json",
+      referer:
+        "https://panoramicams.com/iframe/porto-pollo-wind-bar-web-meteo/",
+      "user-agent": "WindWisher/1.0",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`panoramicams-request-failed:${response.status}`);
+  }
+  const payload = await response.json() as unknown;
+  const readings = Array.isArray(payload)
+    ? payload.map(readRecord).filter((value) => value != null)
+    : [];
+  const latest = readings.reduce<Record<string, unknown> | null>(
+    (current, reading) => {
+      const readingDate = parsePanoramicamsObservedAt(reading.dateutc);
+      const currentDate = current == null
+        ? null
+        : parsePanoramicamsObservedAt(current.dateutc);
+      if (readingDate == null) return current;
+      return currentDate == null ||
+          readingDate.getTime() > currentDate.getTime()
+        ? reading
+        : current;
+    },
+    null,
+  );
+  if (latest == null) return null;
+
+  const observedAt = parsePanoramicamsObservedAt(latest.dateutc);
+  const windKnots = readUnknownNumber(latest.windspeedkts);
+  if (observedAt == null || windKnots == null || isStale(observedAt)) {
+    return null;
+  }
+
+  return baseObservation(station, observedAt, {
+    wind_knots: windKnots,
+    wind_min_knots: null,
+    gust_knots: readUnknownNumber(latest.windgustkts),
+    wind_direction_deg: roundNullable(readUnknownNumber(latest.winddir)),
+    temp_c: readUnknownNumber(latest.tempc),
+    pressure_hpa: roundNullable(
+      inchesMercuryToHpa(readUnknownNumber(latest.baromrelin)),
+    ),
+    humidity_pct: roundNullable(readUnknownNumber(latest.humidity)),
+    rain_mm: inchesToMillimeters(readUnknownNumber(latest.dailyrainin)),
+    raw_payload: latest,
+  });
+}
+
+function parsePanoramicamsObservedAt(value: unknown): Date | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const parsed = new Date(`${value.trim().replace(" ", "T")}Z`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function inchesMercuryToHpa(value: number | null): number | null {
+  return value == null ? null : value * 33.8638866667;
+}
+
+function inchesToMillimeters(value: number | null): number | null {
+  return value == null ? null : value * 25.4;
 }
 
 async function fetchMetarObservation(

@@ -976,6 +976,72 @@ const List<SpotWebcam> _essaouiraWebcams = [
   ),
 ];
 
+const List<SpotWebcam> _portoPolloWebcams = [
+  SpotWebcam(
+    name: 'Porto Pollo Wind Bar - Vista 1',
+    source: 'Panoramicams / WhatsUpCams',
+    status: 'Directo',
+    resolution: 'Video HLS',
+    primaryPageUrl:
+        'https://panoramicams.com/iframe/porto-pollo-wind-bar-web-meteo/',
+    summary: 'Vista en directo del spot de Porto Pollo desde el Wind Bar.',
+    streamManifestUrl: 'https://cdn-006.whatsupcams.com/hls/it_palau09.m3u8',
+    previewImageUrl:
+        'https://panoramicams.com/wp-content/uploads/2022/04/Porto-Pollo-Flat-Side-1.jpg',
+    locationLabel: 'Porto Pollo Wind Bar',
+    latitude: 41.1906069,
+    longitude: 9.3121977,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Porto Pollo Wind Bar Web/Meteo · Panoramicams',
+        url: 'https://panoramicams.com/iframe/porto-pollo-wind-bar-web-meteo/',
+      ),
+    ],
+  ),
+  SpotWebcam(
+    name: 'Porto Pollo Wind Bar - Vista 2',
+    source: 'Panoramicams / WhatsUpCams',
+    status: 'Directo',
+    resolution: 'Video HLS',
+    primaryPageUrl:
+        'https://panoramicams.com/iframe/porto-pollo-wind-bar-web-meteo/',
+    summary: 'Segunda vista en directo del spot de Porto Pollo.',
+    streamManifestUrl: 'https://cdn-005.whatsupcams.com/hls/it_palau12.m3u8',
+    previewImageUrl:
+        'https://panoramicams.com/wp-content/uploads/2022/04/Porto-Pollo-Flat-Side-1.jpg',
+    locationLabel: 'Porto Pollo Wind Bar',
+    latitude: 41.1906069,
+    longitude: 9.3121977,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Porto Pollo Wind Bar Web/Meteo · Panoramicams',
+        url: 'https://panoramicams.com/iframe/porto-pollo-wind-bar-web-meteo/',
+      ),
+    ],
+  ),
+  SpotWebcam(
+    name: 'Porto Pollo Wind Bar - Vista 3',
+    source: 'Panoramicams / WhatsUpCams',
+    status: 'Directo',
+    resolution: 'Video HLS',
+    primaryPageUrl:
+        'https://panoramicams.com/iframe/porto-pollo-wind-bar-web-meteo/',
+    summary: 'Tercera vista en directo del spot de Porto Pollo.',
+    streamManifestUrl: 'https://cdn-005.whatsupcams.com/hls/it_palau05.m3u8',
+    previewImageUrl:
+        'https://panoramicams.com/wp-content/uploads/2022/04/Porto-Pollo-Flat-Side-1.jpg',
+    locationLabel: 'Porto Pollo Wind Bar',
+    latitude: 41.1906069,
+    longitude: 9.3121977,
+    referencePages: [
+      WebcamReferencePage(
+        title: 'Porto Pollo Wind Bar Web/Meteo · Panoramicams',
+        url: 'https://panoramicams.com/iframe/porto-pollo-wind-bar-web-meteo/',
+      ),
+    ],
+  ),
+];
+
 List<SpotWebcam> webcamsForProfile(String? profile) {
   return switch (profile) {
     olivaCanalGorgsWebcamProfile => _olivaCanalGorgsWebcams,
@@ -997,6 +1063,7 @@ List<SpotWebcam> webcamsForProfile(String? profile) {
     culleraDosselWebcamProfile => _culleraDosselWebcams,
     xeracoWebcamProfile => _xeracoWebcams,
     essaouiraWebcamProfile => _essaouiraWebcams,
+    portoPolloWebcamProfile => _portoPolloWebcams,
     _ => const <SpotWebcam>[],
   };
 }
@@ -1029,4 +1096,5 @@ const List<SpotWebcam> _allProfileWebcams = [
   ..._culleraDosselWebcams,
   ..._xeracoWebcams,
   ..._essaouiraWebcams,
+  ..._portoPolloWebcams,
 ];

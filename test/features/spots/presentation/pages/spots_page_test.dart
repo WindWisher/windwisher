@@ -522,6 +522,50 @@ void main() {
     expect(find.text('Cuenca'), findsOneWidget);
   });
 
+  testWidgets('includes Porto Pollo in Sardinia', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(450, 900);
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+    });
+
+    await tester.pumpWidget(
+      buildSpotsTestApp(
+        spotsModule: SpotsModule.inMemory(),
+        initiallyShowMap: true,
+      ),
+    );
+    await tester.pump();
+
+    await tester.enterText(
+      find.byKey(const Key('spots-search-input')),
+      'Porto Pollo',
+    );
+    await tester.pump();
+
+    final suggestion = find.byKey(
+      const Key('spots-map-search-suggestion-Porto Pollo'),
+    );
+    expect(suggestion, findsOneWidget);
+
+    await tester.tap(suggestion);
+    await tester.pump();
+
+    final map = tester.widget<FlutterMap>(
+      find.byKey(const Key('spots-explorer-map')),
+    );
+    expect(
+      map.mapController?.camera.center.latitude,
+      closeTo(41.1906069, 1e-7),
+    );
+    expect(
+      map.mapController?.camera.center.longitude,
+      closeTo(9.3121977, 1e-7),
+    );
+    expect(find.text('Cerdeña, Italia'), findsOneWidget);
+  });
+
   testWidgets('scrolls the complete map section in landscape', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(900, 450);
