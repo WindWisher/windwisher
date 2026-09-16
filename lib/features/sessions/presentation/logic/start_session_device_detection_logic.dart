@@ -5,11 +5,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:windwisher/features/sessions/di/sessions_module.dart';
+import 'package:windwisher/features/sessions/domain/entities/garmin_connect_iq_device.dart';
 import 'package:windwisher/features/sessions/domain/entities/linked_device.dart';
 import 'package:windwisher/features/sessions/presentation/models/start_session_models.dart';
 
 class StartSessionDeviceDetectionLogic {
   const StartSessionDeviceDetectionLogic._();
+
+  static const String garminConnectIqDevicePrefix = 'garmin-connect-iq:';
 
   static const MethodChannel _bluetoothDevicesChannel = MethodChannel(
     'windwisher/bluetooth_devices',
@@ -40,6 +43,7 @@ class StartSessionDeviceDetectionLogic {
   static Future<List<SessionDetectedCompatibleDeviceData>>
   detectExternalSessionDevices() async {
     final devicesById = <String, SessionDetectedCompatibleDeviceData>{};
+    final garminDevices = _garminConnectIqSessionDevices();
 
     for (final device in await _androidBondedExternalSessionDevices()) {
       devicesById[device.id] = device;
@@ -55,7 +59,56 @@ class StartSessionDeviceDetectionLogic {
       // Keep already bonded devices even if active BLE scanning fails.
     }
 
+    for (final device in await garminDevices) {
+      final normalizedName = device.defaultName.trim().toLowerCase();
+      devicesById.removeWhere(
+        (_, candidate) =>
+            !candidate.id.startsWith(garminConnectIqDevicePrefix) &&
+            candidate.defaultName.trim().toLowerCase() == normalizedName,
+      );
+      devicesById[device.id] = device;
+    }
+
     return devicesById.values.toList(growable: false);
+  }
+
+  static Future<List<SessionDetectedCompatibleDeviceData>>
+  _garminConnectIqSessionDevices() async {
+    try {
+      final devices = await SessionsModule.createGarminConnectIqClient()
+          .knownDevices()
+          .timeout(const Duration(seconds: 8));
+      return devices.map(_mapGarminConnectIqDevice).toList(growable: false);
+    } catch (_) {
+      return const <SessionDetectedCompatibleDeviceData>[];
+    }
+  }
+
+  static SessionDetectedCompatibleDeviceData _mapGarminConnectIqDevice(
+    GarminConnectIqDevice device,
+  ) {
+    final connected = device.isConnected;
+    final partNumber = device.partNumber;
+    return SessionDetectedCompatibleDeviceData(
+      id: '$garminConnectIqDevicePrefix${device.id}',
+      defaultName: device.name,
+      kind: 'Garmin Connect IQ',
+      status: connected ? 'Conectado mediante Garmin Connect' : 'Vinculado',
+      sensorSummary: 'Sesiones registradas por WindWisher en el reloj',
+      family: 'watch',
+      placement: 'wrist',
+      connectionState: connected
+          ? 'Conectado mediante Garmin Connect'
+          : 'Disponible mediante Garmin Connect',
+      manufacturer: 'Garmin',
+      model: partNumber == null ? device.name : '${device.name} · $partNumber',
+      firmwareVersion: null,
+      physicalSensorKeys: const <String>[],
+      isSessionEligible: true,
+      canConnect: connected,
+      diagnosticSummary:
+          'Connect IQ app=${device.sessionAppId}, status=${device.status}',
+    );
   }
 
   static Future<List<SessionDetectedCompatibleDeviceData>>
@@ -154,6 +207,9 @@ class StartSessionDeviceDetectionLogic {
   static Future<SessionDetectedCompatibleDeviceData> probeExternalSessionDevice(
     SessionDetectedCompatibleDeviceData device,
   ) async {
+    if (device.id.startsWith(garminConnectIqDevicePrefix)) {
+      return device;
+    }
     try {
       final adapter = SessionsModule.createDeviceDiscoveryAdapter();
       return await adapter.probeDeviceCapabilities(device);

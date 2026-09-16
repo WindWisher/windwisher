@@ -3,7 +3,6 @@ import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/features/sessions/presentation/models/start_session_models.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_capture_status_card.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_device_selector_field.dart';
-import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_file_import_card.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_selected_device_card.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_synced_pending_card.dart';
 
@@ -17,7 +16,6 @@ class SessionStartPanel extends StatelessWidget {
     required this.selectedDeviceCard,
     required this.syncedPendingCard,
     required this.captureStatusCard,
-    required this.onImportPressed,
   });
 
   final StartSessionPanelData data;
@@ -27,7 +25,6 @@ class SessionStartPanel extends StatelessWidget {
   final SessionSelectedDeviceCard? selectedDeviceCard;
   final SessionSyncedPendingCard? syncedPendingCard;
   final SessionCaptureStatusCard captureStatusCard;
-  final VoidCallback onImportPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -86,11 +83,6 @@ class SessionStartPanel extends StatelessWidget {
               ],
             ),
           ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        SessionFileImportCard(
-          onImportPressed: onImportPressed,
-          hintText: data.importHintText,
         ),
       ],
     );

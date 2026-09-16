@@ -6,12 +6,12 @@ class SessionSyncedPendingCard extends StatelessWidget {
   const SessionSyncedPendingCard({
     super.key,
     required this.sessions,
-    required this.onConfigure,
+    required this.onReview,
     required this.onDelete,
   });
 
   final List<SessionSyncedPendingItemData> sessions;
-  final ValueChanged<String> onConfigure;
+  final ValueChanged<String> onReview;
   final ValueChanged<String> onDelete;
 
   @override
@@ -33,7 +33,7 @@ class SessionSyncedPendingCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Selecciona una sesion para revisarla y subirla a My Sessions.',
+              'Revisa cada sesion descargada antes de subirla a My Sessions.',
               style: textTheme.bodySmall,
             ),
             const SizedBox(height: AppSpacing.xs),
@@ -68,12 +68,16 @@ class SessionSyncedPendingCard extends StatelessWidget {
                           width: 38,
                           height: 38,
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.tertiaryContainer,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.tertiaryContainer,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(
                             Icons.cloud_download_rounded,
-                            color: Theme.of(context).colorScheme.onTertiaryContainer,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onTertiaryContainer,
                           ),
                         ),
                         const SizedBox(width: AppSpacing.sm),
@@ -99,16 +103,16 @@ class SessionSyncedPendingCard extends StatelessWidget {
                                 crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
                                   OutlinedButton.icon(
-                                    onPressed: () => onConfigure(session.id),
+                                    onPressed: () => onReview(session.id),
                                     style: OutlinedButton.styleFrom(
                                       visualDensity: VisualDensity.compact,
                                       minimumSize: const Size(0, 34),
                                     ),
                                     icon: const Icon(
-                                      Icons.settings_rounded,
+                                      Icons.visibility_outlined,
                                       size: 16,
                                     ),
-                                    label: const Text('Configurar'),
+                                    label: const Text('Revisar sesion'),
                                   ),
                                   Tooltip(
                                     message: 'Eliminar sesion sincronizada',

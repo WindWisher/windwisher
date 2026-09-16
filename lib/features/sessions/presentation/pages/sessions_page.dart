@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -16,9 +17,13 @@ import 'package:windwisher/core/units/app_units_controller.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
 import 'package:windwisher/features/profile/di/profile_module.dart';
 import 'package:windwisher/features/sessions/di/sessions_module.dart';
+import 'package:windwisher/features/sessions/domain/entities/device_session_transfer.dart';
 import 'package:windwisher/features/sessions/domain/entities/linked_device.dart';
 import 'package:windwisher/features/sessions/domain/entities/recorded_session.dart';
 import 'package:windwisher/features/sessions/domain/entities/session_view_preferences.dart';
+import 'package:windwisher/features/sessions/domain/ports/out/private_canonical_inbox_port.dart';
+import 'package:windwisher/features/sessions/domain/services/private_canonical_validator.dart';
+import 'package:windwisher/features/sessions/domain/services/session_device_transfer_service.dart';
 import 'package:windwisher/features/sessions/presentation/builders/start_session_recorded_session_builder.dart';
 import 'package:windwisher/features/sessions/presentation/logic/start_session_capture_logic.dart';
 import 'package:windwisher/features/sessions/presentation/logic/start_session_device_detection_logic.dart';
@@ -40,6 +45,7 @@ import 'package:windwisher/features/sessions/presentation/widgets/shared/session
 import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_capture_status_card.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_add_device_dialog.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_device_capabilities_dialog.dart';
+import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_downloaded_review_dialog.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_selected_device_card.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_start_panel.dart';
 import 'package:windwisher/features/sessions/presentation/widgets/start_session/session_stop_recording_dialog.dart';
@@ -69,6 +75,9 @@ class SessionsPage extends StatefulWidget {
 }
 
 class SessionsPageState extends State<SessionsPage> {
+  static const MethodChannel _privateCanonicalChannel = MethodChannel(
+    'windwisher/private_canonical_import',
+  );
   static const String _phoneDeviceId = 'phone-1';
   static const double _gpsSampleMaxAccuracyMeters = 25;
   static const double _gpsMaxPlausibleSpeedKnots = 65;
@@ -118,7 +127,6 @@ class SessionsPageState extends State<SessionsPage> {
 
   String? _selectedDeviceId;
   _SessionTab _sessionTab = _SessionTab.start;
-  String? _lastImportHint;
   final TextEditingController _sessionSearchController =
       TextEditingController();
   String _sessionFilterDevice = 'Todos';
@@ -128,6 +136,9 @@ class SessionsPageState extends State<SessionsPage> {
   final List<_RecordedSession> _sessionFeed = [];
   final List<SessionImportedPendingResult> _syncedPendingSessions = [];
   String? _syncedPendingDeviceId;
+  SessionDeviceTransferPhase _deviceTransferPhase =
+      SessionDeviceTransferPhase.unavailable;
+  List<DeviceSessionReference> _deviceTransferSessions = const [];
   _SessionCaptureState _captureState = _SessionCaptureState.ready;
   DateTime? _recordingStartedAt;
   Timer? _recordingTicker;
@@ -199,6 +210,7 @@ class SessionsPageState extends State<SessionsPage> {
         return;
       }
       widget.onStartTabChanged?.call(_sessionTab == _SessionTab.start);
+      unawaited(_inspectSelectedDeviceSessions());
     });
   }
 
@@ -390,7 +402,7 @@ class SessionsPageState extends State<SessionsPage> {
 
   Future<void> _removeDevice(_LinkedDevice device) async {
     if (device.id == _phoneDeviceId) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
         const SnackBar(
           content: Text(
             'El teléfono del usuario siempre debe estar disponible.',
@@ -442,6 +454,7 @@ class SessionsPageState extends State<SessionsPage> {
     });
     _saveSelectedDeviceId();
     _saveSessionViewPreferences();
+    unawaited(_inspectSelectedDeviceSessions());
   }
 
   void _ensurePhoneDeviceAvailable() {
@@ -524,17 +537,6 @@ class SessionsPageState extends State<SessionsPage> {
         .toList(growable: false);
     names.sort();
     return names;
-  }
-
-  void _showRealIntegrationPendingMessage(String feature) {
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    messenger?.showSnackBar(
-      SnackBar(
-        content: Text(
-          '$feature todavia no esta conectado a datos reales. Hemos quitado la simulación para no inventar sesiones.',
-        ),
-      ),
-    );
   }
 
   void _ensureSelectedDevice() {
@@ -688,16 +690,14 @@ class SessionsPageState extends State<SessionsPage> {
         family: linked.family,
         placement: linked.placement,
         physicalSensorKeys: linked.physicalSensorKeys,
-        isSessionEligible: _LinkedDevice.isSessionEligibleForDetectedDevice(
-          family: linked.family,
-          physicalSensorKeys: linked.physicalSensorKeys,
-        ),
+        isSessionEligible: linked.isSessionEligible,
       );
       _devices.insert(0, linkedDevice);
       _sessionsModule.saveLinkedDevice(linkedDevice);
       _selectedDeviceId = linked.id;
     });
     _saveSelectedDeviceId();
+    unawaited(_inspectSelectedDeviceSessions());
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -962,6 +962,51 @@ class SessionsPageState extends State<SessionsPage> {
     );
   }
 
+  Future<void> _reviewSyncedSession(
+    SessionImportedPendingResult imported,
+  ) async {
+    final device = _selectedDevice;
+    if (device == null) {
+      return;
+    }
+
+    final action = await SessionDownloadedReviewDialog.show(
+      context,
+      data: SessionDownloadedReviewData(
+        title: imported.title,
+        deviceName: device.name,
+        dateLabel: _formatSessionDateTime(imported.endedAt),
+        durationLabel: _formatImportedDuration(imported.duration),
+        summary: imported.summary.trim().isEmpty
+            ? 'La sesion no incluye un resumen adicional.'
+            : imported.summary,
+        sourceFormatLabel: imported.fileExtension.toUpperCase(),
+        jumpCount: imported.jumpHistory.length,
+      ),
+    );
+    if (!mounted || action == null) {
+      return;
+    }
+    if (action == SessionDownloadedReviewAction.upload) {
+      await _configureSyncedSession(imported);
+    } else {
+      await _removeSyncedPendingSession(imported);
+    }
+  }
+
+  String _formatImportedDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+    if (hours > 0) {
+      return '${hours}h ${minutes}min';
+    }
+    if (minutes > 0) {
+      return '${minutes}min ${seconds}s';
+    }
+    return '${seconds}s';
+  }
+
   Future<void> _removeSyncedPendingSession(
     SessionImportedPendingResult imported,
   ) async {
@@ -994,14 +1039,162 @@ class SessionsPageState extends State<SessionsPage> {
       if (_syncedPendingSessions.isEmpty) {
         _syncedPendingDeviceId = null;
       }
-      _lastImportHint = _syncedPendingSessions.isEmpty
-          ? null
-          : 'Quedan ${_syncedPendingSessions.length} sesiones sincronizadas pendientes por configurar.';
     });
   }
 
-  void _importSessionFile() {
-    _showRealIntegrationPendingMessage('La importación de sesiones');
+  bool get _selectedDeviceUsesGarminConnectIq =>
+      _selectedDevice?.id.startsWith(
+        StartSessionDeviceDetectionLogic.garminConnectIqDevicePrefix,
+      ) ??
+      false;
+
+  Future<PrivateCanonicalInboxPort> _createPrivateCanonicalInbox() async {
+    if (!Platform.isAndroid) {
+      throw UnsupportedError(
+        'La descarga Garmin solo esta disponible en Android.',
+      );
+    }
+    final accountId =
+        Supabase.instance.client.auth.currentUser?.id.trim() ?? '';
+    if (accountId.isEmpty) {
+      throw StateError('Debes iniciar sesion para usar la bandeja privada.');
+    }
+    final root = await _privateCanonicalChannel.invokeMethod<String>(
+      'privateDirectory',
+    );
+    if (root == null || root.trim().isEmpty) {
+      throw StateError('No se puede abrir el almacenamiento privado.');
+    }
+    final schema =
+        jsonDecode(
+              await rootBundle.loadString(
+                'assets/contracts/canonical-session-record.schema.json',
+              ),
+            )
+            as Map<String, dynamic>;
+    return SessionsModule.createPrivateCanonicalInbox(
+      installationRootPath: root,
+      accountId: accountId,
+      schema: schema,
+    );
+  }
+
+  Future<void> _inspectSelectedDeviceSessions() async {
+    final device = _selectedDevice;
+    if (device == null || !_selectedDeviceUsesGarminConnectIq) {
+      if (mounted) {
+        setState(() {
+          _deviceTransferPhase = device?.id == _phoneDeviceId
+              ? SessionDeviceTransferPhase.notApplicable
+              : SessionDeviceTransferPhase.unavailable;
+          _deviceTransferSessions = const [];
+        });
+      }
+      return;
+    }
+    final inspectedDeviceId = device.id;
+    setState(() {
+      _deviceTransferPhase = SessionDeviceTransferPhase.checking;
+      _deviceTransferSessions = const [];
+    });
+    try {
+      final service = SessionDeviceTransferService(
+        SessionsModule.createGarminSessionTransferAdapter(),
+      );
+      final inventory = await service.inspect(device);
+      final inbox = await _createPrivateCanonicalInbox();
+      final stored = await inbox.list();
+      if (!mounted || _selectedDeviceId != inspectedDeviceId) return;
+      final storedIds = stored.map((session) => session.sourceId).toSet();
+      final pending = inventory.sessions
+          .where((session) => !storedIds.contains(session.sourceId))
+          .toList(growable: false);
+      setState(() {
+        _deviceTransferSessions = pending;
+        _deviceTransferPhase = pending.isEmpty
+            ? SessionDeviceTransferPhase.upToDate
+            : SessionDeviceTransferPhase.sessionsAvailable;
+      });
+    } catch (_) {
+      if (!mounted || _selectedDeviceId != inspectedDeviceId) return;
+      setState(() {
+        _deviceTransferSessions = const [];
+        _deviceTransferPhase = SessionDeviceTransferPhase.failed;
+      });
+    }
+  }
+
+  Future<void> _downloadSelectedDeviceSessions() async {
+    final device = _selectedDevice;
+    final sessions = List<DeviceSessionReference>.unmodifiable(
+      _deviceTransferSessions,
+    );
+    if (device == null ||
+        sessions.isEmpty ||
+        !_selectedDeviceUsesGarminConnectIq) {
+      return;
+    }
+    final deviceId = device.id;
+    setState(
+      () => _deviceTransferPhase = SessionDeviceTransferPhase.downloading,
+    );
+    try {
+      final inbox = await _createPrivateCanonicalInbox();
+      final result = await SessionDeviceTransferService(
+        SessionsModule.createGarminSessionTransferAdapter(),
+      ).downloadIntoInbox(device: device, sessions: sessions, inbox: inbox);
+      if (!mounted || _selectedDeviceId != deviceId) return;
+      final importedById = <String, PrivateCanonicalSession>{
+        for (final session in result.inboxSessions) session.sourceId: session,
+      };
+      final pending = <SessionImportedPendingResult>[];
+      for (final reference in sessions) {
+        final imported = importedById[reference.sourceId];
+        if (imported == null) {
+          throw const FormatException(
+            'La sesion descargada no esta disponible.',
+          );
+        }
+        pending.add(
+          SessionImportedPendingResult(
+            title: 'Sesion Garmin',
+            fileName: reference.sourceId,
+            fileExtension: 'jsonl',
+            endedAt: DateTime.parse(imported.endedAt),
+            duration: Duration(milliseconds: imported.durationMs),
+            summary:
+                'Sesion descargada del reloj y verificada localmente. No se han calculado saltos.',
+            jumpHistory: const <SessionJumpRecord>[],
+          ),
+        );
+      }
+      setState(() {
+        _syncedPendingDeviceId = deviceId;
+        _syncedPendingSessions
+          ..clear()
+          ..addAll(pending);
+        _deviceTransferSessions = const [];
+        _deviceTransferPhase = SessionDeviceTransferPhase.readyToUpload;
+      });
+    } catch (_) {
+      if (!mounted || _selectedDeviceId != deviceId) return;
+      setState(() => _deviceTransferPhase = SessionDeviceTransferPhase.failed);
+    }
+  }
+
+  void _onDeviceTransferActionPressed() {
+    switch (_deviceTransferPhase) {
+      case SessionDeviceTransferPhase.sessionsAvailable:
+        unawaited(_downloadSelectedDeviceSessions());
+      case SessionDeviceTransferPhase.readyToUpload:
+        if (_syncedPendingSessions.isNotEmpty) {
+          unawaited(_reviewSyncedSession(_syncedPendingSessions.first));
+        }
+      case SessionDeviceTransferPhase.failed:
+        unawaited(_inspectSelectedDeviceSessions());
+      default:
+        break;
+    }
   }
 
   _LinkedDevice? get _selectedDevice {
@@ -1256,7 +1449,6 @@ class SessionsPageState extends State<SessionsPage> {
   void _beginRecordingCaptureState(DateTime startedAt) {
     _captureState = _SessionCaptureState.recording;
     _recordingStartedAt = startedAt;
-    _lastImportHint = null;
     _lastGpsAccuracyMeters = null;
     _clearRecordingCaptureData();
   }
@@ -1985,6 +2177,14 @@ class SessionsPageState extends State<SessionsPage> {
     if (selectedDevice == null) {
       return null;
     }
+    final usesGarminTransfer = selectedDevice.id.startsWith(
+      StartSessionDeviceDetectionLogic.garminConnectIqDevicePrefix,
+    );
+    final transferPhase = selectedDevice.id == _phoneDeviceId
+        ? SessionDeviceTransferPhase.notApplicable
+        : usesGarminTransfer
+        ? _deviceTransferPhase
+        : SessionDeviceTransferPhase.unavailable;
     final statusLabel = _autoDetectedDeviceStatus(selectedDevice);
     return SessionSelectedDeviceCard(
       data: StartSessionPresentationMapper.buildSelectedDeviceCardData(
@@ -1995,8 +2195,20 @@ class SessionsPageState extends State<SessionsPage> {
         availabilityLabel: _deviceAvailabilityLabel(selectedDevice),
         sensorCountLabel: _selectedDeviceSensorCountLabel(),
         isPhoneDeviceSelected: selectedDevice.id == _phoneDeviceId,
+        transfer: StartSessionPresentationMapper.buildDeviceTransferData(
+          phase: transferPhase,
+          sessionCount:
+              usesGarminTransfer &&
+                  _deviceTransferPhase ==
+                      SessionDeviceTransferPhase.readyToUpload
+              ? _syncedPendingSessions.length
+              : usesGarminTransfer
+              ? _deviceTransferSessions.length
+              : 0,
+        ),
       ),
       onCapabilitiesPressed: _showDeviceCapabilitiesDialog,
+      onTransferActionPressed: _onDeviceTransferActionPressed,
     );
   }
 
@@ -2017,7 +2229,7 @@ class SessionsPageState extends State<SessionsPage> {
             ),
           )
           .toList(growable: false),
-      onConfigure: (sessionId) {
+      onReview: (sessionId) {
         final session = _syncedPendingSessions
             .where(
               (item) =>
@@ -2028,7 +2240,7 @@ class SessionsPageState extends State<SessionsPage> {
         if (session == null) {
           return;
         }
-        _configureSyncedSession(session);
+        _reviewSyncedSession(session);
       },
       onDelete: (sessionId) {
         final session = _syncedPendingSessions
@@ -2071,25 +2283,32 @@ class SessionsPageState extends State<SessionsPage> {
               StartSessionPresentationMapper.buildCaptureStatusText(
                 captureInput,
               ),
-          importHintText: _lastImportHint,
         ),
         devices: StartSessionPresentationMapper.buildDeviceSelectorItems(
           devices: _devicesForDisplay(),
         ),
         selectedDeviceId: _selectedDeviceId,
         onDeviceChanged: (value) {
+          final usesGarminTransfer = value.startsWith(
+            StartSessionDeviceDetectionLogic.garminConnectIqDevicePrefix,
+          );
           setState(() {
             _selectedDeviceId = value;
-            _lastImportHint = null;
             _syncedPendingSessions.clear();
             _syncedPendingDeviceId = null;
+            _deviceTransferSessions = const [];
+            _deviceTransferPhase = value == _phoneDeviceId
+                ? SessionDeviceTransferPhase.notApplicable
+                : usesGarminTransfer
+                ? SessionDeviceTransferPhase.checking
+                : SessionDeviceTransferPhase.unavailable;
           });
           _saveSelectedDeviceId();
+          unawaited(_inspectSelectedDeviceSessions());
         },
         selectedDeviceCard: _buildSelectedDeviceCard(),
         syncedPendingCard: _buildSyncedPendingCard(),
         captureStatusCard: _buildSessionCaptureStatusCard(context),
-        onImportPressed: _importSessionFile,
       ),
     );
   }

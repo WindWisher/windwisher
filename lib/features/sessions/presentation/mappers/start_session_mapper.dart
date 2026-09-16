@@ -12,12 +12,71 @@ class StartSessionPresentationMapper {
 
   static StartSessionPanelData buildPanelData({
     required String captureStatusText,
-    String? importHintText,
   }) {
-    return StartSessionPanelData(
-      captureStatusText: captureStatusText,
-      importHintText: importHintText,
-    );
+    return StartSessionPanelData(captureStatusText: captureStatusText);
+  }
+
+  static SessionDeviceTransferData buildDeviceTransferData({
+    required SessionDeviceTransferPhase phase,
+    int sessionCount = 0,
+  }) {
+    return switch (phase) {
+      SessionDeviceTransferPhase.notApplicable =>
+        const SessionDeviceTransferData(
+          phase: SessionDeviceTransferPhase.notApplicable,
+          message: '',
+        ),
+      SessionDeviceTransferPhase.unavailable => const SessionDeviceTransferData(
+        phase: SessionDeviceTransferPhase.unavailable,
+        message:
+            'La transferencia de sesiones todavia no esta disponible para este dispositivo.',
+      ),
+      SessionDeviceTransferPhase.checking => const SessionDeviceTransferData(
+        phase: SessionDeviceTransferPhase.checking,
+        message: 'Comprobando si el dispositivo tiene sesiones nuevas...',
+      ),
+      SessionDeviceTransferPhase.upToDate => const SessionDeviceTransferData(
+        phase: SessionDeviceTransferPhase.upToDate,
+        message: 'El dispositivo no tiene sesiones pendientes.',
+      ),
+      SessionDeviceTransferPhase.sessionsAvailable => SessionDeviceTransferData(
+        phase: SessionDeviceTransferPhase.sessionsAvailable,
+        message: sessionCount == 1
+            ? 'Hay 1 sesion nueva en el dispositivo.'
+            : 'Hay $sessionCount sesiones nuevas en el dispositivo.',
+        actionLabel: sessionCount == 1
+            ? 'Descargar sesion'
+            : 'Descargar sesiones',
+        sessionCount: sessionCount,
+      ),
+      SessionDeviceTransferPhase.downloading => SessionDeviceTransferData(
+        phase: SessionDeviceTransferPhase.downloading,
+        message: sessionCount == 1
+            ? 'Descargando la sesion del dispositivo...'
+            : 'Descargando $sessionCount sesiones del dispositivo...',
+        sessionCount: sessionCount,
+      ),
+      SessionDeviceTransferPhase.readyToUpload => SessionDeviceTransferData(
+        phase: SessionDeviceTransferPhase.readyToUpload,
+        message: sessionCount == 1
+            ? 'La sesion esta descargada y lista para revisar.'
+            : '$sessionCount sesiones descargadas y listas para revisar.',
+        actionLabel: sessionCount == 1 ? 'Subir sesion' : 'Revisar sesiones',
+        sessionCount: sessionCount,
+      ),
+      SessionDeviceTransferPhase.uploading => SessionDeviceTransferData(
+        phase: SessionDeviceTransferPhase.uploading,
+        message: sessionCount == 1
+            ? 'Subiendo la sesion...'
+            : 'Subiendo sesiones...',
+        sessionCount: sessionCount,
+      ),
+      SessionDeviceTransferPhase.failed => const SessionDeviceTransferData(
+        phase: SessionDeviceTransferPhase.failed,
+        message: 'No se han podido sincronizar las sesiones del dispositivo.',
+        actionLabel: 'Reintentar',
+      ),
+    };
   }
 
   static SessionCaptureControlDecision resolveCaptureControlDecision({
@@ -124,6 +183,7 @@ class StartSessionPresentationMapper {
     required String availabilityLabel,
     required String sensorCountLabel,
     required bool isPhoneDeviceSelected,
+    required SessionDeviceTransferData transfer,
   }) {
     return SessionSelectedDeviceCardData(
       name: selectedDevice.name,
@@ -134,6 +194,7 @@ class StartSessionPresentationMapper {
       availabilityLabel: availabilityLabel,
       sensorCountLabel: sensorCountLabel,
       isPhoneDeviceSelected: isPhoneDeviceSelected,
+      transfer: transfer,
     );
   }
 

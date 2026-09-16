@@ -1,15 +1,19 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:windwisher/core/persistence/app_storage_paths.dart';
 import 'package:windwisher/features/sessions/presentation/pages/sessions_page.dart';
+import 'package:windwisher/features/sessions/presentation/pages/private_canonical_inbox_page.dart';
 
 void main() {
   Widget buildPage({bool useLocalPersistence = false}) => MaterialApp(
-    home: SessionsPage(
-      useLocalPersistence: useLocalPersistence,
-      detectExternalSessionDevices: () async => const [],
+    home: Scaffold(
+      body: SessionsPage(
+        useLocalPersistence: useLocalPersistence,
+        detectExternalSessionDevices: () async => const [],
+      ),
     ),
   );
 
@@ -45,17 +49,43 @@ void main() {
     expect(find.textContaining('sensores físicos disponibles'), findsOneWidget);
   });
 
-  testWidgets('offers real file import without creating simulated sessions', (
-    tester,
-  ) async {
+  testWidgets('does not expose manual session file import', (tester) async {
     await tester.pumpWidget(buildPage());
     await tester.pump();
 
+    expect(find.text('Importar sesion real'), findsNothing);
+    expect(find.text('Seleccionar archivo canónico'), findsNothing);
+    expect(find.text('Sesion importada en Oliva Norte'), findsNothing);
+  });
+
+  testWidgets('locks an open private inbox when the account changes', (
+    tester,
+  ) async {
+    final accountChanges = StreamController<String?>(sync: true);
+    addTearDown(accountChanges.close);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PrivateCanonicalInboxPage(
+          accountId: 'account-a',
+          accountIdChanges: accountChanges.stream,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    accountChanges.add('account-b');
+    await tester.pump();
+
     expect(
-      find.widgetWithText(OutlinedButton, 'Importar sesion real'),
+      find.text(
+        'La cuenta ha cambiado. Cierra esta pantalla para abrir la bandeja correcta.',
+      ),
       findsOneWidget,
     );
-    expect(find.text('Sesion importada en Oliva Norte'), findsNothing);
+    final disabledImportButton = find.byWidgetPredicate(
+      (widget) => widget is FilledButton && widget.onPressed == null,
+    );
+    expect(disabledImportButton, findsOneWidget);
   });
 
   testWidgets('switches between capture and saved sessions', (tester) async {

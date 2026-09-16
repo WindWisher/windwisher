@@ -7,10 +7,12 @@ class SessionSelectedDeviceCard extends StatelessWidget {
     super.key,
     required this.data,
     required this.onCapabilitiesPressed,
+    this.onTransferActionPressed,
   });
 
   final SessionSelectedDeviceCardData data;
   final VoidCallback onCapabilitiesPressed;
+  final VoidCallback? onTransferActionPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -79,12 +81,58 @@ class SessionSelectedDeviceCard extends StatelessWidget {
                   ),
                 ],
               ),
-              if (!data.isPhoneDeviceSelected) ...[
+              if (data.transfer.phase !=
+                  SessionDeviceTransferPhase.notApplicable) ...[
                 const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'La sincronizacion directa de sesiones aun no esta disponible para este dispositivo.',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.outline,
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          if (data.transfer.isBusy)
+                            const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          else
+                            Icon(_transferIcon(data.transfer.phase), size: 18),
+                          const SizedBox(width: AppSpacing.xs),
+                          Expanded(
+                            child: Text(
+                              'Sincronizacion de sesiones',
+                              style: textTheme.labelLarge,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        data.transfer.message,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      if (data.transfer.actionLabel != null) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        FilledButton.tonalIcon(
+                          onPressed: onTransferActionPressed,
+                          icon: Icon(
+                            data.transfer.phase ==
+                                    SessionDeviceTransferPhase.readyToUpload
+                                ? Icons.cloud_upload_rounded
+                                : Icons.download_rounded,
+                          ),
+                          label: Text(data.transfer.actionLabel!),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
@@ -93,6 +141,17 @@ class SessionSelectedDeviceCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  IconData _transferIcon(SessionDeviceTransferPhase phase) {
+    return switch (phase) {
+      SessionDeviceTransferPhase.upToDate => Icons.check_circle_outline_rounded,
+      SessionDeviceTransferPhase.sessionsAvailable =>
+        Icons.notification_important_outlined,
+      SessionDeviceTransferPhase.readyToUpload => Icons.cloud_upload_outlined,
+      SessionDeviceTransferPhase.failed => Icons.error_outline_rounded,
+      _ => Icons.sync_disabled_rounded,
+    };
   }
 }
 

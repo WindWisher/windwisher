@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:windwisher/app/router/app_routes.dart';
+import 'package:windwisher/app/router/router_refresh_notifier.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/features/auth/presentation/onboarding/terms_acceptance_gate.dart';
 import 'package:windwisher/features/auth/presentation/pages/login_page.dart';
@@ -18,7 +19,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       EnvConfig.supabaseUrl.trim().isNotEmpty &&
       EnvConfig.supabaseAnonKey.trim().isNotEmpty;
 
+  final authRefresh = hasSupabase
+      ? RouterRefreshNotifier(Supabase.instance.client.auth.onAuthStateChange)
+      : null;
+  if (authRefresh != null) {
+    ref.onDispose(authRefresh.dispose);
+  }
+
   return GoRouter(
+    refreshListenable: authRefresh,
     redirect: (context, state) {
       final hasSession = hasSupabase
           ? Supabase.instance.client.auth.currentSession != null

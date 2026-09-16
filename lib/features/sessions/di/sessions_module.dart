@@ -1,20 +1,54 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/features/sessions/application/use_cases/session_devices_use_cases.dart';
 import 'package:windwisher/features/sessions/application/use_cases/session_records_use_cases.dart';
 import 'package:windwisher/features/sessions/application/use_cases/session_view_preferences_use_cases.dart';
+import 'package:windwisher/features/sessions/domain/ports/out/private_canonical_inbox_port.dart';
+import 'package:windwisher/features/sessions/domain/ports/out/session_device_transfer_port.dart';
+import 'package:windwisher/features/sessions/domain/services/private_canonical_validator.dart';
 import 'package:windwisher/features/sessions/infrastructure/adapters/in_memory/in_memory_session_devices_adapter.dart';
 import 'package:windwisher/features/sessions/infrastructure/adapters/in_memory/in_memory_session_records_adapter.dart';
 import 'package:windwisher/features/sessions/infrastructure/adapters/in_memory/in_memory_session_view_preferences_adapter.dart';
 import 'package:windwisher/features/sessions/infrastructure/adapters/local/local_file_session_devices_adapter.dart';
 import 'package:windwisher/features/sessions/infrastructure/adapters/local/local_file_session_records_adapter.dart';
 import 'package:windwisher/features/sessions/infrastructure/adapters/local/local_file_session_view_preferences_adapter.dart';
+import 'package:windwisher/features/sessions/infrastructure/adapters/local/private_canonical_inbox.dart';
 import 'package:windwisher/features/sessions/infrastructure/adapters/supabase/supabase_session_records_adapter.dart';
 import 'package:windwisher/features/sessions/infrastructure/adapters/ble/ble_session_device_discovery_adapter.dart';
+import 'package:windwisher/features/sessions/infrastructure/adapters/garmin/garmin_connect_iq_client.dart';
+import 'package:windwisher/features/sessions/infrastructure/adapters/garmin/garmin_session_device_transfer_adapter.dart';
+import 'package:windwisher/features/sessions/infrastructure/adapters/garmin/garmin_session_envelope_converter.dart';
 
 class SessionsModule {
+  static PrivateCanonicalInboxPort createPrivateCanonicalInbox({
+    required String installationRootPath,
+    required String accountId,
+    required Map<String, dynamic> schema,
+  }) {
+    return PrivateCanonicalInbox(
+      PrivateCanonicalInbox.accountRoot(
+        Directory(installationRootPath),
+        accountId,
+      ),
+      PrivateCanonicalValidator(schema),
+    );
+  }
+
   static BleSessionDeviceDiscoveryAdapter createDeviceDiscoveryAdapter() {
     return BleSessionDeviceDiscoveryAdapter();
+  }
+
+  static GarminConnectIqClient createGarminConnectIqClient() {
+    return GarminConnectIqClient();
+  }
+
+  static SessionDeviceTransferPort createGarminSessionTransferAdapter() {
+    return GarminSessionDeviceTransferAdapter(
+      createGarminConnectIqClient(),
+      const GarminSessionEnvelopeConverter(),
+    );
   }
 
   const SessionsModule({

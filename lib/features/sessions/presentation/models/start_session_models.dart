@@ -47,13 +47,40 @@ class StartSessionPageData {
 }
 
 class StartSessionPanelData {
-  const StartSessionPanelData({
-    required this.captureStatusText,
-    this.importHintText,
-  });
+  const StartSessionPanelData({required this.captureStatusText});
 
   final String captureStatusText;
-  final String? importHintText;
+}
+
+enum SessionDeviceTransferPhase {
+  notApplicable,
+  unavailable,
+  checking,
+  upToDate,
+  sessionsAvailable,
+  downloading,
+  readyToUpload,
+  uploading,
+  failed,
+}
+
+class SessionDeviceTransferData {
+  const SessionDeviceTransferData({
+    required this.phase,
+    required this.message,
+    this.actionLabel,
+    this.sessionCount = 0,
+  });
+
+  final SessionDeviceTransferPhase phase;
+  final String message;
+  final String? actionLabel;
+  final int sessionCount;
+
+  bool get isBusy =>
+      phase == SessionDeviceTransferPhase.checking ||
+      phase == SessionDeviceTransferPhase.downloading ||
+      phase == SessionDeviceTransferPhase.uploading;
 }
 
 class SessionGearSetupOptionData {
@@ -238,6 +265,28 @@ class SessionImportedPendingResult {
   final List<SessionJumpRecord> jumpHistory;
 }
 
+enum SessionDownloadedReviewAction { upload, delete }
+
+class SessionDownloadedReviewData {
+  const SessionDownloadedReviewData({
+    required this.title,
+    required this.deviceName,
+    required this.dateLabel,
+    required this.durationLabel,
+    required this.summary,
+    required this.sourceFormatLabel,
+    required this.jumpCount,
+  });
+
+  final String title;
+  final String deviceName;
+  final String dateLabel;
+  final String durationLabel;
+  final String summary;
+  final String sourceFormatLabel;
+  final int jumpCount;
+}
+
 class SessionSelectedDeviceCardData {
   const SessionSelectedDeviceCardData({
     required this.name,
@@ -248,6 +297,7 @@ class SessionSelectedDeviceCardData {
     required this.availabilityLabel,
     required this.sensorCountLabel,
     required this.isPhoneDeviceSelected,
+    required this.transfer,
   });
 
   final String name;
@@ -258,6 +308,7 @@ class SessionSelectedDeviceCardData {
   final String availabilityLabel;
   final String sensorCountLabel;
   final bool isPhoneDeviceSelected;
+  final SessionDeviceTransferData transfer;
 }
 
 class SessionCaptureStatusCardData {
