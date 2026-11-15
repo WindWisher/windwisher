@@ -14,6 +14,7 @@ import 'package:windwisher/core/config/env/env_config.dart';
 import 'package:windwisher/core/persistence/app_storage_paths.dart';
 import 'package:windwisher/core/theme/app_spacing.dart';
 import 'package:windwisher/core/ui/app_scroll_behavior.dart';
+import 'widgets/spot_basemap_tile.dart';
 import 'package:windwisher/features/spots/di/spots_module.dart';
 import 'package:windwisher/features/spots/application/services/spot_capabilities_catalog.dart';
 import 'package:windwisher/features/spots/domain/entities/spot_item.dart';

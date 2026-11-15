@@ -92,6 +92,27 @@ extension _SpotsMapSection on SpotsPageState {
           left: AppSpacing.sm,
           child: _SpotMapCountBadge(count: mappedSpots.length),
         ),
+        Positioned(
+          top: AppSpacing.sm,
+          right: AppSpacing.sm,
+          child: Material(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(6),
+            child: InkWell(
+              onTap: () => launchUrl(
+                Uri.parse('https://www.openstreetmap.org/copyright'),
+                mode: LaunchMode.externalApplication,
+              ),
+              child: const Padding(
+                padding: EdgeInsets.all(6),
+                child: Text(
+                  '© OpenStreetMap contributors',
+                  style: TextStyle(fontSize: 10),
+                ),
+              ),
+            ),
+          ),
+        ),
         if (selectedSpot == null)
           Positioned(
             bottom: AppSpacing.sm,
@@ -175,9 +196,6 @@ extension _SpotsMapSection on SpotsPageState {
   }
 
   Widget _buildSpotsMap(List<_SpotItem> spots, {required bool isLandscape}) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final tileStyle = isDark ? 'dark_all' : 'light_all';
-
     return FlutterMap(
       key: const Key('spots-explorer-map'),
       mapController: _spotsMapController,
@@ -191,9 +209,7 @@ extension _SpotsMapSection on SpotsPageState {
       ),
       children: [
         TileLayer(
-          urlTemplate:
-              'https://{s}.basemaps.cartocdn.com/$tileStyle/{z}/{x}/{y}{r}.png',
-          subdomains: const ['a', 'b', 'c', 'd'],
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
           userAgentPackageName: 'com.windwisher.app',
           retinaMode: false,
           panBuffer: 0,
@@ -340,7 +356,7 @@ extension _SpotsMapSection on SpotsPageState {
         _markSpotsMapLoaded();
       });
     }
-    return tileWidget;
+    return SpotBasemapTile(child: tileWidget);
   }
 
   void _zoomSpotsMap(double delta) {

@@ -369,6 +369,11 @@ void main() {
     expect(find.byTooltip('Alejar mapa'), findsOneWidget);
     expect(find.byTooltip('Ver todos los spots'), findsOneWidget);
     final tileLayer = tester.widget<TileLayer>(find.byType(TileLayer));
+    expect(
+      tileLayer.urlTemplate,
+      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    );
+    expect(find.text('© OpenStreetMap contributors'), findsOneWidget);
     expect(tileLayer.resolvedRetinaMode, RetinaMode.disabled);
     expect(tileLayer.panBuffer, 0);
     expect(tileLayer.keepBuffer, 1);
@@ -381,6 +386,7 @@ void main() {
     await tester.pump();
 
     expect(find.byKey(const Key('spot-map-preview-card')), findsOneWidget);
+    expect(find.text('© OpenStreetMap contributors'), findsOneWidget);
     expect(
       find.byKey(const Key('spot-map-marker-label-$spotName')),
       findsOneWidget,

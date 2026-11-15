@@ -2,13 +2,21 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "WindWisher Android USB Debug",
+      "request": "launch",
+      "type": "dart",
+      "program": "${workspaceFolder}/lib/main.dart",
+      "cwd": "${workspaceFolder}",
+      "flutterMode": "debug"
+    },
+    {
       "name": "Flutter Debug (Select Device)",
       "request": "launch",
       "type": "dart",
       "flutterMode": "debug"
     },
     {
-      "name": "Flutter Android Debug (Hot Reload)",
+      "name": "Flutter Android Emulator Debug (Hot Reload)",
       "request": "launch",
       "type": "dart",
       "flutterMode": "debug",
