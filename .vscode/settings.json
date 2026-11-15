@@ -21,7 +21,10 @@
   "java.jdt.ls.java.home": "/Applications/Android Studio.app/Contents/jbr/Contents/Home",
   "gradle.java.home": "/Applications/Android Studio.app/Contents/jbr/Contents/Home",
   "gradle.nestedProjects": ["android"],
+  "gradle.autoDetect": "off",
+  "java.import.gradle.enabled": false,
   "java.import.gradle.wrapper.enabled": true,
+  "java.import.gradle.version": "8.14",
   "java.import.exclusions": [
     "**/node_modules/**",
     "**/.metadata/**",

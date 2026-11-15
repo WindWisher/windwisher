@@ -1,5 +1,12 @@
 # SESSION TRACKER
 
+## 2026-11-15 - Alineacion de tablas de prevision
+
+- Corregida la tabla compartida de modelos horarios y Meteoblue Sea: etiquetas fijas y valores usan la misma altura por fila, calculada con todas sus celdas. Se conservan los colores, bordes y desplazamiento horizontal; las etiquetas se pintan por encima de los valores y las filas altas permiten desplazamiento vertical cuando la altura disponible esta limitada.
+- AEMET Playa: reproducido desbordamiento con descripciones largas y texto ampliado. Cabeceras y filas ahora calculan alturas comunes considerando contenido, ancho y escala de texto, sin recortar la informacion del proveedor.
+- Verificacion: 14 pruebas nuevas de geometria, texto al 100/160/200%, pantallas de 320/390/844 px, scroll, datos vacios y cambios de columnas; las 27 pruebas existentes de Spot Detail tambien pasan. Analisis dirigido sin incidencias.
+- Alcance: pruebas locales con datos de prueba, no inspeccion visual en telefono ni validacion del contenido remoto de widgets Windguru/Windy. No se han modificado los adaptadores ni los datos meteorologicos.
+
 ## 2026-11-15 - Revision de pendientes de transporte Garmin
 
 - Corregido el despacho nativo de Connect IQ: procesa todas las respuestas de una entrega en orden, ignora mensajes ajenos y se detiene al cerrar o fallar la transferencia. Antes descartaba las respuestas posteriores a la primera coincidencia.

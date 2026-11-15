@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:windwisher/core/units/app_units_controller.dart';
 import 'package:windwisher/features/spots/application/services/spots_presentation_forecast_support.dart';
@@ -15,8 +17,8 @@ class AemetBeachForecastTable extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     const labelColumnWidth = 116.0;
     const dayColumnWidth = 148.0;
-    const headerHeight = 72.0;
-    const rowHeight = 88.0;
+    var headerHeight = 72.0;
+    var rowHeight = 88.0;
     const rowGap = 8.0;
     const rowLabels = [
       'Cielo',
@@ -27,6 +29,80 @@ class AemetBeachForecastTable extends StatelessWidget {
       'Sens. térmica',
       'UV max',
     ];
+
+    double textHeight(String text, TextStyle? style, double width) {
+      final painter = TextPainter(
+        text: TextSpan(text: text, style: style),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+      )..layout(maxWidth: width);
+      final height = painter.height.ceilToDouble();
+      painter.dispose();
+      return height;
+    }
+
+    // Both sides retain the same row height, including wrapped provider text.
+    for (final label in rowLabels) {
+      rowHeight = math.max(
+        rowHeight,
+        textHeight(
+          label,
+          textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+          labelColumnWidth,
+        ),
+      );
+    }
+    for (final day in data.days) {
+      headerHeight = math.max(
+        headerHeight,
+        textHeight(
+              _formatShortDate(day.date),
+              textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+              dayColumnWidth - 20,
+            ) +
+            textHeight(
+              'Mañana / Tarde',
+              textTheme.labelSmall,
+              dayColumnWidth - 20,
+            ) +
+            20,
+      );
+      for (final pair in [
+        [day.skyMorning, day.skyAfternoon],
+        [day.windMorning, day.windAfternoon],
+        [day.waveMorning, day.waveAfternoon],
+      ]) {
+        rowHeight = math.max(
+          rowHeight,
+          textHeight(
+                'Mañana: ${pair[0]}',
+                textTheme.bodySmall,
+                dayColumnWidth - 22,
+              ) +
+              textHeight(
+                'Tarde: ${pair[1]}',
+                textTheme.bodySmall,
+                dayColumnWidth - 22,
+              ) +
+              24,
+        );
+      }
+      for (final text in [
+        day.thermalSensation,
+        day.maxTempC == null
+            ? '-'
+            : units.formatTemperature(day.maxTempC!.toDouble(), decimals: 0),
+        day.waterTempC == null
+            ? '-'
+            : units.formatTemperature(day.waterTempC!.toDouble(), decimals: 0),
+        day.uvMax?.toString() ?? '-',
+      ]) {
+        rowHeight = math.max(
+          rowHeight,
+          textHeight(text, textTheme.bodySmall, dayColumnWidth - 22) + 20,
+        );
+      }
+    }
 
     Widget dayHeader(AemetBeachForecastDay day) {
       return Container(
@@ -173,10 +249,7 @@ class AemetBeachForecastTable extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(
-                      width: labelColumnWidth,
-                      height: headerHeight,
-                    ),
+                    SizedBox(width: labelColumnWidth, height: headerHeight),
                     const SizedBox(height: 10),
                     ...rowLabels.map(
                       (label) => Padding(
