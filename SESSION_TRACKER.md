@@ -1,5 +1,13 @@
 # SESSION TRACKER
 
+## 2026-11-15 - Revision de pendientes de transporte Garmin
+
+- Corregido el despacho nativo de Connect IQ: procesa todas las respuestas de una entrega en orden, ignora mensajes ajenos y se detiene al cerrar o fallar la transferencia. Antes descartaba las respuestas posteriores a la primera coincidencia.
+- Progreso de transferencia validado en Flutter: exige contadores enteros no negativos dentro de los limites nativos (1026 fragmentos, 2 MiB) y estado booleano. Una consulta de progreso invalida no reinicia la descarga.
+- Verificacion: 200 pruebas Flutter aprobadas; tres pruebas JVM de despacho aprobadas mediante `:app:testDebugUnitTest`; `flutter analyze --no-pub` sin errores.
+- Estos resultados verifican codigo y regresiones, no una descarga fisica Garmin-movil ni la precision del algoritmo de salto. No se ha iniciado captura, instalado software, borrado registros ni publicado este bloque.
+- Siguen pendientes de evidencia externa: transporte completo con hardware, identidad del ejecutable del reloj y referencia temporal independiente del salto. La investigacion del motor propio continua en `WindWisher Watch`, sin cambiar sus umbrales ni reabrir presupuestos de ensayos.
+
 ## Total historico consolidado
 
 - `Total historico minimo consolidado del proyecto: 244h 56m 08s`.
@@ -65,6 +73,21 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
 ## Registro de sesiones
+
+### 2026-11-15 - WOO: captura paralela y revision del formato raw
+
+- Responsabilidad confirmada por el usuario: todo calculo propio de saltos del reloj se implementa en el proyecto hermano `/Users/raulmartinez/Documents/Proyectos/Antigravity/WindWisher Watch`. Flutter recibe/valida/presenta resultados; no crear un segundo motor de muneca aqui. La investigacion WOO/SurfR informa ese trabajo sin saltarse sus gates de validacion.
+
+- Objetivo vigente: reconstruir el calculo de salto del firmware WOO; no se ha obtenido su binario ni recuperado su algoritmo.
+- Captura nueva preservada en `tmp/woo_apk_analysis/session_20261115_woo_01*`: un Air, QH completo y raw de 1500 registros; 161 checksums de bytes transmitidos validos.
+- FIT SurfR copiado del Garmin sin modificar el reloj: `.tmp/garmin_surfr/2026-11-15-readout/2026-11-12-15-46-52.fit`; dos saltos. El usuario confirma que el salto ~2.7 m es el mismo evento WOO/SurfR. El segundo queda fuera de cobertura WOO probable, no se considera omision.
+- Correcciones: fecha Air en BCD; checksum antes de retirar escapes; conservar posiciones de ceros QH. La ultima palabra QH coincide exactamente con un tick raw en cuatro ventanas.
+- Unidad Air confirmada por codigo: 10 ms por incremento. La relacion raw/Air cercana a 100 respalda reloj raw nominal de 10000 ticks/s; 32768 no debe presentarse como frecuencia confirmada.
+- Layout raw respaldado por consistencia interna: col0 reloj; cols1..4 cuaternion Q30; cols5..7 aceleracion candidata Q16 g; cols8..10 giroscopio candidato Q16 grados/s.
+- Contraste gyro/cuaternion: 12 ejes en cuatro ventanas, correlaciones 0.9777..0.9959 y pendientes 0.9699..1.0123. Herramienta: `audit_raw_gyro.py`.
+- Quedan invalidadas como interpretaciones fisicas las anteriores atribuciones de fuerza/gravedad a cols8..10. Ver `RAW_SENSOR_LAYOUT_AUDIT.md`. Integracion directa deriva y umbrales simples no detectan vuelo de forma validada.
+- Descarga firmware bloqueada por login HTTP 502 reproducible sin credenciales. APK original intacta; ninguna actualizacion enviada. Credenciales locales excluidas de Git; no incorporarlas a documentacion ni logs.
+- Proximo trabajo: estudiar patrones temporales conjuntos de aceleracion y giro con el layout revisado, sin ajustar contra las cuatro etiquetas oficiales ni presentar un detector como validado.
 
 ### 2026-08-13 - Map performance, jump validation lab and per-user unit synchronization
 

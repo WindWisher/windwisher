@@ -49,6 +49,7 @@ class GarminConnectIqBridge(
         val output: ByteArrayOutputStream = ByteArrayOutputStream(),
         var expectedLine: Int = 0,
         var timeout: Runnable? = null,
+        var deadline: Runnable? = null,
     )
 
     init {
@@ -58,6 +59,11 @@ class GarminConnectIqBridge(
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         try {
             when (call.method) {
+                "transferProgress" -> result.success(mapOf(
+                    "lines" to (transfer?.expectedLine ?: 0),
+                    "bytes" to (transfer?.output?.size() ?: 0),
+                    "active" to (transfer != null),
+                ))
                 "knownDevices" -> runWhenReady(result) { returnKnownDevices(result) }
                 "inspectSessions" -> runWhenReady(result) {
                     startTransfer(result, requireDeviceId(call), null)
@@ -207,6 +213,13 @@ class GarminConnectIqBridge(
                 sourceId = sourceId,
             )
             transfer = pending
+            val deadline = Runnable {
+                if (transfer === pending) {
+                    failActive("garmin_transfer_deadline", "La transferencia ha superado cinco minutos. La sesion sigue en el reloj.")
+                }
+            }
+            pending.deadline = deadline
+            handler.postDelayed(deadline, 300_000L)
             connectIQ.registerForAppEvents(device, app, appEventListener)
             send(
                 pending,
@@ -216,14 +229,25 @@ class GarminConnectIqBridge(
                     "type" to if (sourceId == null) "inventory_request" else "download_start",
                     "requestId" to pending.requestId,
                 ).apply {
-                    if (sourceId != null) put("sessionId", sourceId)
+                    if (sourceId != null) {
+                        put("sessionId", sourceId)
+                        put("batchLines", 8)
+                    }
                 },
             )
         } catch (_: ServiceUnavailableException) {
-            failActive("garmin_service_unavailable", "Garmin Connect no esta disponible.")
+            if (transfer == null) {
+                result.error("garmin_service_unavailable", "Garmin Connect no esta disponible.", null)
+            } else {
+                failActive("garmin_service_unavailable", "Garmin Connect no esta disponible.")
+            }
         } catch (_: InvalidStateException) {
             isReady = false
-            failActive("garmin_invalid_state", "Garmin Connect IQ no esta preparado.")
+            if (transfer == null) {
+                result.error("garmin_invalid_state", "Garmin Connect IQ no esta preparado.", null)
+            } else {
+                failActive("garmin_invalid_state", "Garmin Connect IQ no esta preparado.")
+            }
         }
     }
 
@@ -237,13 +261,12 @@ class GarminConnectIqBridge(
                 failActive("garmin_receive_failed", "Garmin no pudo entregar la respuesta: ${status.name}")
                 return@runOnUiThread
             }
-            for (message in messages) {
-                val response = message as? Map<*, *> ?: continue
-                if (response["requestId"] == pending.requestId) {
-                    handleResponse(pending, response)
-                    break
-                }
-            }
+            dispatchGarminResponses(
+                messages,
+                pending.requestId,
+                isActive = { transfer === pending },
+                handle = { handleResponse(pending, it) },
+            )
         }
     }
 
@@ -255,6 +278,7 @@ class GarminConnectIqBridge(
         when (response["type"] as? String) {
             "inventory" -> completeInventory(pending, response)
             "download_line" -> acceptLine(pending, response)
+            "download_batch" -> acceptBatch(pending, response)
             "download_complete" -> completeDownload(pending, response)
             "error" -> failActive(
                 "garmin_watch_error",
@@ -297,6 +321,31 @@ class GarminConnectIqBridge(
             return
         }
         finishActive { it.result.success(mapped) }
+    }
+
+    private fun acceptBatch(pending: PendingTransfer, response: Map<*, *>) {
+        val index = (response["lineIndex"] as? Number)?.toInt()
+        val lines = response["lines"] as? List<*>
+        if (pending.sourceId == null || response["sessionId"] != pending.sourceId ||
+            index != pending.expectedLine || lines == null || lines.size !in 1..8 ||
+            lines.any { it !is String }) {
+            failActive("garmin_invalid_batch", "El lote Garmin esta desordenado o no es valido.")
+            return
+        }
+        val encoded = lines.map { (it as String).toByteArray(StandardCharsets.UTF_8) }
+        val size = encoded.sumOf { it.size }
+        if (encoded.any { it.isEmpty() || it.size > maxLineBytes } || size > 4096 ||
+            pending.expectedLine + encoded.size > maxLines || pending.output.size() + size > maxTransferBytes) {
+            failActive("garmin_transfer_limit", "El lote Garmin supera los limites permitidos.")
+            return
+        }
+        encoded.forEach { pending.output.write(it) }
+        pending.expectedLine += encoded.size
+        send(pending, mapOf(
+            "protocol" to protocol, "version" to protocolVersion,
+            "type" to "download_ack", "requestId" to pending.requestId,
+            "sessionId" to pending.sourceId, "lineIndex" to pending.expectedLine - 1,
+        ))
     }
 
     private fun acceptLine(pending: PendingTransfer, response: Map<*, *>) {
@@ -369,6 +418,18 @@ class GarminConnectIqBridge(
     }
 
     private fun failActive(code: String, message: String) {
+        val pending = transfer
+        if (pending?.sourceId != null) {
+            try {
+                connectIQ.sendMessage(pending.device, pending.app, mapOf(
+                    "protocol" to protocol, "version" to protocolVersion,
+                    "type" to "download_abort", "requestId" to pending.requestId,
+                    "sessionId" to pending.sourceId,
+                )) { _, _, _ -> }
+            } catch (_: Exception) {
+                // Best effort: abort only releases transport state, never recordings.
+            }
+        }
         finishActive { it.result.error(code, message, null) }
     }
 
@@ -376,6 +437,7 @@ class GarminConnectIqBridge(
         val pending = transfer ?: return
         transfer = null
         pending.timeout?.let(handler::removeCallbacks)
+        pending.deadline?.let(handler::removeCallbacks)
         try {
             connectIQ.unregisterForApplicationEvents(pending.device, pending.app)
         } catch (_: Exception) {

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:android_intent_plus/android_intent.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
@@ -1115,7 +1116,13 @@ class SessionsPageState extends State<SessionsPage> {
             ? SessionDeviceTransferPhase.upToDate
             : SessionDeviceTransferPhase.sessionsAvailable;
       });
-    } catch (_) {
+    } catch (error) {
+      if (kDebugMode) {
+        final reason = error is PlatformException
+            ? error.code
+            : error.runtimeType;
+        debugPrint('Garmin session inventory failed: $reason');
+      }
       if (!mounted || _selectedDeviceId != inspectedDeviceId) return;
       setState(() {
         _deviceTransferSessions = const [];
@@ -1123,6 +1130,8 @@ class SessionsPageState extends State<SessionsPage> {
       });
     }
   }
+
+  String? _deviceTransferProgress;
 
   Future<void> _downloadSelectedDeviceSessions() async {
     final device = _selectedDevice;
@@ -1135,6 +1144,34 @@ class SessionsPageState extends State<SessionsPage> {
       return;
     }
     final deviceId = device.id;
+    _deviceTransferProgress = null;
+    var finished = false;
+    var polling = false;
+    final progressClient = SessionsModule.createGarminConnectIqClient();
+    final progressTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
+      if (polling || finished || !mounted || _selectedDeviceId != deviceId) {
+        return;
+      }
+      polling = true;
+      try {
+        final progress = await progressClient.transferProgress().timeout(
+          const Duration(seconds: 3),
+        );
+        if (!finished &&
+            mounted &&
+            _selectedDeviceId == deviceId &&
+            progress.active) {
+          setState(() {
+            _deviceTransferProgress =
+                '${progress.lines} fragmentos recibidos · ${progress.bytes} bytes';
+          });
+        }
+      } catch (_) {
+        // A progress query must not interrupt or restart the actual transfer.
+      } finally {
+        polling = false;
+      }
+    });
     setState(
       () => _deviceTransferPhase = SessionDeviceTransferPhase.downloading,
     );
@@ -1176,9 +1213,18 @@ class SessionsPageState extends State<SessionsPage> {
         _deviceTransferSessions = const [];
         _deviceTransferPhase = SessionDeviceTransferPhase.readyToUpload;
       });
-    } catch (_) {
+    } catch (error, stack) {
+      if (kDebugMode) {
+        debugPrint(
+          'Garmin download failed: ${error is PlatformException ? error.code : error.runtimeType}',
+        );
+        debugPrintStack(stackTrace: stack, maxFrames: 10);
+      }
       if (!mounted || _selectedDeviceId != deviceId) return;
       setState(() => _deviceTransferPhase = SessionDeviceTransferPhase.failed);
+    } finally {
+      finished = true;
+      progressTimer.cancel();
     }
   }
 
@@ -2197,6 +2243,7 @@ class SessionsPageState extends State<SessionsPage> {
         isPhoneDeviceSelected: selectedDevice.id == _phoneDeviceId,
         transfer: StartSessionPresentationMapper.buildDeviceTransferData(
           phase: transferPhase,
+          progressMessage: _deviceTransferProgress,
           sessionCount:
               usesGarminTransfer &&
                   _deviceTransferPhase ==

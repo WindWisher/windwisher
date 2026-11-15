@@ -78,8 +78,17 @@ class StartSessionDeviceDetectionLogic {
       final devices = await SessionsModule.createGarminConnectIqClient()
           .knownDevices()
           .timeout(const Duration(seconds: 8));
+      if (kDebugMode) {
+        debugPrint('Garmin discovery: ${devices.length} devices');
+      }
       return devices.map(_mapGarminConnectIqDevice).toList(growable: false);
-    } catch (_) {
+    } catch (error) {
+      if (kDebugMode) {
+        final reason = error is PlatformException
+            ? error.code
+            : error.runtimeType;
+        debugPrint('Garmin discovery failed: $reason');
+      }
       return const <SessionDetectedCompatibleDeviceData>[];
     }
   }

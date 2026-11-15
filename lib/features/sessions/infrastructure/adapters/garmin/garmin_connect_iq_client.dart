@@ -16,11 +16,46 @@ class GarminConnectIqClient {
   final MethodChannel _channel;
   final bool _isAndroid;
 
+  // Progress must bypass the queue occupied by the running download.
+  Future<({int lines, int bytes, bool active})> transferProgress() async {
+    if (!_isAndroid) return (lines: 0, bytes: 0, active: false);
+    final value = await _channel.invokeMapMethod<String, Object?>(
+      'transferProgress',
+    );
+    final lines = value?['lines'];
+    final bytes = value?['bytes'];
+    final active = value?['active'];
+    if (lines is! int ||
+        lines < 0 ||
+        lines > 1026 ||
+        bytes is! int ||
+        bytes < 0 ||
+        bytes > 2 * 1024 * 1024 ||
+        active is! bool) {
+      throw const FormatException('Garmin ha devuelto un progreso invalido.');
+    }
+    return (lines: lines, bytes: bytes, active: active);
+  }
+
+  // All client instances share one native SDK and one active transfer.
+  static Future<void> _pendingRequest = Future<void>.value();
+
+  Future<T> _serial<T>(Future<T> Function() action) {
+    final request = _pendingRequest.then((_) => action());
+    _pendingRequest = request.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return request;
+  }
+
   Future<List<GarminConnectIqDevice>> knownDevices() async {
     if (!_isAndroid) {
       return const <GarminConnectIqDevice>[];
     }
-    final rawDevices = await _channel.invokeListMethod<Object?>('knownDevices');
+    final rawDevices = await _serial(
+      () => _channel.invokeListMethod<Object?>('knownDevices'),
+    );
     if (rawDevices == null) {
       return const <GarminConnectIqDevice>[];
     }
@@ -30,9 +65,11 @@ class GarminConnectIqClient {
 
   Future<List<DeviceSessionReference>> inspectSessions(String deviceId) async {
     if (!_isAndroid) return const <DeviceSessionReference>[];
-    final rawSessions = await _channel.invokeListMethod<Object?>(
-      'inspectSessions',
-      <String, Object?>{'deviceId': deviceId},
+    final rawSessions = await _serial(
+      () => _channel.invokeListMethod<Object?>(
+        'inspectSessions',
+        <String, Object?>{'deviceId': deviceId},
+      ),
     );
     return (rawSessions ?? const <Object?>[])
         .map(_parseSessionReference)
@@ -46,9 +83,11 @@ class GarminConnectIqClient {
     if (!_isAndroid) {
       throw UnsupportedError('Connect IQ solo esta disponible en Android.');
     }
-    final bytes = await _channel.invokeMethod<Uint8List>(
-      'downloadSession',
-      <String, Object?>{'deviceId': deviceId, 'sourceId': sourceId},
+    final bytes = await _serial(
+      () => _channel.invokeMethod<Uint8List>(
+        'downloadSession',
+        <String, Object?>{'deviceId': deviceId, 'sourceId': sourceId},
+      ),
     );
     if (bytes == null || bytes.isEmpty) {
       throw const FormatException('Garmin ha devuelto una descarga vacia.');

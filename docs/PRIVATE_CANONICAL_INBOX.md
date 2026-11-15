@@ -238,3 +238,118 @@ watch builds, Android Kotlin compilation, Dart bridge/converter tests and privat
 inbox tests. A physical end-to-end transfer between the Garmin watch and the
 Xiaomi has not yet been run, so device delivery, background behavior and timeout
 recovery remain hardware verification gates.
+
+### Physical diagnostic check, 2026-09-17
+
+- Xiaomi detects one Connect IQ device; the Fenix 7 is already linked and
+  selected. Linked devices are intentionally absent from the add-device list.
+- Opening Sessions reproduced `garmin_busy`: discovery and inventory raced
+  during native SDK initialization. The Dart client now serializes native calls
+  across instances. Tests cover concurrent discovery/inventory and recovery
+  after a native error.
+- Retrying after initialization returned `garmin_timeout`. This does not prove
+  that the installed watch app supports or is running the transfer protocol.
+  After installing the serialized client, startup discovered one device and
+  reached the 15-second response timeout without the previous `garmin_busy`.
+- Diagnostic APKs were installed as updates, without uninstalling the app.
+  The packaged environment was restricted to client configuration keys.
+- Actual session download, persistence and upload from the watch remain
+  unverified. Next: open the compatible WindWisher watch app and retry; verify
+  its installed build if it still times out. Do not delete existing recordings.
+
+### USB preparation, 2026-09-17
+
+- Fenix 7 was accessible through MTP after releasing Android File Transfer.
+  The installed PRG was not exposed in the Apps listing, so its version could
+  not be established. No claim that the old build lacked transfer support.
+- Preserved local copies of WWSEDEV DAT, IDX, IMT and MBX in the ignored
+  `.tmp/garmin-check-20260917/` directory. No device data/log deletion.
+- Built the current Watch session-engine source for fenix7 and copied only
+  `WWSEDEV.prg` into GARMIN/Apps, retaining the application ID.
+- Source and device readback SHA-256 both equal
+  `8fd541f2ca63e3add21c2699678cc06c13aab13edf75d492cc8932012c01e49c`.
+  This verifies file transfer, not watch import, launch or session delivery.
+- Next operator action: disconnect USB and open WW Session Engine Dev near the
+  Xiaomi. Retry inventory without starting or deleting a recording.
+
+### Inventory retry after USB update, 2026-09-17
+
+Retried on the already-linked Fenix 7 through Connect IQ, without changing BLE
+pairing. The Xiaomi changed from checking to "El dispositivo no tiene sesiones
+pendientes." This verifies completion of the inventory/inbox check, not a real
+download. The UI filters sessions already present in the inbox, so this message
+alone does not establish that the watch storage is empty. No download, upload,
+recording or deletion was initiated in this check.
+
+### First new recording download attempt, 2026-09-17
+
+After the operator recorded a short session, the Xiaomi displayed one new
+session on the linked Connect IQ Fenix 7. Pressed Download once. Repeated UI
+checks still showed downloading after several minutes; no completion or preview
+was observed and the local inbox contained no files at the time it was checked.
+Do not claim successful transfer or persistence. No upload or deletion was
+initiated. Keep this recording for further diagnosis; do not ask for another
+recording. Progress visibility and transfer duration need investigation before
+calling this user flow ready.
+
+### Transfer diagnostics follow-up
+
+- Added native active-transfer counters (accepted lines and bytes) queried by
+  the mobile UI every two seconds, outside the serialized command queue. No
+  inferred percentage or session content is exposed in progress queries.
+- Added a five-minute native transfer deadline in addition to response timeout,
+  with best-effort transport abort on failure. Abort does not delete recordings.
+- Fixed errors before PendingTransfer creation that previously called a no-op
+  failActive and left the MethodChannel result unresolved. This is a confirmed
+  code defect, not yet the established cause of the physical stalled download.
+- Targeted Flutter tests: 13 passed; directed analysis clean. Physical completion
+  remains unverified. Reopen the watch app to release the old attempt before
+  retrying the same recording with the diagnostic APK.
+
+### Physical progress observation, 2026-09-18
+
+The linked Fenix inventory showed two pending sessions. Download was pressed
+once. Observed counters advanced through 10/1767, 27/4939, 49/9101, 69/13042,
+87/16608, 108/20822 and 140/27239 (fragments/bytes). The operation then failed
+with `garmin_transfer_deadline` at the five-minute native deadline. The inbox
+still contained zero files. No upload or deletion was performed.
+
+This attempt demonstrates an advancing but slow transfer, not a frozen UI.
+It does not establish the cause of earlier attempts without counters. Next
+transport work should reduce per-line round trips (bounded batching with
+integrity/ordering tests), rather than treating a longer timeout as the fix.
+Reuse these recordings; successful complete download and preview remain pending.
+
+### Bounded batching implementation, 2026-09-18
+
+Android requests optional `batchLines: 8` in protocol-v1 download_start. New
+watch builds return download_batch with sessionId, starting lineIndex and a
+lines array. Legacy watches may still return download_line. The receiver checks
+identity, exact ordering, 1..8 lines, per-line limits, a 4096-byte encoded batch
+limit, total lines and total bytes before appending the complete batch. The ACK
+identifies its last line. Existing envelope checksum and canonical validation
+are unchanged.
+
+The watch batches at most eight lines / 2048 ASCII characters (a single line
+may stand alone), retaining the exact batch for replay until acknowledged.
+Its producer is read-only: advancing it never deletes journal data. A completed
+transfer now permits a new request, fixing the previous TRANSFER_BUSY on the
+next session while preserving final-ACK replay until that new request.
+
+Validation: 14 simulator tests reported PASS (runner exit code 1 despite the
+all-pass report); 13 focused Flutter tests passed; Android compileDebugKotlin
+and fenix7 PRG build succeeded. The new transport is NOT yet installed or
+physically verified. Requires updating BOTH Android and the watch before retry.
+
+### Batch deployment preparation, 2026-09-18
+
+- Preserved current WWSEDEV.DAT (384216 bytes) and IDX (1048 bytes) locally in
+  ignored `.tmp/garmin-batch-20260918/`; no recording deletion.
+- Rebuilt the batch watch PRG and copied it to GARMIN/Apps/WWSEDEV.prg after
+  intermittent USB failures. Successful device readback matches source SHA-256
+  `7044c138164b96410cb2f0ae4ee45a3780824e846ca1c6faedf655c48dc8ee28`.
+- Built Android in `.tmp/garmin-batch-apk/` with client-only environment keys;
+  checked packaged environment keys and installed with adb install -r (Success).
+- Both binary transfers are complete. Watch import/launch and physical batched
+  download remain unverified. Disconnect USB, open WW Session Engine Dev, then
+  retry the existing recordings near Xiaomi. No upload has been initiated.

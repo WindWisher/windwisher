@@ -19,6 +19,7 @@ class StartSessionPresentationMapper {
   static SessionDeviceTransferData buildDeviceTransferData({
     required SessionDeviceTransferPhase phase,
     int sessionCount = 0,
+    String? progressMessage,
   }) {
     return switch (phase) {
       SessionDeviceTransferPhase.notApplicable =>
@@ -51,9 +52,11 @@ class StartSessionPresentationMapper {
       ),
       SessionDeviceTransferPhase.downloading => SessionDeviceTransferData(
         phase: SessionDeviceTransferPhase.downloading,
-        message: sessionCount == 1
-            ? 'Descargando la sesion del dispositivo...'
-            : 'Descargando $sessionCount sesiones del dispositivo...',
+        message:
+            progressMessage ??
+            (sessionCount == 1
+                ? 'Descargando la sesion del dispositivo...'
+                : 'Descargando $sessionCount sesiones del dispositivo...'),
         sessionCount: sessionCount,
       ),
       SessionDeviceTransferPhase.readyToUpload => SessionDeviceTransferData(

@@ -20,5 +20,18 @@
   "chatgpt.openOnStartup": true,
   "java.jdt.ls.java.home": "/Applications/Android Studio.app/Contents/jbr/Contents/Home",
   "gradle.java.home": "/Applications/Android Studio.app/Contents/jbr/Contents/Home",
+  "gradle.nestedProjects": ["android"],
+  "java.import.gradle.wrapper.enabled": true,
+  "java.import.exclusions": [
+    "**/node_modules/**",
+    "**/.metadata/**",
+    "**/archetype-resources/**",
+    "**/META-INF/maven/**",
+    "**/.pub-cache/**",
+    "**/.dart_tool/**",
+    "**/build/**",
+    "**/.tmp/**",
+    "**/tmp/**"
+  ],
   "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx8G -Xms100m -Xlog:disable"
 }

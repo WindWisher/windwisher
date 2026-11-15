@@ -2,6 +2,10 @@
 
 ## Goal
 
+Required inputs and mounting-specific scope are recorded in
+[jump_measurement_modes.md](jump_measurement_modes.md): WOO/board, phone/board,
+phone/chest and watch/wrist including the user's Garmin application.
+
 Develop an independent WindWisher jump algorithm using synchronized sensor
 measurements and externally reported jumps as reference labels. WOO, SurfR and
 SurfR on Garmin are comparators, not implementations to copy.

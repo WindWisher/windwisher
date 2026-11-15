@@ -364,11 +364,16 @@ class SessionInsightData {
   }) {
     final normalizedKind = deviceKind.toLowerCase();
     final resolvedPlacement = (placement ?? '').toLowerCase();
-    final sensors = (sensorKeys ?? physicalSensorsForDeviceKind(deviceKind)).toSet();
+    final sensors = (sensorKeys ?? physicalSensorsForDeviceKind(deviceKind))
+        .toSet();
+    if (resolvedPlacement == 'wrist' ||
+        resolvedPlacement == 'chest' ||
+        resolvedPlacement == 'body') {
+      return 'body_imu';
+    }
     final boardLike =
         resolvedPlacement == 'board' ||
         normalizedKind.contains('woo') ||
-        normalizedKind.contains('surfr') ||
         normalizedKind.contains('tabla');
     if (boardLike) {
       return 'board_imu';
@@ -391,7 +396,8 @@ class SessionInsightData {
           physicalSensorsForDeviceKind(deviceKind).toList(growable: false),
       jumpDetectionMode: jumpDetectionModeForDevice(
         deviceKind: deviceKind,
-        sensorKeys: deviceSensorKeys ?? physicalSensorsForDeviceKind(deviceKind),
+        sensorKeys:
+            deviceSensorKeys ?? physicalSensorsForDeviceKind(deviceKind),
       ),
       distanceKm: null,
       maxSpeedKnots: null,
@@ -599,18 +605,18 @@ class SessionJumpRecord {
           ?.toDouble(),
       peakHeightMeters: (json['peakHeightMeters'] as num?)?.toDouble(),
       takeoffHeightMeters: (json['takeoffHeightMeters'] as num?)?.toDouble(),
-      barometricHeightMeters:
-          (json['barometricHeightMeters'] as num?)?.toDouble(),
-      barometricPeakHeightMeters:
-          (json['barometricPeakHeightMeters'] as num?)?.toDouble(),
+      barometricHeightMeters: (json['barometricHeightMeters'] as num?)
+          ?.toDouble(),
+      barometricPeakHeightMeters: (json['barometricPeakHeightMeters'] as num?)
+          ?.toDouble(),
       barometricTakeoffHeightMeters:
           (json['barometricTakeoffHeightMeters'] as num?)?.toDouble(),
       heightDeltaMeters: (json['heightDeltaMeters'] as num?)?.toDouble(),
       heightDeltaPercent: (json['heightDeltaPercent'] as num?)?.toDouble(),
       approachHeadingDeg: (json['approachHeadingDeg'] as num?)?.toDouble(),
       approachCourseDeg: (json['approachCourseDeg'] as num?)?.toDouble(),
-      approachWindOffsetDeg:
-          (json['approachWindOffsetDeg'] as num?)?.toDouble(),
+      approachWindOffsetDeg: (json['approachWindOffsetDeg'] as num?)
+          ?.toDouble(),
       edgeAngleDeg: (json['edgeAngleDeg'] as num?)?.toDouble(),
       maneuverG: (json['maneuverG'] as num?)?.toDouble(),
       maneuverRotationDegPerSec: (json['maneuverRotationDegPerSec'] as num?)

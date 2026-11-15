@@ -39,6 +39,15 @@ support, but it must not infer or fabricate them.
 
 ## SurfR Garmin FIT import
 
+For standard Garmin activity metrics (including the native Kitesurf profile),
+use `extract_garmin_activity.py INPUT.fit --out .tmp/native-activity.json` with
+the same isolated Python dependency below. This separate research format
+preserves observed summary fields, timestamps, GPS in degrees, speed in m/s,
+altitude in meters and HR. It retains the original FIT hash, checks CRCs,
+refuses output overwrites and does not infer jumps. It is not Canonical Session
+v1 and does not activate import or cloud publication in the Flutter app.
+Keep exports under ignored `.tmp/` because they contain personal telemetry.
+
 Install the isolated dependency and convert a FIT activity:
 
 ```bash

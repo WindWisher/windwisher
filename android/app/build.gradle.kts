@@ -42,6 +42,7 @@ android {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     implementation("com.garmin.connectiq:ciq-companion-app-sdk:2.4.0@aar")
     implementation(platform("com.google.firebase:firebase-bom:33.15.0"))

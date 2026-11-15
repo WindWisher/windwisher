@@ -19,9 +19,10 @@ class GarminSessionEnvelopeConverter {
   Uint8List convert(Uint8List input) {
     try {
       return _convert(input);
-    } on FormatException {
-      throw const FormatException(
-        'La sesion Garmin es invalida o esta incompleta.',
+    } on FormatException catch (_, stack) {
+      Error.throwWithStackTrace(
+        const FormatException('La sesion Garmin es invalida o esta incompleta.'),
+        stack,
       );
     }
   }
