@@ -2,6 +2,7 @@ part of '../../spot_detail_page.dart';
 
 extension _SpotDetailLiveFormatters on _SpotDetailPageState {
   String _formatObservedAt(DateTime value) {
+    value = value.toLocal();
     String two(int input) => input.toString().padLeft(2, '0');
     return '${two(value.day)}/${two(value.month)} ${two(value.hour)}:${two(value.minute)}';
   }

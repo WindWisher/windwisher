@@ -20,6 +20,12 @@ abstract final class EnvConfig {
     );
   }
 
+  static String get wundergroundApiKey {
+    final localValue = LocalEnvStore.wundergroundApiKey;
+    if (localValue.isNotEmpty) return localValue;
+    return const String.fromEnvironment('WUNDERGROUND_API_KEY').trim();
+  }
+
   static String get meteoblueApiKey {
     final localValue = LocalEnvStore.meteoblueApiKey;
     if (localValue.isNotEmpty) {

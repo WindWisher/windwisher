@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:timezone/data/latest.dart' as tz_data;
+import 'package:timezone/timezone.dart' as tz;
 
 class XussMeteoSnapshot {
   const XussMeteoSnapshot({
@@ -35,6 +37,12 @@ class XussMeteoClient {
        _fetchTextOverride = fetchText;
 
   static const String deniaUrl = 'http://www.xuss.es/Meteo/Denia.php';
+  static final tz.Location _stationTimeZone = _loadStationTimeZone();
+
+  static tz.Location _loadStationTimeZone() {
+    tz_data.initializeTimeZones();
+    return tz.getLocation('Europe/Madrid');
+  }
 
   final HttpClient? _httpClient;
   final Future<String> Function(String url)? _fetchTextOverride;
@@ -102,7 +110,22 @@ class XussMeteoClient {
         year == null) {
       return null;
     }
-    return DateTime(year, month, day, hour, minute);
+    final calendarDate = DateTime.utc(year, month, day, hour, minute);
+    if (calendarDate.year != year ||
+        calendarDate.month != month ||
+        calendarDate.day != day ||
+        hour > 23 ||
+        minute > 59) {
+      return null;
+    }
+    return tz.TZDateTime(
+      _stationTimeZone,
+      year,
+      month,
+      day,
+      hour,
+      minute,
+    ).toUtc();
   }
 
   String? _parseObservedAtLabel(String body) {
@@ -117,31 +140,55 @@ class XussMeteoClient {
     switch (raw?.toLowerCase()) {
       case 'jan':
       case 'ene':
+      case 'january':
+      case 'enero':
         return 1;
       case 'feb':
+      case 'february':
+      case 'febrero':
         return 2;
       case 'mar':
+      case 'march':
+      case 'marzo':
         return 3;
       case 'apr':
       case 'abr':
+      case 'april':
+      case 'abril':
         return 4;
       case 'may':
+      case 'mayo':
         return 5;
       case 'jun':
+      case 'june':
+      case 'junio':
         return 6;
       case 'jul':
+      case 'july':
+      case 'julio':
         return 7;
       case 'aug':
       case 'ago':
+      case 'august':
+      case 'agosto':
         return 8;
       case 'sep':
+      case 'sept':
+      case 'september':
+      case 'septiembre':
         return 9;
       case 'oct':
+      case 'october':
+      case 'octubre':
         return 10;
       case 'nov':
+      case 'november':
+      case 'noviembre':
         return 11;
       case 'dec':
       case 'dic':
+      case 'december':
+      case 'diciembre':
         return 12;
     }
     return null;

@@ -21,10 +21,24 @@ extension _SpotDetailLiveSection on _SpotDetailPageState {
   Widget _buildLiveProviderLabel() {
     final liveData = _selectedLiveData();
     final observedAt = liveData.observedAt;
+    final hasPayload = _resolvedLiveDataByStation().containsKey(
+      _selectedStation,
+    );
+    final station = _findStationByKey(_selectedStation);
+    final isMaritime =
+        station?.provider == 'MADIS_MARITIME' ||
+        station?.provider == 'COPERNICUS_MARINE';
+    final isOld =
+        observedAt != null &&
+        DateTime.now().difference(observedAt) >
+            Duration(hours: isMaritime ? 12 : 2);
     return _LiveProviderLabel(
       text: observedAt == null
-          ? null
-          : 'Ultimo dato: ${_formatObservedAtWithAge(observedAt)}',
+          ? (hasPayload
+                ? 'Fecha de observacion no disponible'
+                : 'Sin observaciones disponibles')
+          : 'Ultimo dato: ${_formatObservedAtWithAge(observedAt)}'
+                '${isOld ? ' · Datos atrasados' : ''}',
     );
   }
 

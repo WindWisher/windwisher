@@ -3,16 +3,22 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:windwisher/features/spots/infrastructure/services/supabase_forecast_proxy_client.dart';
 
 class PortusRealtimeWindClient {
   PortusRealtimeWindClient({
     HttpClient? httpClient,
     Future<dynamic> Function(String url, Object? body)? fetchJson,
+    SupabaseForecastProxyClient? forecastProxyClient,
   }) : _httpClient = httpClient,
-       _fetchJsonOverride = fetchJson;
+       _fetchJsonOverride = fetchJson,
+       _forecastProxyClient =
+           forecastProxyClient ??
+           (kIsWeb ? SupabaseForecastProxyClient.maybeCreate() : null);
 
   final HttpClient? _httpClient;
   final Future<dynamic> Function(String url, Object? body)? _fetchJsonOverride;
+  final SupabaseForecastProxyClient? _forecastProxyClient;
 
   static List<PortusWindStation>? _cachedWindStations;
 
@@ -257,6 +263,22 @@ class PortusRealtimeWindClient {
     if (override != null) {
       return override(url, body);
     }
+    final proxy = _forecastProxyClient;
+    if (proxy != null) {
+      if (url == _windStationsUrl) {
+        return proxy.fetchPortusWind(operation: 'stations');
+      }
+      final match = RegExp(
+        r'/api/(lastData|RTData)/station/(\d+)\?locale=es$',
+      ).firstMatch(url);
+      if (match == null) {
+        throw const FormatException('Invalid Portus wind operation.');
+      }
+      return proxy.fetchPortusWind(
+        operation: match.group(1) == 'lastData' ? 'current' : 'history',
+        stationId: int.parse(match.group(2)!),
+      );
+    }
     if (kIsWeb) {
       throw UnsupportedError(
         'Portus realtime direct HttpClient is not available on web.',
@@ -283,10 +305,7 @@ class PortusRealtimeWindClient {
   }
 
   HttpClient _createPortusHttpClient() {
-    return HttpClient()
-      ..badCertificateCallback = (certificate, host, port) {
-        return host == 'portus.puertos.es';
-      };
+    return HttpClient();
   }
 
   double _distanceKm(double latA, double lonA, double latB, double lonB) {

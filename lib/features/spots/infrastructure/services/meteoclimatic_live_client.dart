@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:windwisher/features/spots/infrastructure/services/supabase_forecast_proxy_client.dart';
 
 class MeteoclimaticLiveSnapshot {
   const MeteoclimaticLiveSnapshot({
@@ -39,13 +40,18 @@ class MeteoclimaticLiveClient {
   MeteoclimaticLiveClient({
     HttpClient? httpClient,
     Future<String> Function(Uri uri)? fetchText,
+    SupabaseForecastProxyClient? forecastProxyClient,
   }) : _httpClient = httpClient,
-       _fetchTextOverride = fetchText;
+       _fetchTextOverride = fetchText,
+       _forecastProxyClient =
+           forecastProxyClient ??
+           (kIsWeb ? SupabaseForecastProxyClient.maybeCreate() : null);
 
   static const String _host = 'www.meteoclimatic.net';
 
   final HttpClient? _httpClient;
   final Future<String> Function(Uri uri)? _fetchTextOverride;
+  final SupabaseForecastProxyClient? _forecastProxyClient;
 
   Future<MeteoclimaticLiveSnapshot?> fetchSnapshot({
     required String stationId,
@@ -66,7 +72,7 @@ class MeteoclimaticLiveClient {
     final wind = _splitTuple(dataLine.group(5));
     final rain = _splitTuple(dataLine.group(6));
 
-    final observedAt = _readPubDate(body);
+    final observedAt = _readObservationTime(body);
     final coordinates = _readCoordinates(body);
     return MeteoclimaticLiveSnapshot(
       stationId: stationId,
@@ -89,6 +95,11 @@ class MeteoclimaticLiveClient {
     final override = _fetchTextOverride;
     if (override != null) {
       return override(uri);
+    }
+    if (_forecastProxyClient != null) {
+      return _forecastProxyClient.fetchMeteoclimaticObservation(
+        stationId: uri.pathSegments.last,
+      );
     }
     if (kIsWeb) {
       throw UnsupportedError(
@@ -143,6 +154,31 @@ class MeteoclimaticLiveClient {
     } on HttpException {
       return _parseRssDate(raw)?.toLocal();
     }
+  }
+
+  DateTime? _readObservationTime(String body) {
+    final label = _readUpdatedLabel(body);
+    final match = RegExp(
+      r'^(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})\s+UTC$',
+    ).firstMatch(label ?? '');
+    if (match != null) {
+      int part(int index) => int.parse(match.group(index)!);
+      final time = DateTime.utc(part(3), part(2), part(1), part(4), part(5));
+      if (time.year == part(3) &&
+          time.month == part(2) &&
+          time.day == part(1) &&
+          time.hour == part(4) &&
+          time.minute == part(5)) {
+        return time;
+      }
+      return null;
+    }
+    // The channel date describes RSS generation, not station measurement time.
+    final item = RegExp(
+      r'<item\b[^>]*>(.*?)</item>',
+      dotAll: true,
+    ).firstMatch(body)?.group(1);
+    return item == null ? null : _readPubDate(item);
   }
 
   DateTime? _parseRssDate(String raw) {

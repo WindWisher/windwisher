@@ -105,26 +105,8 @@ class MeteopilesLiveClient {
   }
 
   DateTime? _parseObservedAt(List<String> values) {
-    final timestamp = _readVwsTimestamp(values);
-    if (timestamp != null) {
-      return timestamp;
-    }
-    final timeLabel = _readString(values, 1);
-    if (timeLabel == null) {
-      return null;
-    }
-    final parts = timeLabel.split(':');
-    if (parts.length < 2) {
-      return null;
-    }
-    final hour = int.tryParse(parts[0]);
-    final minute = int.tryParse(parts[1]);
-    final second = parts.length > 2 ? int.tryParse(parts[2]) ?? 0 : 0;
-    if (hour == null || minute == null) {
-      return null;
-    }
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day, hour, minute, second);
+    // A time-of-day alone cannot establish that this feed is from today.
+    return _readVwsTimestamp(values);
   }
 
   DateTime? _readVwsTimestamp(List<String> values) {
@@ -142,9 +124,10 @@ class MeteopilesLiveClient {
 
   bool _isStale(DateTime? observedAt) {
     if (observedAt == null) {
-      return false;
+      return true;
     }
-    return DateTime.now().difference(observedAt) > const Duration(hours: 2);
+    final age = DateTime.now().difference(observedAt);
+    return age > const Duration(hours: 2) || age < const Duration(minutes: -5);
   }
 
   double? _mphToKnots(double? value) {

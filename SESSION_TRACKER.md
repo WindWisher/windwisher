@@ -1,5 +1,35 @@
 # SESSION TRACKER
 
+## 2026-11-21 - Correccion integral de las integraciones Live auditadas
+
+- Desplegados `spot-live-observation-collector` y `forecast-proxy` en el proyecto configurado, sin migraciones ni cambios en otras funciones. Recogida acotada a 51 estaciones Wunderground y Xuss: 44 estaciones con observacion (43 WU y Xuss), ocho sin observacion valida y cero errores de integracion. Insertadas/actualizadas 45 filas, incluida una muestra diagnostica ya prevista por el recolector; no son 45 estaciones distintas.
+- Xuss: meses completos ingleses/espanoles y abreviaturas, validacion de calendario y conversion explicita desde Europe/Madrid con horario de verano en Flutter. El recolector comparte un parser puro comprobable; confirmado un registro real de Xuss en produccion.
+- Web: Wunderground (actual e historico), Xuss y Meteopiles consultan el backend en vez de intentar usar HttpClient. Weathercloud sin observacion devuelve ausencia de datos, no un payload artificial vacio; en web no intenta la conexion nativa como alternativa.
+- Meteoclimatic y Puertos disponen de nuevas operaciones restringidas en el proxy: dominio, endpoints y cuerpos fijados por el servidor, sin URLs arbitrarias. Verificados RSS Meteoclimatic, metadatos, observacion actual e historico Puertos con HTTP 200. Retirada la excepcion que aceptaba certificados TLS invalidos de Portus; consulta real nativa posterior correcta.
+- Endurecida la validacion de URLs Inforatge: HTTPS, hosts exactos, sin credenciales ni puertos alternativos. Meteoclimatic distingue fecha de medicion/elemento RSS de la fecha de generacion del canal; nunca infiere actualidad del canal. Meteopiles ya no atribuye la fecha de hoy a una hora sin timestamp VWS valido; rechaza registros futuros o antiguos.
+- UI: fecha mostrada en zona local, avisos de falta de observaciones/fecha y etiqueta de datos atrasados, con umbral conservador de presentacion de dos horas en estaciones terrestres y doce horas en las fuentes maritimas bajo demanda. Estos umbrales no acreditan la frecuencia oficial de cada proveedor ni sustituyen los filtros de frescura del backend.
+- Verificacion: bateria completa de 250 pruebas Flutter aprobada; despues del ultimo ajuste, otras 33 pruebas dirigidas aprobadas, incluidas tres nuevas regresiones Meteoclimatic. Treinta pruebas Deno, comprobacion de tipos de ambas funciones, analisis Flutter completo y `git diff --check` correctos.
+- Auditoria posterior de 207 rutas/estaciones, solo lectura, a las 12:27 UTC: AEMET 2/2 recientes, Xuss reciente en cliente y backend, Meteoclimatic 4/4 recientes, WU cliente 43 recientes/una antigua/una sin viento/nueve sin datos; WU backend 40 recientes/tres antiguas/ocho sin filas. Las diferencias con la recogida inicial son instantaneas distintas y cobertura cliente/backend diferente, no estaciones inventadas.
+- Incidencias externas: Cullera Dosser muestra aviso del propio Inforatge de estacion sin actualizar; Meteopiles entrega el registro VWS de 2020. Weathercloud Cullera Ibiza y Perello Yt60234 llevan semanas sin actualizar y hay otras estaciones con retrasos o sin anemometria. No se han ocultado, sustituido por previsiones ni rellenado con ceros. Copernicus ya devolvio una observacion reciente; ausencia de filas MADIS no demuestra caida del proveedor, al ser una fuente alternativa bajo demanda.
+- Web recompilada y publicada en `windwisher.com`, incluida la ultima correccion de fecha Meteoclimatic e historico WU. JavaScript servido identico al compilado local; claves privadas configuradas ausentes del JavaScript y del JSON publico. Sin inspeccion visual en navegador/telefono ni redeploy Android; sin commit ni push en este bloque.
+
+## 2026-11-21 - Renovacion del secreto AEMET en Supabase
+
+- A peticion del usuario, actualizado unicamente `AEMET_OPENDATA_API_KEY` del proyecto Supabase configurado, usando la nueva clave local sin mostrarla ni pasarla como argumento de proceso. Huella SHA-256 remota verificada contra la local despues de la actualizacion; una segunda comprobacion confirma coincidencia sin otra escritura.
+- Caducidad declarada del nuevo token: 2027-03-01. Consultas directas de Oliva/Tarifa y proxy con HTTP 200; la descarga de Oliva devolvio 13 observaciones en la comprobacion posterior.
+- Revisados README, cliente REST, sincronizacion RSS, configuracion de datasets, utilidad de caducidad y licencia MIT del repositorio oficial `https://gitlab.aemet.es/opendata/API`, rama `master`. Util como referencia para caducidad y consultas condicionadas por RSS; no se ha instalado, ejecutado ni incorporado codigo del repositorio.
+- Este cambio no despliega las modificaciones pendientes del recolector Wunderground ni de Flutter/web.
+
+## 2026-11-21 - Extraccion de clave Wunderground y auditoria Live
+
+- Reproducido el 401: la primera `apiKey=` del dashboard pertenece ahora a publicidad. La configuracion meteorologica publica `API_KEY` asociada a `API_URL=https://api.weather.com` devuelve observaciones correctamente.
+- Flutter y el recolector usan parsers equivalentes, con fixtures sinteticos compartidos. Se rechazan claves de publicidad, origenes ajenos y candidatos ambiguos; no se evalua JavaScript. Compatibilidad antigua limitada a URLs HTTPS del endpoint PWS real.
+- Nueva clave propia opcional `WUNDERGROUND_API_KEY`, prioritaria en `local.env.json` para nativo o en los secretos del recolector. No habia variable equivalente en los archivos locales revisados. La publicacion web la deja vacia y no se han cambiado credenciales reales.
+- Respuestas HTTP 204 pasan a representar ausencia de observaciones, no errores JSON. Las excepciones HTTP del cliente ya no incluyen parametros de consulta con claves.
+- Verificacion: 47 pruebas Flutter dirigidas, 18 pruebas Deno y `deno check` del recolector aprobados; analisis dirigido limpio. El helper TypeScript obtuvo HTTP 200 y una observacion real.
+- Ultima auditoria real del cliente Wunderground: 54 estaciones, 45 recientes, una antigua, una sin viento y siete HTTP 204 sin datos; ningun 401. Las 51 consultas al historico Wunderground seguian sin filas; el recolector corregido aun no esta desplegado y su recuperacion requiere una comprobacion posterior. No se han ejecutado escrituras ni desplegado este bloque.
+- AEMET mantiene comportamiento intermitente, con respuestas 200 y 401 sin cambiar la clave. Xuss, Meteopiles y estaciones antiguas permanecen fuera de esta correccion.
+
 ## 2026-11-15 - Alineacion de tablas de prevision
 
 - Corregida la tabla compartida de modelos horarios y Meteoblue Sea: etiquetas fijas y valores usan la misma altura por fila, calculada con todas sus celdas. Se conservan los colores, bordes y desplazamiento horizontal; las etiquetas se pintan por encima de los valores y las filas altas permiten desplazamiento vertical cuando la altura disponible esta limitada.

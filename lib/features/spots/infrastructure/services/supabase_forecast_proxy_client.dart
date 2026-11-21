@@ -247,6 +247,27 @@ class SupabaseForecastProxyClient {
     );
   }
 
+  Future<String> fetchMeteoclimaticObservation({required String stationId}) {
+    return _invokeText(
+      action: 'meteoclimatic-observation',
+      body: <String, dynamic>{
+        'action': 'meteoclimatic-observation',
+        'stationId': stationId,
+      },
+    );
+  }
+
+  Future<dynamic> fetchPortusWind({required String operation, int? stationId}) {
+    return _invokeDynamic(
+      action: 'portus-wind',
+      body: <String, dynamic>{
+        'action': 'portus-wind',
+        'operation': operation,
+        'stationId': ?stationId,
+      },
+    );
+  }
+
   Future<String> fetchInforatgeGraph({
     required String url,
     required Map<String, String> formData,

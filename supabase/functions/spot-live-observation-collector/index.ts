@@ -1,6 +1,11 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/http.ts";
+import { parseXussDateParts } from "../_shared/xuss_date.ts";
+import {
+  extractWundergroundApiKey,
+  readWundergroundResponse,
+} from "../_shared/wunderground_api_key.ts";
 
 type LiveStationConfig = {
   provider:
@@ -40,6 +45,7 @@ const collectorSecret = Deno.env.get("SPOT_LIVE_COLLECTOR_SECRET") ??
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const collectionBatchSize = 6;
+const wundergroundApiKey = (Deno.env.get("WUNDERGROUND_API_KEY") ?? "").trim();
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -889,12 +895,11 @@ async function fetchMeteopilesObservation(
     return null;
   }
 
-  const observedAt = parseVwsTimestamp(readString(values, 0)) ??
-    parseTodayTime(readString(values, 1));
+  const observedAt = parseVwsTimestamp(readString(values, 0));
   if (observedAt == null) {
     return null;
   }
-  if (isStale(observedAt)) {
+  if (isStale(observedAt) || observedAt.getTime() - Date.now() > 5 * 60 * 1000) {
     return null;
   }
 
@@ -998,10 +1003,14 @@ async function fetchWundergroundObservation(
   url.searchParams.set("units", "m");
   url.searchParams.set("apiKey", apiKey);
 
-  const payload = await fetchJsonObject(url.toString(), {
-    referer: "https://www.wunderground.com/",
-    "user-agent": "WindWisher/1.0",
+  const response = await fetch(url.toString(), {
+    headers: {
+      accept: "application/json",
+      referer: "https://www.wunderground.com/",
+      "user-agent": "WindWisher/1.0",
+    },
   });
+  const payload = await readWundergroundResponse(response);
   const observations = Array.isArray(payload.observations)
     ? payload.observations
     : [];
@@ -1033,6 +1042,7 @@ async function fetchWundergroundObservation(
 }
 
 async function fetchWundergroundApiKey(stationId: string) {
+  if (wundergroundApiKey) return wundergroundApiKey;
   const dashboardUrl = `https://www.wunderground.com/dashboard/pws/${
     encodeURIComponent(stationId)
   }`;
@@ -1047,7 +1057,7 @@ async function fetchWundergroundApiKey(stationId: string) {
     throw new Error(`wunderground-dashboard-http-${response.status}`);
   }
   const dashboard = await response.text();
-  const apiKey = dashboard.match(/apiKey=([A-Za-z0-9]+)/)?.[1];
+  const apiKey = extractWundergroundApiKey(dashboard);
   if (!apiKey) {
     throw new Error("wunderground-api-key-not-found");
   }
@@ -1291,30 +1301,6 @@ function decodeJsonp(raw: string, callback: string): string {
   return raw;
 }
 
-function parseTodayTime(label: string | null): Date | null {
-  if (label == null) {
-    return null;
-  }
-  const parts = label.split(":").map((part) => Number.parseInt(part, 10));
-  if (parts.length < 2 || parts.some((part) => Number.isNaN(part))) {
-    return null;
-  }
-  const madridNow = datePartsInTimeZone(new Date(), "Europe/Madrid");
-  const observed = zonedDateTimeToUtc({
-    timeZone: "Europe/Madrid",
-    year: madridNow.year,
-    month: madridNow.month,
-    day: madridNow.day,
-    hour: parts[0],
-    minute: parts[1],
-    second: parts[2] ?? 0,
-  });
-  if (observed.getTime() - Date.now() > 30 * 60 * 1000) {
-    observed.setUTCDate(observed.getUTCDate() - 1);
-  }
-  return observed;
-}
-
 function parseVwsTimestamp(raw: string | null): Date | null {
   if (raw == null || !raw.startsWith("F=")) {
     return null;
@@ -1447,33 +1433,11 @@ function parseWundergroundObservedAt(
 }
 
 function parseXussObservedAt(body: string): Date | null {
-  const match = body.match(
-    /Ultima grabaci[oó]n a:\s*(\d{1,2}):(\d{2}).*?Data:\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/is,
-  );
-  if (!match) {
-    return null;
-  }
-  const hour = Number(match[1]);
-  const minute = Number(match[2]);
-  const day = Number(match[3]);
-  const month = parseXussMonth(match[4]);
-  const year = Number(match[5]);
-  if (
-    !Number.isFinite(hour) ||
-    !Number.isFinite(minute) ||
-    !Number.isFinite(day) ||
-    month == null ||
-    !Number.isFinite(year)
-  ) {
-    return null;
-  }
+  const parts = parseXussDateParts(body);
+  if (parts == null) return null;
   return zonedDateTimeToUtc({
     timeZone: "Europe/Madrid",
-    year,
-    month,
-    day,
-    hour,
-    minute,
+    ...parts,
     second: 0,
   });
 }
@@ -1522,41 +1486,6 @@ function parseXussNumber(raw: string | undefined): number | null {
   }
   const parsed = Number(raw.replace(",", "."));
   return Number.isFinite(parsed) ? parsed : null;
-}
-
-function parseXussMonth(raw: string | undefined): number | null {
-  switch (raw?.toLowerCase()) {
-    case "jan":
-    case "ene":
-      return 1;
-    case "feb":
-      return 2;
-    case "mar":
-      return 3;
-    case "apr":
-    case "abr":
-      return 4;
-    case "may":
-      return 5;
-    case "jun":
-      return 6;
-    case "jul":
-      return 7;
-    case "aug":
-    case "ago":
-      return 8;
-    case "sep":
-      return 9;
-    case "oct":
-      return 10;
-    case "nov":
-      return 11;
-    case "dec":
-    case "dic":
-      return 12;
-    default:
-      return null;
-  }
 }
 
 function roundNullable(value: number | null): number | null {

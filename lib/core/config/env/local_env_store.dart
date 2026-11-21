@@ -47,6 +47,11 @@ abstract final class LocalEnvStore {
     return value is String ? value : '';
   }
 
+  static String get wundergroundApiKey {
+    final value = _values['WUNDERGROUND_API_KEY'];
+    return value is String ? value.trim() : '';
+  }
+
   static String get meteoblueApiKey {
     final value = _values['METEOBLUE_API_KEY'];
     return value is String ? value : '';

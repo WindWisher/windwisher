@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:windwisher/core/config/env/env_config.dart';
+import 'package:windwisher/features/spots/infrastructure/services/wunderground_api_key.dart';
 
 class WundergroundPwsSnapshot {
   const WundergroundPwsSnapshot({
@@ -51,7 +53,9 @@ class WundergroundPwsClient {
   WundergroundPwsClient({
     HttpClient? httpClient,
     Future<String> Function(Uri uri)? fetchText,
+    String? apiKey,
   }) : _httpClient = httpClient,
+       _apiKeyOverride = apiKey,
        _fetchTextOverride = fetchText;
 
   static const String _dashboardHost = 'www.wunderground.com';
@@ -61,6 +65,7 @@ class WundergroundPwsClient {
   final HttpClient? _httpClient;
   final Future<String> Function(Uri uri)? _fetchTextOverride;
   String? _cachedApiKey;
+  final String? _apiKeyOverride;
 
   Future<WundergroundPwsSnapshot?> fetchCurrent({
     required String stationId,
@@ -117,6 +122,8 @@ class WundergroundPwsClient {
   }
 
   Future<String> _resolveApiKey({required String stationId}) async {
+    final configured = (_apiKeyOverride ?? EnvConfig.wundergroundApiKey).trim();
+    if (configured.isNotEmpty) return configured;
     final cachedApiKey = _cachedApiKey;
     if (cachedApiKey != null) {
       return cachedApiKey;
@@ -124,8 +131,7 @@ class WundergroundPwsClient {
     final dashboard = await _fetchText(
       Uri.https(_dashboardHost, '/dashboard/pws/$stationId'),
     );
-    final match = RegExp(r'apiKey=([A-Za-z0-9]+)').firstMatch(dashboard);
-    final apiKey = match?.group(1);
+    final apiKey = extractWundergroundApiKey(dashboard);
     if (apiKey == null || apiKey.isEmpty) {
       throw const FormatException(
         'Wunderground dashboard did not expose an API key.',
@@ -194,9 +200,10 @@ class WundergroundPwsClient {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw HttpException(
         'Wunderground returned ${response.statusCode}',
-        uri: uri,
+        uri: uri.replace(query: ''),
       );
     }
+    if (response.statusCode == HttpStatus.noContent) return '{}';
     return body;
   }
 

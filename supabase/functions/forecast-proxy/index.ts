@@ -1,5 +1,10 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { jsonResponse, readJson } from "../_shared/http.ts";
+import {
+  meteoclimaticUrl,
+  normalizeInforatgeUrl,
+  portusWindRequest,
+} from "../_shared/live_upstream_request.ts";
 
 type BeachForecastRequest = {
   action: "aemet-beach-forecast";
@@ -130,7 +135,9 @@ type ForecastProxyRequest =
   | OpenMeteoWeatherGridRequest
   | OpenMeteoMarineGridRequest
   | InforatgePageRequest
-  | InforatgeGraphRequest;
+  | InforatgeGraphRequest
+  | { action: "meteoclimatic-observation"; stationId: string }
+  | { action: "portus-wind"; operation: string; stationId?: number };
 
 const aemetApiKey = Deno.env.get("AEMET_OPENDATA_API_KEY") ?? "";
 const meteoblueApiKey = Deno.env.get("METEOBLUE_API_KEY") ?? "";
@@ -298,6 +305,28 @@ Deno.serve(async (request) => {
         return jsonResponse(await fetchInforatgePage(payload.url));
       case "inforatge-graph":
         return jsonResponse(await fetchInforatgeGraph(payload.url, payload.formData));
+      case "meteoclimatic-observation": {
+        const response = await fetch(meteoclimaticUrl(payload.stationId), {
+          headers: { "user-agent": "WindWisher/1.0" },
+          redirect: "error",
+          signal: AbortSignal.timeout(15000),
+        });
+        if (!response.ok) throw new Error(`meteoclimatic-http-${response.status}`);
+        const data = new TextDecoder("iso-8859-1").decode(await response.arrayBuffer());
+        return jsonResponse({ provider: "METEOCLIMATIC", data });
+      }
+      case "portus-wind": {
+        const upstream = portusWindRequest(payload.operation, payload.stationId);
+        const response = await fetch(upstream.url, {
+          method: upstream.body == null ? "GET" : "POST",
+          headers: { "content-type": "application/json", "accept": "application/json" },
+          body: upstream.body,
+          redirect: "error",
+          signal: AbortSignal.timeout(15000),
+        });
+        if (!response.ok) throw new Error(`portus-http-${response.status}`);
+        return jsonResponse({ provider: "PUERTOS", data: await response.json() });
+      }
       default:
         return jsonResponse({ error: "unsupported-action" }, { status: 400 });
     }
@@ -791,22 +820,6 @@ async function fetchText(url: string): Promise<string> {
     throw new Error(`upstream-http-${response.status}`);
   }
   return await response.text();
-}
-
-function normalizeInforatgeUrl(url: string): string {
-  if (!url.trim()) {
-    throw new Error("missing-inforatge-url");
-  }
-  const normalized = url.startsWith("//")
-    ? `https:${url}`
-    : url.startsWith("/")
-    ? `https://inforatge.com${url}`
-    : url;
-  const parsed = new URL(normalized);
-  if (!parsed.hostname.endsWith("inforatge.com")) {
-    throw new Error("invalid-inforatge-host");
-  }
-  return parsed.toString();
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

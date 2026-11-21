@@ -61,6 +61,9 @@ extension _SpotDetailLiveStationPayloadLoader on _SpotDetailPageState {
       );
     }
     if (station.provider == 'METEOPILES') {
+      if (kIsWeb) {
+        return _fetchLatestBackendLiveData(station);
+      }
       final snapshot = await _meteopilesLiveClient.fetchSnapshot();
       if (snapshot == null) {
         return null;
@@ -134,15 +137,18 @@ extension _SpotDetailLiveStationPayloadLoader on _SpotDetailPageState {
       return _fetchLatestBackendLiveData(station);
     }
     if (station.provider == 'WUNDERGROUND') {
+      if (kIsWeb) {
+        return _fetchLatestBackendLiveData(station);
+      }
       final stationId = station.stationId;
       if (stationId == null) {
         return null;
       }
-      final snapshot = await _wundergroundPwsClient.fetchCurrent(
-        stationId: stationId,
-      );
+      final snapshot = await _wundergroundPwsClient
+          .fetchCurrent(stationId: stationId)
+          .onError((error, stackTrace) => null);
       if (snapshot == null) {
-        return null;
+        return _fetchLatestBackendLiveData(station);
       }
       return _StationLiveData(
         windKnots: snapshot.windKnots,
@@ -165,25 +171,36 @@ extension _SpotDetailLiveStationPayloadLoader on _SpotDetailPageState {
       if (backendSnapshot != null) {
         return backendSnapshot;
       }
+      if (kIsWeb) {
+        return null;
+      }
       final snapshot = await _weathercloudLiveClient.fetchCurrent(
         deviceId: stationId,
       );
+      if (snapshot == null) {
+        return null;
+      }
       return _StationLiveData(
-        windKnots: snapshot?.windKnots,
-        windDeg: snapshot?.windDirectionDeg,
-        gustKnots: snapshot?.gustKnots,
-        tempC: snapshot?.tempC,
-        pressureHpa: snapshot?.pressureHpa,
-        humidityPct: snapshot?.humidityPct,
-        rainMm: snapshot?.rainMm,
-        observedAt: snapshot?.observedAt,
-        observedAtLabel: snapshot?.observedAtLabel,
+        windKnots: snapshot.windKnots,
+        windDeg: snapshot.windDirectionDeg,
+        gustKnots: snapshot.gustKnots,
+        tempC: snapshot.tempC,
+        pressureHpa: snapshot.pressureHpa,
+        humidityPct: snapshot.humidityPct,
+        rainMm: snapshot.rainMm,
+        observedAt: snapshot.observedAt,
+        observedAtLabel: snapshot.observedAtLabel,
       );
     }
     if (station.provider == 'XUSS') {
-      final snapshot = await _xussMeteoClient.fetchDeniaSnapshot();
+      if (kIsWeb) {
+        return _fetchLatestBackendLiveData(station);
+      }
+      final snapshot = await _xussMeteoClient.fetchDeniaSnapshot().onError(
+        (error, stackTrace) => null,
+      );
       if (snapshot == null) {
-        return null;
+        return _fetchLatestBackendLiveData(station);
       }
       return _StationLiveData(
         windKnots: snapshot.windKnots,

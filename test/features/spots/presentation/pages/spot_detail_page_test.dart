@@ -408,35 +408,35 @@ void main() {
     );
   });
 
-  testWidgets(
-    'Pantano de Alarcon uses WU primary and Weathercloud alternative',
-    (tester) async {
-      await _pumpSpotDetailPage(
-        tester,
-        SpotDetailPage(
-          name: pantanoAlarconSpotName,
-          area: 'Cuenca',
-          isCustom: false,
-          latitude: 39.7026608,
-          longitude: -2.2525999,
-          capabilities: pantanoAlarconSpotCapabilities,
-          spotsModule: _buildTestModule(
-            forecastPort: _FakeSpotsForecastPort(
-              handler:
-                  ({
-                    required spotName,
-                    required area,
-                    required provider,
-                    required model,
-                  }) async => [_entry(hour: 0)],
-            ),
+  testWidgets('Pantano de Alarcon uses WU primary and Weathercloud alternative', (
+    tester,
+  ) async {
+    await _pumpSpotDetailPage(
+      tester,
+      SpotDetailPage(
+        name: pantanoAlarconSpotName,
+        area: 'Cuenca',
+        isCustom: false,
+        latitude: 39.7026608,
+        longitude: -2.2525999,
+        capabilities: pantanoAlarconSpotCapabilities,
+        spotsModule: _buildTestModule(
+          forecastPort: _FakeSpotsForecastPort(
+            handler:
+                ({
+                  required spotName,
+                  required area,
+                  required provider,
+                  required model,
+                }) async => [_entry(hour: 0)],
           ),
-          wundergroundPwsClient: WundergroundPwsClient(
-            fetchText: (uri) async {
-              if (uri.host == 'www.wunderground.com') {
-                return 'apiKey=test123';
-              }
-              return '''
+        ),
+        wundergroundPwsClient: WundergroundPwsClient(
+          fetchText: (uri) async {
+            if (uri.host == 'www.wunderground.com') {
+              return 'const data = {"API_URL":"https://api.weather.com","API_KEY":"test123"};';
+            }
+            return '''
               {
                 "observations": [
                   {
@@ -458,33 +458,29 @@ void main() {
                 ]
               }
             ''';
-            },
-          ),
+          },
         ),
-      );
+      ),
+    );
 
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Live'));
-      await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Live'));
+    await tester.pumpAndSettle();
 
-      final stationDropdown = _liveStationDropdownFinder();
-      expect(
-        tester.state<FormFieldState<String>>(stationDropdown).value,
-        'wunderground:IVALVE48',
-      );
+    final stationDropdown = _liveStationDropdownFinder();
+    expect(
+      tester.state<FormFieldState<String>>(stationDropdown).value,
+      'wunderground:IVALVE48',
+    );
 
-      await tester.tap(stationDropdown);
-      await tester.pumpAndSettle();
-      expect(
-        find.textContaining('WU Valverde de Júcar IVALVE48'),
-        findsWidgets,
-      );
-      expect(
-        find.textContaining('Weathercloud Vevor Estación Pueblo'),
-        findsOneWidget,
-      );
-    },
-  );
+    await tester.tap(stationDropdown);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('WU Valverde de Júcar IVALVE48'), findsWidgets);
+    expect(
+      find.textContaining('Weathercloud Vevor Estación Pueblo'),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('Porto Pollo uses Panoramicams Wind Bar as primary station', (
     tester,

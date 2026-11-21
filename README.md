@@ -18,6 +18,14 @@ flutter run
 
 Necesitas un `local.env.json` valido en la raiz del proyecto.
 
+Wunderground permite una clave propia opcional `WUNDERGROUND_API_KEY` en ese
+archivo para ejecuciones nativas, y como secreto del recolector en Supabase.
+Si no se configura, se obtiene de la configuracion meteorologica publica del
+dashboard (`API_KEY` asociada a `API_URL=https://api.weather.com`), nunca de las
+claves de publicidad. `.env.woo.local` no es la configuracion de la app Flutter.
+No incluyas claves propias en `--dart-define` para web: quedan compiladas en el
+JavaScript. El despliegue web elimina esta clave del asset publico.
+
 ## Web y Hosting
 
 La web se publica en Firebase Hosting.

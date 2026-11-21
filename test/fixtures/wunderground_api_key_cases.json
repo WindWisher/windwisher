@@ -1,0 +1,77 @@
+[
+  {
+    "name": "advertising URL alone is rejected",
+    "html": "https://weather.com/api/v1/mew/entity/ad_config?apiKey=adKey123",
+    "expected": null
+  },
+  {
+    "name": "weather configuration wins over preceding advertising",
+    "html": "https://weather.com/ad?apiKey=adKey123 <script>const data = {\"API_KEY\":\"weatherKey123\",\"API_URL\":\"https://api.weather.com\",\"MAPBOX_API_KEY\":\"mapKey123\"};</script>",
+    "expected": "weatherKey123"
+  },
+  {
+    "name": "multiline nested configuration is supported",
+    "html": "let data = {\n\"API_KEY\":\"weatherKey123\",\"API_URL\":\"https://api.weather.com/\",\"options\":{\"enabled\":true}\n};",
+    "expected": "weatherKey123"
+  },
+  {
+    "name": "malformed configuration before valid configuration",
+    "html": "const data = { invalid }; var data = {\"API_KEY\":\"weatherKey123\",\"API_URL\":\"https://api.weather.com\"};",
+    "expected": "weatherKey123"
+  },
+  {
+    "name": "foreign configuration host is rejected",
+    "html": "const data = {\"API_KEY\":\"adKey123\",\"API_URL\":\"https://api.weather.com.evil.invalid\"};",
+    "expected": null
+  },
+  {
+    "name": "executable expressions are not evaluated",
+    "html": "const data = {API_KEY: stealKey(), API_URL: 'https://api.weather.com'};",
+    "expected": null
+  },
+  {
+    "name": "ambiguous configurations fail closed",
+    "html": "const data = {\"API_KEY\":\"firstKey123\",\"API_URL\":\"https://api.weather.com\"}; const data = {\"API_KEY\":\"secondKey123\",\"API_URL\":\"https://api.weather.com\"};",
+    "expected": null
+  },
+  {
+    "name": "legacy PWS URL with HTML escaping",
+    "html": "https://api.weather.com/v2/pws/observations/current?stationId=SYNTHETIC&amp;apiKey=weatherKey123&amp;units=m",
+    "expected": "weatherKey123"
+  },
+  {
+    "name": "legacy JSON escaped URL",
+    "html": "https:\\/\\/api.weather.com\\/v2\\/pws\\/observations\\/current?apiKey=weatherKey123",
+    "expected": "weatherKey123"
+  },
+  {
+    "name": "non-PWS product is rejected",
+    "html": "https://api.weather.com/v3/ads?apiKey=adKey123",
+    "expected": null
+  },
+  {
+    "name": "duplicate query keys fail closed",
+    "html": "https://api.weather.com/v2/pws/observations/current?apiKey=firstKey123&apiKey=secondKey123",
+    "expected": null
+  },
+  {
+    "name": "spoofed hostname is rejected",
+    "html": "https://api.weather.com.evil.invalid/v2/pws/observations/current?apiKey=adKey123",
+    "expected": null
+  },
+  {
+    "name": "userinfo URL is rejected",
+    "html": "https://person@api.weather.com/v2/pws/observations/current?apiKey=adKey123",
+    "expected": null
+  },
+  {
+    "name": "non-TLS origin is rejected",
+    "html": "http://api.weather.com/v2/pws/observations/current?apiKey=adKey123",
+    "expected": null
+  },
+  {
+    "name": "empty configured key is rejected",
+    "html": "const data = {\"API_KEY\":\"\",\"API_URL\":\"https://api.weather.com\"};",
+    "expected": null
+  }
+]

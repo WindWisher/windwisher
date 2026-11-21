@@ -129,6 +129,9 @@ extension _SpotDetailLiveHistoryDataLoader on _SpotDetailPageState {
     }
 
     if (station.provider == 'WUNDERGROUND') {
+      if (kIsWeb) {
+        return _fetchBackendCollectedLiveHistory(station);
+      }
       if (_usesBackendHistoryForWundergroundStation(station)) {
         final backendHistory = await _fetchBackendCollectedLiveHistory(station);
         if (backendHistory.isNotEmpty) {

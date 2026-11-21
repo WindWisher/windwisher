@@ -2,6 +2,36 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:windwisher/features/spots/infrastructure/services/meteoclimatic_live_client.dart';
 
 void main() {
+  Future<MeteoclimaticLiveSnapshot?> readDates(String dates) {
+    return MeteoclimaticLiveClient(
+      fetchText: (_) async =>
+          '''
+<rss><channel><pubDate>Sat, 21 Nov 2026 08:46:35 +0000</pubDate>
+<item>$dates
+[[<ESPVA4600000046420A;(22;0;0);(72;0;0);(1018;0;0);(18;30;90);(0);Test>]]
+</item></channel></rss>
+''',
+    ).fetchSnapshot(stationId: 'ESPVA4600000046420A');
+  }
+
+  test('uses the station item date rather than RSS generation date', () async {
+    final snapshot = await readDates(
+      '<pubDate>Fri, 20 Nov 2026 08:33:00 +0000</pubDate>',
+    );
+    expect(snapshot?.observedAt?.toUtc(), DateTime.utc(2026, 11, 20, 8, 33));
+  });
+  test('does not invent measurement time from the channel date', () async {
+    expect((await readDates(''))?.observedAt, isNull);
+  });
+  test('rejects invalid calendar dates in the observation label', () async {
+    expect(
+      (await readDates(
+        '<li>Actualizado: 31-11-2026 08:33 UTC</li>',
+      ))?.observedAt,
+      isNull,
+    );
+  });
+
   test('maps Meteoclimatic RSS station snapshot', () async {
     final client = MeteoclimaticLiveClient(
       fetchText: (_) async => '''
@@ -37,9 +67,7 @@ void main() {
     expect(snapshot!.stationId, 'ESPVA4600000046420A');
     expect(snapshot.stationName, 'El Perello');
     expect(
-      snapshot.observedAt?.isAtSameMomentAs(
-        DateTime.utc(2026, 5, 19, 19, 38, 18),
-      ),
+      snapshot.observedAt?.isAtSameMomentAs(DateTime.utc(2026, 5, 19, 19, 17)),
       isTrue,
     );
     expect(snapshot.observedAtLabel, '19-05-2026 19:17 UTC');
